@@ -1,0 +1,118 @@
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: transparent;
+  isolation: isolate;
+}
+
+.stage::after {
+  position: absolute;
+  z-index: 2;
+  inset: -15% -45%;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(
+    112deg,
+    transparent 38%,
+    rgba(255, 243, 199, 0.08) 49%,
+    transparent 60%
+  );
+  transform: translateX(-42%);
+  animation: cinematic-sheen 16s ease-in-out infinite;
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  background: transparent;
+  transform: translateZ(0) scale(1.035);
+  backface-visibility: hidden;
+  filter: saturate(0.96) contrast(1.02) brightness(0.94);
+  transition:
+    opacity 1400ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 9000ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 1400ms ease;
+  will-change: opacity, transform;
+}
+
+.video[data-scene="garden"] {
+  object-position: 50% 52%;
+}
+
+.video[data-scene="ballroom"] {
+  object-position: 50% 50%;
+}
+
+.video[data-scene="beach"] {
+  object-position: 50% 51%;
+}
+
+.video[data-scene="reception"] {
+  object-position: 52% 50%;
+}
+
+.active {
+  opacity: 1;
+  transform: translateZ(0) scale(1);
+  filter: saturate(1.01) contrast(1.025) brightness(1);
+}
+
+@keyframes cinematic-sheen {
+  0%,
+  24% {
+    opacity: 0;
+    transform: translateX(-42%);
+  }
+
+  38% {
+    opacity: 0.5;
+  }
+
+  53% {
+    opacity: 0;
+    transform: translateX(42%);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(42%);
+  }
+}
+
+@media (max-width: 47.999rem) {
+  .video[data-scene="garden"] {
+    object-position: 48% center;
+  }
+
+  .video[data-scene="ballroom"] {
+    object-position: 50% center;
+  }
+
+  .video[data-scene="beach"] {
+    object-position: 51% center;
+  }
+
+  .video[data-scene="reception"] {
+    object-position: 53% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage::after {
+    display: none;
+  }
+
+  .video {
+    transition: none;
+    transform: none;
+  }
+}

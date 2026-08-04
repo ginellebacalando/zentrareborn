@@ -1,0 +1,910 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  CLIENT
+}
+
+enum UserStatus {
+  PENDING_SETUP
+  ACTIVE
+  TEMP_ACCESS
+  PASSWORD_RESET_REQUIRED
+  DISABLED
+  LOCKED
+  INVITATION_EXPIRED
+  RESET_EXPIRED
+}
+
+enum AccountTokenType {
+  INVITATION
+  PASSWORD_RESET
+  TEMP_LOGIN
+}
+
+enum SessionAccessScope {
+  FULL_ACCESS
+  PASSWORD_CHANGE_ONLY
+}
+
+enum EventStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+  COMPLETED
+}
+
+enum InquiryStatus {
+  NEW                  @map("new")
+  PENDING_RESPONSE     @map("pending_response")
+  ANSWERED             @map("answered")
+  FOLLOW_UP            @map("follow_up")
+  CLOSED               @map("closed")
+  SPAM                 @map("spam")
+}
+
+enum InquiryPriority {
+  LOW    @map("low")
+  NORMAL @map("normal")
+  HIGH   @map("high")
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_CHANGE
+  PROFILE_UPDATE
+  SETTINGS_CHANGE
+  APPROVAL
+  REJECTION
+  SUBMISSION
+  FILE_UPLOAD
+  FILE_DELETE
+  PERMISSION_CHANGE
+  ROLE_ASSIGNMENT
+  TEAM_MEMBER_INVITED
+  INVITATION_RESENT
+  PASSWORD_RESET_LINK_SENT
+  TEMP_ACCESS_CODE_SENT
+  PASSWORD_CHANGED
+  TEMP_ACCESS_EXPIRED
+  ACCOUNT_LOCKED
+  ACCOUNT_DISABLED
+  ACCOUNT_ACTIVATED
+  ROLE_CHANGED
+  SYSTEM_CONFIG
+  EXPORT
+  ERROR
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILED
+  WARNING
+  INFO
+}
+
+enum EmailType {
+  EMAIL_VERIFICATION
+  TEAM_INVITATION
+  TEAM_PASSWORD_RESET
+  TEAM_TEMP_ACCESS
+  INQUIRY_REPLY
+  ADMIN_NOTIFICATION
+  GENERAL
+}
+
+enum EmailStatus {
+  QUEUED
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+  RETRIED
+  NOT_SENT
+  PENDING_DEMO
+  SENT_DEMO
+}
+
+enum TriggerSource {
+  SYSTEM
+  N8N_WORKFLOW
+  MANUAL_RESEND
+}
+
+enum RelatedModule {
+  INQUIRY
+  USER
+  ADMIN_NOTIFICATION
+}
+
+enum PublicationStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  EXPIRED
+  REJECTED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ContentType {
+  GALLERY_ITEM
+  FACILITY
+  RULES
+  PRIVACY
+  TERMS
+  ABOUT
+  CONTACT
+}
+
+enum MediaAssetStatus {
+  DRAFT
+  PUBLISHED
+  TRASHED
+  DELETED
+}
+
+enum CommandCenterJobType {
+  PUBLISH_VERSION
+  EXPIRE_VERSION
+  DELETE_MEDIA
+}
+
+enum CommandCenterJobStatus {
+  QUEUED
+  PROCESSING
+  SUCCESS
+  FAILED
+  RETRYING
+  CANCELLED
+}
+
+enum NotificationType {
+  INQUIRY
+  TESTIMONY
+  EMAIL
+  WORKFLOW
+  SYSTEM
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum N8nWorkflowStatus {
+  QUEUED
+  PROCESSING
+  SUCCESS
+  FAILED
+  RETRYING
+  CANCELLED
+}
+
+enum EventCategoryStatus {
+  ACTIVE   @map("active")
+  HIDDEN   @map("hidden")
+  ARCHIVED @map("archived")
+}
+
+enum PackageStatus {
+  ACTIVE   @map("active")
+  INACTIVE @map("inactive")
+  HIDDEN   @map("hidden")
+  ARCHIVED @map("archived")
+}
+
+enum TestimonyStatus {
+  PENDING_REVIEW @map("pending_review")
+  APPROVED       @map("approved")
+  HIDDEN         @map("hidden")
+  FLAGGED        @map("flagged")
+  DELETED        @map("deleted")
+}
+
+enum SupportFaqStatus {
+  DRAFT        @map("draft")
+  PUBLISHED    @map("published")
+  HIDDEN       @map("hidden")
+  ARCHIVED     @map("archived")
+  NEEDS_REVIEW @map("needs_review")
+}
+
+enum SupportCategoryStatus {
+  ACTIVE   @map("active")
+  HIDDEN   @map("hidden")
+  ARCHIVED @map("archived")
+}
+
+enum SupportRelatedModule {
+  PACKAGES    @map("packages")
+  VENUE       @map("venue")
+  INQUIRIES   @map("inquiries")
+  TESTIMONIES @map("testimonies")
+  GENERAL     @map("general")
+}
+
+model User {
+  id                         String            @id @default(cuid())
+  username                   String            @unique
+  email                      String            @unique
+  passwordHash               String?           @map("password_hash") @db.Text
+  fullName                   String?           @map("full_name") @db.VarChar(255)
+  contactNumber              String?           @map("contact_number") @db.VarChar(20)
+  addressRegionCode          String?           @map("address_region_code") @db.VarChar(20)
+  addressRegion              String?           @map("address_region") @db.VarChar(120)
+  addressProvinceCode        String?           @map("address_province_code") @db.VarChar(20)
+  addressProvince            String?           @map("address_province") @db.VarChar(120)
+  addressCityCode            String?           @map("address_city_code") @db.VarChar(20)
+  addressCity                String?           @map("address_city") @db.VarChar(120)
+  addressBarangayCode        String?           @map("address_barangay_code") @db.VarChar(20)
+  addressBarangay            String?           @map("address_barangay") @db.VarChar(120)
+  profileImage               String?           @map("profile_image") @db.VarChar(500)
+  role                       Role              @default(CLIENT)
+  status                     UserStatus        @default(ACTIVE)
+  mustChangePassword         Boolean           @default(false) @map("must_change_password")
+  createdBy                  String?           @map("created_by")
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+  lastPasswordChangedAt      DateTime?         @map("last_password_changed_at")
+  passwordChangeAttemptCount Int               @default(0) @map("password_change_attempt_count")
+  passwordChangeLockedUntil  DateTime?         @map("password_change_locked_until")
+  accountTokens              AccountToken[]
+  accountSessions            AccountSession[]
+  passwordHistory            PasswordHistory[]
+
+  @@map("users")
+}
+
+model AccountToken {
+  id           String           @id @default(cuid())
+  userId       String           @map("user_id")
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String           @map("token_hash") @db.Text
+  tokenType    AccountTokenType @map("token_type")
+  expiresAt    DateTime         @map("expires_at")
+  usedAt       DateTime?        @map("used_at")
+  createdBy    String?          @map("created_by")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  ipAddress    String?          @map("ip_address") @db.VarChar(100)
+  userAgent    String?          @map("user_agent") @db.Text
+  attemptCount Int              @default(0) @map("attempt_count")
+  lockedAt     DateTime?        @map("locked_at")
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([tokenType])
+  @@index([expiresAt])
+  @@index([usedAt])
+  @@map("account_tokens")
+}
+
+model AccountSession {
+  id               String             @id @default(cuid())
+  userId           String             @map("user_id")
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionTokenHash String             @unique @map("session_token_hash") @db.Text
+  accessScope      SessionAccessScope @default(FULL_ACCESS) @map("access_scope")
+  expiresAt        DateTime           @map("expires_at")
+  revokedAt        DateTime?          @map("revoked_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([accessScope])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+model PasswordHistory {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHash String   @map("password_hash") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("password_history")
+}
+
+model Event {
+  id         String      @id @default(cuid())
+  title      String
+  clientName String
+  date       DateTime
+  startTime  String?
+  endTime    String?
+  status     EventStatus @default(PENDING)
+  eventType  String
+  venue      String
+  pax        Int
+  notes      String?     @db.Text
+  source     String?     @db.VarChar(80)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model TaskList {
+  id        String   @id @default(cuid())
+  name      String
+  icon      String?
+  order     Int      @default(0)
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  title         String
+  details       String?   @db.Text
+  startDate     DateTime?
+  dueDate       DateTime?
+  dueTime       String?
+  completed     Boolean   @default(false)
+  hasAttachment Boolean   @default(false)
+  listId        String?
+  list          TaskList? @relation(fields: [listId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([listId])
+}
+
+model Inquiry {
+  id                   String            @id @default(cuid())
+  inquiryReference     String            @unique @map("inquiry_reference") @db.VarChar(80)
+  fullName             String            @map("full_name") @db.VarChar(180)
+  phoneNumber          String?           @map("phone_number") @db.VarChar(40)
+  email                String            @db.VarChar(255)
+  preferredContactTime String?           @map("preferred_contact_time") @db.VarChar(100)
+  message              String            @db.Text
+  eventInterest        String?           @map("event_interest") @db.VarChar(180)
+  packageInterest      String?           @map("package_interest") @db.VarChar(255)
+  requestedEventDate   DateTime?         @map("requested_event_date")
+  sourcePage           String            @default("contact_us") @map("source_page") @db.VarChar(80)
+  status               InquiryStatus     @default(NEW)
+  priority             InquiryPriority   @default(NORMAL)
+  assignedTo           String?           @map("assigned_to") @db.VarChar(180)
+  submittedAt          DateTime          @default(now()) @map("submitted_at")
+  answeredAt           DateTime?         @map("answered_at")
+  closedAt             DateTime?         @map("closed_at")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  notes                InquiryNote[]
+  activity             InquiryActivity[]
+
+  @@index([submittedAt])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@index([eventInterest])
+  @@index([requestedEventDate])
+  @@index([preferredContactTime])
+  @@index([status, priority, submittedAt])
+  @@map("inquiries")
+}
+
+model InquiryNote {
+  id        String   @id @default(cuid())
+  inquiryId String   @map("inquiry_id")
+  inquiry   Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  note      String   @db.Text
+  createdBy String   @map("created_by") @db.VarChar(180)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([inquiryId])
+  @@index([createdAt])
+  @@map("inquiry_notes")
+}
+
+model InquiryActivity {
+  id          String   @id @default(cuid())
+  inquiryId   String   @map("inquiry_id")
+  inquiry     Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  action      String   @db.VarChar(100)
+  description String   @db.Text
+  performedBy String   @map("performed_by") @db.VarChar(180)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([inquiryId])
+  @@index([createdAt])
+  @@map("inquiry_activity")
+}
+
+model Testimony {
+  id                  String          @id @default(cuid())
+  clientName          String          @map("client_name") @db.VarChar(160)
+  nickname            String?         @db.VarChar(120)
+  email               String?         @db.VarChar(255)
+  eventType           String          @map("event_type") @db.VarChar(160)
+  eventDate           DateTime        @map("event_date")
+  packageName         String?         @map("package_name") @db.VarChar(255)
+  overallRating       Int             @map("overall_rating")
+  approachRating      Int             @map("approach_rating")
+  foodRating          Int             @map("food_rating")
+  serviceRating       Int             @map("service_rating")
+  venueRating         Int?            @map("venue_rating")
+  communicationRating Int?            @map("communication_rating")
+  comment             String          @db.Text
+  photoUrl            String?         @map("photo_url") @db.Text
+  photoPath           String?         @map("photo_path") @db.Text
+  status              TestimonyStatus @default(PENDING_REVIEW)
+  isPublic            Boolean         @default(false) @map("is_public")
+  isFeatured          Boolean         @default(false) @map("is_featured")
+  submittedAt         DateTime        @default(now()) @map("submitted_at")
+  approvedBy          String?         @map("approved_by")
+  approvedAt          DateTime?       @map("approved_at")
+  hiddenBy            String?         @map("hidden_by")
+  hiddenAt            DateTime?       @map("hidden_at")
+  deletedBy           String?         @map("deleted_by")
+  deletedAt           DateTime?       @map("deleted_at")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([isPublic])
+  @@index([isFeatured])
+  @@index([submittedAt])
+  @@index([eventDate])
+  @@index([eventType])
+  @@index([overallRating])
+  @@index([status, isPublic, submittedAt])
+  @@map("testimonies")
+}
+
+model EventCategory {
+  id               String                   @id @default(cuid())
+  name             String
+  slug             String                   @unique
+  categoryKey      String                   @unique @map("category_key")
+  description      String?                  @db.Text
+  coverImageUrl    String?                  @map("cover_image_url") @db.Text
+  displayOrder     Int                      @default(0) @map("display_order")
+  status           EventCategoryStatus      @default(ACTIVE)
+  clientVisible    Boolean                  @default(true) @map("client_visible")
+  createdBy        String?                  @map("created_by")
+  updatedBy        String?                  @map("updated_by")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  packages         Package[]
+
+  @@index([status])
+  @@index([clientVisible])
+  @@index([displayOrder])
+  @@index([status, clientVisible])
+  @@map("event_categories")
+}
+
+model Package {
+  id                           String                   @id @default(cuid())
+  eventCategoryId              String                   @map("event_category_id")
+  eventCategory                EventCategory            @relation(fields: [eventCategoryId], references: [id], onDelete: Restrict)
+  packageName                  String                   @map("package_name")
+  slug                         String
+  description                  String?                  @db.Text
+  price                        Float                    @default(0)
+  currency                     String                   @default("PHP") @db.VarChar(10)
+  paxIncluded                  Int                      @default(0) @map("pax_included")
+  excessPaxFee                 Float                    @default(0) @map("excess_pax_fee")
+  reservationFee               Float                    @default(0) @map("reservation_fee")
+  downPaymentAmount            Float                    @default(0) @map("down_payment_amount")
+  fullPaymentAmount            Float                    @default(0) @map("full_payment_amount")
+  checkInTime                  String?                  @map("check_in_time")
+  checkOutTime                 String?                  @map("check_out_time")
+  packageImageUrl              String?                  @map("package_image_url") @db.Text
+  contractItemDescription      String?                  @map("contract_item_description") @db.Text
+  contractInclusionDescription String?                  @map("contract_inclusion_description") @db.Text
+  status                       PackageStatus            @default(ACTIVE)
+  clientVisible                Boolean                  @default(true) @map("client_visible")
+  currentVersion               Int                      @default(1) @map("current_version")
+  internalNotes                String?                  @map("internal_notes") @db.Text
+  createdBy                    String?                  @map("created_by")
+  updatedBy                    String?                  @map("updated_by")
+  createdAt                    DateTime                 @default(now()) @map("created_at")
+  updatedAt                    DateTime                 @updatedAt @map("updated_at")
+  inclusions                   PackageInclusion[]
+  versions                     PackageVersion[]
+
+  @@unique([eventCategoryId, slug])
+  @@index([eventCategoryId])
+  @@index([status])
+  @@index([clientVisible])
+  @@index([status, clientVisible])
+  @@index([updatedAt])
+  @@map("packages")
+}
+
+model PackageInclusion {
+  id            String   @id @default(cuid())
+  packageId     String   @map("package_id")
+  package       Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  inclusionName String   @map("inclusion_name")
+  description   String?  @db.Text
+  isFree        Boolean  @default(true) @map("is_free")
+  isOptional    Boolean  @default(false) @map("is_optional")
+  displayOrder  Int      @default(0) @map("display_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([packageId])
+  @@index([displayOrder])
+  @@map("package_inclusions")
+}
+
+model PackageVersion {
+  id            String   @id @default(cuid())
+  packageId     String   @map("package_id")
+  package       Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  versionNumber Int      @map("version_number")
+  snapshotData  Json     @map("snapshot_data")
+  changeSummary String?  @map("change_summary") @db.Text
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([packageId, versionNumber])
+  @@index([packageId])
+  @@index([createdAt])
+  @@map("package_versions")
+}
+
+model SupportCategory {
+  id            String                @id @default(cuid())
+  name          String
+  slug          String                @unique
+  description   String?               @db.Text
+  displayOrder  Int                   @default(0) @map("display_order")
+  status        SupportCategoryStatus @default(ACTIVE)
+  clientVisible Boolean               @default(true) @map("client_visible")
+  createdBy     String?               @map("created_by")
+  updatedBy     String?               @map("updated_by")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+  entries       SupportFaqEntry[]
+
+  @@index([status])
+  @@index([clientVisible])
+  @@index([displayOrder])
+  @@index([status, clientVisible])
+  @@map("support_categories")
+}
+
+model SupportFaqEntry {
+  id                        String                        @id @default(cuid())
+  question                  String                        @db.Text
+  answer                    String                        @db.Text
+  categoryId                String?                       @map("category_id")
+  category                  SupportCategory?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags                      String[]                      @default([])
+  relatedModule             SupportRelatedModule          @default(GENERAL) @map("related_module")
+  status                    SupportFaqStatus              @default(DRAFT)
+  clientVisible             Boolean                       @default(false) @map("client_visible")
+  priority                  Int                           @default(0)
+  viewCount                 Int                           @default(0) @map("view_count")
+  internalNotes             String?                       @map("internal_notes") @db.Text
+  createdBy                 String?                       @map("created_by")
+  updatedBy                 String?                       @map("updated_by")
+  createdAt                 DateTime                      @default(now()) @map("created_at")
+  updatedAt                 DateTime                      @updatedAt @map("updated_at")
+  currentDraftVersionId     String?                       @unique @map("current_draft_version_id")
+  currentDraftVersion       SupportFaqVersion?            @relation("FaqCurrentDraft", fields: [currentDraftVersionId], references: [id], onDelete: SetNull)
+  currentPublishedVersionId String?                       @unique @map("current_published_version_id")
+  currentPublishedVersion   SupportFaqVersion?            @relation("FaqCurrentPublished", fields: [currentPublishedVersionId], references: [id], onDelete: SetNull)
+  versions                  SupportFaqVersion[]
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([clientVisible])
+  @@index([relatedModule])
+  @@index([priority])
+  @@index([updatedAt])
+  @@index([status, clientVisible])
+  @@map("support_faq_entries")
+}
+
+model SupportFaqVersion {
+  id                  String                @id @default(cuid())
+  faqEntryId          String                @map("faq_entry_id")
+  faqEntry            SupportFaqEntry       @relation(fields: [faqEntryId], references: [id], onDelete: Cascade)
+  oldQuestion         String?               @map("old_question") @db.Text
+  oldAnswer           String?               @map("old_answer") @db.Text
+  newQuestion         String?               @map("new_question") @db.Text
+  newAnswer           String?               @map("new_answer") @db.Text
+  changeSummary       String?               @map("change_summary") @db.Text
+  changedBy           String?               @map("changed_by")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  versionNumber       Int?                  @map("version_number")
+  question            String?               @db.Text
+  answer              String?               @db.Text
+  categoryId          String?               @map("category_id")
+  tags                String[]              @default([])
+  relatedModule       SupportRelatedModule? @map("related_module")
+  clientVisible       Boolean?              @map("client_visible")
+  priority            Int?
+  internalNotes       String?               @map("internal_notes") @db.Text
+  publicationStatus   PublicationStatus     @default(DRAFT) @map("publication_status")
+  publishAt           DateTime?             @map("publish_at")
+  publishedAt         DateTime?             @map("published_at")
+  expiresAt           DateTime?             @map("expires_at")
+  approvedAt          DateTime?             @map("approved_at")
+  approvedBy          String?               @map("approved_by")
+  publishedBy         String?               @map("published_by")
+  currentDraftFor     SupportFaqEntry?      @relation("FaqCurrentDraft")
+  currentPublishedFor SupportFaqEntry?      @relation("FaqCurrentPublished")
+
+  @@unique([faqEntryId, versionNumber])
+  @@index([faqEntryId])
+  @@index([publicationStatus, publishAt])
+  @@index([createdAt])
+  @@map("support_faq_versions")
+}
+
+model AuditLog {
+  id             String      @id @default(cuid())
+  timestamp      DateTime    @default(now())
+  userId         String?     @map("user_id")
+  userName       String      @map("user_name")
+  userRole       String      @map("user_role")
+  action         AuditAction
+  module         String
+  description    String      @db.Text
+  status         AuditStatus
+  ipAddress      String?     @map("ip_address")
+  userAgent      String?     @map("user_agent") @db.Text
+  previousValues Json?       @map("previous_values")
+  newValues      Json?       @map("new_values")
+  metadata       Json?
+  source         String?     @db.VarChar(80)
+
+  @@index([timestamp])
+  @@index([userId])
+  @@index([action])
+  @@index([module])
+  @@index([status])
+  @@index([timestamp, action])
+  @@index([timestamp, userId])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  id        String   @id
+  settings  Json
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model EmailLog {
+  id                  String         @id @default(cuid())
+  recipientEmail      String         @map("recipient_email")
+  recipientName       String?        @map("recipient_name")
+  emailType           EmailType      @map("email_type")
+  relatedModule       RelatedModule? @map("related_module")
+  relatedRecordId     String?        @map("related_record_id")
+  subject             String
+  triggerSource       TriggerSource  @map("trigger_source")
+  workflowName        String?        @map("workflow_name")
+  workflowExecutionId String?        @map("workflow_execution_id")
+  providerMessageId   String?        @map("provider_message_id")
+  status              EmailStatus    @default(QUEUED)
+  retryCount          Int            @default(0) @map("retry_count")
+  lastAttemptAt       DateTime?      @map("last_attempt_at")
+  sentAt              DateTime?      @map("sent_at")
+  deliveredAt         DateTime?      @map("delivered_at")
+  failedAt            DateTime?      @map("failed_at")
+  errorMessage        String?        @map("error_message") @db.Text
+  failureReason       String?        @map("failure_reason")
+  emailPreview        String?        @map("email_preview") @db.Text
+  payloadSummary      Json?          @map("payload_summary")
+  resentBy            String?        @map("resent_by")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([recipientEmail])
+  @@index([emailType])
+  @@index([status])
+  @@index([triggerSource])
+  @@index([relatedModule, relatedRecordId])
+  @@index([createdAt, status])
+  @@map("email_logs")
+}
+
+
+model Notification {
+  id              String               @id @default(cuid())
+  title           String
+  message         String               @db.Text
+  type            NotificationType     @default(SYSTEM)
+  priority        NotificationPriority @default(MEDIUM)
+  relatedModule   String?              @map("related_module")
+  relatedRecordId String?              @map("related_record_id")
+  isRead          Boolean              @default(false) @map("is_read")
+  createdFor      String?              @map("created_for")
+  createdBy       String?              @map("created_by")
+  source          String?              @db.VarChar(80)
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([isRead])
+  @@index([type])
+  @@index([priority])
+  @@index([createdFor])
+  @@index([relatedModule, relatedRecordId])
+  @@map("notifications")
+}
+
+
+
+
+model N8nWorkflowLog {
+  id                  String            @id @default(cuid())
+  workflowName        String            @map("workflow_name")
+  workflowExecutionId String?           @map("workflow_execution_id")
+  relatedModule       String?           @map("related_module")
+  relatedRecordId     String?           @map("related_record_id")
+  triggerSource       String?           @map("trigger_source")
+  requestPayload      Json?             @map("request_payload")
+  responsePayload     Json?             @map("response_payload")
+  status              N8nWorkflowStatus @default(PROCESSING)
+  errorMessage        String?           @map("error_message") @db.Text
+  startedAt           DateTime?         @map("started_at")
+  completedAt         DateTime?         @map("completed_at")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([workflowName])
+  @@index([workflowExecutionId])
+  @@index([relatedModule, relatedRecordId])
+  @@index([createdAt, status])
+  @@map("n8n_workflow_logs")
+}
+
+model GalleryCollection {
+  id              String        @id @default(cuid())
+  name            String
+  slug            String        @unique
+  description     String?       @db.Text
+  eventCategoryId String?       @map("event_category_id")
+  displayOrder    Int           @default(0) @map("display_order")
+  isActive        Boolean       @default(true) @map("is_active")
+  createdBy       String?       @map("created_by")
+  updatedBy       String?       @map("updated_by")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  items           ContentItem[]
+
+  @@index([displayOrder])
+  @@index([eventCategoryId])
+  @@map("gallery_collections")
+}
+
+model ContentItem {
+  id              String             @id @default(cuid())
+  type            ContentType
+  slug            String
+  title           String
+  collectionId    String?            @map("collection_id")
+  collection      GalleryCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  eventCategoryId String?            @map("event_category_id")
+  displayOrder    Int                @default(0) @map("display_order")
+  createdBy       String?            @map("created_by")
+  updatedBy       String?            @map("updated_by")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  versions        ContentVersion[]
+
+  @@unique([type, slug])
+  @@index([type, displayOrder])
+  @@index([collectionId])
+  @@index([eventCategoryId])
+  @@map("content_items")
+}
+
+model ContentVersion {
+  id            String            @id @default(cuid())
+  contentItemId String            @map("content_item_id")
+  contentItem   ContentItem       @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  versionNumber Int               @map("version_number")
+  status        PublicationStatus @default(DRAFT)
+  payload       Json
+  changeSummary String?           @map("change_summary") @db.Text
+  internalNotes String?           @map("internal_notes") @db.Text
+  publishAt     DateTime?         @map("publish_at")
+  publishedAt   DateTime?         @map("published_at")
+  expiresAt     DateTime?         @map("expires_at")
+  approvedAt    DateTime?         @map("approved_at")
+  approvedBy    String?           @map("approved_by")
+  publishedBy   String?           @map("published_by")
+  archivedAt    DateTime?         @map("archived_at")
+  createdBy     String?           @map("created_by")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@unique([contentItemId, versionNumber])
+  @@index([status, publishAt])
+  @@index([status, expiresAt])
+  @@map("content_versions")
+}
+
+model MediaAsset {
+  id               String           @id @default(cuid())
+  provider         String           @default("supabase") @db.VarChar(40)
+  bucket           String           @db.VarChar(120)
+  objectPath       String           @map("object_path") @db.Text
+  checksum         String           @db.VarChar(64)
+  mimeType         String           @map("mime_type") @db.VarChar(120)
+  originalFilename String           @map("original_filename") @db.VarChar(255)
+  byteSize         Int              @map("byte_size")
+  width            Int?
+  height           Int?
+  status           MediaAssetStatus @default(DRAFT)
+  publicUrl        String?          @map("public_url") @db.Text
+  trashEligibleAt  DateTime?        @map("trash_eligible_at")
+  createdBy        String?          @map("created_by")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@unique([bucket, objectPath])
+  @@index([checksum])
+  @@index([status, trashEligibleAt])
+  @@map("media_assets")
+}
+
+model CommandCenterJob {
+  id             String                 @id @default(cuid())
+  type           CommandCenterJobType
+  resourceType   String                 @map("resource_type") @db.VarChar(80)
+  resourceId     String                 @map("resource_id")
+  status         CommandCenterJobStatus @default(QUEUED)
+  scheduledAt    DateTime               @default(now()) @map("scheduled_at")
+  leaseOwner     String?                @map("lease_owner") @db.VarChar(120)
+  leaseExpiresAt DateTime?              @map("lease_expires_at")
+  attemptCount   Int                    @default(0) @map("attempt_count")
+  maxAttempts    Int                    @default(5) @map("max_attempts")
+  idempotencyKey String                 @unique @map("idempotency_key") @db.VarChar(160)
+  payload        Json?
+  result         Json?
+  safeError      String?                @map("safe_error") @db.Text
+  completedAt    DateTime?              @map("completed_at")
+  createdBy      String?                @map("created_by")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+
+  @@index([status, scheduledAt])
+  @@index([leaseExpiresAt])
+  @@index([resourceType, resourceId])
+  @@map("command_center_jobs")
+}
+
+

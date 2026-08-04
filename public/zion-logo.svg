@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-labelledby="title desc">
+  <title id="title">Zion Events Place</title>
+  <desc id="desc">A circular Zion Events Place mark with mountain-inspired event hall lines.</desc>
+  <circle cx="320" cy="292" r="188" fill="none" stroke="#1a1f18" stroke-width="22"/>
+  <path d="M156 346l84-112 72 92 92-132 80 152" fill="none" stroke="#1a1f18" stroke-width="38" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M205 381h230" fill="none" stroke="#d4af37" stroke-width="16" stroke-linecap="round"/>
+  <text x="320" y="470" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="68" font-weight="700" letter-spacing="4" fill="#1a1f18">Zion</text>
+  <text x="320" y="526" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="8" fill="#7f681d">EVENTS PLACE</text>
+</svg>

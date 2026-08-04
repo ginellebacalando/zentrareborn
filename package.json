@@ -1,0 +1,46 @@
+{
+  "name": "zion-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "start": "next start",
+    "postinstall": "prisma generate",
+    "lint": "eslint .",
+    "check:client-boundary": "node scripts/check-client-boundary.mjs",
+    "check:hygiene": "node scripts/check-project-hygiene.mjs",
+    "test": "node scripts/check-removed-features.mjs",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "verify": "npm run check:client-boundary && npm run check:hygiene && npm run typecheck && npm run test && npm run lint && npm run build"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "framer-motion": "^12.43.0",
+    "lucide-react": "^1.17.0",
+    "next": "^16.2.12",
+    "pg": "^8.22.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.2.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12",
+    "prisma": "^7.9.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
+  }
+}
