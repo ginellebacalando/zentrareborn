@@ -14,9 +14,13 @@ import { readCatalog, saveCatalog } from './catalog';
 import { readDashboardInsights } from './dashboard';
 import { readDashboardKpis } from './dashboard-kpis';
 import { readAnalyticsReport } from './analytics';
+import { AUTOMATION_ONLY_EVENTS, automationJobLabel } from '@/lib/automation/catalog';
+import { enqueueBookingNotice } from '@/lib/automation/bookings';
+import { isMailConfigured } from '@/lib/automation/config';
+import type { CalendarMethod } from '@/lib/automation/ics';
+import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
 import {
   bookingInput,
-  bookingEmail,
   confirmationError,
   eventDate,
   money,
@@ -75,12 +79,23 @@ async function audit(
     },
   });
 }
-async function queue(tx: Tx, b: Awaited<ReturnType<typeof findBooking>>, event: string) {
+async function queue(
+  tx: Tx,
+  b: Awaited<ReturnType<typeof findBooking>>,
+  event: string,
+  calendar?: CalendarMethod,
+) {
   const p = await policy(tx);
-  const email = bookingEmail(b, paidTotal(b.payments), p.cashInstructions, event);
-  await tx.adminOutbox.create({
-    data: { bookingId: b.id, event, recipient: b.email, ...email },
+  const id = await enqueueBookingNotice(tx, {
+    booking: b,
+    event,
+    paid: paidTotal(b.payments),
+    instructions: p.cashInstructions,
+    calendar,
   });
+  // `after()` runs once the response is sent, i.e. after this transaction commits or rolls back;
+  // delivery only claims committed rows, so a rollback leaves nothing to send.
+  if (id) scheduleAutomationDelivery([id]);
 }
 async function findBooking(tx: Tx, id: string) {
   const b = await tx.adminBooking.findUnique({
@@ -219,7 +234,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
                 id: 'delivery-issues',
                 kind: 'warning' as const,
                 title: 'Email delivery needs review',
-                message: `${deliveryIssues} ${deliveryIssues === 1 ? 'message needs' : 'messages need'} a delivery check in System logs.`,
+                message: `${deliveryIssues} ${deliveryIssues === 1 ? 'message needs' : 'messages need'} a delivery check in the Activity log.`,
                 href: '/admin/logs',
               },
             ]
@@ -363,9 +378,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
     return {
       policy: await policy(),
       canEdit: actor.role === 'SUPERADMIN',
-      notificationConfigured: Boolean(
-        process.env.ADMIN_RESEND_API_KEY && process.env.ADMIN_MAIL_FROM,
-      ),
+      notificationConfigured: isMailConfigured(),
       timezone: 'Asia/Manila',
     };
   if (section === 'dashboard') {
@@ -461,9 +474,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       policyReviewed: p.reviewed,
       dashboardInsights,
       dashboardKpis,
-      notificationConfigured: Boolean(
-        process.env.ADMIN_RESEND_API_KEY && process.env.ADMIN_MAIL_FROM,
-      ),
+      notificationConfigured: isMailConfigured(),
     };
   }
   if (section === 'logs') {
@@ -474,7 +485,8 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       ...(q ? { description: { contains: q, mode: 'insensitive' } } : {}),
     };
     const page = Math.max(1, Math.min(10000, Number(params.get('page')) || 1));
-    const [logs, total, outbox, workflows] = await Promise.all([
+    const automationEvents = [...AUTOMATION_ONLY_EVENTS];
+    const [logs, total, outbox, automationJobs] = await Promise.all([
       prisma.auditLog.findMany({
         where,
         orderBy: { timestamp: 'desc' },
@@ -492,7 +504,9 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
         },
       }),
       prisma.auditLog.count({ where }),
+      // Booking decision notices, as before; automation jobs are listed separately below.
       prisma.adminOutbox.findMany({
+        where: { event: { notIn: automationEvents } },
         orderBy: { createdAt: 'desc' },
         take: 30,
         select: {
@@ -507,18 +521,22 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
           sentAt: true,
         },
       }),
-      prisma.n8nWorkflowLog.findMany({
+      // Built-in automation job log (inquiry alerts, reminders, daily digest).
+      prisma.adminOutbox.findMany({
+        where: { event: { in: automationEvents } },
         orderBy: { createdAt: 'desc' },
         take: 10,
-        select: {
-          id: true,
-          workflowName: true,
-          status: true,
-          createdAt: true,
-          completedAt: true,
-        },
+        select: { id: true, event: true, status: true, createdAt: true, sentAt: true },
       }),
     ]);
+    // `workflows` keeps the shape the Activity log page already renders.
+    const workflows = automationJobs.map((job) => ({
+      id: job.id,
+      workflowName: automationJobLabel(job.event),
+      status: job.status,
+      createdAt: job.createdAt,
+      completedAt: job.sentAt,
+    }));
     return { logs, total, page, outbox, workflows };
   }
   if (['bookings', 'calendar', 'payments', 'contracts'].includes(section)) {
@@ -639,6 +657,78 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
       return { id: b.id };
     });
   }
+  if (op === 'edit-booking') {
+    const input = z
+      .object({
+        op: z.literal('edit-booking'),
+        id: identifier,
+        revision: z.number().int().positive(),
+        booking: bookingInput,
+        reason: z.string().trim().min(3).max(1000),
+      })
+      .strict()
+      .parse(raw);
+    return prisma.$transaction(async (tx) => {
+      const b = await lockBooking(tx, input.id, input.revision);
+      if (b.reservation !== 'REQUESTED')
+        throw new AdminError(
+          'Confirmed, cancelled or completed bookings cannot be edited; cancel and create a new request.',
+        );
+      if (b.contracts.some((c) => c.status === 'ISSUED' || c.status === 'SIGNED'))
+        throw new AdminError(
+          'This booking has an issued or signed agreement, so its details cannot be edited.',
+        );
+      const p = await policy(tx);
+      if (input.booking.paymentRule !== p.paymentRule)
+        throw new AdminError(
+          'Use the reviewed venue payment policy. Change it in Settings if needed.',
+        );
+      const paid = paidTotal(b.payments);
+      if (input.booking.totalCents < paid)
+        throw new AdminError(
+          `The contract price cannot be less than the ${money(paid)} cash already received.`,
+        );
+      if (input.booking.depositCents > input.booking.totalCents)
+        throw new AdminError('Specify a valid reservation fee, not more than the total.');
+      const { startsAt, endsAt, ...fields } = input.booking;
+      const next = { ...fields, startsAt: new Date(startsAt), endsAt: new Date(endsAt) };
+      // Conservative resets: new contact details need re-verification (a flagged request stays
+      // flagged until staff verify it explicitly), and an approved request whose terms or contact
+      // change goes back to staff review. Notes alone change nothing.
+      const contactChanged = next.email !== b.email || next.phone !== b.phone;
+      const termsChanged =
+        contactChanged ||
+        next.clientName !== b.clientName ||
+        next.startsAt.getTime() !== b.startsAt.getTime() ||
+        next.endsAt.getTime() !== b.endsAt.getTime() ||
+        next.packageName !== b.packageName ||
+        next.guests !== b.guests ||
+        next.totalCents !== b.totalCents ||
+        next.depositCents !== b.depositCents ||
+        next.eventType !== b.eventType ||
+        next.paymentRule !== b.paymentRule;
+      const data: Prisma.AdminBookingUpdateInput = {
+        ...next,
+        revision: { increment: 1 },
+        updatedBy: actor.id,
+      };
+      if (contactChanged && b.verification !== 'FLAGGED')
+        Object.assign(data, {
+          verification: 'UNREVIEWED',
+          verificationNote: '',
+          verifiedBy: null,
+          verifiedAt: null,
+        });
+      if (termsChanged && b.approval === 'APPROVED')
+        Object.assign(data, { approval: 'PENDING', decisionReason: input.reason });
+      await tx.adminBooking.update({ where: { id: b.id }, data });
+      await audit(tx, actor, 'Bookings', `Edited ${b.reference}: ${input.reason}`, 'UPDATE', {
+        bookingId: b.id,
+      });
+      // Edits never queue client email; any later decision sends its own standard notice.
+      return { id: b.id };
+    });
+  }
   if (op === 'booking-action') {
     const input = decisionSchema.parse(raw);
     return prisma.$transaction(async (tx) => {
@@ -746,6 +836,12 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
             : input.action === 'CONFIRM'
               ? 'RESERVATION_CONFIRMED'
               : input.action,
+          // Calendar invite on confirmation; a cancel update only if an invite was ever sent.
+          input.action === 'CONFIRM'
+            ? 'REQUEST'
+            : input.action === 'CANCEL' && b.reservation === 'CONFIRMED'
+              ? 'CANCEL'
+              : undefined,
         );
       return { id: b.id };
     });

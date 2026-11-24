@@ -92,17 +92,27 @@ model AdminPolicy {
   updatedAt DateTime @updatedAt
   @@map("zion_admin_policy")
 }
+// Durable notification outbox (prisma/automation.sql adds the delivery columns). Rows with
+// RESERVATION_CONFIRMED / CANCEL events double as the reservation ledger read by analytics.
 model AdminOutbox {
   id String @id @default(cuid())
-  bookingId String
+  bookingId String?
   event String @db.VarChar(40)
   recipient String @db.VarChar(255)
+  replyTo String? @db.VarChar(255)
   subject String
   body String @db.Text
+  html String? @db.Text
+  calendar String? @db.Text
+  calendarMethod String? @db.VarChar(10)
+  idempotencyKey String? @unique @db.VarChar(200)
   status String @default("QUEUED") @db.VarChar(20)
   attempts Int @default(0)
+  maxAttempts Int @default(5)
   lastError String?
   nextAttemptAt DateTime @default(now())
+  claimedAt DateTime?
+  expiresAt DateTime?
   sentAt DateTime?
   createdAt DateTime @default(now())
   @@index([status, nextAttemptAt])
@@ -113,6 +123,13 @@ model AdminRateLimit {
   attempts Int @default(1)
   windowAt DateTime @default(now())
   @@map("zion_admin_rate_limits")
+}
+// Small key/value state for scheduled automation (inquiry sweep start, last run summary).
+model AutomationState {
+  key String @id @db.VarChar(60)
+  at DateTime @default(now())
+  detail Json?
+  @@map("zion_automation_state")
 }
 
 enum Role {
@@ -230,7 +247,6 @@ enum EmailStatus {
 
 enum TriggerSource {
   SYSTEM
-  N8N_WORKFLOW
   MANUAL_RESEND
 }
 
@@ -297,15 +313,6 @@ enum NotificationPriority {
   MEDIUM
   HIGH
   CRITICAL
-}
-
-enum N8nWorkflowStatus {
-  QUEUED
-  PROCESSING
-  SUCCESS
-  FAILED
-  RETRYING
-  CANCELLED
 }
 
 enum EventCategoryStatus {
@@ -867,31 +874,6 @@ model Notification {
 
 
 
-
-model N8nWorkflowLog {
-  id                  String            @id @default(cuid())
-  workflowName        String            @map("workflow_name")
-  workflowExecutionId String?           @map("workflow_execution_id")
-  relatedModule       String?           @map("related_module")
-  relatedRecordId     String?           @map("related_record_id")
-  triggerSource       String?           @map("trigger_source")
-  requestPayload      Json?             @map("request_payload")
-  responsePayload     Json?             @map("response_payload")
-  status              N8nWorkflowStatus @default(PROCESSING)
-  errorMessage        String?           @map("error_message") @db.Text
-  startedAt           DateTime?         @map("started_at")
-  completedAt         DateTime?         @map("completed_at")
-  createdAt           DateTime          @default(now()) @map("created_at")
-  updatedAt           DateTime          @updatedAt @map("updated_at")
-
-  @@index([createdAt])
-  @@index([status])
-  @@index([workflowName])
-  @@index([workflowExecutionId])
-  @@index([relatedModule, relatedRecordId])
-  @@index([createdAt, status])
-  @@map("n8n_workflow_logs")
-}
 
 model GalleryCollection {
   id              String        @id @default(cuid())

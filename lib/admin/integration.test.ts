@@ -30,6 +30,7 @@ test(
     await db.exec(sql.slice(start));
     const adminSql = readFileSync('prisma/admin.sql', 'utf8');
     await db.exec(adminSql.slice(adminSql.indexOf('-- Admin-only data')));
+    await db.exec(readFileSync('prisma/automation.sql', 'utf8'));
     const server = createServer(db);
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
@@ -240,6 +241,19 @@ test(
       await action('CONFIRM');
       b = await get();
       assert.equal(b.reservation, 'CONFIRMED');
+      const confirmation = await prisma.adminOutbox.findFirstOrThrow({
+        where: { bookingId: b.id, event: 'RESERVATION_CONFIRMED' },
+      });
+      assert.equal(confirmation.status, 'QUEUED');
+      assert.equal(confirmation.calendarMethod, 'REQUEST');
+      assert.match(confirmation.calendar ?? '', /\r\nMETHOD:REQUEST\r\n/);
+      assert.match(confirmation.calendar ?? '', new RegExp(`\\r\\nUID:booking-${b.id}@`));
+      assert.match(confirmation.calendar ?? '', new RegExp(`\\r\\nSEQUENCE:${b.revision}\\r\\n`));
+      assert.equal(
+        confirmation.idempotencyKey,
+        `booking:${b.id}:RESERVATION_CONFIRMED:r${b.revision}`,
+      );
+      assert.match(confirmation.html ?? '', /ZENTRA/);
       await assert.rejects(
         adminMutate(
           {
@@ -408,6 +422,70 @@ test(
         ),
         /Full cash payment/,
       );
+      // Edit details: requested bookings only, current revision, conservative resets, no email.
+      x = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
+      const editable = {
+        ...input,
+        email: 'other@example.test',
+        paymentRule: 'FULL_PAYMENT_REQUIRED',
+      };
+      const edit = (
+        target: { id: string; revision: number },
+        changes: Partial<typeof input>,
+        reason = 'Client updated the request.',
+      ) =>
+        adminMutate(
+          {
+            op: 'edit-booking',
+            id: target.id,
+            revision: target.revision,
+            booking: { ...editable, ...changes },
+            reason,
+          },
+          actor,
+        );
+      const noticesBeforeEdits = await prisma.adminOutbox.count({ where: { bookingId: x.id } });
+      await edit(x, { notes: 'Client asked to add a dessert table.' });
+      let edited = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
+      assert.equal(edited.revision, x.revision + 1);
+      assert.equal(edited.notes, 'Client asked to add a dessert table.');
+      assert.equal(edited.approval, 'APPROVED', 'Notes alone keep the approval');
+      assert.equal(edited.verification, 'VERIFIED');
+      const editAudit = await prisma.auditLog.findFirstOrThrow({
+        where: { module: 'Bookings', description: { startsWith: `Edited ${x.reference}:` } },
+      });
+      assert.equal(editAudit.action, 'UPDATE');
+      assert.deepEqual(editAudit.metadata, { bookingId: x.id });
+      await assert.rejects(edit(x, { notes: 'Stale copy' }), /changed/);
+      await assert.rejects(edit(await get(), {}), /cannot be edited/);
+      await assert.rejects(edit(edited, { paymentRule: 'DEPOSIT_REQUIRED' }), /payment policy/);
+      await edit(edited, { guests: 80 }, 'Client confirmed a larger guest list.');
+      edited = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
+      assert.equal(edited.guests, 80);
+      assert.equal(edited.approval, 'PENDING', 'Changed terms return to review');
+      assert.equal(edited.decisionReason, 'Client confirmed a larger guest list.');
+      assert.equal(edited.verification, 'VERIFIED', 'Unchanged contact keeps verification');
+      await edit(edited, { guests: 80, email: 'changed@example.test' });
+      edited = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
+      assert.equal(edited.email, 'changed@example.test');
+      assert.equal(edited.verification, 'UNREVIEWED');
+      assert.equal(edited.verificationNote, '');
+      assert.equal(edited.verifiedBy, null);
+      assert.equal(edited.verifiedAt, null);
+      await assert.rejects(
+        edit(edited, {
+          guests: 80,
+          email: 'changed@example.test',
+          totalCents: 2000000,
+          depositCents: 1000000,
+        }),
+        /cash already received/,
+      );
+      assert.equal(
+        await prisma.adminOutbox.count({ where: { bookingId: x.id } }),
+        noticesBeforeEdits,
+        'Edits never queue email',
+      );
       assert.ok((await prisma.auditLog.count({ where: { source: 'zion-admin' } })) > 5);
       assert.ok((await prisma.adminOutbox.count()) > 3);
       assert.equal(
@@ -416,46 +494,62 @@ test(
         'Queued messages must not be presented as sent',
       );
       const { processAdminNotifications } = await import('./notifications');
-      const originalFetch = globalThis.fetch,
-        originalKey = process.env.ADMIN_RESEND_API_KEY,
-        originalFrom = process.env.ADMIN_MAIL_FROM;
+      const smtpKeys = ['SMTP_USER', 'SMTP_PASSWORD', 'MAIL_FROM'] as const;
+      const originalSmtp = Object.fromEntries(smtpKeys.map((key) => [key, process.env[key]]));
       try {
-        delete process.env.ADMIN_RESEND_API_KEY;
+        for (const key of smtpKeys) delete process.env[key];
         await assert.rejects(processAdminNotifications(), /not configured/);
-        process.env.ADMIN_RESEND_API_KEY = 'isolated-mock-key';
-        process.env.ADMIN_MAIL_FROM = 'Zion <venue@example.test>';
+        process.env.SMTP_USER = 'venue@example.test';
+        process.env.SMTP_PASSWORD = 'isolated-test-only';
+        process.env.MAIL_FROM = 'Zion Events Place <venue@example.test>';
         let requests = 0;
-        globalThis.fetch = async (input, options) => {
-          assert.equal(input, 'https://api.resend.com/emails');
-          const headers = options?.headers as Record<string, string>;
-          assert.match(headers['Idempotency-Key'], /^zion-admin-/);
-          const message = JSON.parse(String(options?.body));
-          assert.match(message.body ?? message.text, /Approval:.*\nReservation:.*\nPayment:/);
-          requests++;
-          return requests === 1
-            ? Response.json({ error: 'Test rejection' }, { status: 400 })
-            : Response.json({ id: `mock-${requests}` });
+        let calendars = 0;
+        const transport = {
+          async send(message: {
+            messageId: string;
+            to: string;
+            subject: string;
+            text: string;
+            calendar?: { method: string; content: string } | null;
+          }) {
+            assert.match(message.messageId, /^<automation\./);
+            assert.match(message.text, /Approval:.*\nReservation:.*\nPayment:/);
+            if (message.calendar) {
+              calendars++;
+              assert.equal(message.calendar.method, 'REQUEST');
+            }
+            requests++;
+            if (requests === 1)
+              throw Object.assign(new Error('Mailbox unavailable'), {
+                responseCode: 550,
+                permanent: true,
+              });
+            return { accepted: [message.to], rejected: [] };
+          },
+          close() {},
         };
-        const dispatched = await processAdminNotifications();
+        const dispatched = await processAdminNotifications({ transport });
         assert.ok(dispatched.accepted > 0);
         assert.equal(dispatched.processed, requests);
+        assert.equal(calendars, 1, 'Only the confirmation carries a calendar invitation');
         assert.equal(
           await prisma.adminOutbox.count({
             where: { status: 'REVIEW_REQUIRED' },
           }),
           1,
-          'Rejected sends must be held for review, not retried blindly',
+          'Permanently rejected sends must be held for review, not retried blindly',
         );
         assert.equal(
           await prisma.adminOutbox.count({ where: { status: 'ACCEPTED' } }),
           dispatched.accepted,
         );
+        const again = await processAdminNotifications({ transport });
+        assert.equal(again.processed, 0, 'Accepted notices are never sent again');
       } finally {
-        globalThis.fetch = originalFetch;
-        if (originalKey === undefined) delete process.env.ADMIN_RESEND_API_KEY;
-        else process.env.ADMIN_RESEND_API_KEY = originalKey;
-        if (originalFrom === undefined) delete process.env.ADMIN_MAIL_FROM;
-        else process.env.ADMIN_MAIL_FROM = originalFrom;
+        for (const key of smtpKeys) {
+          if (originalSmtp[key] === undefined) delete process.env[key];
+          else process.env[key] = originalSmtp[key];
+        }
       }
       const security = await db.query<{ relrowsecurity: boolean }>(
         "SELECT relrowsecurity FROM pg_class WHERE relname LIKE 'zion_admin_%' AND relkind='r'",

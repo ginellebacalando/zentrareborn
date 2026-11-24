@@ -20,3 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+        env:
+          # lib/prisma.ts requires a connection string when routes load during `next build`; the build
+          # never connects. Real database settings live only in Vercel and team .env.local files.
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci

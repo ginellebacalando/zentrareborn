@@ -1,10 +1,10 @@
-# Zion Client Web
+# ZENTRA — Zion Events Place web system
 
-This folder is the isolated client-facing Zion Events Place application. It preserves the public design, event-package browsing, contact inquiry journey, managed public content, testimonials, client API handlers, database access, and the bundled media used by those experiences.
+ZENTRA is the website, booking journey, "Zeni" concierge and staff admin panel for Zion Events Place, styled after the team's Figma file. This folder is the client-facing application. It preserves the public design, event-package browsing, contact inquiry journey, managed public content, testimonials, client API handlers, database access, and the bundled media used by those experiences.
 
 ## Boundary
 
-The public application includes **Ask Zion**, a [source-based visitor chatbot](docs/chatbot.md). Online booking, online payments, and the legacy Smart Assistant remain excluded. Staff operations are isolated under `/admin`. The independent developer Command Center under `/developer` manages connections, approved n8n workflows, task templates, assistant knowledge, governed public content, developer access, and audit records. Developer access is disabled until explicitly provisioned; client and staff accounts do not grant developer permissions. See [developer setup and production ingress](docs/developer-panel.md).
+The public application includes **Ask Zion**, a [source-based visitor chatbot](docs/chatbot.md). Online booking, online payments, and the legacy Smart Assistant remain excluded. Staff operations are isolated under `/admin`. The independent developer Command Center under `/developer` manages connections, task templates, assistant knowledge, governed public content, developer access, and audit records, and shows a read-only automation status. Developer access is disabled until explicitly provisioned; client and staff accounts do not grant developer permissions. See [developer setup and production ingress](docs/developer-panel.md).
 
 Run `npm run check:client-boundary` to verify the separation.
 
@@ -18,6 +18,33 @@ The application follows the architecture and dependency rules in [`docs/architec
 4. Start the app with `npm run dev`, then open `http://localhost:3001`.
 
 Zentra Web uses port **3001** for both `npm run dev` and `npm start` (after a production build). Keep `NEXT_PUBLIC_APP_URL`, `AUTH_URL`, and the local `DEVELOPER_ORIGIN` set to `http://localhost:3001`. The admin panel is at `http://localhost:3001/admin`.
+
+## Local preview (no Supabase needed)
+
+`npm run dev:local` starts the whole system on <http://localhost:3002> with an embedded PostgreSQL
+(PGlite) stored in `.local/` and clearly labeled demo data: event categories and packages, reviews,
+bookings across every status, and inquiries. It never connects to Supabase, sends no email and
+needs no secrets. The database rebuilds itself when the schema files change; add `-- --reset` to
+start over. The demo staff sign-in for `/admin` is generated on first run and saved in the ignored `.local/DEMO-ADMIN-SIGN-IN.txt`; it
+exists only in that local database. Email stays off in the local preview even when `.env.local` has Gmail settings; pass `-- --send-email` to test real sending.
+
+## Fonts
+
+The team plan uses **SFT Schrifted Sans** for all text and **Zenitha Classic** for the ZENTRA
+wordmark. Those files are a trial and a personal-use version, so they are not in Git. On a team
+machine run `npm run fonts:licensed -- --from <folder with sft_schrifted_sans/ and zenitha_classic/>`
+(the local preview runs it automatically when it finds the folders); the files land in the ignored
+`public/fonts/licensed/` and the layout loads them. Every other build, including Vercel, uses the
+bundled open-license fallbacks Archivo and Hedvig Letters Serif. Buy the licenses before using the
+original fonts on the public website.
+
+## Email automation
+
+Notifications (inquiry alerts and acknowledgements, booking decisions with calendar invitations, event reminders and a daily staff digest) are built in: each is saved to a database outbox with the business change and delivered through Gmail SMTP. Without `SMTP_USER` and `SMTP_PASSWORD` everything stays queued and nothing is reported as sent. See [the automation guide](docs/automation.md) for the Gmail App Password, `CRON_SECRET`, the Vercel and Supabase schedulers, and the admin Automation page.
+
+- `npm run db:automation:check` checks the additive automation schema; add `-- --apply` to install `prisma/automation.sql`.
+- `npm run automation:run` performs one automation run from the command line.
+- `npm run test:automation` tests the outbox, delivery, scheduling, calendar invitations and cron authorization without contacting a mail server.
 
 The included Prisma schema reflects the existing shared database contract. This extraction does not include database migrations or seed scripts, so it cannot accidentally take ownership of administrator-side database evolution.
 

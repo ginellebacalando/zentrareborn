@@ -33,7 +33,9 @@ const forbiddenRuntimePatterns = [
   /["'`]\/api\/client\/(?:assistant|bookings|calendar-availability|appointment-availability)(?:\/|["'`?])/i,
   /@\/components\/(?:booking|client\/(?:ReservationSection|SmartGuide))(?:\/|["'])/i,
   /@\/(?:services\/(?:booking-orchestration|calendar|smart-assistant|task-template)|lib\/(?:booking-validation|client-calendar-availability))(?:\/|["'])/i,
-  /\b(?:ASSISTANT_DATABASE_URL|ASSISTANT_DATA_TERMS_ACCEPTED|GEMINI_API_KEY|GEMINI_ENABLED|GEMINI_ASSISTANT_MODEL|N8N_BOOKING_WEBHOOK_URL)\b/,
+  // The legacy Smart Assistant's settings stay retired. GEMINI_API_KEY is allowed again because Zeni's
+  // LLM-assisted retrieval (services/chatbot/gemini.ts, docs/chatbot.md) uses it on purpose.
+  /\b(?:ASSISTANT_DATABASE_URL|ASSISTANT_DATA_TERMS_ACCEPTED|GEMINI_ENABLED|GEMINI_ASSISTANT_MODEL|N8N_BOOKING_WEBHOOK_URL)\b/,
   /\b(?:assistantEnabled|bookingRequestsEnabled|lastUsedByAssistantAt)\b/,
   /\b(?:prisma|db|tx)\.booking(?:PackageSnapshot)?\b/,
 ];
@@ -93,6 +95,35 @@ for (const pattern of forbiddenSchemaPatterns) {
       `Removed feature database contract remains in: prisma/schema.prisma (${pattern})`,
     );
   }
+}
+
+// The external workflow integration and the Resend transport were replaced by the built-in
+// outbox automation (docs/automation.md). Keep them from returning.
+const retiredIntegrationPaths = [
+  'services/orchestration/operational-webhook.service.ts',
+  'services/orchestration/developer-settings.ts',
+  'services/orchestration/workflows',
+  'scripts/run-admin-notifications.ts',
+];
+const retiredIntegrationPattern =
+  /\b(?:N8N_[A-Z0-9_]+|n8nWorkflowLog|N8nWorkflow\w*|ADMIN_RESEND_API_KEY|ADMIN_MAIL_FROM)\b|operational-webhook/;
+for (const relativePath of retiredIntegrationPaths) {
+  if (fs.existsSync(path.join(root, relativePath))) {
+    failures.push(`Retired integration artifact still exists: ${relativePath}`);
+  }
+}
+for (const absolute of walk(root)) {
+  const relative = path.normalize(path.relative(root, absolute));
+  if (relative === thisScript || !sourceExtensions.has(path.extname(relative))) continue;
+  if (retiredIntegrationPattern.test(fs.readFileSync(absolute, 'utf8'))) {
+    failures.push(`Retired integration reference remains in: ${relative}`);
+  }
+}
+if (retiredIntegrationPattern.test(environmentExample)) {
+  failures.push('Retired integration configuration remains in: .env.example');
+}
+if (/\b(?:model|enum)\s+N8n\w*/.test(prismaSchema)) {
+  failures.push('Retired integration database contract remains in: prisma/schema.prisma');
 }
 
 if (failures.length > 0) {

@@ -1,5 +1,66 @@
 # Design change log
 
+## 25 November 2026 — ZENTRA redesign (Figma), Zeni rebuild, admin redesign, n8n replaced
+
+User task: run the system locally, redesign it to the team's Figma file ("New Zentra") while keeping the
+old navigation menu, make Zeni professional and follow the team's chatbot plan (also on the admin side),
+redesign the admin panel to the plan, remove n8n and replace it with built-in automation, and use the
+plan's fonts.
+
+Affected screens and files (public design):
+
+- Foundations: `styles/tokens.css` (ZENTRA palette from Figma: white, deep green `#03422E`, `#D9D9D9`
+  hairlines, teal, four booking-status hues; legacy palette names kept and re-valued), `styles/primitives.css`
+  (wordmark/monogram, uppercase titles), `app/globals.css`, `app/_fonts/` (Archivo + Hedvig Letters Serif,
+  SIL OFL), `app/layout.tsx` (optional local licensed-font stylesheet, ZENTRA title, theme colors),
+  `docs/design-exceptions.json` (two metadata values swapped, same count).
+- Header and footer: `components/layout/GlobalHeader.tsx` (white bar, centered ZENTRA wordmark; the team's
+  existing menu kept with the same items and behavior, recolored), `Navbar.tsx` (colors only), `Footer.tsx`.
+- Home in Figma order: `components/client/HeroSection.tsx` (accessible carousel: pause control, 7 s, swipe,
+  no autoplay with reduced motion), `components/home/*` (The Archive, Events & Packages, Available Dates with
+  "How booking works", Reviews, FAQ, Contact), `config/home.ts`.
+- Inner pages: Figma-style photo banners (`CinematicPageHero`, `PackageHeroSection`, `SubpageHero`), white
+  surfaces, booklet cover recolored, dark text removed from solid green fills across booking, FAQ, policies,
+  terms, testimonies, gallery and the date picker.
+- Brand: `components/shared/ZentraWordmark.tsx`, `ZentraMonogram.tsx`, `config/brand.ts` (`wordmark`,
+  `siteTitle`). Venue documents (receipt, package booklet) keep the Zion Events Place logo.
+- Removed unused legacy home components (features, partners, cinematic background, slideshow).
+
+Verification (public design): `npm run check:design` (49 contrast checks), `check:client-boundary`,
+`check:hygiene`, ESLint and Prettier on changed files; every public route returns 200 on the local
+preview; visual review at 1440, 375 and 320 px (no horizontal scroll at 320 px); the kept menu opens,
+lists the same items and closes with Escape.
+
+Limitations: the AGENTS.md hand-off to the four team chats could not be sent from this machine (those chats
+live on another computer); the licensed fonts are local-only until licenses are bought; dark mode on public
+pages and 200%/400% zoom were not re-reviewed; screen-reader testing not done.
+
+Zeni (receptionist chatbot):
+
+- Figma "ZENI CHATBOT LOOK LIKE": round launcher with the serif "Z" monogram, white panel with a green
+  border, "ZENI" header with "How Zeni works", rich cards (package/facility, availability calendar),
+  action buttons (book this date, schedule an ocular visit, talk to staff) and suggestion chips.
+- Plan behavior: English/Filipino/Taglish replies, optional Gemini phrasing grounded in published sources
+  with redaction and validation, deterministic fallback, pre-filled booking and visit links, the n8n booking
+  adapter removed, unanswered questions logged for staff, admin page `/admin/zeni`.
+
+Admin panel:
+
+- Figma visual language inside the kept left sidebar: ZENTRA "Admin dashboard" header, plural labels,
+  status cards and booking cards in the four status hues, Cards/Table toggle, calendar with today in solid
+  green and a dark "This month" panel, teal KPI cards; Edit details for open requests; dark theme re-tinted.
+
+Automation (n8n removed): database outbox with retries and idempotency, Gmail SMTP, .ics invitations,
+reminders and a daily digest, cron endpoint, admin page `/admin/automation`.
+
+Booking page: the simulated date availability was replaced with real booked/inquired dates from the admin
+calendar (`/api/client/availability`, dates only).
+
+Verification (whole change): browser review of the public site, Zeni (Taglish answer, package card,
+calendar card, date check, pre-filled booking link) and the admin (sign-in, dashboard, bookings confirm and
+edit, calendar, reports, inquiries, settings, automation, Zeni, dark theme) on the local preview; automated
+results are in the commit that adds this entry.
+
 ## 22 November 2026 — Zeni client chatbot design layout rebuild & greeting enhancements
 
 User task: Rebuild the client chatbot (Zeni) matching the user-provided design layout mockup, enhance the greeting bubble layout, prevent glitch/vanishing caused by background objects, elevate the chatbot in front of the client panel, and apply `#FFE1AF` to the conversation canvas.
@@ -35,7 +96,7 @@ Receptionist owns the conversation/state/source/API implementation in lib/chatbo
 services/chatbot and app/api/client/chatbot; the additive prisma/receptionist.sql,
 installer, focused tests, public facility-data extraction and workflow documents.
 Orchestrating buddy owns the strict request/result contract, signed adapter,
-calendar/dispatch and inactive n8n artifacts. Client owns the separately requested
+calendar/dispatch and inactive workflow drafts (since removed). Client owns the separately requested
 chat presentation/compact geometry and its entry below. Admin/client/developer and
 Design Checker confirmed no overlapping reservation before the shared schema,
 package command and architecture-document changes. The launcher, supplied assets,
@@ -65,7 +126,7 @@ Zion Events Place resource. Public hall/garden/pool IDs conservatively alias it;
 adjacent intervals remain allowed. No client, note, payment, reference or staff
 record is disclosed. A clear calendar result is advisory and timestamped, not a
 hold or reservation. Booking/reschedule/cancel mutations remain disabled behind
-the signed, persisted adapter until an authoritative W2 exists. No n8n workflow
+the signed, persisted adapter until an authoritative W2 exists. No external workflow
 was activated or executed. No settlement, hold or confirmation was manufactured.
 Consented escalation commits one normal NEW inquiry, activity and notification
 before reporting staff-intake success; it promises neither a booking nor email

@@ -35,7 +35,10 @@ System Logs is a standalone sidebar destination at `/admin/logs`, immediately ab
 Settings, with its own active state. The old `/admin/settings/logs` bookmark redirects
 to it after the existing access checks. Settings contains only its settings content,
 without section tabs linking to Logs. The log activity filters, pagination, notification
-outbox, and workflow history remain separate from the main settings forms.
+outbox, and automation job history remain separate from the main settings forms.
+Automation (`/admin/automation`) shows email and scheduler configuration, delivery counts,
+recent emails with masked recipients, Retry for failed emails and "Run due jobs now"; see
+[the automation guide](automation.md).
 Only the current sidebar destination is selected. Inquiries
 shows received business inquiries, Analytics shows real booking and cash aggregates,
 and Team provides a read-only directory of administrator accounts.
@@ -84,6 +87,32 @@ On mobile,
 the full drawer, focus handling, and reduced-motion support still apply.
 
 The current public client design, navigation, contact flow, published terms, services, and removed public features are preserved. Only the root chrome bridge hides the public header/background/footer inside `/admin`. No public booking form, online payment gateway, assistant, or public admin link was restored. Prior image organization and branding edits were not repeated or overwritten.
+
+## ZENTRA redesign — 25 November 2026
+
+The admin follows the team's Figma frames (ADMIN / SUPERADMIN POV, BOOKING, CALENDAR, REPORT) inside the
+existing left sidebar, which the team preferred over Figma's top tabs. This section supersedes the
+color and header descriptions in the older sections below, which are kept as history.
+
+- **Look:** white surfaces, deep green `#03422E` actions and active states, `#D9D9D9` hairlines, teal
+  KPI cards and charts, uppercase letter-spaced labels; the header shows the ZENTRA wordmark with
+  "Admin dashboard", a theme toggle, notifications, messages and the account menu. Tokens live in the
+  admin block of `styles/tokens.css`; the dark theme uses the ZENTRA night palette.
+- **Labels (routes unchanged):** Dashboard, Bookings, Contracts, Calendar, Inquiries, Payments, Packages
+  (`/admin/services`), Zeni (`/admin/zeni`), Reports (`/admin/analytics`), Team; footer: Automation
+  (`/admin/automation`), Activity log (`/admin/logs`), Settings.
+- **Booking display status** (`lib/admin/dashboard-status.ts`): Request = requested and awaiting approval;
+  Pending = approved, not yet confirmed; Confirmed = confirmed or completed; Cancelled = cancelled or
+  rejected. Status always shows a text label with its color (yellow, orange, green, red).
+- **Bookings:** status bar with counts and a filter, Cards (default) / Table toggle, and a details view with
+  client profile, booking details, payment status and only the actions the state machine allows.
+  **Edit details** (op `edit-booking`) is available for requested bookings without an issued or signed
+  agreement and needs a reason. A changed email or phone sends the contact back to verification (a
+  flagged contact stays flagged); changed schedule, package, guests, amounts, event type, payment rule or
+  contact details return an approved request to pending. Edits are audited and send no email. Confirmed
+  bookings are cancelled and re-created instead.
+- **Calendar:** month grid with today as a solid green square, status dots, and a dark "This month" list.
+- **Dashboard/Reports:** performance overview status cards, teal KPI cards with trend lines, bookings trend.
 
 ## Admin color theme
 
@@ -294,7 +323,7 @@ The three source PDFs were reviewed as project feedback, not as authorization fo
 | Villarama — process-driven UX                                  | Clear tentative/confirmed distinction and server-enforced safeguards with actionable error messages.                                                                                        |
 | Villarama — dashboard improvement                              | Annual secured-contract sales, unresolved inquiries, upcoming/all-time secured bookings, numeric comparisons, policy review, and outbox states.                                             |
 | Villarama — organization                                       | Eight consistent modules, scoped reusable UI, separate server workflows, and private data tables.                                                                                           |
-| Villarama — actual automation health                           | Actual queued/accepted/review-required notices and existing inquiry workflow execution records, not a simulated health score.                                                               |
+| Villarama — actual automation health                           | Actual queued/accepted/review-required notices and automation job records, not a simulated health score.                                                                                    |
 | Villarama — payment/downpayment reservation                    | Owner-reviewed deposit-required, full-payment-required, or no-payment-required confirmation policy; cash only.                                                                              |
 | Villarama — scam/prank prevention                              | Staff-recorded verification, suspicious-request flags, restricted admin access, login throttling, and audit history.                                                                        |
 | Marfil — standardized notifications                            | Shared templates state approval, reservation, payment, cash requirement, and venue instructions separately.                                                                                 |
@@ -322,7 +351,7 @@ Existing published terms provide Classic/Premium/Ultimate reservation fees of PH
 
 Six additive tables were installed in the configured database with user approval: `zion_admin_bookings`, `zion_admin_cash_payments`, `zion_admin_contracts`, `zion_admin_policy`, `zion_admin_outbox`, and `zion_admin_rate_limits`. Existing tables/data were not removed, migrated, or rewritten. Old operational booking records were not imported; they are not fabricated as new admin data.
 
-All six tables have RLS enabled and no direct grants to Supabase `anon` or `authenticated`. The server uses its private PostgreSQL connection only after admin authorization. Existing User, AccountSession, AuditLog, Inquiry, and workflow-log models are reused. Every request rechecks role, account status, password timestamp, and an active non-revoked database session. Sign-out/password change revokes sessions. Role changes are not exposed through Profile.
+All six tables have RLS enabled and no direct grants to Supabase `anon` or `authenticated`. The server uses its private PostgreSQL connection only after admin authorization. Existing User, AccountSession, AuditLog, and Inquiry models are reused. `prisma/automation.sql` later extended `zion_admin_outbox` with delivery columns and added `zion_automation_state`, both additive and with the same RLS protection. Every request rechecks role, account status, password timestamp, and an active non-revoked database session. Sign-out/password change revokes sessions. Role changes are not exposed through Profile.
 
 `prisma/admin.sql` is the additive schema; `prisma/admin.prisma` is its standalone generation source. `scripts/install-admin-schema.mjs` checks by default. Installation requires `--apply`, plus `--allow-remote` for a remote database; partial installations are refused. Do not use a full-schema reset or destructive Prisma push for this feature.
 
@@ -359,10 +388,10 @@ visiting the plain `/admin` URL enables automatic entry again while configured.
 
 - Keep `AUTH_SECRET` server-only and use a securely generated value of at least 32 bytes. A local secret was generated in the ignored `.env.local` without printing it. Set the approved production secret separately in the hosting environment; no deployment was performed.
 - Set `AUTH_URL` to the exact HTTPS production origin, alongside the correct public app URL and existing private database configuration. Use HTTPS; never expose database credentials or service-role/API keys through `NEXT_PUBLIC_` variables.
-- Optional email delivery uses Resend's HTTPS API. Set server-only `ADMIN_RESEND_API_KEY` and `ADMIN_MAIL_FROM` with an authorized verified sender. No provider account/domain was provisioned and no live emails were sent. Existing inquiry webhooks remain separate and unchanged.
-- Notices are generated transactionally and remain QUEUED without delivery configuration. A SUPERADMIN can process the queue in Logs; `npm run notifications:admin` can be run by an externally configured scheduler. No scheduler was installed automatically.
-- Dispatch claims up to ten notices safely across workers. An outbox-ID idempotency key protects provider submission. ACCEPTED means provider acceptance, not recipient delivery. Provider rejection or interruption is held as REVIEW_REQUIRED; there is no blind automatic resend. Inspect delivery before a separately reviewed recovery operation.
-- Provider reference: [send-email API](https://resend.com/docs/api-reference/emails/send-email) and [idempotency keys](https://resend.com/docs/dashboard/emails/idempotency-keys). Provider idempotency keys expire after 24 hours, so they are not a substitute for retained outbox state or manual interruption review.
+- Email is delivered by the built-in automation through Gmail SMTP (Nodemailer and a Google App Password). Set server-only `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` and `STAFF_NOTIFICATION_EMAIL`, install `prisma/automation.sql` with `npm run db:automation:check -- --apply`, and schedule `/api/cron/automation` with `CRON_SECRET`. See [the automation guide](automation.md). No mail account was provisioned and no live emails were sent by this change.
+- Notices are generated transactionally and remain QUEUED without mail configuration. Delivery is attempted right after each decision, by the scheduled run, by `npm run automation:run`, from Automation ("Run due jobs now") and, for a SUPERADMIN, from "Process queued notices" in Logs.
+- Each notice is claimed atomically, so concurrent runs never send it twice. ACCEPTED means the mail server accepted it, not that the recipient read it, and it is never sent again. Temporary failures retry with exponential backoff; permanent rejections and exhausted attempts become REVIEW_REQUIRED, and a send interrupted mid-way is held as REVIEW_REQUIRED rather than resent automatically. Staff can retry failed notices from Automation after checking the error.
+- Confirming a reservation attaches a calendar invitation (`invite.ics`); cancelling a confirmed reservation sends a cancellation update for the same calendar event. Confirmed clients also receive reminders a week and a day before the event, and staff receive a daily digest.
 
 ## Verification and limitations
 
@@ -389,8 +418,8 @@ The isolated PostgreSQL integration test covers verification/approval, cash prer
 
 Browser verification covered all eight modules and the complete request → verify → approve → reject confirmation before cash → record cash → confirm → prepare agreement flow. Desktop month filtering and a 390px mobile agenda worked without horizontal page overflow. The browser reported no console errors. The saved preview contains disposable QA data, not a real booking or receipt.
 
-For repeatable UI verification, run `node scripts/preview-admin.mjs`; it creates an in-memory PostgreSQL fixture and local-only preview at port 3011, with fake accounts and email/webhooks disabled. While it is running, `node scripts/check-admin-preview.mjs` checks unauthenticated access, client-role denial, cross-site rejection, input validation, protected modules, and database session revocation. Stopping the preview discards only its disposable fixture.
+For repeatable UI verification, run `node scripts/preview-admin.mjs`; it creates an in-memory PostgreSQL fixture and local-only preview at port 3011, with fake accounts and email disabled. While it is running, `node scripts/check-admin-preview.mjs` checks unauthenticated access, client-role denial, cross-site rejection, input validation, protected modules, and database session revocation. Stopping the preview discards only its disposable fixture.
 
-Next.js and its matching ESLint configuration were updated to 16.3.8, with compatible security overrides for sharp/PostCSS and the MySQL tooling dependency. The unused optional Auth.js mail peer is pinned to patched Nodemailer 10.0.16; credentials authentication and the HTTPS dispatcher do not use its email-provider API.
+Next.js and its matching ESLint configuration were updated to 16.3.8, with compatible security overrides for sharp/PostCSS and the MySQL tooling dependency. Nodemailer (now 10.5.0) was later adopted directly for the built-in SMTP automation; Auth.js credentials authentication still does not use its email-provider API.
 
 The final dependency audit has zero critical advisories but still reports eight upstream high advisories in the ESLint glob/brace chain and Prisma config/deepmerge tooling. These were not hidden or fixed through an incompatible forced downgrade/major rewrite. They need follow-up before a production security sign-off. Email delivery, owner policy review, deployment settings, and any required historical booking migration are not claimed complete.
