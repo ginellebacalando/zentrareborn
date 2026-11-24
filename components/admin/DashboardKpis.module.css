@@ -1,64 +1,111 @@
-.section {
-  margin-bottom: var(--space-6);
+/* Figma "Performance overview": white status cards, then teal KPI cards with trend lines. */
+.statusCards,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
 }
-.section .grid {
-  align-items: stretch;
-  margin-bottom: var(--space-2);
-}
-.card {
+.statusCard,
+.kpi {
   min-width: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--admin-border) 20%, var(--admin-surface-card));
+  padding: var(--space-6);
   border-radius: var(--radius-card);
+  text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+.statusCard {
+  border: 1px solid var(--status);
+  border-inline-start-width: var(--space-1);
   background: var(--admin-surface-card);
   color: var(--admin-ink);
 }
-.card .label {
-  color: var(--admin-muted);
-  font-size: var(--type-small);
-  font-weight: var(--weight-medium);
-}
-.sales {
-  background: var(--admin-peach);
-  color: var(--admin-on-color);
-}
-.amountRow {
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
+.statusLabel,
+.label {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  line-height: var(--line-heading);
+  text-transform: uppercase;
+}
+.statusLabel {
+  color: var(--admin-muted);
+}
+.statusValue,
+.value strong {
+  font-family: var(--font-zion-sans);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.statusValue {
+  margin-block: var(--space-2);
+  color: var(--admin-heading);
+  font-size: clamp(2.5rem, 1.9rem + 1.6vw, 3.5rem);
+}
+.period {
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+.section {
+  margin-bottom: var(--space-2);
+}
+.kpi {
+  border: 1px solid var(--admin-teal);
+  background: var(--admin-teal);
+  color: var(--admin-on-teal);
+}
+.kpi .label,
+.kpi .period,
+.kpi .quality {
+  color: var(--admin-on-teal);
 }
 .value {
-  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1);
+  min-width: 0;
+  margin-block: var(--space-1);
 }
 .value strong {
-  font-family: var(--font-zion-sans);
-  font-size: calc(var(--type-body) * 1.5);
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-  line-height: var(--line-heading);
-  overflow-wrap: anywhere;
+  font-size: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
 }
 .qualifier {
   font-size: var(--type-small);
+}
+.footer {
+  margin-top: auto;
+  padding-top: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
 }
 .badge {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-card);
-  color: var(--admin-muted);
-  background: var(--admin-surface-subtle);
+  border: 1px solid var(--admin-on-teal);
+  border-radius: 999px;
+  color: var(--admin-on-teal);
   font-size: var(--type-caption);
   font-weight: var(--weight-semibold);
   line-height: var(--line-heading);
@@ -67,31 +114,58 @@
 .badge svg {
   flex-shrink: 0;
 }
-.improving {
-  color: var(--palette-success);
-  background: var(--palette-success-soft);
+.trend {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-1);
+  min-width: 0;
+  max-width: 9rem;
+  flex: 1 1 6rem;
+  font-size: var(--type-caption);
+  line-height: var(--line-heading);
+  text-align: end;
 }
-:global([data-admin-theme='dark']) .improving {
-  color: var(--palette-success-light);
-  background: var(--palette-success-dark);
+.trend svg {
+  width: 100%;
+  height: var(--space-8);
 }
-.card .quality {
-  margin: 0;
-  color: var(--admin-muted);
-  font-size: var(--type-small);
+.quality {
+  font-size: var(--type-caption);
   overflow-wrap: anywhere;
 }
-.sales .label,
-.sales .quality {
-  color: var(--admin-on-color);
+@media (hover: hover) {
+  .statusCard:hover,
+  .kpi:hover {
+    transform: translateY(-2px);
+  }
+  .statusCard:hover {
+    border-color: var(--admin-action);
+    border-inline-start-color: var(--status);
+  }
 }
 @media (max-width: 1100px) {
-  .section .grid {
+  .statusCards,
+  .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 600px) {
-  .section .grid {
+@media (max-width: 400px) {
+  .statusCards,
+  .grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .statusCard,
+  .kpi {
+    padding: var(--space-4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .statusCard,
+  .kpi {
+    transition: none;
+  }
+  .statusCard:hover,
+  .kpi:hover {
+    transform: none;
   }
 }

@@ -1,12 +1,23 @@
 'use client';
 
 import { useId, type CSSProperties, type ReactNode } from 'react';
-import { chartMaximum, donutWedgePath } from '@/lib/admin/dashboard-chart-math';
+import { chartMaximum, ringWedgePath } from '@/lib/admin/dashboard-chart-math';
 import { money } from '@/lib/admin/domain';
 import styles from './DashboardCharts.module.css';
 import admin from './admin.module.css';
 
-export const chartTones = [styles.oak, styles.rose, styles.taupe, styles.peach, styles.ink];
+/*
+ * Flat ZENTRA chart marks: native SVG, hairline grids, deep green / teal series and status hues for
+ * booking states. Every chart keeps an exact-value table for assistive technology; colour is
+ * never the only carrier of a value (legends, totals and tables accompany each chart).
+ */
+export const chartTones = [
+  styles.series1,
+  styles.series2,
+  styles.series3,
+  styles.series4,
+  styles.series5,
+];
 export const chartCount = (value: number) => value.toLocaleString('en-PH');
 const compact = (value: number, cash: boolean) =>
   new Intl.NumberFormat('en-PH', {
@@ -76,7 +87,7 @@ function GridLines() {
 }
 
 type BarPoint = { key: string; label: string; values: number[] };
-export function ExtrudedBars({
+export function BarChart({
   points,
   series,
   label,
@@ -94,10 +105,10 @@ export function ExtrudedBars({
       <ChartPlot maximum={maximum}>
         <svg viewBox="0 0 600 240" preserveAspectRatio="none" role="img" aria-label={label}>
           <GridLines />
-          <path className={styles.floor} d="M0 220H588L600 232H12Z" />
+          <line className={styles.baseline} x1="0" x2="600" y1="220" y2="220" />
           {points.map((point, index) => {
             const group = 600 / points.length;
-            const width = Math.min(point.values.length === 1 ? 32 : 26, group * 0.23);
+            const width = Math.min(point.values.length === 1 ? 36 : 24, group * 0.28);
             return (
               <g key={point.key}>
                 {point.values.map((value, n) => {
@@ -105,30 +116,25 @@ export function ExtrudedBars({
                   const height = (value / maximum) * 204;
                   const x =
                     group * (index + 0.5) +
-                    (point.values.length === 1 ? -width / 2 : n === 0 ? -width - 5 : 5) -
-                    4;
-                  const y = 220 - height;
+                    (point.values.length === 1 ? -width / 2 : n === 0 ? -width - 3 : 3);
                   return (
-                    <g
-                      className={
+                    <rect
+                      key={n}
+                      className={`${styles.bar} ${
                         chartTones[
                           point.values.length === 1
                             ? index % chartTones.length
                             : n % chartTones.length
                         ]
-                      }
-                      key={n}
+                      }`}
+                      x={x}
+                      y={220 - height}
+                      width={width}
+                      height={height}
+                      rx="3"
                     >
-                      <title>
-                        {point.label}: {chartCount(value)} {series[n]}
-                      </title>
-                      <path
-                        className={styles.barSide}
-                        d={`M${x + width} ${y}l8 -8v${height}l-8 8Z`}
-                      />
-                      <rect className={styles.barFront} x={x} y={y} width={width} height={height} />
-                      <path className={styles.barTop} d={`M${x} ${y}l8 -8h${width}l-8 8Z`} />
-                    </g>
+                      <title>{`${point.label}: ${chartCount(value)} ${series[n]}`}</title>
+                    </rect>
                   );
                 })}
               </g>
@@ -146,55 +152,57 @@ export function ExtrudedBars({
   );
 }
 
-export function CashArea({
+function coordinatesFor(values: number[], maximum: number) {
+  return values.map((value, index) => ({
+    x: values.length === 1 ? 300 : 18 + (index / (values.length - 1)) * 564,
+    y: 220 - (value / maximum) * 204,
+  }));
+}
+function linePath(points: { x: number; y: number }[]) {
+  return points.map((point, index) => `${index ? 'L' : 'M'}${point.x} ${point.y}`).join(' ');
+}
+function areaPath(points: { x: number; y: number }[]) {
+  return points.length === 1
+    ? `M18 220V${points[0].y}H582V220Z`
+    : `${linePath(points)}L582 220H18Z`;
+}
+
+/** Single-series area (cash by month or report bucket). */
+export function AreaChart({
   points,
   label,
 }: {
   points: { key: string; label: string; value: number }[];
   label: string;
 }) {
-  const id = `cash-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const id = `area-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const values = points.map((point) => point.value);
   const total = values.reduce((sum, value) => sum + value, 0);
   const maximum = total ? chartMaximum(values) : 100000;
-  const coordinates = points.map((point, index) => ({
-    x: points.length === 1 ? 300 : 18 + (index / (points.length - 1)) * 564,
-    y: 220 - (point.value / maximum) * 204,
-  }));
-  const line = coordinates
-    .map((point, index) => `${index ? 'L' : 'M'}${point.x} ${point.y}`)
-    .join(' ');
-  const area = points.length === 1 ? `M18 220V${coordinates[0].y}H582V220Z` : `${line}L582 220H18Z`;
+  const coordinates = coordinatesFor(values, maximum);
   return (
     <>
       <ChartPlot maximum={maximum} cash>
         <svg viewBox="0 0 600 240" preserveAspectRatio="none" role="img" aria-label={label}>
           <defs>
             <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" className={styles.cashGradientStart} />
-              <stop offset="1" className={styles.cashGradientEnd} />
+              <stop offset="0" className={styles.areaGradientStart} />
+              <stop offset="1" className={styles.areaGradientEnd} />
             </linearGradient>
           </defs>
           <GridLines />
-          <path className={styles.floor} d="M18 220H582L594 232H30Z" />
-          {!!total && (
-            <>
-              <path className={styles.areaSide} d={area} transform="translate(0 10)" />
-              <path d={area} fill={`url(#${id})`} />
-            </>
-          )}
-          <path className={styles.cashLine} d={line} />
+          <line className={styles.baseline} x1="0" x2="600" y1="220" y2="220" />
+          {!!total && <path d={areaPath(coordinates)} fill={`url(#${id})`} />}
+          <path className={styles.areaLine} d={linePath(coordinates)} />
           {coordinates.map((point, index) => (
             <circle
               key={points[index].key}
-              className={styles.cashPoint}
+              className={styles.areaPoint}
               cx={point.x}
               cy={point.y}
               r="4"
             >
-              <title>
-                {points[index].label}: {money(points[index].value)}
-              </title>
+              <title>{`${points[index].label}: ${money(points[index].value)}`}</title>
             </circle>
           ))}
         </svg>
@@ -209,7 +217,59 @@ export function CashArea({
   );
 }
 
-export function ExtrudedDonut({
+/** Two or more count series drawn as soft areas with lines (Figma's bookings trend). */
+export function TrendChart({
+  points,
+  series,
+  label,
+  empty,
+}: {
+  points: { key: string; label: string }[];
+  series: { name: string; tone: string; values: number[] }[];
+  label: string;
+  empty: string;
+}) {
+  const maximum = chartMaximum(series.flatMap((item) => item.values));
+  const populated = series.some((item) => item.values.some(Boolean));
+  return (
+    <>
+      <ChartPlot maximum={maximum}>
+        <svg viewBox="0 0 600 240" preserveAspectRatio="none" role="img" aria-label={label}>
+          <GridLines />
+          <line className={styles.baseline} x1="0" x2="600" y1="220" y2="220" />
+          {series.map((item) => {
+            const coordinates = coordinatesFor(item.values, maximum);
+            return (
+              <g key={item.name} className={item.tone}>
+                {populated && <path className={styles.trendArea} d={areaPath(coordinates)} />}
+                <path className={styles.trendLine} d={linePath(coordinates)} />
+                {coordinates.map((point, index) => (
+                  <circle
+                    key={points[index].key}
+                    className={styles.trendPoint}
+                    cx={point.x}
+                    cy={point.y}
+                    r="3.5"
+                  >
+                    <title>{`${points[index].label}: ${chartCount(item.values[index])} ${item.name}`}</title>
+                  </circle>
+                ))}
+              </g>
+            );
+          })}
+        </svg>
+        {!populated && (
+          <div className={styles.emptyPlot}>
+            <strong>{empty}</strong>
+          </div>
+        )}
+      </ChartPlot>
+      <ChartLabels points={points} />
+    </>
+  );
+}
+
+export function DonutChart({
   slices,
   label,
   center,
@@ -228,38 +288,21 @@ export function ExtrudedDonut({
       return {
         ...slice,
         tone: chartTones[index % chartTones.length],
-        path: slice.count ? donutWedgePath(start, start + (slice.count / total) * Math.PI * 2) : '',
+        path: slice.count ? ringWedgePath(start, start + (slice.count / total) * Math.PI * 2) : '',
       };
     })
     .filter((slice) => slice.count);
-  const empty = donutWedgePath(0, Math.PI * 2);
   return (
     <div className={styles.donutScene}>
-      <svg viewBox="0 0 320 224" role="img" aria-label={label}>
-        <ellipse className={styles.donutShadow} cx="160" cy="170" rx="128" ry="30" />
-        {[18, 15, 12, 9, 6, 3].map((depth) => (
-          <g key={depth} transform={`translate(0 ${depth})`}>
-            {total ? (
-              paths.map((slice) => (
-                <path
-                  key={slice.key}
-                  className={`${slice.tone} ${styles.donutSide}`}
-                  d={slice.path}
-                />
-              ))
-            ) : (
-              <path className={styles.emptyRingSide} d={empty} />
-            )}
-          </g>
-        ))}
+      <svg viewBox="0 0 200 200" role="img" aria-label={label}>
         {total ? (
           paths.map((slice) => (
-            <path key={slice.key} className={`${slice.tone} ${styles.donutTop}`} d={slice.path}>
+            <path key={slice.key} className={`${slice.tone} ${styles.donutSlice}`} d={slice.path}>
               <title>{slice.label}</title>
             </path>
           ))
         ) : (
-          <path className={styles.emptyRingTop} d={empty} />
+          <path className={styles.emptyRing} d={ringWedgePath(0, Math.PI * 2)} />
         )}
       </svg>
       <div className={styles.donutCenter} aria-hidden="true">
@@ -267,5 +310,25 @@ export function ExtrudedDonut({
         <span>{caption}</span>
       </div>
     </div>
+  );
+}
+
+/** Decorative trend line for KPI cards; the card's accessible name carries the values. */
+export function Sparkline({ values }: { values: number[] }) {
+  const maximum = Math.max(1, ...values);
+  const points = values.map((value, index) => ({
+    x: values.length === 1 ? 50 : 2 + (index / (values.length - 1)) * 96,
+    y: 30 - (value / maximum) * 26,
+  }));
+  return (
+    <svg
+      className={styles.sparkline}
+      viewBox="0 0 100 32"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path className={styles.sparklineLine} d={linePath(points)} />
+    </svg>
   );
 }

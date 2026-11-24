@@ -143,16 +143,23 @@ export type AdminData = {
   heldTestimonies?: HeldTestimony[];
   outbox?: Notice[] | { status: string; _count: number }[];
   logs?: Log[];
+  /** Built-in automation jobs; the API keeps the earlier field names. */
   workflows?: {
     id: string;
     workflowName: string;
     status: string;
     createdAt: string;
+    completedAt?: string | null;
   }[];
   notificationConfigured?: boolean;
   policyReviewed?: boolean;
 };
-export type Mutate = (section: string, payload: unknown) => Promise<void>;
+/** `inlineErrors` keeps a failure out of the page-level alert so the form can show it in place. */
+export type Mutate = (
+  section: string,
+  payload: unknown,
+  options?: { inlineErrors?: boolean },
+) => Promise<void>;
 
 export type AdminNotificationSummary = {
   notifications: {

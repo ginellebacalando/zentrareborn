@@ -2,9 +2,11 @@ import { Fragment } from 'react';
 import Link from 'next/link';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 import type { DashboardKpi, DashboardKpis as Summary } from '@/lib/admin/dashboard-kpi-types';
+import type { DashboardMonth } from '@/lib/admin/dashboard-types';
 import { changePercent } from '@/lib/admin/analytics-math';
 import { compactReportCash, reportDates, reportTimestamp } from '@/lib/admin/analytics-export';
 import { money } from '@/lib/admin/domain';
+import { Sparkline } from './ChartPrimitives';
 import admin from './admin.module.css';
 import styles from './DashboardKpis.module.css';
 
@@ -61,27 +63,29 @@ function changeDescription(
   return `${direction} · ${delta > 0 ? '+' : delta < 0 ? '−' : ''}${number(Math.abs(delta), cash)} (${percentLabel})`;
 }
 
-function ChangeBadge({
-  metric,
-  complete,
-  pending,
-}: {
-  metric: DashboardKpi;
-  complete: boolean;
-  pending: boolean;
-}) {
+function ChangeBadge({ metric, complete }: { metric: DashboardKpi; complete: boolean }) {
   const delta = metric.current - metric.previous;
   const Icon = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : Minus;
-  const improving = complete && (pending ? delta < 0 : delta > 0);
   return (
-    <span className={`${styles.badge} ${improving ? styles.improving : ''}`}>
+    <span className={styles.badge}>
       {complete && <Icon size={14} aria-hidden="true" />}
       {complete ? percentage(changePercent(metric.current, metric.previous)) : '—'}
     </span>
   );
 }
 
-export default function DashboardKpis({ summary }: { summary?: Summary }) {
+/**
+ * Teal KPI cards with small trend lines (Figma). Values and comparisons are the existing KPI
+ * contract (docs/dashboard-kpi-contract.md). Trend lines use the closest real monthly series and
+ * name it, because a monthly series is not always the same measure as the card's total.
+ */
+export default function DashboardKpis({
+  summary,
+  months = [],
+}: {
+  summary?: Summary;
+  months?: DashboardMonth[];
+}) {
   if (!summary)
     return (
       <div className={admin.card} role="status">
@@ -92,86 +96,118 @@ export default function DashboardKpis({ summary }: { summary?: Summary }) {
   const previousYear = year - 1;
   const dated = quality.undatedSecuredBookings === 0;
   const linked = quality.untrackedSecuredBookings === 0 || summary.pending.value === 0;
+  const recent = months.slice(-6);
+  const trend = (label: string, values: number[]) =>
+    recent.length > 1 ? { label, values } : undefined;
   const cards = [
     {
       key: 'sales',
-      label: 'Total Revenue',
+      label: 'Total revenue',
       metric: summary.sales,
       cash: true,
       complete: dated,
+      period: `${year} · Year to date`,
       scope: `${year} year to date · secured contract value`,
       activity: `Prior year, same elapsed period: ${money(summary.sales.previous)}`,
       href: '/admin/analytics',
+      trend: trend(
+        'Cash received by month',
+        recent.map((month) => month.cashCents),
+      ),
     },
     {
       key: 'bookings',
-      label: 'Total Bookings',
+      label: 'Total bookings',
       metric: summary.bookings,
       cash: false,
       complete: dated,
+      period: 'All time',
       scope: 'All confirmed & completed bookings',
       activity: `Newly secured · ${year} YTD: ${count(summary.bookings.current)} · ${previousYear} YTD: ${count(summary.bookings.previous)}`,
       href: '/admin/bookings',
+      trend: trend(
+        'Confirmations by month',
+        recent.map((month) => month.confirmed),
+      ),
     },
     {
       key: 'upcoming',
-      label: 'Upcoming Events',
+      label: 'Upcoming events',
       metric: summary.upcoming,
       cash: false,
       complete: true,
+      period: 'From today',
       scope: 'Confirmed · starting now or later',
       activity: `Scheduled dates · next 30 days: ${count(summary.upcoming.current)} · previous 30: ${count(summary.upcoming.previous)}`,
       href: '/admin/calendar',
+      trend: undefined,
     },
     {
       key: 'pending',
-      label: 'Pending Inquiries',
+      label: 'Pending inquiries',
       metric: summary.pending,
       cash: false,
       complete: linked,
+      period: 'Open now',
       scope: 'Open inquiries without a secured booking',
       activity: `Unresolved intake · ${year} YTD: ${count(summary.pending.current)} · ${previousYear} YTD: ${count(summary.pending.previous)}`,
       href: '/admin/inquiries',
+      trend: trend(
+        'Inquiries received by month',
+        recent.map((month) => month.inquiries),
+      ),
     },
   ];
   return (
     <section aria-labelledby="dashboard-kpi-title" className={styles.section}>
-      <h2 id="dashboard-kpi-title" className={admin.srOnly}>
-        Business overview
-      </h2>
-      <div className={`${admin.metrics} ${styles.grid}`}>
+      <h3 id="dashboard-kpi-title" className={admin.srOnly}>
+        Business totals
+      </h3>
+      <div className={styles.grid}>
         {cards.map((card) => {
           const unavailable = card.key === 'sales' && !dated;
           const upperBound = card.key === 'pending' && !linked;
+          const trendText = card.trend
+            ? ` Trend, ${card.trend.label.toLowerCase()}, last ${recent.length} months: ${card.trend.values
+                .map((value) => (card.cash ? money(value) : count(value)))
+                .join(', ')}.`
+            : '';
           return (
             <Link
               key={card.key}
               href={card.href}
-              className={`${styles.card} ${card.key === 'sales' ? styles.sales : ''}`}
-              aria-label={`${card.label}: ${unavailable ? `annual total unavailable; known dated value ${money(card.metric.value)}` : `${upperBound ? 'up to ' : ''}${number(card.metric.value, card.cash)}`}. ${card.scope}. ${card.activity}. ${changeDescription(card.metric, card.cash, card.complete, card.key === 'pending')}`}
+              className={styles.kpi}
+              aria-label={`${card.label}: ${unavailable ? `annual total unavailable; known dated value ${money(card.metric.value)}` : `${upperBound ? 'up to ' : ''}${number(card.metric.value, card.cash)}`}. ${card.scope}. ${card.activity}. ${changeDescription(card.metric, card.cash, card.complete, card.key === 'pending')}.${trendText}`}
             >
               <span className={styles.label}>{card.label}</span>
-              <div className={styles.amountRow}>
-                <div className={styles.value}>
-                  {upperBound && <span className={styles.qualifier}>Up to</span>}
-                  <strong>{unavailable ? '—' : compactNumber(card.metric.value, card.cash)}</strong>
-                </div>
-                <ChangeBadge
-                  metric={card.metric}
-                  complete={card.complete}
-                  pending={card.key === 'pending'}
-                />
-              </div>
+              <span className={styles.value}>
+                {upperBound && <span className={styles.qualifier}>Up to</span>}
+                <strong>{unavailable ? '—' : compactNumber(card.metric.value, card.cash)}</strong>
+              </span>
+              <span className={styles.period}>{card.period}</span>
+              <span className={styles.footer}>
+                <ChangeBadge metric={card.metric} complete={card.complete} />
+                {card.trend ? (
+                  <span className={styles.trend}>
+                    <Sparkline values={card.trend.values} />
+                    <span>{card.trend.label}</span>
+                  </span>
+                ) : (
+                  <span className={styles.trend}>
+                    <span>Next 30 days: {count(summary.upcoming.current)}</span>
+                  </span>
+                )}
+              </span>
               {!dated && (card.key === 'sales' || card.key === 'bookings') && (
-                <p className={styles.quality}>Confirmation history incomplete</p>
+                <span className={styles.quality}>Confirmation history incomplete</span>
               )}
-              {upperBound && <p className={styles.quality}>Inquiry links incomplete</p>}
+              {upperBound && <span className={styles.quality}>Inquiry links incomplete</span>}
             </Link>
           );
         })}
       </div>
       <div className={admin.srOnly}>
-        <h3>Metric definitions</h3>
+        <h4>Metric definitions</h4>
         <p>As of {reportTimestamp(summary.asOf)} · Manila time</p>
         <dl>
           {cards.map((card) => (

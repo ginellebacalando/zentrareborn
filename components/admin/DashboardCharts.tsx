@@ -3,9 +3,10 @@
 import { useId, useState } from 'react';
 import {
   ChartDataTable as DataTable,
-  ExtrudedBars,
-  ExtrudedDonut,
-  CashArea,
+  BarChart,
+  DonutChart,
+  AreaChart,
+  TrendChart,
   chartTones as tones,
   chartCount as count,
 } from './ChartPrimitives';
@@ -18,15 +19,99 @@ import { money } from '@/lib/admin/domain';
 import styles from './DashboardCharts.module.css';
 import admin from './admin.module.css';
 
+/** Figma's "Bookings trend": recorded confirmations (green) and cancellations (red) per month. */
+function BookingsTrend({ months }: { months: DashboardMonth[] }) {
+  const titleId = useId();
+  const confirmed = months.reduce((total, month) => total + month.confirmed, 0);
+  const cancelled = months.reduce((total, month) => total + month.cancelled, 0);
+  return (
+    <article className={`${admin.card} ${styles.card}`} aria-labelledby={titleId}>
+      <div className={styles.cardHeading}>
+        <div>
+          <h3 id={titleId}>Bookings trend</h3>
+          <span className={styles.scope}>By recorded confirmation or cancellation date</span>
+        </div>
+        <ul className={styles.legend} aria-label="Legend">
+          <li>
+            <i className={`${styles.swatch} ${styles.confirmedTone}`} />
+            Confirmed <strong>{count(confirmed)}</strong>
+          </li>
+          <li>
+            <i className={`${styles.swatch} ${styles.cancelledTone}`} />
+            Cancelled <strong>{count(cancelled)}</strong>
+          </li>
+        </ul>
+      </div>
+      <TrendChart
+        points={months}
+        series={[
+          {
+            name: 'confirmed',
+            tone: styles.confirmedTone,
+            values: months.map((month) => month.confirmed),
+          },
+          {
+            name: 'cancelled or rejected',
+            tone: styles.cancelledTone,
+            values: months.map((month) => month.cancelled),
+          },
+        ]}
+        label={`${count(confirmed)} bookings confirmed and ${count(cancelled)} cancelled or rejected. Exact monthly values follow in an accessible table.`}
+        empty="No confirmations or cancellations yet"
+      />
+      <DataTable caption="Monthly confirmations and cancellations (cancellations include rejected requests)">
+        <thead>
+          <tr>
+            <th scope="col">Month</th>
+            <th scope="col">Confirmed</th>
+            <th scope="col">Cancelled</th>
+          </tr>
+        </thead>
+        <tbody>
+          {months.map((month) => (
+            <tr key={month.key}>
+              <th scope="row">{month.label}</th>
+              <td>{count(month.confirmed)}</td>
+              <td>{count(month.cancelled)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </DataTable>
+    </article>
+  );
+}
+
+function PastThirtyDays({ activity }: { activity: DashboardInsights['last30'] }) {
+  const titleId = useId();
+  const rows = [
+    ['Booking requests', count(activity.requests)],
+    ['Confirmations', count(activity.confirmed)],
+    ['Cancellations', count(activity.cancelled)],
+    ['Inquiries', count(activity.inquiries)],
+    ['Cash received', money(activity.cashCents)],
+  ];
+  return (
+    <article className={styles.recent} aria-labelledby={titleId}>
+      <h3 id={titleId}>For the past 30 days</h3>
+      <dl>
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p>Cancellations include rejected requests. Cash excludes voided receipts.</p>
+    </article>
+  );
+}
+
 function ActivityChart({ months }: { months: DashboardMonth[] }) {
   const titleId = useId();
   const bookings = months.reduce((total, month) => total + month.bookings, 0);
   const inquiries = months.reduce((total, month) => total + month.inquiries, 0);
   return (
-    <article
-      className={`${admin.card} ${styles.card} ${styles.activity}`}
-      aria-labelledby={titleId}
-    >
+    <article className={`${admin.card} ${styles.card}`} aria-labelledby={titleId}>
       <div className={styles.cardHeading}>
         <div>
           <h3 id={titleId}>Booking activity</h3>
@@ -36,17 +121,17 @@ function ActivityChart({ months }: { months: DashboardMonth[] }) {
           <small className={admin.srOnly}>booking requests</small>
         </span>
       </div>
-      <div className={styles.legend}>
-        <span>
-          <i className={`${styles.swatch} ${styles.oak}`} />
+      <ul className={styles.legend} aria-label="Legend">
+        <li>
+          <i className={`${styles.swatch} ${tones[0]}`} />
           Booking requests
-        </span>
-        <span>
-          <i className={`${styles.swatch} ${styles.rose}`} />
+        </li>
+        <li>
+          <i className={`${styles.swatch} ${tones[1]}`} />
           Business inquiries
-        </span>
-      </div>
-      <ExtrudedBars
+        </li>
+      </ul>
+      <BarChart
         points={months.map((month) => ({
           key: month.key,
           label: month.label,
@@ -93,7 +178,7 @@ function ReservationChart({ reservations }: { reservations: ReservationSlice[] }
           <span className={styles.scope}>All-time</span>
         </div>
       </div>
-      <ExtrudedDonut
+      <DonutChart
         slices={reservations}
         label={`${count(total)} total booking requests. Counts and percentages follow.`}
         center={new Intl.NumberFormat('en-PH', {
@@ -142,14 +227,14 @@ function CashChart({ months }: { months: DashboardMonth[] }) {
   const titleId = useId();
   const total = months.reduce((sum, month) => sum + month.cashCents, 0);
   return (
-    <article className={`${admin.card} ${styles.card} ${styles.cash}`} aria-labelledby={titleId}>
+    <article className={`${admin.card} ${styles.card} ${styles.wide}`} aria-labelledby={titleId}>
       <div className={styles.cardHeading}>
         <div>
           <h3 id={titleId}>Cash collected</h3>
         </div>
         <span className={styles.total}>{money(total)}</span>
       </div>
-      <CashArea
+      <AreaChart
         points={months.map((month) => ({
           key: month.key,
           label: month.label,
@@ -178,13 +263,16 @@ function CashChart({ months }: { months: DashboardMonth[] }) {
 }
 
 export default function DashboardCharts({ insights }: { insights: DashboardInsights }) {
+  const headingId = useId();
   const [period, setPeriod] = useState(6);
   const months = insights.months.slice(-period);
   return (
-    <section className={styles.section} aria-label="Dashboard charts">
+    <section className={styles.section} aria-labelledby={headingId}>
       <div className={styles.sectionHeading}>
         <div>
-          <h2>Venue insights</h2>
+          <h2 id={headingId} className={admin.overline}>
+            Trends
+          </h2>
           <span className={styles.scope}>
             {months[0].label} – {months.at(-1)!.label}
           </span>
@@ -196,6 +284,10 @@ export default function DashboardCharts({ insights }: { insights: DashboardInsig
             <option value="12">Last 12 months</option>
           </select>
         </label>
+      </div>
+      <div className={styles.trendRow}>
+        <BookingsTrend months={months} />
+        <PastThirtyDays activity={insights.last30} />
       </div>
       <div className={styles.grid}>
         <ActivityChart months={months} />

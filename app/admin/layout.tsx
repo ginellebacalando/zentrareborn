@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: {
-    default: 'Zion Events Place Admin Panel',
-    template: '%s | Zion Events Place Admin Panel',
+    default: 'ZENTRA Admin',
+    template: '%s | ZENTRA Admin',
   },
   robots: { index: false, follow: false },
 };

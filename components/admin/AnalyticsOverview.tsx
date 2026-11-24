@@ -24,7 +24,7 @@ import {
 } from '@/lib/admin/analytics-export';
 import { money } from '@/lib/admin/domain';
 import AnalyticsCharts from './AnalyticsCharts';
-import { ChartDataTable } from './ChartPrimitives';
+import { ChartDataTable, Sparkline } from './ChartPrimitives';
 import styles from './AnalyticsOverview.module.css';
 import admin from './admin.module.css';
 import type { AdminData } from './types';
@@ -184,33 +184,38 @@ export default function AnalyticsOverview({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     setExported(report.asOf);
   }
+  // Teal KPI cards (Figma). Only cash income has a matching per-bucket series for a trend line.
   const metrics = [
     {
       label: 'Cash income',
       value: compactReportCash(c.cashCents),
+      period: range.current.label,
       detail: 'Selected interval · actual cash received',
       sub: `Overall income: ${money(s.allTimeCashCents)} all-time`,
-      tone: styles.oak,
+      trend: report.buckets.length > 1 ? report.buckets.map((bucket) => bucket.cashCents) : null,
     },
     {
-      label: 'Current pending balance',
+      label: 'Pending balance',
       value: compactReportCash(s.outstandingCents),
+      period: 'Current snapshot',
       detail: 'Current snapshot · all secured bookings',
       sub: `${money(s.outstandingCents)} across ${count(s.outstandingBookings)} bookings`,
-      tone: styles.peach,
+      trend: null,
     },
     {
       label: 'New secured bookings',
       value: count(c.newSecuredBookings),
+      period: range.current.label,
       detail: 'First confirmation in selected interval',
       sub: q.confirmationHistoryComplete
         ? 'Currently confirmed or completed; cancellations excluded'
         : 'Dated records only · confirmation history incomplete',
-      tone: styles.taupe,
+      trend: null,
     },
     {
       label: 'Inquiry conversion',
       value: rate === null ? '—' : `${rate.toFixed(1)}%`,
+      period: range.current.label,
       detail: 'Selected inquiry cohort · current outcome',
       sub:
         rate === null
@@ -218,7 +223,7 @@ export default function AnalyticsOverview({
             ? 'No inquiries in this interval'
             : 'Tracking incomplete · verified counts below'
           : `${count(c.convertedInquiries)} of ${count(c.inquiries)} inquiries secured`,
-      tone: styles.rose,
+      trend: null,
     },
   ];
   return (
@@ -229,6 +234,7 @@ export default function AnalyticsOverview({
       <ReportControls report={report} busy={busy} onChange={onChange} />
       <div className={styles.reportHeading}>
         <div>
+          <p className={admin.overline}>Performance overview</p>
           <h2>{range.current.label}</h2>
           <span className={styles.scope}>{range.partial ? 'To date' : 'Full period'}</span>
           <p className={admin.srOnly}>
@@ -292,12 +298,18 @@ export default function AnalyticsOverview({
         <div className={styles.metrics}>
           {metrics.map((metric) => (
             <article
-              className={`${styles.metric} ${metric.tone}`}
+              className={styles.metric}
               key={metric.label}
-              aria-label={`${metric.label}: ${metric.value}. ${metric.detail}. ${metric.sub}`}
+              aria-label={`${metric.label}: ${metric.value}. ${metric.detail}. ${metric.sub}${metric.trend ? `. Trend by ${range.bucketUnit}: ${metric.trend.map((value) => money(value)).join(', ')}` : ''}`}
             >
               <h3>{metric.label}</h3>
               <strong>{metric.value}</strong>
+              <span className={styles.metricPeriod}>{metric.period}</span>
+              {metric.trend && (
+                <span className={styles.metricTrend}>
+                  <Sparkline values={metric.trend} />
+                </span>
+              )}
             </article>
           ))}
         </div>

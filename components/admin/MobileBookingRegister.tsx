@@ -1,6 +1,8 @@
 import { money, paidTotal, paymentStatus } from '@/lib/admin/domain';
+import { displayStatus } from '@/lib/admin/dashboard-status';
 import { useAdminDate } from './AdminPreferencesProvider';
 import { Badge } from './AdminBadge';
+import { StatusChip } from './BookingStatus';
 import type { Booking } from './types';
 import styles from './admin.module.css';
 
@@ -47,6 +49,14 @@ export default function MobileBookingRegister({
                 </>
               ) : (
                 <>
+                  {section === 'bookings' && (
+                    <>
+                      <dt>Status</dt>
+                      <dd>
+                        <StatusChip status={displayStatus(booking)} />
+                      </dd>
+                    </>
+                  )}
                   <dt>Approval</dt>
                   <dd>
                     <Badge value={booking.approval} />
@@ -66,11 +76,12 @@ export default function MobileBookingRegister({
               )}
             </dl>
             <button
-              className={styles.secondary}
+              type="button"
+              className={styles.viewDetails}
               onClick={() => onOpen(booking)}
-              aria-label={`Open ${booking.reference}`}
+              aria-label={`View details for ${booking.reference}, ${booking.clientName}`}
             >
-              Open booking
+              View details
             </button>
           </li>
         );

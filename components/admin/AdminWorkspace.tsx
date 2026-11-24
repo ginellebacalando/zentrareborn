@@ -1,88 +1,54 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import useSWR, { mutate as refreshCache } from 'swr';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowUpRight,
-  CheckCircle2,
   Search,
   Plus,
   X,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  ShieldAlert,
-  ShieldCheck,
   SlidersHorizontal,
   ChevronDown,
-  Clock3,
-  Star,
-  Trash2,
 } from 'lucide-react';
-import { money, paidTotal, paymentStatus } from '@/lib/admin/domain';
+import { displayStatuses } from '@/lib/admin/dashboard-status';
 import BookingDetail from './BookingDetail';
 import { Badge } from './AdminBadge';
-import MobileBookingRegister from './MobileBookingRegister';
 import AdminOverviewSections from './AdminOverviewSections';
 import AnalyticsOverview from './AnalyticsOverview';
 import SystemSettingsForm from './SystemSettingsForm';
 import ServicesPackages from './ServicesPackages';
 import DashboardGreeting from './DashboardGreeting';
-import DashboardCharts from './DashboardCharts';
-import DashboardKpis from './DashboardKpis';
+import DashboardOverview from './DashboardOverview';
+import BookingRegister, { bookingsContext, type StatusView } from './BookingRegister';
+import BookingCalendar from './BookingCalendar';
 import { useAdminDate } from './AdminPreferencesProvider';
 import { BookingForm, SettingsForm, ProfileForm } from './Forms';
-import type { AdminData, Booking, Mutate, Notice } from './types';
+import { adminPageLabel } from './navigation';
+import type { AdminData, Booking, Notice } from './types';
 import styles from './admin.module.css';
 
-const titles: Record<string, [string, string]> = {
-  dashboard: [
-    'A clear view of your venue',
-    'Review requests, secure schedules, and keep every commitment on track.',
-  ],
-  bookings: [
-    'Booking management',
-    'Staff-entered requests. Verify contact, review, then confirm a schedule.',
-  ],
-  contracts: [
-    'Contract management',
-    'Prepare an accurate agreement from a verified booking and reviewed venue terms.',
-  ],
-  calendar: [
-    'Venue calendar',
-    'Confirmed reservations secure dates. Requests remain tentative. All times are in Manila.',
-  ],
-  inquiries: [
-    'Inquiries',
-    'Review business inquiries and their event details before preparing a booking request.',
-  ],
-  analytics: [
-    'Analytics',
-    'Follow income, balances, inquiry conversion, and the direction of your business.',
-  ],
-  team: ['Team', 'View the administrators who have access to your venue workspace.'],
-  payments: [
-    'Cash payments',
-    'Record money actually received. Approval never marks a booking paid.',
-  ],
-  services: [
-    'Services & Packages',
-    'Manage event categories, package details, prices, and inclusions.',
-  ],
-  logs: [
-    'System logs',
-    'Read-only activity history and the actual status of notification processing.',
-  ],
-  profile: [
-    'Your admin profile',
-    'Manage your own details and password. Your role is controlled by the venue owner.',
-  ],
-  settings: [
-    'Settings',
-    'Manage appearance, security, client access, communications, and localization.',
-  ],
+/*
+ * Naming rules (plan section 20.3): the sidebar label is the only prominent module name. Each page
+ * keeps an h1 equal to that label, visually hidden while the sidebar shows it, and a visible
+ * context sentence that never repeats the module name.
+ */
+const contexts: Record<string, string> = {
+  contracts: 'Prepare an accurate agreement from a verified booking and reviewed venue terms.',
+  calendar:
+    'Confirmed reservations secure dates; requests stay tentative. All times are in Manila.',
+  inquiries: 'Website messages with event details, ready to review before preparing a request.',
+  analytics: 'Income, balances, inquiry conversion, and the direction of the business.',
+  team: 'Administrators who can sign in to the venue workspace.',
+  payments: 'Record money actually received. Approval never marks a booking paid.',
+  services: 'Event categories, prices, inclusions, and what clients can see.',
+  logs: 'Read-only history and the actual status of notification processing.',
+  profile: 'Manage your own details and password. Your role is controlled by the venue owner.',
+  settings: 'Manage appearance, security, client access, communications, and localization.',
 };
+const PAGE_SIZE = 50;
+
 export default function AdminWorkspace({
   section,
   owner,
@@ -94,6 +60,7 @@ export default function AdminWorkspace({
 }) {
   const router = useRouter();
   const eventDate = useAdminDate();
+  const filterFieldsId = useId();
   const detailOpener = useRef<HTMLElement | null>(null);
   const recordSearchRef = useRef<HTMLInputElement>(null);
   const restoreDetailFocus = useRef(false);
@@ -104,7 +71,16 @@ export default function AdminWorkspace({
     [selected, setSelected] = useState<Booking | null>(null),
     [inquiry, setInquiry] = useState<AdminData['inquiry']>();
   const [filters, setFilters] = useState<Record<string, string>>({}),
-    [query, setQuery] = useState('');
+    [query, setQuery] = useState(''),
+    [filtersOpen, setFiltersOpen] = useState(false),
+    // Dashboard status cards link here with ?status=request|pending|confirmed|cancelled. The board
+    // renders only after client-side data loads, so reading the URL here cannot cause a hydration
+    // mismatch.
+    [statusView, setStatusView] = useState<StatusView>(() => {
+      if (section !== 'bookings' || typeof window === 'undefined') return 'all';
+      const status = new URLSearchParams(window.location.search).get('status');
+      return displayStatuses.find((value) => value === status) ?? 'all';
+    });
   const onCalendarMonth = useCallback(
     (from: string, to: string) =>
       setFilters((v) => (v.from === from && v.to === to ? v : { ...v, from, to, page: '1' })),
@@ -155,7 +131,11 @@ export default function AdminWorkspace({
       return () => controller.abort();
     }
   }, [section]);
-  async function mutate(module: string, payload: unknown) {
+  async function mutate(
+    module: string,
+    payload: unknown,
+    options: { inlineErrors?: boolean } = {},
+  ) {
     setBusy(true);
     setError('');
     setSuccess('');
@@ -188,7 +168,7 @@ export default function AdminWorkspace({
         );
       if (module === 'profile') router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to save.');
+      if (!options.inlineErrors) setError(e instanceof Error ? e.message : 'Unable to save.');
       throw e;
     } finally {
       setBusy(false);
@@ -216,22 +196,22 @@ export default function AdminWorkspace({
   const advancedFilterCount = ['approval', 'reservation', 'from', 'to'].filter(
     (key) => filters[key],
   ).length;
-  const [title, description] = titles[section];
+  const context =
+    section === 'bookings' ? bookingsContext(data?.bookings, data?.total) : contexts[section];
   return (
     <>
       <div className={styles.pageHeading}>
-        <div>
+        <div className={styles.pageIntro}>
+          <h1 className={styles.pageTitle}>{adminPageLabel(section)}</h1>
           {section === 'dashboard' ? (
             <DashboardGreeting name={adminName} />
           ) : (
-            <>
-              <h1>{title}</h1>
-              {section !== 'analytics' && <p>{description}</p>}
-            </>
+            context && <p className={styles.pageContext}>{context}</p>
           )}
         </div>
         <div className={styles.actions}>
           <button
+            type="button"
             className={`${styles.secondary} ${styles.quiet}`}
             onClick={() => {
               if (section === 'services')
@@ -244,11 +224,12 @@ export default function AdminWorkspace({
             disabled={loading}
             aria-label="Refresh current data"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} aria-hidden="true" />
             Refresh
           </button>
           {section === 'bookings' && (
             <button
+              type="button"
               className={create ? styles.secondary : styles.primary}
               onClick={(event) => {
                 detailOpener.current = event.currentTarget;
@@ -288,6 +269,7 @@ export default function AdminWorkspace({
       )}
       {selected && (
         <BookingDetail
+          key={selected.id}
           booking={selected}
           owner={owner}
           busy={busy}
@@ -308,7 +290,7 @@ export default function AdminWorkspace({
               event.preventDefault();
               filter('q', query);
             }}
-            aria-label="Search and filter bookings"
+            aria-label="Search and filter records"
           >
             <div className={styles.searchRow}>
               <label className={styles.searchLabel}>
@@ -316,70 +298,87 @@ export default function AdminWorkspace({
                 <span className={styles.searchField}>
                   <Search size={18} aria-hidden="true" />
                   <input
-                    aria-label="Search bookings by reference, client, email, event or package"
+                    aria-label="Search by reference, client, email, event or package"
                     ref={recordSearchRef}
+                    type="search"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="Reference, client or event"
                   />
                 </span>
               </label>
-              <button className={styles.secondary}>Search</button>
-            </div>
-            <details className={styles.filterDisclosure}>
-              <summary>
+              <button type="submit" className={styles.primary}>
+                Search
+              </button>
+              <button
+                type="button"
+                className={`${styles.secondary} ${styles.filterToggle}`}
+                aria-expanded={filtersOpen}
+                aria-controls={filterFieldsId}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
                 <SlidersHorizontal size={16} aria-hidden="true" />
-                Filters
-                <span>
-                  {advancedFilterCount ? `· ${advancedFilterCount} active` : '· optional'}
-                </span>
+                Filter
+                {advancedFilterCount > 0 && (
+                  <span className={styles.filterCount}>
+                    {advancedFilterCount}
+                    <span className={styles.srOnly}> active</span>
+                  </span>
+                )}
                 <ChevronDown size={16} aria-hidden="true" />
-              </summary>
-              <div className={styles.filterFields}>
-                <label>
-                  Approval
-                  <select
-                    value={filters.approval || ''}
-                    onChange={(event) => filter('approval', event.target.value)}
-                  >
-                    <option value="">All approvals</option>
-                    {['PENDING', 'APPROVED', 'REJECTED'].map((value) => (
-                      <option key={value}>{value}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Reservation
-                  <select
-                    value={filters.reservation || ''}
-                    onChange={(event) => filter('reservation', event.target.value)}
-                  >
-                    <option value="">All reservations</option>
-                    {['REQUESTED', 'CONFIRMED', 'CANCELLED', 'COMPLETED'].map((value) => (
-                      <option key={value}>{value}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Event date from
-                  <input
-                    aria-label="Event date from"
-                    type="date"
-                    value={filters.from || ''}
-                    onChange={(event) => filter('from', event.target.value)}
-                  />
-                </label>
-                <label>
-                  Event date through
-                  <input
-                    aria-label="Event date through"
-                    type="date"
-                    value={filters.to || ''}
-                    onChange={(event) => filter('to', event.target.value)}
-                  />
-                </label>
-              </div>
-              {(advancedFilterCount > 0 || filters.q || query) && (
+              </button>
+            </div>
+            <div id={filterFieldsId} className={styles.filterFields} hidden={!filtersOpen}>
+              <label>
+                Approval
+                <select
+                  value={filters.approval || ''}
+                  onChange={(event) => filter('approval', event.target.value)}
+                >
+                  <option value="">All approvals</option>
+                  {['PENDING', 'APPROVED', 'REJECTED'].map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Reservation
+                <select
+                  value={filters.reservation || ''}
+                  onChange={(event) => filter('reservation', event.target.value)}
+                >
+                  <option value="">All reservations</option>
+                  {['REQUESTED', 'CONFIRMED', 'CANCELLED', 'COMPLETED'].map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Event date from
+                <input
+                  type="date"
+                  value={filters.from || ''}
+                  onChange={(event) => filter('from', event.target.value)}
+                />
+              </label>
+              <label>
+                Event date through
+                <input
+                  type="date"
+                  value={filters.to || ''}
+                  onChange={(event) => filter('to', event.target.value)}
+                />
+              </label>
+            </div>
+            {(filters.q || advancedFilterCount > 0) && (
+              <div className={styles.filterSummary}>
+                <p>
+                  Showing {filters.q ? `matches for “${filters.q}”` : 'all matching records'}
+                  {filters.approval ? ` · ${filters.approval.toLowerCase()}` : ''}
+                  {filters.reservation ? ` · ${filters.reservation.toLowerCase()}` : ''}
+                  {filters.from ? ` · from ${filters.from}` : ''}
+                  {filters.to ? ` · through ${filters.to}` : ''}.
+                </p>
                 <button
                   type="button"
                   className={styles.linkButton}
@@ -390,140 +389,35 @@ export default function AdminWorkspace({
                 >
                   Clear search and filters
                 </button>
-              )}
-            </details>
-            {(filters.q || advancedFilterCount > 0) && (
-              <p className={styles.filterSummary}>
-                Showing {filters.q ? `matches for “${filters.q}”` : 'all matching records'}
-                {filters.approval ? ` · ${filters.approval.toLowerCase()}` : ''}
-                {filters.reservation ? ` · ${filters.reservation.toLowerCase()}` : ''}
-                {filters.from ? ` · from ${filters.from}` : ''}
-                {filters.to ? ` · through ${filters.to}` : ''}.
-              </p>
+              </div>
             )}
           </form>
           {data?.bookings &&
             (section === 'calendar' ? (
-              <Calendar bookings={data.bookings} onOpen={openBooking} onMonth={onCalendarMonth} />
+              <BookingCalendar
+                bookings={data.bookings}
+                onOpen={openBooking}
+                onMonth={onCalendarMonth}
+              />
             ) : (
-              <div className={styles.card}>
-                <div className={styles.cardHeading}>
-                  <h2>
-                    {section === 'payments'
-                      ? 'Cash ledger by booking'
-                      : section === 'contracts'
-                        ? 'Agreement register'
-                        : 'Booking register'}
-                  </h2>
-                  <span role="status">
-                    {data.total} records {loading ? '· updating…' : ''}
-                  </span>
-                </div>
-                {data.bookings.length > 0 && (
-                  <div className={`${styles.tableWrap} ${styles.desktopRecords}`}>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Booking / client</th>
-                          <th>Event schedule</th>
-                          {section === 'contracts' ? (
-                            <>
-                              <th>Latest version</th>
-                              <th>Contract status</th>
-                            </>
-                          ) : (
-                            <>
-                              <th>Approval</th>
-                              <th>Reservation</th>
-                              <th>Payment</th>
-                            </>
-                          )}
-                          <th>
-                            <span className={styles.srOnly}>Open record</span>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.bookings.map((b) => {
-                          const paid = paidTotal(b.payments),
-                            c = b.contracts[0];
-                          return (
-                            <tr key={b.id}>
-                              <td>
-                                <strong>{b.clientName}</strong>
-                                <small>
-                                  {b.reference} · {b.eventType}
-                                </small>
-                              </td>
-                              <td>
-                                {eventDate(b.startsAt)}
-                                <small>{b.packageName}</small>
-                              </td>
-                              {section === 'contracts' ? (
-                                <>
-                                  <td>{c ? `v${c.version}` : 'Not prepared'}</td>
-                                  <td>{c ? <Badge value={c.status} /> : <span>—</span>}</td>
-                                </>
-                              ) : (
-                                <>
-                                  <td>
-                                    <Badge value={b.approval} />
-                                  </td>
-                                  <td>
-                                    <Badge value={b.reservation} />
-                                  </td>
-                                  <td>
-                                    <Badge value={paymentStatus(b.totalCents, paid)} />
-                                    <small>
-                                      {money(paid)} / {money(b.totalCents)}
-                                    </small>
-                                  </td>
-                                </>
-                              )}
-                              <td>
-                                <button
-                                  className={`${styles.linkButton} ${styles.rowAction}`}
-                                  onClick={() => void openBooking(b)}
-                                  aria-label={`Open ${b.reference}`}
-                                >
-                                  Open
-                                  <ArrowUpRight size={15} />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                <MobileBookingRegister
-                  bookings={data.bookings}
-                  section={section}
-                  onOpen={openBooking}
-                />
-                {!data.bookings.length && (
-                  <Empty
-                    title={
-                      filters.q || advancedFilterCount ? 'No matching bookings' : 'No bookings yet'
-                    }
-                    detail={
-                      filters.q || advancedFilterCount
-                        ? 'Try another search term or clear the filters.'
-                        : section === 'bookings'
-                          ? 'Create a pending request to start reviewing an event.'
-                          : 'Booking records will appear here. Open a booking to manage its payments or agreements.'
-                    }
-                  />
-                )}
-              </div>
+              <BookingRegister
+                bookings={data.bookings}
+                total={data.total ?? data.bookings.length}
+                section={section}
+                loading={loading || isValidating}
+                filtered={!!filters.q || advancedFilterCount > 0}
+                statusView={statusView}
+                onStatusView={setStatusView}
+                onOpen={openBooking}
+              />
             ))}
           {!!data?.total && (
             <div className={styles.pagination}>
               <span>
-                Page {data.page} · {data.total} records · 50 per page
+                Page {data.page} · {data.total} records · {PAGE_SIZE} per page
               </span>
               <button
+                type="button"
                 className={styles.secondary}
                 disabled={(data.page ?? 1) <= 1 || loading}
                 onClick={() =>
@@ -536,8 +430,9 @@ export default function AdminWorkspace({
                 Previous
               </button>
               <button
+                type="button"
                 className={styles.secondary}
-                disabled={(data.page ?? 1) * 50 >= data.total || loading}
+                disabled={(data.page ?? 1) * PAGE_SIZE >= data.total || loading}
                 onClick={() =>
                   setFilters((v) => ({
                     ...v,
@@ -551,7 +446,9 @@ export default function AdminWorkspace({
           )}
         </>
       )}
-      {data && section === 'dashboard' && <Dashboard data={data} busy={busy} mutate={mutate} />}
+      {data && section === 'dashboard' && (
+        <DashboardOverview data={data} busy={busy} mutate={mutate} />
+      )}
       {data?.analyticsReport && section === 'analytics' && (
         <AnalyticsOverview
           report={data.analyticsReport}
@@ -587,7 +484,7 @@ export default function AdminWorkspace({
         <>
           <div className={styles.card}>
             <div className={styles.cardHeading}>
-              <h2>Activity history</h2>
+              <h2>Recent entries</h2>
               <span>Read-only · latest 50</span>
             </div>
             <form
@@ -598,10 +495,11 @@ export default function AdminWorkspace({
               }}
             >
               <label>
-                Search activity
+                Search entries
                 <input
+                  type="search"
                   aria-label="Search log descriptions"
-                  placeholder="Search activity…"
+                  placeholder="Search descriptions…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
@@ -624,21 +522,26 @@ export default function AdminWorkspace({
                     'Notifications',
                     'Services & Packages',
                   ].map((v) => (
-                    <option key={v}>{v}</option>
+                    // Values match stored audit modules; the label follows the sidebar name.
+                    <option key={v} value={v}>
+                      {v === 'Services & Packages' ? 'Packages' : v}
+                    </option>
                   ))}
                 </select>
               </label>
-              <button className={styles.secondary}>Filter</button>
+              <button type="submit" className={styles.secondary}>
+                Apply
+              </button>
             </form>
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="Log entries">
               <table>
                 <thead>
                   <tr>
-                    <th>Time</th>
-                    <th>Actor</th>
-                    <th>Module / action</th>
-                    <th>Activity</th>
-                    <th>Status</th>
+                    <th scope="col">Time</th>
+                    <th scope="col">Actor</th>
+                    <th scope="col">Module / action</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -663,13 +566,17 @@ export default function AdminWorkspace({
               </table>
             </div>
             {!data.logs?.length && (
-              <Empty title="No activity yet" detail="Actions appear here after they are saved." />
+              <div className={styles.empty}>
+                <h3>No entries yet</h3>
+                <p>Actions appear here after they are saved.</p>
+              </div>
             )}
             <div className={styles.pagination}>
               <span>
                 {data.total} entries · page {data.page}
               </span>
               <button
+                type="button"
                 className={styles.secondary}
                 disabled={(data.page ?? 1) <= 1}
                 onClick={() => filter('page', String((data.page ?? 1) - 1))}
@@ -677,8 +584,9 @@ export default function AdminWorkspace({
                 Previous
               </button>
               <button
+                type="button"
                 className={styles.secondary}
-                disabled={(data.page ?? 1) * 50 >= (data.total ?? 0)}
+                disabled={(data.page ?? 1) * PAGE_SIZE >= (data.total ?? 0)}
                 onClick={() =>
                   setFilters((v) => ({
                     ...v,
@@ -701,6 +609,7 @@ export default function AdminWorkspace({
               </div>
               {owner && (
                 <button
+                  type="button"
                   className={styles.secondary}
                   disabled={busy}
                   onClick={() => void mutate('notifications', {}).catch(() => {})}
@@ -725,347 +634,46 @@ export default function AdminWorkspace({
               </details>
             ))}
             {!data.outbox?.length && (
-              <Empty
-                title="No queued notices"
-                detail="Booking decisions and cash receipts automatically create standardized notices."
-              />
+              <div className={styles.empty}>
+                <h3>No queued notices</h3>
+                <p>
+                  Booking decisions and cash receipts automatically create standardized notices.
+                </p>
+              </div>
             )}
           </div>
           <div className={styles.card}>
-            <h2>Existing inquiry workflow executions</h2>
-            <p>Actual execution records, not a simulated health score.</p>
-            {data.workflows?.map((w) => (
-              <div className={styles.row} key={w.id}>
-                <span>
-                  {w.workflowName}
-                  <small>{eventDate(w.createdAt)}</small>
+            <div className={styles.cardHeading}>
+              <div>
+                <h2>Automation jobs</h2>
+                <p>Built-in emails, reminders and digests, with their actual status.</p>
+              </div>
+              <Link href="/admin/automation">
+                Open Automation <ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
+            </div>
+            {/* The API keeps its earlier field names (workflows / workflowName) for compatibility. */}
+            {data.workflows?.map((job) => (
+              <div className={styles.row} key={job.id}>
+                <span className={styles.grow}>
+                  <strong>{job.workflowName}</strong>
+                  <small>
+                    Queued {eventDate(job.createdAt)}
+                    {job.completedAt ? ` · sent ${eventDate(job.completedAt)}` : ''}
+                  </small>
                 </span>
-                <Badge value={w.status} />
+                <Badge value={job.status} />
               </div>
             ))}
-            {!data.workflows?.length && <p>No workflow execution has been recorded.</p>}
+            {!data.workflows?.length && (
+              <div className={styles.empty}>
+                <h3>No automation job has run yet.</h3>
+                <p>Jobs appear here after the first email, reminder or digest is prepared.</p>
+              </div>
+            )}
           </div>
         </>
       )}
     </>
-  );
-}
-function Empty({ title, detail }: { title: string; detail: string }) {
-  return (
-    <div className={styles.empty}>
-      <Clipboard />
-      <h3>{title}</h3>
-      <p>{detail}</p>
-    </div>
-  );
-}
-function Clipboard() {
-  return <Clock3 size={28} aria-hidden="true" />;
-}
-function Dashboard({ data, busy, mutate }: { data: AdminData; busy: boolean; mutate: Mutate }) {
-  const eventDate = useAdminDate();
-  const heldTestimonies = data.heldTestimonies ?? [];
-  const [actingId, setActingId] = useState<string | null>(null);
-
-  const handleTestimonyDecision = async (id: string, action: 'ALLOW' | 'DELETE') => {
-    setActingId(id);
-    try {
-      await mutate('dashboard', { op: 'testimony-action', id, action });
-    } finally {
-      setActingId(null);
-    }
-  };
-  return (
-    <>
-      <DashboardKpis summary={data.dashboardKpis} />
-      {data.dashboardInsights && <DashboardCharts insights={data.dashboardInsights} />}
-      <div className={styles.dashboardGrid}>
-        <div className={styles.card}>
-          <div className={styles.cardHeading}>
-            <h2>Coming up at Zion</h2>
-            <Link href="/admin/calendar">View calendar →</Link>
-          </div>
-          {data.upcoming?.map((b) => (
-            <div className={styles.row} key={b.id}>
-              <div className={styles.dateBlock}>
-                {new Date(b.startsAt).toLocaleDateString('en-PH', {
-                  timeZone: 'Asia/Manila',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </div>
-              <div className={styles.grow}>
-                <strong>
-                  {b.eventType} · {b.clientName}
-                </strong>
-                <small>
-                  {eventDate(b.startsAt)} · {b.guests} guests
-                </small>
-              </div>
-              <Badge value={b.reservation} />
-            </div>
-          ))}
-          {!data.upcoming?.length && (
-            <div className={styles.empty}>
-              <Clipboard />
-              <h3>No upcoming events</h3>
-            </div>
-          )}
-        </div>
-        <div className={styles.card}>
-          <div className={styles.cardHeading}>
-            <div>
-              <h2>Testimonies hold</h2>
-              <small>
-                Entries automatically flagged for profanity, propaganda, nudity, or unethical
-                content await your final decision.
-              </small>
-            </div>
-            <span
-              className={
-                heldTestimonies.length > 0
-                  ? styles.testimonyHoldCountRed
-                  : styles.testimonyHoldCountClear
-              }
-            >
-              {heldTestimonies.length > 0
-                ? `${heldTestimonies.length} flagged on hold`
-                : 'All clear'}
-            </span>
-          </div>
-          {heldTestimonies.length > 0 ? (
-            <div className={styles.testimonyHoldList}>
-              {heldTestimonies.map((item) => {
-                const isItemBusy = busy || actingId === item.id;
-                return (
-                  <article className={styles.testimonyHoldItem} key={item.id}>
-                    <div className={styles.testimonyHoldTop}>
-                      <div className={styles.grow}>
-                        <div className={styles.testimonyHoldTitleRow}>
-                          <strong>{item.clientName}</strong>
-                          <span className={styles.testimonyRedTag}>
-                            <ShieldAlert size={13} aria-hidden="true" />
-                            Red · On Hold
-                          </span>
-                        </div>
-                        <small>
-                          {item.eventType} · {eventDate(item.eventDate)} ·{' '}
-                          <span className={styles.testimonyRatingInline}>
-                            <Star size={12} aria-hidden="true" />
-                            {item.overallRating}/5
-                          </span>
-                        </small>
-                      </div>
-                    </div>
-
-                    <div className={styles.testimonyReasonRow}>
-                      {item.flagReasons.map((reason) => (
-                        <span className={styles.testimonyReasonChip} key={reason}>
-                          {reason}
-                        </span>
-                      ))}
-                    </div>
-
-                    <p className={styles.testimonyHoldComment}>&ldquo;{item.comment}&rdquo;</p>
-
-                    {item.photoUrl && (
-                      <div className={styles.testimonyPhotoPreview}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.photoUrl}
-                          alt={`Attachment from ${item.clientName}`}
-                          className={styles.testimonyPhotoThumb}
-                        />
-                        <a
-                          href={item.photoUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={styles.testimonyPhotoLink}
-                        >
-                          Inspect attached image
-                          <ArrowUpRight size={13} aria-hidden="true" />
-                        </a>
-                      </div>
-                    )}
-
-                    <div className={styles.testimonyHoldActions}>
-                      <button
-                        type="button"
-                        className={styles.testimonyAllowBtn}
-                        disabled={isItemBusy}
-                        aria-label={`Allow and publish testimony from ${item.clientName}`}
-                        onClick={() => void handleTestimonyDecision(item.id, 'ALLOW')}
-                      >
-                        <CheckCircle2 size={15} aria-hidden="true" />
-                        Allow &amp; Publish
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.testimonyDeleteBtn}
-                        disabled={isItemBusy}
-                        aria-label={`Delete testimony from ${item.clientName}`}
-                        onClick={() => void handleTestimonyDecision(item.id, 'DELETE')}
-                      >
-                        <Trash2 size={15} aria-hidden="true" />
-                        Delete
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={styles.empty}>
-              <ShieldCheck size={28} aria-hidden="true" />
-              <h3>No testimonies on hold</h3>
-              <p>
-                Clean client testimonies publish automatically. Any flagged text or image will
-                appear here in red for your review.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className={styles.card}>
-        <div className={styles.cardHeading}>
-          <div>
-            <h2>Inquiries awaiting review</h2>
-          </div>
-        </div>
-        {data.inquiries?.map((i) => (
-          <div className={styles.row} key={i.id}>
-            <div className={styles.grow}>
-              <strong>{i.fullName}</strong>
-              <small>
-                {i.inquiryReference} · {i.eventInterest || 'General inquiry'}
-              </small>
-            </div>
-            <Link className={styles.secondary} href={`/admin/bookings?inquiry=${i.id}`}>
-              Review as request
-              <ArrowUpRight size={14} />
-            </Link>
-          </div>
-        ))}
-        {!data.inquiries?.length && <p>No new business inquiries.</p>}
-      </div>
-    </>
-  );
-}
-function Calendar({
-  bookings,
-  onOpen,
-  onMonth,
-}: {
-  bookings: Booking[];
-  onOpen: (b: Booking) => Promise<void>;
-  onMonth: (from: string, to: string) => void;
-}) {
-  const eventDate = useAdminDate();
-  const [month, setMonth] = useState(
-    () => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })),
-  );
-  const year = month.getFullYear(),
-    m = month.getMonth(),
-    first = new Date(year, m, 1),
-    days = new Date(year, m + 1, 0).getDate();
-  useEffect(() => {
-    const pad = (v: number) => String(v).padStart(2, '0');
-    onMonth(`${year}-${pad(m + 1)}-01`, `${year}-${pad(m + 1)}-${days}`);
-  }, [year, m, days, onMonth]);
-  return (
-    <div className={styles.card}>
-      <div className={styles.cardHeading}>
-        <div>
-          <h2>
-            {month.toLocaleDateString('en-PH', {
-              month: 'long',
-              year: 'numeric',
-            })}
-          </h2>
-          <p>Manila time · filters apply · paginated results</p>
-        </div>
-        <div className={styles.actions}>
-          <button
-            className={styles.secondary}
-            aria-label="Previous month"
-            onClick={() => setMonth(new Date(year, m - 1, 1))}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <button className={styles.secondary} onClick={() => setMonth(new Date())}>
-            Today
-          </button>
-          <button
-            className={styles.secondary}
-            aria-label="Next month"
-            onClick={() => setMonth(new Date(year, m + 1, 1))}
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
-      <div className={styles.calendar}>
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-          <div className={styles.weekday} key={d}>
-            {d}
-          </div>
-        ))}
-        {Array.from({ length: first.getDay() }, (_, i) => (
-          <div key={`blank-${i}`} className={styles.calendarBlank} />
-        ))}
-        {Array.from({ length: days }, (_, i) => {
-          const date = `${year}-${String(m + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-          const events = bookings.filter(
-            (b) =>
-              new Date(b.startsAt).toLocaleDateString('en-CA', {
-                timeZone: 'Asia/Manila',
-              }) <= date &&
-              new Date(b.endsAt).toLocaleDateString('en-CA', {
-                timeZone: 'Asia/Manila',
-              }) >= date,
-          );
-          return (
-            <div className={styles.calendarDay} key={date}>
-              <strong>{i + 1}</strong>
-              {events.map((b) => (
-                <button
-                  className={`${styles.calendarEvent} ${b.reservation === 'CONFIRMED' ? styles.confirmedEvent : ''}`}
-                  key={b.id}
-                  onClick={() => void onOpen(b)}
-                >
-                  <span>{b.clientName}</span>
-                  <small>
-                    {b.eventType} · {b.reservation.toLowerCase()}
-                  </small>
-                </button>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-      <div
-        className={`${styles.agenda} ${
-          bookings.some((b) => {
-            const date = new Date(b.startsAt).toLocaleDateString('en-CA', {
-              timeZone: 'Asia/Manila',
-            });
-            return !date.startsWith(`${year}-${String(m + 1).padStart(2, '0')}-`);
-          })
-            ? styles.filteredAgenda
-            : ''
-        }`}
-      >
-        <h3>Schedule list</h3>
-        {bookings.map((b) => (
-          <button className={styles.row} key={b.id} onClick={() => void onOpen(b)}>
-            <span>
-              {eventDate(b.startsAt)} — {b.clientName}
-            </span>
-            <Badge value={b.reservation} />
-          </button>
-        ))}
-        {!bookings.length && <p>No events match the selected filters.</p>}
-      </div>
-    </div>
   );
 }

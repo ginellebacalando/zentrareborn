@@ -1,9 +1,6 @@
 .report {
   min-width: 0;
 }
-.report button {
-  border-color: var(--admin-action);
-}
 .controls {
   display: flex;
   align-items: flex-end;
@@ -14,7 +11,6 @@
   border: 1px solid var(--admin-divider);
   border-radius: var(--radius-card);
   margin-bottom: var(--space-6);
-  box-shadow: var(--admin-panel-shadow);
 }
 .controls label {
   flex: 1 1 10rem;
@@ -26,7 +22,6 @@
 }
 .controls input,
 .controls select {
-  border-color: var(--admin-action);
   width: 100%;
   min-width: 0;
 }
@@ -38,7 +33,7 @@
 .reportHeading {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-4);
 }
@@ -52,9 +47,14 @@
   font-size: var(--type-small);
 }
 .report h2 {
-  color: var(--admin-ink);
+  color: var(--admin-heading);
   font-family: var(--font-zion-sans);
   font-size: var(--type-card-title);
+}
+.report > .reportHeading h2 {
+  font-size: var(--type-workspace-title);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-heading);
 }
 .reportHeading p,
 .card p {
@@ -79,22 +79,22 @@
   display: grid;
   gap: var(--space-6);
 }
+/* Business trend: a white card whose left edge uses the matching status hue. */
 .health {
   padding: var(--layout-card-padding);
-  border: 1px solid var(--admin-action);
+  border: 1px solid var(--admin-divider);
+  border-left: var(--space-1) solid var(--admin-teal);
   border-radius: var(--radius-card);
   background: var(--admin-surface-card);
-  border-left-width: var(--space-2);
-  box-shadow: var(--admin-panel-shadow);
 }
 .health.positive {
-  border-left-color: var(--admin-taupe);
+  border-left-color: var(--admin-status-confirmed);
 }
 .health.attention {
-  border-left-color: var(--admin-rose);
+  border-left-color: var(--admin-status-cancelled);
 }
 .health.caution {
-  border-left-color: var(--admin-action);
+  border-left-color: var(--admin-status-pending);
 }
 .healthTitle {
   display: flex;
@@ -103,15 +103,18 @@
 }
 .health .overline {
   margin: 0 0 var(--space-1);
-  font-size: var(--type-small);
   color: var(--admin-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 .health h2 {
   font-size: var(--type-card-title);
 }
 .healthMark {
   margin-left: auto;
-  color: var(--admin-accent-ink);
+  color: var(--admin-teal-ink);
   flex-shrink: 0;
 }
 .health > p {
@@ -129,6 +132,19 @@
   border-top: 1px solid var(--admin-divider);
   padding-top: var(--space-4);
 }
+.comparisons > div > strong {
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+.comparisons > div > span:not(.delta) {
+  color: var(--admin-heading);
+  font-size: var(--type-workspace-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-heading);
+}
 .comparisons small {
   display: inline;
   font-size: var(--type-small);
@@ -143,67 +159,70 @@
   color: var(--admin-muted);
   width: fit-content;
   padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-card);
+  border-radius: 999px;
   background: var(--admin-surface-subtle);
 }
 .delta svg {
   flex-shrink: 0;
 }
+/* Teal KPI cards (white on teal ≥4.5:1). */
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
 }
 .metric {
-  border: 1px solid var(--admin-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   border-radius: var(--radius-card);
   padding: var(--space-6);
-  color: var(--admin-on-color);
+  background: var(--admin-teal);
+  color: var(--admin-on-teal);
   min-width: 0;
 }
 .metric h3 {
   color: inherit;
   font-family: var(--font-zion-sans);
-  font-size: var(--type-small);
-  font-weight: 500;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 .metric > strong {
   display: block;
-  font-family: var(--font-zion-serif);
-  font-size: var(--type-workspace-title);
+  font-family: var(--font-zion-sans);
+  font-size: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
   line-height: var(--line-heading);
-  margin-block: var(--space-3) 0;
   overflow-wrap: anywhere;
 }
-.metric p,
-.metric small {
-  color: inherit;
-  font-size: var(--type-small);
-  margin: 0;
-  line-height: var(--line-body);
+.metricPeriod {
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
-.metric small {
-  display: block;
-  margin-top: var(--space-2);
+.metricTrend {
+  margin-top: auto;
+  padding-top: var(--space-2);
 }
-.oak {
-  background: var(--admin-oak);
-}
-.peach {
-  background: var(--admin-peach);
-}
-.taupe {
-  background: var(--admin-taupe);
-}
-.rose {
-  background: var(--admin-rose);
+.metricTrend svg {
+  width: 100%;
+  height: var(--space-8);
 }
 .notice,
 .warning {
-  background: var(--admin-surface-highlight);
-  border-left: var(--space-1) solid var(--admin-accent-ink);
+  background: var(--admin-status-pending-soft);
+  color: var(--admin-status-pending-ink);
+  border-left: var(--space-1) solid var(--admin-status-pending);
   padding: var(--space-4);
   border-radius: var(--radius-control);
+}
+.report .notice h2,
+.report .notice p {
+  color: var(--admin-status-pending-ink);
 }
 .notice p {
   margin-top: var(--space-2);
@@ -221,11 +240,9 @@
   background: var(--admin-surface-card);
   border: 1px solid var(--admin-divider);
   border-radius: var(--radius-card);
-  box-shadow: var(--admin-panel-shadow);
 }
 .model {
   min-width: 0;
-  transform-origin: center;
 }
 .collectionLegend {
   margin: 0;
@@ -258,8 +275,11 @@
   align-content: start;
 }
 .summaryTiles strong {
-  font-family: var(--font-zion-serif);
+  color: var(--admin-heading);
+  font-family: var(--font-zion-sans);
   font-size: var(--type-workspace-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .summaryTiles small {
@@ -267,8 +287,11 @@
   font-size: var(--type-small);
 }
 .summaryTiles h3 {
+  color: var(--admin-muted);
   font-family: var(--font-zion-sans);
-  font-size: var(--type-body);
+  font-size: var(--type-caption);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 .breakdown {
   margin: 0;
@@ -287,16 +310,15 @@
   position: absolute;
   inset: auto auto 0 0;
   height: var(--space-2);
-  border-radius: var(--space-1);
+  border-radius: 999px;
 }
 .breakdown > div::before {
   width: 100%;
-  background: var(--admin-surface-page);
+  background: var(--admin-surface-subtle);
 }
 .breakdown > div::after {
   width: var(--share);
-  background: var(--admin-taupe);
-  box-shadow: 0 var(--space-1) 0 color-mix(in srgb, var(--admin-taupe) 70%, var(--admin-ink));
+  background: var(--admin-teal);
 }
 .breakdown dt {
   font-size: var(--type-small);
@@ -306,33 +328,19 @@
 .breakdown dd {
   margin: 0;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .motion .reportBody > * {
   animation: report-arrive var(--motion-slow) var(--motion-ease);
 }
-.motion .model {
-  animation: model-settle var(--motion-slow) var(--motion-ease);
-  transition: transform var(--motion-normal) var(--motion-ease);
-}
-@media (hover: hover) {
-  .motion .card:hover .model {
-    transform: perspective(60rem) rotateX(2deg) translateY(-2px);
-  }
-}
 @keyframes report-arrive {
   from {
+    opacity: 0.6;
     transform: translateY(var(--space-2));
   }
   to {
+    opacity: 1;
     transform: translateY(0);
-  }
-}
-@keyframes model-settle {
-  from {
-    transform: perspective(60rem) rotateX(5deg) translateY(var(--space-2));
-  }
-  to {
-    transform: perspective(60rem) rotateX(0) translateY(0);
   }
 }
 @media (max-width: 1200px) {
@@ -363,12 +371,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .motion .reportBody > *,
-  .motion .model {
+  .motion .reportBody > * {
     animation: none;
-    transition: none;
-  }
-  .motion .card:hover .model {
-    transform: none;
   }
 }

@@ -5,6 +5,8 @@ import { AdminError, adminResponse, checkMutationOrigin, requireAdmin } from '@/
 import { adminRead, adminMutate } from '@/lib/admin/service';
 
 export const runtime = 'nodejs';
+// Leaves time for the immediate email attempt (with calendar invite) that runs after a decision.
+export const maxDuration = 30;
 function failure(error: unknown) {
   if (error instanceof AdminError) return adminResponse({ error: error.message }, error.status);
   if (error instanceof ZodError)
@@ -58,7 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
     const op = raw && typeof raw === 'object' && 'op' in raw ? raw.op : null;
     const allowed: Record<string, string[]> = {
       dashboard: ['testimony-action'],
-      bookings: ['create-booking', 'booking-action'],
+      bookings: ['create-booking', 'booking-action', 'edit-booking'],
       payments: ['cash-receipt', 'void-receipt'],
       contracts: ['create-contract', 'contract-action'],
       profile: ['profile'],

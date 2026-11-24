@@ -14,9 +14,12 @@ import {
   CircleUserRound,
   FileSignature,
   LogOut,
+  Mail,
   MessageSquare,
+  Moon,
   RefreshCw,
   ShieldCheck,
+  Sun,
   TriangleAlert,
   Wallet,
   X,
@@ -24,6 +27,7 @@ import {
 import type { AdminNotificationSummary } from './types';
 import styles from './admin.module.css';
 import AdminAvatar from './AdminAvatar';
+import { useAdminPreferences } from './AdminPreferencesProvider';
 
 export type AdminHeaderUser = {
   fullName: string | null;
@@ -53,12 +57,14 @@ export default function AdminAccountControls({
   onNavigate: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const pathname = usePathname();
+  const { theme, toggleTheme } = useAdminPreferences();
   const [panel, setPanel] = useState<'notifications' | 'profile' | null>(null);
   const controlsRef = useRef<HTMLElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
   const profileRef = useRef<HTMLButtonElement>(null);
   const displayName = user.fullName?.trim() || user.username;
   const roleLabel = user.role === 'SUPERADMIN' ? 'Super Administrator' : 'Administrator';
+  const roleShort = user.role === 'SUPERADMIN' ? 'Super admin' : 'Admin';
   const activePanel = inactive ? null : panel;
   const { data, error, isLoading, mutate } = useSWR<AdminNotificationSummary>(
     user.mustChangePassword ? null : '/api/admin/notifications',
@@ -71,6 +77,7 @@ export default function AdminAccountControls({
     { refreshInterval: 60000, shouldRetryOnError: false },
   );
   const notifications = data?.notifications ?? [];
+  const newInquiries = !error && notifications.some((notice) => notice.id === 'new-inquiries');
 
   useEffect(() => {
     if (!activePanel) return;
@@ -114,11 +121,25 @@ export default function AdminAccountControls({
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPanel(null);
       }}
     >
+      <button
+        type="button"
+        className={styles.headerIcon}
+        aria-label="Dark theme"
+        aria-pressed={theme === 'dark'}
+        title={theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'}
+        onClick={toggleTheme}
+      >
+        {theme === 'dark' ? (
+          <Sun size={20} strokeWidth={1.5} aria-hidden="true" />
+        ) : (
+          <Moon size={20} strokeWidth={1.5} aria-hidden="true" />
+        )}
+      </button>
       <div className={styles.accountPopoverAnchor}>
         <button
           ref={bellRef}
           type="button"
-          className={styles.notificationBell}
+          className={styles.headerIcon}
           aria-label={`Notifications${notifications.length && !error ? `, ${notifications.length} ${notifications.length === 1 ? 'alert' : 'alerts'}` : ''}`}
           title="Notifications"
           aria-expanded={activePanel === 'notifications'}
@@ -128,7 +149,7 @@ export default function AdminAccountControls({
             if (!user.mustChangePassword) void mutate();
           }}
         >
-          <Bell size={21} strokeWidth={1.65} aria-hidden="true" />
+          <Bell size={20} strokeWidth={1.5} aria-hidden="true" />
           {notifications.length > 0 && !error && (
             <span className={styles.notificationCount} aria-hidden="true">
               {notifications.length}
@@ -155,31 +176,31 @@ export default function AdminAccountControls({
                   bellRef.current?.focus();
                 }}
               >
-                <X size={17} />
+                <X size={17} aria-hidden="true" />
               </button>
             </div>
             <div className={styles.notificationList} aria-live="polite" aria-busy={isLoading}>
               {user.mustChangePassword ? (
                 <div className={styles.notificationEmpty}>
-                  <ShieldCheck size={25} />
+                  <ShieldCheck size={25} aria-hidden="true" />
                   <strong>Secure your account</strong>
                   <p>Change your password in your profile to view operational updates.</p>
                   <Link href="/admin/profile" onClick={navigate}>
-                    Open my profile <ArrowUpRight size={14} />
+                    Open my profile <ArrowUpRight size={14} aria-hidden="true" />
                   </Link>
                 </div>
               ) : error ? (
                 <div className={styles.notificationEmpty} role="status">
-                  <TriangleAlert size={25} />
+                  <TriangleAlert size={25} aria-hidden="true" />
                   <strong>Notifications are unavailable</strong>
                   <p>{error.message}</p>
                   <button type="button" className={styles.linkButton} onClick={() => void mutate()}>
-                    <RefreshCw size={14} /> Try again
+                    <RefreshCw size={14} aria-hidden="true" /> Try again
                   </button>
                 </div>
               ) : isLoading ? (
                 <div className={styles.notificationEmpty} role="status">
-                  <RefreshCw size={24} />
+                  <RefreshCw size={24} aria-hidden="true" />
                   <p>Loading notifications…</p>
                 </div>
               ) : notifications.length ? (
@@ -195,19 +216,23 @@ export default function AdminAccountControls({
                       <span
                         className={`${styles.notificationIcon} ${notice.kind === 'warning' ? styles.notificationWarning : ''}`}
                       >
-                        <Icon size={18} strokeWidth={1.7} />
+                        <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
                       </span>
                       <span className={styles.notificationText}>
                         <strong>{notice.title}</strong>
                         <span>{notice.message}</span>
                       </span>
-                      <ArrowUpRight size={15} className={styles.notificationArrow} />
+                      <ArrowUpRight
+                        size={15}
+                        className={styles.notificationArrow}
+                        aria-hidden="true"
+                      />
                     </Link>
                   );
                 })
               ) : (
                 <div className={styles.notificationEmpty}>
-                  <CheckCheck size={27} />
+                  <CheckCheck size={27} aria-hidden="true" />
                   <strong>You’re all caught up</strong>
                   <p>No items need your attention right now.</p>
                 </div>
@@ -217,34 +242,33 @@ export default function AdminAccountControls({
           </section>
         )}
       </div>
+      <Link
+        href="/admin/inquiries"
+        className={`${styles.headerIcon} ${styles.messagesLink}`}
+        onClick={navigate}
+        aria-label={newInquiries ? 'Messages, new inquiries waiting' : 'Messages'}
+        title="Messages (website inquiries)"
+        aria-current={pathname === '/admin/inquiries' ? 'page' : undefined}
+      >
+        <Mail size={20} strokeWidth={1.5} aria-hidden="true" />
+        {newInquiries && <span className={styles.headerDot} aria-hidden="true" />}
+      </Link>
 
       <div className={styles.accountPopoverAnchor}>
-        <div className={styles.profileControls}>
-          <Link
-            href="/admin/profile"
-            onClick={navigate}
-            aria-label="Open my profile"
-            title="My Profile"
-            aria-current={pathname === '/admin/profile' ? 'page' : undefined}
-            className={styles.profileAvatarLink}
-          >
-            <AdminAvatar user={user} />
-          </Link>
-          <button
-            ref={profileRef}
-            type="button"
-            className={styles.profileMenuToggle}
-            aria-label="Open profile menu"
-            title="Open profile menu"
-            aria-expanded={activePanel === 'profile'}
-            aria-controls="admin-profile-panel"
-            onClick={() => setPanel(panel === 'profile' ? null : 'profile')}
-          >
-            <span className={styles.profileChevron}>
-              <ChevronDown size={14} aria-hidden="true" />
-            </span>
-          </button>
-        </div>
+        <button
+          ref={profileRef}
+          type="button"
+          className={styles.accountButton}
+          aria-label={`Account menu, ${displayName}, ${roleShort}`}
+          title="Account menu"
+          aria-expanded={activePanel === 'profile'}
+          aria-controls="admin-profile-panel"
+          onClick={() => setPanel(panel === 'profile' ? null : 'profile')}
+        >
+          <AdminAvatar user={user} />
+          <span className={styles.accountRole}>{roleShort}</span>
+          <ChevronDown size={16} className={styles.accountChevron} aria-hidden="true" />
+        </button>
         {activePanel === 'profile' && (
           <section
             id="admin-profile-panel"
@@ -273,8 +297,8 @@ export default function AdminAccountControls({
                 onClick={navigate}
                 aria-current={pathname === '/admin/profile' ? 'page' : undefined}
               >
-                <CircleUserRound size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>My Profile</span>
+                <CircleUserRound size={18} strokeWidth={1.5} aria-hidden="true" />
+                <span>My profile</span>
               </Link>
             </div>
             <div className={styles.profilePanelFooter}>
@@ -283,7 +307,7 @@ export default function AdminAccountControls({
                 className={`${styles.profileMenuLink} ${styles.profileSignOut}`}
                 onClick={() => void signOut({ callbackUrl: '/admin?signed-out=1' })}
               >
-                <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
+                <LogOut size={18} strokeWidth={1.5} aria-hidden="true" />
                 <span>Sign out</span>
               </button>
             </div>

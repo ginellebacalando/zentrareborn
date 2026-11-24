@@ -4,10 +4,10 @@ import type { AnalyticsReport } from '@/lib/admin/analytics-types';
 import { compactReportCash, conversionRate, reportDates } from '@/lib/admin/analytics-export';
 import { money } from '@/lib/admin/domain';
 import {
-  CashArea,
+  AreaChart,
   ChartDataTable,
-  ExtrudedBars,
-  ExtrudedDonut,
+  BarChart,
+  DonutChart,
   chartCount,
   chartTones,
 } from './ChartPrimitives';
@@ -38,7 +38,7 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
           <strong className={chart.total}>{compactReportCash(c.cashCents)}</strong>
         </div>
         <div className={styles.model}>
-          <CashArea
+          <AreaChart
             points={buckets.map((b) => ({ key: b.key, label: b.label, value: b.cashCents }))}
             label={`${money(c.cashCents)} cash income by ${range.bucketUnit}. Exact values follow in an accessible table.`}
           />
@@ -74,7 +74,7 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
           </div>
         </div>
         <div className={styles.model}>
-          <ExtrudedDonut
+          <DonutChart
             slices={collection}
             label={`${money(s.paidOnSecuredCents)} applied and ${money(s.outstandingCents)} pending out of ${money(s.securedContractCents)} secured contract value.`}
             center={
@@ -129,16 +129,16 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
         </div>
         <div className={chart.legend}>
           <span>
-            <i className={`${chart.swatch} ${chart.oak}`} />
+            <i className={`${chart.swatch} ${chartTones[0]}`} />
             Secured event dates
           </span>
           <span>
-            <i className={`${chart.swatch} ${chart.rose}`} />
+            <i className={`${chart.swatch} ${chartTones[1]}`} />
             Completed events
           </span>
         </div>
         <div className={styles.model}>
-          <ExtrudedBars
+          <BarChart
             points={buckets.map((b) => ({
               key: b.key,
               label: b.label,
@@ -183,7 +183,7 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
           </strong>
         </div>
         <div className={styles.model}>
-          <ExtrudedBars
+          <BarChart
             points={stages.map((stage) => ({
               key: stage.key,
               label: stage.label,

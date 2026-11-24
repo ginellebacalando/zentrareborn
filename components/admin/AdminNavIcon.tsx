@@ -1,44 +1,41 @@
-import type { CSSProperties } from 'react';
+import {
+  CalendarCheck,
+  CalendarDays,
+  ChartLine,
+  FileSignature,
+  History,
+  Inbox,
+  LayoutDashboard,
+  MessagesSquare,
+  Package,
+  Settings,
+  Users,
+  Wallet,
+  Workflow,
+  type LucideIcon,
+} from 'lucide-react';
+import type { AdminModuleKey } from './navigation';
 import styles from './admin.module.css';
 
-const images = {
-  dashboard: 'dashboard.png',
-  bookings: 'booking.png',
-  calendar: 'calendar.png',
-  inquiries: 'inquiries.png',
-  analytics: 'reports.png',
-  settings: 'profile-settings.png',
-  services: 'services.png',
-} as const;
-const glyphs = {
-  logs: 'fi-rr-time-past',
-  contracts: 'fi-rr-file-signature',
-  payments: 'fi-rr-wallet',
-  team: 'fi-rr-users',
-} as const;
-export type AdminNavIconName = keyof typeof images | keyof typeof glyphs;
+/** One thin outline family (1.5px stroke) for every sidebar destination, as the plan asks. */
+const icons: Record<AdminModuleKey, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  bookings: CalendarCheck,
+  contracts: FileSignature,
+  calendar: CalendarDays,
+  inquiries: Inbox,
+  payments: Wallet,
+  services: Package,
+  zeni: MessagesSquare,
+  analytics: ChartLine,
+  team: Users,
+  automation: Workflow,
+  logs: History,
+  settings: Settings,
+};
+export type AdminNavIconName = AdminModuleKey;
 
 export default function AdminNavIcon({ name }: { name: AdminNavIconName }) {
-  if (name in images) {
-    const source = `/images/admin/icons/${images[name as keyof typeof images]}`;
-    return (
-      <span
-        className={styles.sidebarIcon}
-        aria-hidden="true"
-        style={
-          {
-            maskImage: `url("${source}")`,
-            WebkitMaskImage: `url("${source}")`,
-            backgroundColor: 'currentColor',
-          } as CSSProperties
-        }
-      />
-    );
-  }
-  return (
-    <i
-      className={`fi ${glyphs[name as keyof typeof glyphs]} ${styles.sidebarIcon}`}
-      aria-hidden="true"
-    />
-  );
+  const Icon = icons[name];
+  return <Icon className={styles.sidebarIcon} size={20} strokeWidth={1.5} aria-hidden="true" />;
 }

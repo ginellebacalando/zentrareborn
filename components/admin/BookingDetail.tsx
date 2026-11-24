@@ -1,14 +1,84 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { X, Download, ShieldCheck, ChevronDown } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import Link from 'next/link';
+import { X, Download, ShieldCheck, ChevronDown, Package, Pencil } from 'lucide-react';
 import { money, paidTotal, paymentStatus, confirmationError } from '@/lib/admin/domain';
+import { displayStatus, displayStatusLabels } from '@/lib/admin/dashboard-status';
 import { Badge } from './AdminBadge';
+import { StatusDot, statusTone } from './BookingStatus';
+import { BookingForm } from './Forms';
+import { manilaInput } from './datetime';
 import type { Booking, Mutate, Policy } from './types';
 import styles from './admin.module.css';
 import { useAdminDate } from './AdminPreferencesProvider';
-export function manilaInput(date: Date = new Date()) {
-  return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString().slice(0, 16);
+
+type BookingAction =
+  'VERIFY' | 'FLAG' | 'APPROVE' | 'REJECT' | 'REVIEW_POLICY' | 'CONFIRM' | 'CANCEL' | 'COMPLETE';
+type ActionOption = {
+  action: BookingAction;
+  label: string;
+  tone: 'primary' | 'secondary' | 'danger';
+  /** Why the server would refuse the action right now; the button is disabled with this note. */
+  blocked?: string | null;
+};
+
+/**
+ * Figma's actions mapped onto the existing state machine (lib/admin/service.ts); nothing here adds
+ * a transition. "Mark as pending" is approval (request → pending), "Confirm" secures the date and
+ * "Cancel booking" closes it. The server re-checks every rule; the client only hides actions the
+ * server would always refuse and explains the ones that are temporarily blocked.
+ */
+function bookingActions(
+  b: Booking,
+  paid: number,
+  policy: Policy | undefined,
+  confirmHint: string | null,
+): { main: ActionOption[]; more: ActionOption[] } {
+  if (['CANCELLED', 'COMPLETED'].includes(b.reservation)) return { main: [], more: [] };
+  const requested = b.reservation === 'REQUESTED';
+  const main: ActionOption[] = [];
+  const more: ActionOption[] = [];
+  if (requested && b.approval !== 'APPROVED')
+    main.push({
+      action: 'APPROVE',
+      label: 'Mark as pending',
+      tone: 'secondary',
+      blocked: b.verification !== 'VERIFIED' ? 'Verify the client contact before approval.' : null,
+    });
+  if (requested)
+    main.push({ action: 'CONFIRM', label: 'Confirm', tone: 'primary', blocked: confirmHint });
+  if (b.reservation === 'CONFIRMED')
+    main.push({
+      action: 'COMPLETE',
+      label: 'Complete event',
+      tone: 'primary',
+      blocked:
+        new Date(b.endsAt) > new Date()
+          ? 'Available after the event has ended.'
+          : paid < b.totalCents
+            ? 'Settle the cash balance before completing the event.'
+            : null,
+    });
+  main.push({ action: 'CANCEL', label: 'Cancel booking', tone: 'danger' });
+  if (b.reservation !== 'CONFIRMED' && b.verification !== 'VERIFIED')
+    more.push({ action: 'VERIFY', label: 'Verify contact', tone: 'secondary' });
+  if (b.reservation !== 'CONFIRMED' && b.verification !== 'FLAGGED')
+    more.push({ action: 'FLAG', label: 'Flag as suspicious', tone: 'danger' });
+  if (requested && b.approval !== 'REJECTED')
+    more.push({ action: 'REJECT', label: 'Reject request', tone: 'danger' });
+  if (requested)
+    more.push({
+      action: 'REVIEW_POLICY',
+      label: 'Re-review under current policy',
+      tone: 'secondary',
+      blocked:
+        !policy?.reviewed || b.verification !== 'VERIFIED'
+          ? 'Review the venue policy in Settings and verify this request first.'
+          : null,
+    });
+  return { main, more };
 }
+
 export default function BookingDetail({
   booking: b,
   owner,
@@ -29,19 +99,37 @@ export default function BookingDetail({
   const eventDate = useAdminDate();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailRef = useRef<HTMLElement>(null);
+  const noteId = useId();
+  const id = useId();
+  const [editing, setEditing] = useState(false);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreEditFocus = useRef(false);
   useEffect(() => {
     detailRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
     headingRef.current?.focus({ preventScroll: true });
   }, [b.id]);
-  const [action, setAction] = useState('VERIFY');
+  useEffect(() => {
+    if (editing || !restoreEditFocus.current) return;
+    restoreEditFocus.current = false;
+    editButtonRef.current?.focus();
+  }, [editing]);
   const paid = paidTotal(b.payments),
     closed = ['CANCELLED', 'COMPLETED'].includes(b.reservation);
+  const status = displayStatus(b);
   const confirmHint =
     b.reservation !== 'REQUESTED'
       ? null
       : policy && b.policyVersion !== policy.version
         ? 'Re-review this request under the current venue policy, then approve it again.'
         : confirmationError(b, paid, policy?.reviewed ?? false);
+  const actions = bookingActions(b, paid, policy, confirmHint);
+  const blocked = [...actions.main, ...actions.more].filter((option) => option.blocked);
+  const paidShare = b.totalCents ? Math.min(100, (paid / b.totalCents) * 100) : 0;
+  // Mirrors the server's edit-booking rules: requested bookings without an issued/signed agreement.
+  const lockedByAgreement = b.contracts.some(
+    (contract) => contract.status === 'ISSUED' || contract.status === 'SIGNED',
+  );
+  const canEdit = b.reservation === 'REQUESTED' && !lockedByAgreement && !!policy;
   async function submitReceipt(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
@@ -59,15 +147,63 @@ export default function BookingDetail({
       form.reset();
     } catch {}
   }
+  async function submitAction(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const action = submitter instanceof HTMLButtonElement ? submitter.value : '';
+    if (!action) return;
+    if (
+      action === 'CANCEL' &&
+      !window.confirm(
+        'Cancel this booking? The record and its history are kept, and the date is released.',
+      )
+    )
+      return;
+    try {
+      await mutate('bookings', {
+        op: 'booking-action',
+        id: b.id,
+        revision: b.revision,
+        action,
+        reason: new FormData(form).get('reason'),
+      });
+      form.reset();
+    } catch {}
+  }
+  function actionButton(option: ActionOption) {
+    return (
+      <button
+        key={option.action}
+        type="submit"
+        name="action"
+        value={option.action}
+        className={
+          option.tone === 'primary'
+            ? styles.primary
+            : `${styles.secondary} ${option.tone === 'danger' ? styles.dangerAction : ''}`
+        }
+        disabled={busy || !!option.blocked}
+        aria-describedby={option.blocked ? `${id}-${option.action}` : undefined}
+      >
+        {option.label}
+      </button>
+    );
+  }
   return (
     <section
       ref={detailRef}
-      className={`${styles.card} ${styles.detail}`}
+      className={`${styles.card} ${styles.detail} ${statusTone[status]}`}
       aria-label={`Booking ${b.reference}`}
     >
-      <div className={styles.cardHeading}>
+      <div className={styles.detailHeader}>
         <div>
-          <p className={styles.eyebrow}>{b.reference}</p>
+          <p className={styles.detailStatus}>
+            <StatusDot status={status} />
+            <span>{displayStatusLabels[status]}</span>
+            <span aria-hidden="true">·</span>
+            <span>{b.reference}</span>
+          </p>
           <h2 ref={headingRef} tabIndex={-1} aria-label={`Booking ${b.reference}: ${b.clientName}`}>
             {b.clientName}
           </h2>
@@ -75,122 +211,191 @@ export default function BookingDetail({
             {b.eventType} · {b.packageName}
           </p>
         </div>
-        <button className={styles.secondary} onClick={onClose} aria-label="Close booking detail">
-          <X size={18} />
+        <button
+          type="button"
+          className={styles.secondary}
+          onClick={onClose}
+          aria-label="Close booking detail"
+        >
+          <X size={18} aria-hidden="true" />
           Close
         </button>
       </div>
       <div className={styles.statusGrid}>
         <div>
-          <small>APPROVAL</small>
+          <small>Approval</small>
           <Badge value={b.approval} />
         </div>
         <div>
-          <small>RESERVATION</small>
+          <small>Reservation</small>
           <Badge value={b.reservation} />
         </div>
         <div>
-          <small>CASH PAYMENT</small>
+          <small>Cash payment</small>
           <Badge value={paymentStatus(b.totalCents, paid)} />
         </div>
+        <div>
+          <small>Contact</small>
+          <Badge value={b.verification} />
+        </div>
       </div>
-      <div className={styles.detailGrid}>
-        <dl>
-          <dt>Client contact</dt>
-          <dd>
-            {b.email}
-            <br />
-            {b.phone}
-          </dd>
-          <dt>Schedule · Manila</dt>
-          <dd>
-            {eventDate(b.startsAt)}
-            <br />
-            to {eventDate(b.endsAt)}
-          </dd>
-          <dt>Venue / guests</dt>
-          <dd>
-            {b.venue} · {b.guests} guests
-          </dd>
-        </dl>
-        <dl>
-          <dt>Contract price / received / balance</dt>
-          <dd>
-            {money(b.totalCents)} / {money(paid)} / {money(b.totalCents - paid)}
-          </dd>
-          <dt>Confirmation rule</dt>
-          <dd>
-            {b.paymentRule.replaceAll('_', ' ')}
-            {b.paymentRule === 'DEPOSIT_REQUIRED' && ` · ${money(b.depositCents)}`}
-          </dd>
-          <dt>Contact verification</dt>
-          <dd>
-            <Badge value={b.verification} />
-            <p>
-              {b.verificationNote ||
-                (b.verification === 'UNREVIEWED'
-                  ? 'Contact has not been verified by staff.'
-                  : 'No note was recorded for this verification status.')}
-            </p>
-          </dd>
-        </dl>
+      <div className={styles.detailPanels}>
+        <section className={styles.detailPanel} aria-labelledby={`${id}-client`}>
+          <h3 id={`${id}-client`}>Client profile</h3>
+          <div className={styles.clientIdentity}>
+            <span className={styles.profileAvatar} aria-hidden="true">
+              {b.clientName.trim().charAt(0).toUpperCase()}
+            </span>
+            <div>
+              <strong>{b.clientName}</strong>
+              <small>{b.guests} guests</small>
+            </div>
+          </div>
+          <dl>
+            <dt>Email</dt>
+            <dd>{b.email}</dd>
+            <dt>Phone</dt>
+            <dd>{b.phone}</dd>
+            <dt>Contact verification</dt>
+            <dd>
+              <Badge value={b.verification} />
+              <span className={styles.detailNote}>
+                {b.verificationNote ||
+                  (b.verification === 'UNREVIEWED'
+                    ? 'Contact has not been verified by staff.'
+                    : 'No note was recorded for this verification status.')}
+              </span>
+            </dd>
+          </dl>
+        </section>
+        <section className={styles.detailPanel} aria-labelledby={`${id}-details`}>
+          <h3 id={`${id}-details`}>Booking details</h3>
+          <dl>
+            <dt>ID</dt>
+            <dd>{b.reference}</dd>
+            <dt>Event</dt>
+            <dd>
+              {b.eventType} · {b.packageName}
+            </dd>
+            <dt>Schedule · Manila</dt>
+            <dd>
+              {eventDate(b.startsAt)}
+              <br />
+              to {eventDate(b.endsAt)}
+            </dd>
+            <dt>Venue / guests</dt>
+            <dd>
+              {b.venue} · {b.guests} guests
+            </dd>
+          </dl>
+        </section>
+        <section className={styles.detailPanel} aria-labelledby={`${id}-payment`}>
+          <h3 id={`${id}-payment`}>Payment status</h3>
+          <div className={styles.paymentSummary}>
+            <Badge value={paymentStatus(b.totalCents, paid)} />
+            <strong>{money(paid)}</strong>
+            <small>received of {money(b.totalCents)}</small>
+          </div>
+          <span className={styles.paymentBar} aria-hidden="true">
+            <span style={{ inlineSize: `${paidShare}%` }} />
+          </span>
+          <dl>
+            <dt>Balance</dt>
+            <dd>{money(b.totalCents - paid)}</dd>
+            <dt>Confirmation rule</dt>
+            <dd>
+              {b.paymentRule.replaceAll('_', ' ').toLowerCase()}
+              {b.paymentRule === 'DEPOSIT_REQUIRED' && ` · ${money(b.depositCents)}`}
+            </dd>
+          </dl>
+        </section>
       </div>
       {b.notes && <div className={styles.notice}>Staff notes: {b.notes}</div>}
-      {!closed && focus !== 'contracts' && focus !== 'payments' && (
-        <div className={styles.subsection}>
+      {editing && canEdit && policy && (
+        <BookingForm
+          key={`edit-${b.id}-${b.revision}`}
+          policy={policy}
+          booking={b}
+          busy={busy}
+          mutate={mutate}
+          onClose={() => {
+            restoreEditFocus.current = true;
+            setEditing(false);
+          }}
+        />
+      )}
+      {!closed && !(editing && canEdit) && focus !== 'contracts' && focus !== 'payments' && (
+        <form className={styles.subsection} onSubmit={submitAction}>
           <h3>
-            <ShieldCheck size={17} />
-            Review and reservation actions
+            <ShieldCheck size={17} strokeWidth={1.5} aria-hidden="true" />
+            Actions
           </h3>
           <p>
-            Record how contact was verified and why the decision was made. Only confirmation secures
-            the venue date.
+            Record how contact was verified or why a decision was made. Approval marks a request
+            pending; only confirmation secures the venue date.
           </p>
-          {confirmHint && <p className={styles.help}>Confirmation check: {confirmHint}</p>}
-          <form
-            className={styles.inlineForm}
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const f = new FormData(e.currentTarget);
-              try {
-                await mutate('bookings', {
-                  op: 'booking-action',
-                  id: b.id,
-                  revision: b.revision,
-                  action,
-                  reason: f.get('reason'),
-                });
-              } catch {}
-            }}
-          >
-            <label>
-              Action
-              <select value={action} onChange={(e) => setAction(e.target.value)}>
-                <option value="VERIFY">Verify client contact</option>
-                <option value="FLAG">Flag suspicious request</option>
-                <option value="APPROVE">Approve request (not confirmation)</option>
-                <option value="REJECT">Reject request</option>
-                <option value="REVIEW_POLICY">Re-review under current venue policy</option>
-                <option value="CONFIRM">Confirm reservation</option>
-                <option value="CANCEL">Cancel reservation</option>
-                <option value="COMPLETE">Complete past event</option>
-              </select>
-            </label>
-            <label className={styles.grow}>
-              Verification or decision note
-              <input
-                name="reason"
-                required
-                minLength={5}
-                maxLength={2000}
-                placeholder="Contact method, result, or reason…"
-              />
-            </label>
-            <button className={styles.primary} disabled={busy}>
-              {busy ? 'Saving…' : 'Record action'}
-            </button>
-          </form>
-        </div>
+          <label htmlFor={noteId}>
+            Decision note (required)
+            <textarea
+              id={noteId}
+              name="reason"
+              required
+              minLength={5}
+              maxLength={2000}
+              rows={2}
+              placeholder="Contact method, result, or reason…"
+            />
+          </label>
+          <div className={styles.detailActions}>
+            {actions.main.map(actionButton)}
+            <Link href="/admin/services" className={styles.secondary}>
+              <Package size={16} strokeWidth={1.5} aria-hidden="true" />
+              View packages
+            </Link>
+            {canEdit && (
+              <button
+                type="button"
+                ref={editButtonRef}
+                className={styles.secondary}
+                onClick={() => setEditing(true)}
+              >
+                <Pencil size={16} strokeWidth={1.5} aria-hidden="true" />
+                Edit details
+              </button>
+            )}
+          </div>
+          {actions.more.length > 0 && (
+            <div className={styles.detailActions} role="group" aria-label="Other actions">
+              {actions.more.map(actionButton)}
+            </div>
+          )}
+          {busy && (
+            <p className={styles.help} role="status">
+              Saving…
+            </p>
+          )}
+          {blocked.length > 0 && (
+            <ul className={styles.actionNotes}>
+              {blocked.map((option) => (
+                <li key={option.action} id={`${id}-${option.action}`}>
+                  <strong>{option.label}:</strong> {option.blocked}
+                </li>
+              ))}
+            </ul>
+          )}
+          {b.reservation === 'CONFIRMED' && (
+            <p className={styles.help}>
+              Confirmed bookings cannot be edited. To change agreed details, cancel this booking and
+              create a new request.
+            </p>
+          )}
+          {b.reservation === 'REQUESTED' && lockedByAgreement && (
+            <p className={styles.help}>
+              Details are locked because an agreement was issued or signed. To change agreed
+              details, cancel this booking and create a new request.
+            </p>
+          )}
+        </form>
       )}
       {(focus === 'payments' || focus === 'bookings') && (
         <details className={styles.sectionDisclosure} open={focus === 'payments'}>
@@ -365,7 +570,7 @@ export default function BookingDetail({
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
                   }}
                 >
-                  <Download size={16} />
+                  <Download size={16} aria-hidden="true" />
                   Download agreement (.txt)
                 </button>
                 {c.status === 'DRAFT' && (

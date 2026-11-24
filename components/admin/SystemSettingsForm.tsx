@@ -131,7 +131,7 @@ function PreferencesEditor({
   const [settings, setSettings] = useState<AdminPreferences>(initial.settings);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ error: boolean; message: string } | null>(null);
-  const { previewTheme } = useAdminPreferences();
+  const { previewTheme, clearPersonalTheme } = useAdminPreferences();
   const disabled = !initial.canEdit || busy;
   useEffect(() => () => previewTheme(null), [previewTheme]);
   const setNotifications = (key: NotificationPreference) =>
@@ -164,6 +164,8 @@ function PreferencesEditor({
       if (!response.ok) throw new Error(payload.error || 'Unable to save settings.');
       await onSaved(payload);
       previewTheme(null);
+      // The saver sees the default they just chose instead of their header-toggle override.
+      clearPersonalTheme();
       await refreshCache('/api/admin/notifications');
     } catch (error) {
       setNotice({

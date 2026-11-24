@@ -204,7 +204,7 @@ export default function ServicesPackages() {
                 </div>
               </section>
               <div className={styles.catalogPackagesHeading}>
-                <h2>Packages</h2>
+                <h2>In this category</h2>
                 {data.canEdit && (
                   <button
                     type="button"
@@ -347,7 +347,7 @@ export default function ServicesPackages() {
             </>
           ) : (
             <section className={`${styles.card} ${styles.empty}`}>
-              <h2>Package catalog</h2>
+              <h2>No category selected</h2>
               <p>Select or create an event category to manage its packages.</p>
             </section>
           )}

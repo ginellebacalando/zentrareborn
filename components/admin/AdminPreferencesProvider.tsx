@@ -1,5 +1,12 @@
 'use client';
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import useSWR from 'swr';
 import {
   DEFAULT_ADMIN_PREFERENCES,
@@ -8,15 +15,57 @@ import {
   type PreferencesResponse,
 } from '@/lib/admin/preferences-types';
 
+type AdminTheme = 'light' | 'dark';
+
+/*
+ * The header's theme toggle is a per-browser convenience. It never writes the saved default
+ * (Settings > Appearance, super administrators only), so other administrators are unaffected.
+ * When storage is unavailable (private windows, blocked site data) the choice lasts for this
+ * page view only.
+ */
+const THEME_KEY = 'zentra-admin-theme';
+const themeListeners = new Set<() => void>();
+let memoryTheme: AdminTheme | null = null;
+function readPersonalTheme(): AdminTheme | null {
+  try {
+    const value = window.localStorage.getItem(THEME_KEY);
+    return value === 'light' || value === 'dark' ? value : null;
+  } catch {
+    return memoryTheme;
+  }
+}
+function subscribePersonalTheme(onChange: () => void) {
+  themeListeners.add(onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    themeListeners.delete(onChange);
+    window.removeEventListener('storage', onChange);
+  };
+}
+function writePersonalTheme(theme: AdminTheme | null) {
+  memoryTheme = theme;
+  try {
+    if (theme) window.localStorage.setItem(THEME_KEY, theme);
+    else window.localStorage.removeItem(THEME_KEY);
+  } catch {
+    // Storage is optional; the in-memory value above still applies to this page view.
+  }
+  themeListeners.forEach((listener) => listener());
+}
+
 const PreferencesContext = createContext<{
   settings: AdminPreferences;
-  theme: 'light' | 'dark';
-  previewTheme: (theme: 'light' | 'dark' | null) => void;
+  theme: AdminTheme;
+  previewTheme: (theme: AdminTheme | null) => void;
+  toggleTheme: () => void;
+  clearPersonalTheme: () => void;
   refresh: () => Promise<void>;
 }>({
   settings: DEFAULT_ADMIN_PREFERENCES,
-  theme: 'light' as 'light' | 'dark',
+  theme: 'light',
   previewTheme: () => {},
+  toggleTheme: () => {},
+  clearPersonalTheme: () => {},
   refresh: async () => {},
 });
 export function AdminPreferencesProvider({
@@ -26,7 +75,8 @@ export function AdminPreferencesProvider({
   initial: AdminPreferences;
   children: ReactNode;
 }) {
-  const [preview, setPreview] = useState<'light' | 'dark' | null>(null);
+  const [preview, setPreview] = useState<AdminTheme | null>(null);
+  const personalTheme = useSyncExternalStore(subscribePersonalTheme, readPersonalTheme, () => null);
   const { data, mutate } = useSWR<PreferencesResponse>(
     '/api/admin/preferences',
     async (url) => {
@@ -37,12 +87,23 @@ export function AdminPreferencesProvider({
     { shouldRetryOnError: false },
   );
   const settings = data?.settings ?? initial;
+  const savedTheme = settings.appearance.defaultTheme;
+  const theme = preview ?? personalTheme ?? savedTheme;
+  const toggleTheme = useCallback(() => {
+    const next: AdminTheme = theme === 'dark' ? 'light' : 'dark';
+    setPreview(null);
+    // Matching the saved default clears the override so later default changes still apply.
+    writePersonalTheme(next === savedTheme ? null : next);
+  }, [theme, savedTheme]);
+  const clearPersonalTheme = useCallback(() => writePersonalTheme(null), []);
   return (
     <PreferencesContext.Provider
       value={{
         settings,
-        theme: preview ?? settings.appearance.defaultTheme,
+        theme,
         previewTheme: setPreview,
+        toggleTheme,
+        clearPersonalTheme,
         refresh: async () => {
           await mutate();
         },

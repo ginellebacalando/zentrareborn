@@ -30,7 +30,7 @@ export default function AdminOverviewSections({
   return (
     <div className={styles.card}>
       <div className={styles.cardHeading}>
-        <h2>{section === 'team' ? 'Admin directory' : 'Business inquiries'}</h2>
+        <h2>{section === 'team' ? 'Admin directory' : 'Inbox'}</h2>
         <span>
           {total} {recordLabel}
         </span>
@@ -46,7 +46,9 @@ export default function AdminOverviewSections({
                     {inquiry.inquiryReference} · {inquiry.eventInterest || 'General inquiry'}
                   </small>
                 </span>
-                <span className={styles.badge}>{inquiry.status?.replaceAll('_', ' ')}</span>
+                <span className={`${styles.badge} ${styles.neutral}`}>
+                  {inquiry.status?.replaceAll('_', ' ')}
+                </span>
               </summary>
               <dl>
                 <dt>Contact</dt>
@@ -82,7 +84,12 @@ export default function AdminOverviewSections({
               </Link>
             </details>
           ))}
-          {!data.inquiries?.length && <p>No business inquiries yet.</p>}
+          {!data.inquiries?.length && (
+            <div className={styles.empty}>
+              <h3>Nothing in the inbox yet</h3>
+              <p>Messages sent from the website contact form appear here.</p>
+            </div>
+          )}
         </>
       )}
       {section === 'team' && (
@@ -113,6 +120,7 @@ export default function AdminOverviewSections({
             Page {page} of {Math.ceil(total / 50)}
           </span>
           <button
+            type="button"
             className={styles.secondary}
             disabled={page <= 1 || loading}
             onClick={() => onPage(page - 1)}
@@ -120,6 +128,7 @@ export default function AdminOverviewSections({
             Previous
           </button>
           <button
+            type="button"
             className={styles.secondary}
             disabled={page * 50 >= total || loading}
             onClick={() => onPage(page + 1)}

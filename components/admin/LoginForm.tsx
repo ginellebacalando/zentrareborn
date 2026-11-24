@@ -1,11 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { ShieldCheck, ArrowRight } from 'lucide-react';
-import { BRAND } from '@/config/brand';
+import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import styles from './admin.module.css';
 export default function LoginForm({
   localAccessToken = null,
@@ -48,10 +47,10 @@ export default function LoginForm({
 
   if (localAccessToken) {
     return (
-      <main id="main-content" tabIndex={-1} className={`${styles.root} ${styles.localOpening}`}>
+      <main id="main-content" tabIndex={-1} className={`${styles.root} ${styles.login}`}>
         <div className={styles.loginCard}>
-          <Image src={BRAND.logo.src} alt="Zion Events Place" width={70} height={70} />
-          <h2>{error ? 'Unable to open admin' : 'Opening admin panel…'}</h2>
+          <ZentraWordmark subtitle="Admin" size="md" className={styles.loginWordmark} />
+          <h1>{error ? 'Unable to open admin' : 'Opening admin panel…'}</h1>
           <p role={error ? 'alert' : 'status'}>
             {error || 'Your workspace will be ready in a moment.'}
           </p>
@@ -71,22 +70,10 @@ export default function LoginForm({
 
   return (
     <main id="main-content" tabIndex={-1} className={`${styles.root} ${styles.login}`}>
-      <div className={styles.loginStory}>
-        <Image src={BRAND.logo.src} alt="Zion Events Place" width={90} height={90} />
-        <h1>
-          Every celebration,
-          <br />
-          carefully managed.
-        </h1>
-        <p>A focused workspace for your bookings, agreements, schedule, and cash payments.</p>
-        <div>
-          <ShieldCheck size={20} /> Authorized venue staff only
-        </div>
-      </div>
       <div className={styles.loginCard}>
-        <p className={styles.eyebrow}>VENUE OPERATIONS</p>
-        <h2>Welcome back</h2>
-        <p>Sign in with your administrator account.</p>
+        <ZentraWordmark subtitle="Admin" size="md" className={styles.loginWordmark} />
+        <h1>Sign in</h1>
+        <p>Use your administrator account for venue operations.</p>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -135,11 +122,16 @@ export default function LoginForm({
           )}
           <button className={styles.primary} disabled={busy}>
             {busy ? 'Signing in…' : 'Sign in securely'}
-            <ArrowRight size={16} />
+            <ArrowRight size={16} aria-hidden="true" />
           </button>
         </form>
-        <p className={styles.help}>No public registration. Ask the venue owner for access.</p>
-        <Link href="/">← Back to the client website</Link>
+        <p className={styles.loginNote}>
+          <ShieldCheck size={16} strokeWidth={1.5} aria-hidden="true" />
+          Authorized venue staff only. No public registration; ask the venue owner for access.
+        </p>
+        <Link href="/" className={styles.loginBack}>
+          ← Back to the website
+        </Link>
       </div>
     </main>
   );

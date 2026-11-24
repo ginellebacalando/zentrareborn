@@ -1,38 +1,85 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { money, paymentRules } from '@/lib/admin/domain';
-import { manilaInput } from './BookingDetail';
-import type { AdminData, Inquiry, Mutate, Policy } from './types';
+import { manilaInput } from './datetime';
+import type { AdminData, Booking, Inquiry, Mutate, Policy } from './types';
 import styles from './admin.module.css';
-import Image from 'next/image';
 import { LockKeyhole, Mail, Phone, Save, ShieldCheck, UserRound, ChevronDown } from 'lucide-react';
-import { BRAND } from '@/config/brand';
+import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import AdminAvatar from './AdminAvatar';
+const eventTypes = [
+  'Wedding',
+  'Birthday',
+  'Debut',
+  'Christening',
+  'Christmas party',
+  'Gender reveal',
+  'Corporate event',
+  'Other',
+];
+
+/**
+ * Creates a staff-entered request, or (with `booking`) edits a requested booking through the
+ * 'edit-booking' operation. Edits need a reason, use the booking's current revision and show
+ * server errors in place; the server re-checks every rule.
+ */
 export function BookingForm({
   policy,
   inquiry,
+  booking,
   busy,
   mutate,
+  onClose,
 }: {
   policy: Policy;
   inquiry?: Inquiry;
+  booking?: Booking;
   busy: boolean;
   mutate: Mutate;
+  onClose?: () => void;
 }) {
+  const headingId = useId();
   const clientNameRef = useRef<HTMLInputElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState('');
+  const Heading = booking ? 'h3' : 'h2';
+  const types =
+    booking && !eventTypes.includes(booking.eventType)
+      ? [booking.eventType, ...eventTypes]
+      : eventTypes;
   useEffect(() => {
     clientNameRef.current?.focus();
   }, []);
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
   return (
-    <section className={styles.card} key={inquiry?.inquiryReference || 'new-request'}>
-      <h2>New staff-entered request</h2>
+    <section
+      className={booking ? styles.editPanel : styles.card}
+      key={inquiry?.inquiryReference || 'new-request'}
+      aria-labelledby={headingId}
+    >
+      <Heading id={headingId}>{booking ? 'Edit details' : 'New staff-entered request'}</Heading>
       <p>
-        This creates a pending request, not a confirmed booking. Contact verification and policy
-        checks follow.
+        {booking
+          ? 'Update the request as agreed with the client. Saving keeps its history in the activity log.'
+          : 'This creates a pending request, not a confirmed booking. Contact verification and policy checks follow.'}
       </p>
+      {booking && (
+        <div className={styles.notice}>
+          Changing the email or phone resets contact verification. Changing the schedule, package,
+          guests, price, reservation fee, event type or contact returns an approved request to
+          Pending. No email is sent for an edit.
+        </div>
+      )}
       {inquiry && (
         <div className={styles.notice}>
           Inquiry {inquiry.inquiryReference}: {inquiry.message}
+        </div>
+      )}
+      {error && (
+        <div className={styles.error} role="alert" ref={errorRef} tabIndex={-1}>
+          {error}
         </div>
       )}
       <form
@@ -41,27 +88,46 @@ export function BookingForm({
           e.preventDefault();
           const f = new FormData(e.currentTarget),
             text = (k: string) => String(f.get(k) || '');
+          const details = {
+            clientName: text('clientName'),
+            email: text('email'),
+            phone: text('phone'),
+            eventType: text('eventType'),
+            packageName: text('packageName'),
+            venue: 'Zion Events Place',
+            startsAt: new Date(`${text('startsAt')}:00+08:00`).toISOString(),
+            endsAt: new Date(`${text('endsAt')}:00+08:00`).toISOString(),
+            guests: Number(f.get('guests')),
+            totalCents: Math.round(Number(f.get('total')) * 100),
+            depositCents: Math.round(Number(f.get('deposit')) * 100),
+            paymentRule: policy.paymentRule,
+            notes: text('notes'),
+          };
+          setError('');
           try {
-            await mutate('bookings', {
-              op: 'create-booking',
-              sourceInquiryId: inquiry?.id,
-              booking: {
-                clientName: text('clientName'),
-                email: text('email'),
-                phone: text('phone'),
-                eventType: text('eventType'),
-                packageName: text('packageName'),
-                venue: 'Zion Events Place',
-                startsAt: new Date(`${text('startsAt')}:00+08:00`).toISOString(),
-                endsAt: new Date(`${text('endsAt')}:00+08:00`).toISOString(),
-                guests: Number(f.get('guests')),
-                totalCents: Math.round(Number(f.get('total')) * 100),
-                depositCents: Math.round(Number(f.get('deposit')) * 100),
-                paymentRule: policy.paymentRule,
-                notes: text('notes'),
-              },
-            });
-          } catch {}
+            if (booking) {
+              await mutate(
+                'bookings',
+                {
+                  op: 'edit-booking',
+                  id: booking.id,
+                  revision: booking.revision,
+                  booking: details,
+                  reason: text('reason'),
+                },
+                { inlineErrors: true },
+              );
+              onClose?.();
+            } else
+              await mutate('bookings', {
+                op: 'create-booking',
+                sourceInquiryId: inquiry?.id,
+                booking: details,
+              });
+          } catch (failure) {
+            if (booking)
+              setError(failure instanceof Error ? failure.message : 'Unable to save the changes.');
+          }
         }}
       >
         <fieldset className={`${styles.full} ${styles.formSection}`}>
@@ -77,7 +143,7 @@ export function BookingForm({
                 required
                 minLength={2}
                 maxLength={180}
-                defaultValue={inquiry?.fullName}
+                defaultValue={booking?.clientName ?? inquiry?.fullName}
               />
             </label>
             <label>
@@ -88,7 +154,7 @@ export function BookingForm({
                 required
                 placeholder="client@example.com"
                 autoComplete="email"
-                defaultValue={inquiry?.email}
+                defaultValue={booking?.email ?? inquiry?.email}
               />
             </label>
             <label>
@@ -100,7 +166,7 @@ export function BookingForm({
                 type="tel"
                 required
                 maxLength={40}
-                defaultValue={inquiry?.phoneNumber || ''}
+                defaultValue={booking?.phone ?? (inquiry?.phoneNumber || '')}
               />
             </label>
           </div>
@@ -110,17 +176,11 @@ export function BookingForm({
           <div className={styles.formGrid}>
             <label>
               Event type
-              <select name="eventType" defaultValue={inquiry?.eventInterest || 'Wedding'}>
-                {[
-                  'Wedding',
-                  'Birthday',
-                  'Debut',
-                  'Christening',
-                  'Christmas party',
-                  'Gender reveal',
-                  'Corporate event',
-                  'Other',
-                ].map((v) => (
+              <select
+                name="eventType"
+                defaultValue={booking?.eventType ?? (inquiry?.eventInterest || 'Wedding')}
+              >
+                {types.map((v) => (
                   <option key={v}>{v}</option>
                 ))}
               </select>
@@ -132,21 +192,40 @@ export function BookingForm({
                 required
                 minLength={2}
                 maxLength={180}
-                defaultValue={inquiry?.packageInterest || ''}
+                defaultValue={booking?.packageName ?? (inquiry?.packageInterest || '')}
                 placeholder="Use the agreed package name"
               />
             </label>
             <label>
               Guest count
-              <input name="guests" type="number" min={1} max={10000} required />
+              <input
+                name="guests"
+                type="number"
+                min={1}
+                max={10000}
+                required
+                defaultValue={booking?.guests}
+              />
             </label>
             <label>
               Start · Manila
-              <input name="startsAt" type="datetime-local" required min={manilaInput()} />
+              <input
+                name="startsAt"
+                type="datetime-local"
+                required
+                min={manilaInput()}
+                defaultValue={booking ? manilaInput(new Date(booking.startsAt)) : undefined}
+              />
             </label>
             <label>
               End · Manila
-              <input name="endsAt" type="datetime-local" required min={manilaInput()} />
+              <input
+                name="endsAt"
+                type="datetime-local"
+                required
+                min={manilaInput()}
+                defaultValue={booking ? manilaInput(new Date(booking.endsAt)) : undefined}
+              />
             </label>
           </div>
         </fieldset>
@@ -155,7 +234,15 @@ export function BookingForm({
           <div className={styles.formGrid}>
             <label>
               Agreed contract price · PHP
-              <input name="total" type="number" min="0.01" max="20000000" step="0.01" required />
+              <input
+                name="total"
+                type="number"
+                min="0.01"
+                max="20000000"
+                step="0.01"
+                required
+                defaultValue={booking ? booking.totalCents / 100 : undefined}
+              />
             </label>
             <label>
               Agreed reservation fee · PHP
@@ -165,7 +252,13 @@ export function BookingForm({
                 min={policy.paymentRule === 'DEPOSIT_REQUIRED' ? '0.01' : '0'}
                 step="0.01"
                 required
-                defaultValue={policy.paymentRule === 'NO_PAYMENT_REQUIRED' ? 0 : undefined}
+                defaultValue={
+                  booking
+                    ? booking.depositCents / 100
+                    : policy.paymentRule === 'NO_PAYMENT_REQUIRED'
+                      ? 0
+                      : undefined
+                }
               />
             </label>
             <div className={styles.notice}>
@@ -186,14 +279,36 @@ export function BookingForm({
             name="notes"
             maxLength={3000}
             defaultValue={
-              inquiry ? `From inquiry ${inquiry.inquiryReference}. ${inquiry.message || ''}` : ''
+              booking
+                ? booking.notes
+                : inquiry
+                  ? `From inquiry ${inquiry.inquiryReference}. ${inquiry.message || ''}`
+                  : ''
             }
           />
         </label>
-        <div className={styles.full}>
-          <button className={styles.primary} disabled={busy}>
-            Create pending request
+        {booking && (
+          <label className={styles.full}>
+            Reason for the change (required)
+            <textarea
+              name="reason"
+              required
+              minLength={3}
+              maxLength={1000}
+              rows={2}
+              placeholder="What changed and who asked for it"
+            />
+          </label>
+        )}
+        <div className={`${styles.full} ${styles.actions}`}>
+          <button type="submit" className={styles.primary} disabled={busy}>
+            {booking ? (busy ? 'Saving…' : 'Save changes') : 'Create pending request'}
           </button>
+          {booking && onClose && (
+            <button type="button" className={styles.secondary} onClick={onClose}>
+              Cancel
+            </button>
+          )}
         </div>
       </form>
     </section>
@@ -341,7 +456,7 @@ export function ProfileForm({
     <div className={styles.profileWorkspace}>
       <aside className={styles.profileSummary} aria-label="Your account details">
         <div className={styles.profileCover}>
-          <Image src={BRAND.logo.src} alt="Zion Events Place" width={96} height={96} />
+          <ZentraWordmark size="sm" />
         </div>
         <div className={styles.profileSummaryBody}>
           <AdminAvatar user={user} size="profile" />

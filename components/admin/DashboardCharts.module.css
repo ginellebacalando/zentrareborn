@@ -1,5 +1,5 @@
 .section {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
   min-width: 0;
 }
 .sectionHeading,
@@ -29,14 +29,18 @@
 .period {
   min-width: 10rem;
 }
-.period select {
-  border-color: var(--admin-action);
+.trendRow {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(16rem, 1fr);
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
   gap: var(--space-6);
 }
+.trendRow > .card,
 .grid > .card {
   margin-bottom: 0;
   padding: var(--layout-card-padding);
@@ -46,20 +50,21 @@
 }
 .section .card h3 {
   font-size: var(--type-card-title);
-  color: var(--admin-ink);
+  color: var(--admin-heading);
 }
 .cardHeading {
   margin-bottom: var(--space-4);
 }
 .total {
-  font-family: var(--font-zion-serif);
+  font-family: var(--font-zion-sans);
   font-size: var(--type-section-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
   line-height: var(--line-heading);
-  color: var(--admin-ink);
+  color: var(--admin-heading);
   overflow-wrap: anywhere;
 }
 .total small {
-  font-family: var(--font-zion-sans);
   font-size: var(--type-caption);
   color: var(--admin-muted);
 }
@@ -67,38 +72,50 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
-  margin-bottom: var(--space-4);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
   color: var(--admin-muted);
   font-size: var(--type-small);
 }
-.legend span,
+.legend li,
 .reservationLegend li > span {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
 }
-.oak {
-  --chart-tone: var(--admin-oak);
+.legend strong {
+  color: var(--admin-ink);
+  font-variant-numeric: tabular-nums;
 }
-.rose {
-  --chart-tone: var(--admin-rose);
+/* Series tones: deep green and teal first (both ≥3:1 on cards), lighter tones after. */
+.series1 {
+  --chart-tone: var(--admin-series-1);
 }
-.taupe {
-  --chart-tone: var(--admin-taupe);
+.series2 {
+  --chart-tone: var(--admin-series-2);
 }
-.peach {
-  --chart-tone: var(--admin-peach);
+.series3 {
+  --chart-tone: var(--admin-series-3);
 }
-.ink {
-  --chart-tone: var(--admin-on-color);
+.series4 {
+  --chart-tone: var(--admin-series-4);
+}
+.series5 {
+  --chart-tone: var(--admin-series-5);
+}
+.confirmedTone {
+  --chart-tone: var(--admin-status-confirmed);
+}
+.cancelledTone {
+  --chart-tone: var(--admin-status-cancelled);
 }
 .swatch {
   display: inline-block;
   width: var(--space-3);
   height: var(--space-3);
   flex: 0 0 var(--space-3);
-  border: 1px solid var(--admin-muted);
-  border-radius: var(--space-1);
+  border-radius: 50%;
   background: var(--chart-tone);
 }
 .plotLayout {
@@ -116,6 +133,7 @@
   align-items: flex-end;
   color: var(--admin-muted);
   font-size: var(--type-caption);
+  font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 .plot {
@@ -131,29 +149,20 @@
 }
 .gridLines {
   stroke: var(--admin-divider);
-  stroke-dasharray: 3 5;
+  stroke-dasharray: 2 6;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.gridLines line,
+.baseline {
+  vector-effect: non-scaling-stroke;
+}
+.baseline {
+  stroke: var(--admin-border);
   stroke-width: 1;
 }
-.floor {
-  fill: var(--admin-surface-subtle);
-  stroke: var(--admin-divider);
-  stroke-width: 1;
-}
-.barFront {
+.bar {
   fill: var(--chart-tone);
-  stroke: var(--admin-on-color);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-.barSide,
-.donutSide {
-  fill: color-mix(in srgb, var(--chart-tone) 70%, var(--admin-on-color));
-}
-.barTop {
-  fill: color-mix(in srgb, var(--chart-tone) 72%, var(--admin-ivory));
-  stroke: var(--admin-on-color);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
 }
 .labelsInset {
   margin-left: calc(3.25rem + var(--space-2));
@@ -166,7 +175,9 @@
   grid-template-columns: repeat(var(--month-count), minmax(0, 1fr));
   color: var(--admin-muted);
   font-size: var(--type-caption);
+  letter-spacing: 0.04em;
   text-align: center;
+  text-transform: uppercase;
 }
 .monthLabels abbr {
   text-decoration: none;
@@ -190,10 +201,95 @@
   background: var(--admin-surface-card);
   padding-inline: var(--space-2);
 }
+.areaGradientStart {
+  stop-color: color-mix(in srgb, var(--admin-chart-fill) 45%, var(--admin-surface-card));
+}
+.areaGradientEnd {
+  stop-color: var(--admin-surface-card);
+}
+.areaLine,
+.trendLine {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.areaLine {
+  stroke: var(--admin-chart-line);
+}
+.areaPoint {
+  fill: var(--admin-surface-card);
+  stroke: var(--admin-chart-line);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.trendArea {
+  fill: color-mix(in srgb, var(--chart-tone) 16%, transparent);
+}
+.trendLine {
+  stroke: var(--chart-tone);
+}
+.trendPoint {
+  fill: var(--admin-surface-card);
+  stroke: var(--chart-tone);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+/* "For the past 30 days" side card: teal, like Figma's KPI accents (white on teal ≥4.5:1). */
+.recent {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--layout-card-padding);
+  border-radius: var(--radius-card);
+  background: var(--admin-teal);
+  color: var(--admin-on-teal);
+}
+.recent h3 {
+  color: var(--admin-on-teal);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+.recent dl {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.recent dl > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid color-mix(in srgb, var(--admin-on-teal) 30%, transparent);
+}
+.recent dt {
+  color: var(--admin-on-teal);
+  font-size: var(--type-small);
+  letter-spacing: normal;
+  text-transform: none;
+}
+.recent dd {
+  margin: 0;
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  text-align: end;
+}
+.section .recent p {
+  margin: auto 0 0;
+  color: var(--admin-on-teal);
+  font-size: var(--type-caption);
+}
 .donutScene {
   width: 100%;
-  max-width: 22rem;
-  margin: 0 auto var(--space-2);
+  max-width: 14rem;
+  margin: 0 auto var(--space-4);
   position: relative;
 }
 .donutScene svg {
@@ -201,36 +297,30 @@
   height: auto;
   display: block;
 }
-.donutShadow {
-  fill: color-mix(in srgb, var(--admin-shadow) 12%, transparent);
-  filter: blur(6px);
-}
-.donutTop {
+.donutSlice {
   fill: var(--chart-tone);
-  stroke: var(--admin-on-color);
-  stroke-width: 1;
+  stroke: var(--admin-surface-card);
+  stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
-.emptyRingSide {
-  fill: var(--admin-border);
-}
-.emptyRingTop {
-  fill: var(--admin-surface-selected);
-  stroke: var(--admin-border);
+.emptyRing {
+  fill: var(--admin-surface-subtle);
+  stroke: var(--admin-divider);
 }
 .donutCenter {
   position: absolute;
-  top: 46%;
+  top: 50%;
   left: 50%;
-  width: 45%;
+  width: 55%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: var(--admin-ink);
+  color: var(--admin-heading);
 }
 .donutCenter strong {
   display: block;
-  font-family: var(--font-zion-serif);
+  font-family: var(--font-zion-sans);
   font-size: var(--type-workspace-title);
+  font-weight: var(--weight-semibold);
   line-height: 1;
 }
 .donutCenter span {
@@ -238,6 +328,8 @@
   margin-top: var(--space-2);
   color: var(--admin-muted);
   font-size: var(--type-caption);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 .reservationLegend {
   padding: 0;
@@ -259,42 +351,34 @@
   display: inline-flex;
   gap: var(--space-3);
   align-items: center;
+  font-variant-numeric: tabular-nums;
 }
 .reservationLegend small {
   margin: 0;
   min-width: 3rem;
   text-align: right;
 }
-.cash {
+.wide {
   grid-column: 1 / -1;
 }
-.cashGradientStart {
-  stop-color: color-mix(in srgb, var(--admin-taupe) 75%, var(--admin-surface-card));
+.sparkline {
+  display: block;
+  overflow: visible;
 }
-.cashGradientEnd {
-  stop-color: color-mix(in srgb, var(--admin-peach) 75%, var(--admin-surface-card));
-}
-.areaSide {
-  fill: color-mix(in srgb, var(--admin-taupe) 70%, var(--admin-on-color));
-}
-.cashLine {
+.sparklineLine {
   fill: none;
-  stroke: var(--admin-accent-ink);
-  stroke-width: 3;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-}
-.cashPoint {
-  fill: var(--admin-surface-card);
-  stroke: var(--admin-accent-ink);
+  stroke: currentColor;
   stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
 @media (max-width: 1150px) {
+  .trendRow,
   .grid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .cash {
+  .wide {
     grid-column: auto;
   }
 }
