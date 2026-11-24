@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
 
@@ -28,6 +28,8 @@ test(
     await db.exec(sql.slice(sql.indexOf('-- CreateSchema')));
     await db.exec('CREATE ROLE anon; CREATE ROLE authenticated;');
     await db.exec(readFileSync('prisma/receptionist.sql', 'utf8'));
+    // The installer is idempotent: running it again keeps tables and rows.
+    await db.exec(readFileSync('prisma/receptionist.sql', 'utf8'));
     await db.exec("SET TIME ZONE 'Asia/Manila'");
     const server = createServer(db, { logLevel: LogLevel.Error });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -39,13 +41,17 @@ test(
       NODE_ENV: 'test',
       AUTH_SECRET: randomBytes(48).toString('hex'),
       RECEPTIONIST_STATE_KEY: randomBytes(32).toString('hex'),
-      RECEPTIONIST_BOOKING_ORCHESTRATION_ENABLED: 'false',
+      // Never call the language model from tests, even if the shell has a key.
+      ZENI_LLM_ENABLED: 'false',
     });
     const { prisma } = await import('../prisma');
     const { POST, GET, DELETE } = await import('../../app/api/client/chatbot/route');
     const { receptionistPool, findConversation, runConversationTurn } =
       await import('../../services/chatbot/state-store');
     const { publishedVisitorFaqs, visitorSources } = await import('../../services/chatbot/sources');
+    const { listOpenZeniGaps, resolveZeniGapGroup } = await import('../../services/chatbot/gaps');
+    const { previewReceptionistTurn } = await import('../../services/chatbot/receptionist');
+    const { zeniAdminOverview } = await import('../../services/chatbot/admin-overview');
     const { DEFAULT_PUBLIC_SYSTEM_SETTINGS } = await import('../system-settings-types');
     async function ask(question: string, origin = 'http://localhost:3001') {
       return POST(
@@ -105,9 +111,19 @@ test(
           snapshotData: { packageName: 'DRAFT PACKAGE', price: 888888 },
         },
       });
-      const packageAnswer = JSON.stringify(await (await ask('Wedding package price')).json());
+      const packageReply = await (await ask('Wedding package price')).json();
+      const packageAnswer = JSON.stringify(packageReply);
       assert.match(packageAnswer, /90,000/);
       assert.doesNotMatch(packageAnswer, /999999|888888|DRAFT|PRIVATE/);
+      // The card's "starts at" price comes only from the published package version.
+      assert.ok(
+        packageReply.cards.some(
+          (card: { startsAt?: string }) => card.startsAt === 'Starts at ₱90,000',
+        ),
+      );
+      assert.ok(
+        packageReply.links.some((link: { href: string }) => link.href.startsWith('/booking?')),
+      );
       await prisma.adminPolicy.create({
         data: {
           id: 'venue',
@@ -268,17 +284,20 @@ test(
       assert.doesNotMatch(JSON.stringify(rawStored.rows), /alice@example|Alice Santos|Bob Cruz/);
       assert.ok(rawStored.rows.every((row) => /^[a-f0-9]{64}$/.test(row.token_hash)));
       const protectedTables = await db.query<{ count: number }>(
-        "SELECT count(*)::int AS count FROM pg_class WHERE relname IN ('zion_receptionist_conversations','zion_receptionist_requests') AND relrowsecurity=true",
+        "SELECT count(*)::int AS count FROM pg_class WHERE relname IN ('zion_receptionist_conversations','zion_zeni_gaps') AND relrowsecurity=true",
       );
       assert.equal(protectedTables.rows[0].count, 2);
-      assert.equal(
-        (
-          await db.query<{ allowed: boolean }>(
-            "SELECT has_table_privilege('anon','zion_receptionist_conversations','SELECT') AS allowed",
-          )
-        ).rows[0].allowed,
-        false,
-      );
+      for (const table of ['zion_receptionist_conversations', 'zion_zeni_gaps'])
+        for (const role of ['anon', 'authenticated'])
+          assert.equal(
+            (
+              await db.query<{ allowed: boolean }>(
+                `SELECT has_table_privilege('${role}','${table}','SELECT') AS allowed`,
+              )
+            ).rows[0].allowed,
+            false,
+            `${role} on ${table}`,
+          );
 
       const oldRevision = aliceResume.reply.context.revision;
       await alice.say('Where are you located?');
@@ -286,6 +305,16 @@ test(
         (await alice.say('Visiting hours', undefined, randomUUID(), oldRevision)).response.status,
         409,
       );
+      // A Taglish guest gets errors in Taglish too.
+      const taglishConflict = await alice.say(
+        'Saan po kayo?',
+        undefined,
+        randomUUID(),
+        oldRevision,
+      );
+      assert.equal(taglishConflict.response.status, 409);
+      assert.match(taglishConflict.payload.error, /po/);
+
       const human = visitor();
       await human.say('I would like a human');
       await human.say('Maria Santos');
@@ -295,14 +324,14 @@ test(
       assert.equal(await prisma.inquiry.count(), 0);
       const escalationTurn = randomUUID();
       const submitted = await human.say(
-        'Send inquiry to the team',
+        'Send to staff',
         { type: 'confirm_escalation' },
         escalationTurn,
       );
       assert.equal(submitted.response.status, 200);
-      assert.match(submitted.payload.message, /saved in the Zion staff inbox/);
+      assert.match(submitted.payload.message, /staff inbox/);
       const repeated = await human.say(
-        'Send inquiry to the team',
+        'Send to staff',
         { type: 'confirm_escalation' },
         escalationTurn,
       );
@@ -316,158 +345,187 @@ test(
       assert.equal(inquiry?.email, 'maria@example.test');
       assert.notEqual(inquiry?.phoneNumber, '09987654321');
       assert.match(inquiry?.message ?? '', /explicitly consented/);
+      // The staff alert and the visitor acknowledgement are queued with the inquiry.
+      assert.equal(
+        await prisma.adminOutbox.count({
+          where: { event: { in: ['INQUIRY_STAFF_ALERT', 'INQUIRY_ACKNOWLEDGEMENT'] } },
+        }),
+        2,
+      );
       assert.equal((await DELETE(human.request('DELETE'))).status, 200);
       assert.equal((await (await GET(human.request())).json()).reply, null);
       assert.equal(await prisma.inquiry.count(), 1);
 
+      // A new booking never submits anything: it offers a pre-filled booking link.
       const booker = visitor();
-      const ready = await booker.say(
-        'Book a wedding Classic for 100 guests at Selah Hall on 2099-12-24 at 14:00 to 19:00. My name is Juan Cruz, juan@example.test.',
+      const booking = await booker.say('I would like to book a wedding for 100 guests');
+      assert.equal(booking.payload.kind, 'booking');
+      assert.ok(
+        booking.payload.links.some(
+          (link: { href: string }) => link.href === '/booking?event=wedding&guests=100&source=zeni',
+        ),
       );
-      assert.equal(ready.payload.context.awaiting, 'terms');
-      await booker.say('I acknowledge the published terms', { type: 'accept_terms' });
-      const bookingTurn = randomUUID();
-      const unavailable = await booker.say(
-        'Send my request',
-        { type: 'confirm_handoff' },
-        bookingTurn,
+      const calendarCard = booking.payload.cards.find(
+        (card: { type: string }) => card.type === 'calendar',
       );
-      assert.equal(unavailable.response.status, 200);
-      assert.match(unavailable.payload.message, /not connected/);
-      assert.equal(unavailable.payload.context.status, 'failed');
-      const replay = await booker.say('Send my request', { type: 'confirm_handoff' }, bookingTurn);
-      assert.equal(replay.response.status, 200);
+      assert.ok(calendarCard);
+      assert.deepEqual(calendarCard.unavailable, []);
       assert.equal(await prisma.adminBooking.count(), 0);
-      const requests = await receptionistPool.query(
-        'SELECT encrypted_request FROM zion_receptionist_requests',
-      );
-      assert.equal(requests.rows.length, 1);
-      assert.doesNotMatch(JSON.stringify(requests.rows), /juan@example|Juan Cruz/);
 
       const availability = visitor();
       await availability.say('My name is Private Person, private@example.test.');
-      await availability.say('Is Selah Hall available on 2099-12-24 at 14:00 to 19:00?');
-      const checked = await availability.say('Check this schedule', { type: 'confirm_handoff' });
-      assert.equal(checked.payload.context.status, 'available');
-      assert.match(checked.payload.message, /admin calendar has no confirmed conflict/);
-      const savedAvailability = await findConversation(availability.request());
-      assert.ok(savedAvailability);
-      const ledger = await receptionistPool.query<{
-        request_id: string;
-        encrypted_request: string;
-      }>(
-        'SELECT request_id,encrypted_request FROM zion_receptionist_requests WHERE conversation_id=$1',
-        [savedAvailability.state.id],
+      const checked = await availability.say(
+        'Is Selah Hall available on 2099-12-24 at 14:00 to 19:00?',
       );
-      const { openConversation } = await import('./session-security');
-      const requestBody = openConversation(
-        ledger.rows[0].encrypted_request,
-        `request:${ledger.rows[0].request_id}`,
-      ) as Record<string, unknown>;
-      assert.equal(requestBody.intent, 'availability_check');
-      assert.equal('client' in requestBody, false);
-      assert.doesNotMatch(JSON.stringify(requestBody), /Private Person|private@example/);
+      assert.equal(checked.payload.kind, 'availability');
+      assert.equal(checked.payload.context.status, 'available');
+      assert.match(checked.payload.message, /no confirmed event/);
+      assert.ok(
+        checked.payload.links.some(
+          (link: { href: string; primary?: boolean }) =>
+            link.primary && /date=2099-12-24&start=14%3A00&end=19%3A00/.test(link.href),
+        ),
+      );
+      assert.doesNotMatch(JSON.stringify(checked.payload.links), /Private|private@example/);
 
-      await prisma.adminBooking.create({
-        data: {
-          id: 'private-calendar-event',
-          reference: 'PRIVATE-BOOKING-REFERENCE',
-          clientName: 'PRIVATE CALENDAR CLIENT',
-          email: 'private-calendar@example.test',
-          phone: '09123456789',
-          eventType: 'Wedding',
-          packageName: 'PRIVATE PACKAGE',
-          venue: 'Zion Events Place',
-          startsAt: new Date('2099-12-24T06:00:00Z'),
-          endsAt: new Date('2099-12-24T11:00:00Z'),
-          guests: 100,
-          totalCents: 9000000,
-          depositCents: 3000000,
-          paymentRule: 'DEPOSIT_REQUIRED',
-          policyVersion: 1,
-          createdBy: 'PRIVATE STAFF',
-          updatedBy: 'PRIVATE STAFF',
-          reservation: 'CONFIRMED',
-          notes: 'PRIVATE CALENDAR NOTE',
-        },
-      });
+      const soon = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+      soon.setUTCHours(6, 0, 0, 0);
+      for (const [id, startsAt, endsAt] of [
+        ['private-calendar-event', '2099-12-24T06:00:00Z', '2099-12-24T11:00:00Z'],
+        [
+          'private-soon-event',
+          soon.toISOString(),
+          new Date(soon.getTime() + 5 * 3600000).toISOString(),
+        ],
+      ])
+        await prisma.adminBooking.create({
+          data: {
+            id,
+            reference: `PRIVATE-BOOKING-REFERENCE-${id}`,
+            clientName: 'PRIVATE CALENDAR CLIENT',
+            email: 'private-calendar@example.test',
+            phone: '09123456789',
+            eventType: 'Wedding',
+            packageName: 'PRIVATE PACKAGE',
+            venue: 'Zion Events Place',
+            startsAt: new Date(startsAt),
+            endsAt: new Date(endsAt),
+            guests: 100,
+            totalCents: 9000000,
+            depositCents: 3000000,
+            paymentRule: 'DEPOSIT_REQUIRED',
+            policyVersion: 1,
+            createdBy: 'PRIVATE STAFF',
+            updatedBy: 'PRIVATE STAFF',
+            reservation: 'CONFIRMED',
+            notes: 'PRIVATE CALENDAR NOTE',
+          },
+        });
       const blocked = visitor();
-      await blocked.say('Is Pavilion Garden available on 2099-12-24 at 14:00 to 19:00?');
-      const conflict = await blocked.say('Check this schedule', { type: 'confirm_handoff' });
+      const conflict = await blocked.say(
+        'Is Pavilion Garden available on 2099-12-24 at 14:00 to 19:00?',
+      );
       assert.equal(conflict.payload.context.status, 'unavailable');
+      assert.match(conflict.payload.message, /confirmed event/);
       assert.doesNotMatch(
         JSON.stringify(conflict.payload),
-        /PRIVATE|private-calendar|30,000|90,000/,
+        /PRIVATE|private-calendar|private-soon|30,000|90,000/,
       );
+      const card = conflict.payload.cards.find(
+        (item: { type: string }) => item.type === 'calendar',
+      );
+      const soonKey = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(soon);
+      assert.deepEqual(card.unavailable, [soonKey]);
+      assert.equal(card.selected, '2099-12-24');
       const adjacent = visitor();
-      await adjacent.say('Is the pool available on 2099-12-24 at 19:00 to 21:00?');
       assert.equal(
-        (await adjacent.say('Check this schedule', { type: 'confirm_handoff' })).payload.context
-          .status,
+        (await adjacent.say('Is the pool available on 2099-12-24 at 19:00 to 21:00?')).payload
+          .context.status,
         'available',
       );
+      // Without a remembered time window, tapping a calendar date checks the whole day.
+      const tapped = await visitor().say('Check December 24, 2099', {
+        type: 'check_availability',
+        value: '2099-12-24',
+      });
+      assert.equal(tapped.payload.context.status, 'unavailable');
 
-      // The real encrypted request ledger owns retry/lease decisions, independent of transport mocks.
-      const { bookingRequestLedger } = await import('../../services/chatbot/request-ledger');
-      const { receptionistBookingRequestSchema } =
-        await import('../../services/orchestration/receptionist-booking.contract');
-      const canonical = receptionistBookingRequestSchema.parse(requestBody);
-      const requestFingerprint = createHash('sha256')
-        .update(JSON.stringify(canonical))
-        .digest('hex');
-      const acquisition = {
-        request: canonical,
-        requestFingerprint,
-        leaseMs: 30000,
-        maxAttempts: 2,
-      };
-      const lease = await bookingRequestLedger.acquire(acquisition);
-      assert.equal(lease.kind, 'acquired');
-      if (lease.kind !== 'acquired') throw new Error('Expected request lease.');
-      assert.equal((await bookingRequestLedger.acquire(acquisition)).kind, 'busy');
-      assert.equal(
-        (await bookingRequestLedger.acquire({ ...acquisition, requestFingerprint: 'incorrect' }))
-          .kind,
-        'conflict',
+      // Unanswered questions are logged once per conversation, without personal details.
+      const curious = visitor();
+      const question =
+        "Can we fly drones over the venue? I'm Maria Santos, maria@example.test, 0917 123 4567";
+      const gapReply = await curious.say(question);
+      assert.equal(gapReply.payload.kind, 'handoff');
+      await curious.say(question);
+      const gaps = await receptionistPool.query<{ question: string; reason: string }>(
+        'SELECT question, reason, language FROM zion_zeni_gaps WHERE reason=$1',
+        ['no_source'],
       );
-      const result = {
-        schemaVersion: canonical.schemaVersion,
-        requestId: canonical.requestId,
-        conversationId: canonical.conversationId,
-        turnId: canonical.turnId,
-        stateRevision: canonical.stateRevision,
-        respondedAt: new Date().toISOString(),
-        provenance: {
-          source: 'orchestration_adapter' as const,
-          authoritative: false,
-          observedAt: new Date().toISOString(),
-        },
-        status: 'ERROR' as const,
-        errorCode: 'NOT_CONFIGURED' as const,
-        retryable: false,
-      };
-      const completion = {
-        requestId: canonical.requestId,
-        requestFingerprint,
-        leaseToken: lease.leaseToken,
-        result,
-      };
-      await assert.rejects(
-        bookingRequestLedger.complete({ ...completion, leaseToken: randomUUID() }),
-        /no longer owned/,
+      const drones = gaps.rows.filter((row) => /drones/.test(row.question));
+      assert.equal(drones.length, 1);
+      assert.doesNotMatch(drones[0].question, /Maria|Santos|maria@example|0917/);
+      const open = await listOpenZeniGaps();
+      assert.equal(open.available, true);
+      const group = open.open.find((item) => /drones/.test(item.question));
+      assert.ok(group);
+      assert.ok(group.reasons.includes('no_source'));
+      assert.equal(await resolveZeniGapGroup(group.hash, 'Test Admin'), 1);
+      assert.equal(await resolveZeniGapGroup(group.hash, 'Test Admin'), 0);
+      const afterResolve = await listOpenZeniGaps();
+      assert.ok(afterResolve.open.every((item) => item.hash !== group.hash));
+      assert.ok(afterResolve.resolvedLast30Days >= 1);
+
+      // The admin test console runs the pipeline without storing anything.
+      const conversationsBefore = await receptionistPool.query<{ count: number }>(
+        'SELECT count(*)::int AS count FROM zion_receptionist_conversations',
       );
-      await bookingRequestLedger.fail({ ...completion, retryAt: new Date(Date.now() + 30000) });
-      assert.equal((await bookingRequestLedger.acquire(acquisition)).kind, 'busy');
-      await receptionistPool.query(
-        "UPDATE zion_receptionist_requests SET retry_at=now()-interval '1 second' WHERE request_id=$1",
-        [canonical.requestId],
+      const gapsBefore = await receptionistPool.query<{ count: number }>(
+        'SELECT count(*)::int AS count FROM zion_zeni_gaps',
       );
-      const retryLease = await bookingRequestLedger.acquire(acquisition);
-      assert.equal(retryLease.kind, 'acquired');
-      if (retryLease.kind !== 'acquired') throw new Error('Expected retry lease.');
-      assert.equal(retryLease.attempt, 2);
-      await bookingRequestLedger.complete({ ...completion, leaseToken: retryLease.leaseToken });
-      assert.equal((await bookingRequestLedger.acquire(acquisition)).kind, 'replay');
+      const previewSources = await visitorSources(DEFAULT_PUBLIC_SYSTEM_SETTINGS);
+      const preview = await previewReceptionistTurn(
+        'What are your visiting hours?',
+        previewSources,
+        DEFAULT_PUBLIC_SYSTEM_SETTINGS,
+      );
+      assert.equal(preview.reply.kind, 'answer');
+      assert.equal(preview.diagnostics.llm.status, 'disabled');
+      const unknown = await previewReceptionistTurn(
+        'Do you rent hot air balloons?',
+        previewSources,
+        DEFAULT_PUBLIC_SYSTEM_SETTINGS,
+      );
+      assert.equal(unknown.diagnostics.gap?.reason, 'no_source');
+      assert.deepEqual(
+        (
+          await receptionistPool.query<{ count: number }>(
+            'SELECT count(*)::int AS count FROM zion_receptionist_conversations',
+          )
+        ).rows,
+        conversationsBefore.rows,
+      );
+      assert.deepEqual(
+        (
+          await receptionistPool.query<{ count: number }>(
+            'SELECT count(*)::int AS count FROM zion_zeni_gaps',
+          )
+        ).rows,
+        gapsBefore.rows,
+      );
+      const overview = await zeniAdminOverview();
+      assert.equal(overview.ai.enabled, false);
+      assert.equal(overview.handoffs.total, 1);
+      assert.deepEqual(
+        overview.knowledge.map((item) => item.id),
+        ['packages', 'faqs', 'facilities', 'policies'],
+      );
+      assert.equal(overview.knowledge[0].count, 1);
+      assert.doesNotMatch(JSON.stringify(overview), /maria@example|Maria Santos|PRIVATE/);
 
       // A failed turn retains its original identity and encrypted recovery command.
       const interrupted = visitor();
@@ -518,17 +576,18 @@ test(
           expiryExecutions++;
           state.booking.status = 'available';
           state.booking.intent = 'availability_check';
+          state.booking.dates = ['2099-12-24'];
           state.booking.resultObservedAt = new Date(Date.now() - 600000).toISOString();
           state.booking.resultExpiresAt = new Date(Date.now() - 1000).toISOString();
           return {
-            kind: 'booking',
-            message: 'A previous operational snapshot.',
+            kind: 'availability',
+            message: 'A previous calendar snapshot.',
             sources: [],
             suggestions: [],
           };
         },
       );
-      assert.equal(expiredReply.kind, 'booking');
+      assert.equal(expiredReply.kind, 'availability');
       const expiredReplay = await runConversationTurn(
         savedInterrupted.session,
         { turnId: expiryTurn, fingerprint: 'expired-result' },
@@ -537,13 +596,14 @@ test(
           throw new Error('A replay must not execute again.');
         },
       );
-      assert.match(expiredReplay.message, /result has expired/);
+      assert.match(expiredReplay.message, /expired/);
       assert.equal(expiryExecutions, 1);
       assert.equal(expiredReplay.context?.status, 'stale');
+      assert.equal(expiredReplay.actions?.[0]?.value, '2099-12-24');
       const staleRestore = await (await GET(interrupted.request())).json();
       assert.equal(staleRestore.reply.context.status, 'stale');
       assert.equal(staleRestore.reply.context.previousStatus, 'available');
-      assert.match(staleRestore.reply.message, /previous result needs a fresh check/);
+      assert.match(staleRestore.reply.message, /expired/);
       assert.equal(staleRestore.reply.actions[0].type, 'check_availability');
 
       const sensitive = visitor();
@@ -555,6 +615,8 @@ test(
       // A durable lease blocks a second turn without duplicating a side effect.
       const savedAlice = await findConversation(alice.request());
       assert.ok(savedAlice);
+      assert.ok(savedAlice.state.recentTurns.length <= 6);
+      assert.doesNotMatch(JSON.stringify(savedAlice.state.recentTurns), /alice@example/);
       let unlock: () => void = () => {};
       let started: () => void = () => {};
       const began = new Promise<void>((resolve) => {

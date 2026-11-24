@@ -1,43 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  RECEPTIONIST_BOOKING_CONTRACT_VERSION,
-  receptionistBookingResultSchema,
-  type ReceptionistBookingResult,
-} from './receptionist-booking.contract';
-import {
   confirmedCalendarOverlapWhere,
   createAdminCalendarSource,
   createReceptionistCalendarAvailability,
+  type ConfirmedSpan,
   type ReceptionistCalendarQuery,
+  type ReceptionistCalendarSource,
 } from './receptionist-calendar';
-import { createReceptionistOrchestrationDispatch } from './receptionist-dispatch';
 
 const now = new Date('2026-11-22T02:00:00.000Z');
-const availabilityRequest = {
-  schemaVersion: RECEPTIONIST_BOOKING_CONTRACT_VERSION,
-  requestId: '11111111-1111-4111-8111-111111111111',
-  conversationId: '22222222-2222-4222-8222-222222222222',
-  turnId: '33333333-3333-4333-8333-333333333333',
-  stateRevision: 5,
-  sentAt: now.toISOString(),
-  intent: 'availability_check' as const,
-  booking: {
-    serviceId: 'venue:selah-hall',
-    venueId: 'selah-hall',
-    preferredSlots: [{ date: '2027-02-14', startTime: '14:00', endTime: '20:00' }],
-    timeZone: 'Asia/Manila' as const,
-    partySize: 120,
-  },
-  kbReferences: [],
-};
 
-test('admin calendar source selects only an opaque conflict marker for confirmed overlap', async () => {
-  let query: unknown;
-  const source = createAdminCalendarSource({
+function source(overrides: Partial<ReceptionistCalendarSource> = {}): ReceptionistCalendarSource {
+  return {
+    async hasConfirmedOverlap() {
+      return false;
+    },
+    async confirmedSpans() {
+      return [];
+    },
+    ...overrides,
+  };
+}
+
+test('the admin calendar source selects only an opaque id or the confirmed time span', async () => {
+  const queries: unknown[] = [];
+  const reader = createAdminCalendarSource({
     async findFirst(input) {
-      query = input;
+      queries.push(input);
       return { id: 'opaque-id' };
+    },
+    async findMany(input) {
+      queries.push(input);
+      return [];
     },
   });
   const window: ReceptionistCalendarQuery = {
@@ -45,10 +40,17 @@ test('admin calendar source selects only an opaque conflict marker for confirmed
     startsAt: new Date('2027-02-14T06:00:00.000Z'),
     endsAt: new Date('2027-02-14T12:00:00.000Z'),
   };
-  assert.equal(await source.hasConfirmedOverlap(window), true);
-  assert.deepEqual(query, {
+  assert.equal(await reader.hasConfirmedOverlap(window), true);
+  await reader.confirmedSpans(window);
+  assert.deepEqual(queries[0], {
     where: confirmedCalendarOverlapWhere(window),
     select: { id: true },
+  });
+  assert.deepEqual(queries[1], {
+    where: confirmedCalendarOverlapWhere(window),
+    select: { startsAt: true, endsAt: true },
+    orderBy: { startsAt: 'asc' },
+    take: 500,
   });
   assert.deepEqual(confirmedCalendarOverlapWhere(window), {
     venue: 'Zion Events Place',
@@ -58,176 +60,138 @@ test('admin calendar source selects only an opaque conflict marker for confirmed
   });
 });
 
-test('availability reads the shared venue calendar and returns no private record data', async () => {
+test('an explicit Manila window is checked against the shared venue calendar', async () => {
   let received: ReceptionistCalendarQuery | undefined;
   const calendar = createReceptionistCalendarAvailability({
-    source: {
+    source: source({
       async hasConfirmedOverlap(query) {
         received = query;
         return false;
       },
-    },
+    }),
     now: () => now,
   });
-  const result = await calendar.check(availabilityRequest);
-  receptionistBookingResultSchema.parse(result);
+  const result = await calendar.check({ date: '2027-02-14', startTime: '14:00', endTime: '20:00' });
   assert.deepEqual(received, {
     venue: 'Zion Events Place',
     startsAt: new Date('2027-02-14T06:00:00.000Z'),
     endsAt: new Date('2027-02-14T12:00:00.000Z'),
   });
   assert.equal(result.status, 'AVAILABLE');
-  assert.equal(JSON.stringify(result).includes('reference'), false);
-  assert.equal(JSON.stringify(result).includes('client'), false);
-  assert.equal(JSON.stringify(result).includes('notes'), false);
+  if (result.status === 'AVAILABLE') {
+    assert.equal(result.wholeDay, false);
+    assert.equal(result.startTime, '14:00');
+  }
+  assert.doesNotMatch(JSON.stringify(result), /reference|client|notes/);
 });
 
-test('confirmed overlap returns unavailable without exposing the conflicting event', async () => {
+test('a date without a time checks the whole Manila day, including later today', async () => {
+  let received: ReceptionistCalendarQuery | undefined;
   const calendar = createReceptionistCalendarAvailability({
-    source: {
-      async hasConfirmedOverlap() {
+    source: source({
+      async hasConfirmedOverlap(query) {
+        received = query;
         return true;
       },
-    },
+    }),
     now: () => now,
   });
-  const result = await calendar.check(availabilityRequest);
-  assert.equal(result.status, 'SLOT_UNAVAILABLE');
-  if (result.status === 'SLOT_UNAVAILABLE') assert.deepEqual(result.alternatives, []);
+  const result = await calendar.check({ date: '2026-11-22' });
+  assert.equal(result.status, 'UNAVAILABLE');
+  assert.deepEqual(received, {
+    venue: 'Zion Events Place',
+    startsAt: new Date('2026-11-21T16:00:00.000Z'),
+    endsAt: new Date('2026-11-22T16:00:00.000Z'),
+  });
 });
 
-test('calendar requires one future venue and time window before reading records', async () => {
+test('invalid, past or reversed requests never read the calendar', async () => {
   let reads = 0;
   const calendar = createReceptionistCalendarAvailability({
-    source: {
+    source: source({
       async hasConfirmedOverlap() {
         reads += 1;
         return false;
       },
-    },
+    }),
     now: () => now,
   });
-  const result = await calendar.check({
-    ...availabilityRequest,
-    booking: {
-      ...availabilityRequest.booking,
-      venueId: undefined,
-      preferredSlots: [{ date: '2027-02-14' }],
-    },
+  assert.deepEqual(await calendar.check({ date: '2027-02-30' }), {
+    status: 'INVALID',
+    reason: 'date',
+    observedAt: now.toISOString(),
   });
-  receptionistBookingResultSchema.parse(result);
-  assert.equal(result.status, 'NEEDS_INFO');
-  if (result.status === 'NEEDS_INFO') {
-    assert.deepEqual(result.missingFields, ['venue_id', 'time_preference']);
-  }
-  assert.equal(reads, 0);
-});
-
-test('calendar rejects inherited object keys as venue identifiers', async () => {
-  let reads = 0;
-  const calendar = createReceptionistCalendarAvailability({
-    source: {
-      async hasConfirmedOverlap() {
-        reads += 1;
-        return false;
-      },
-    },
-    now: () => now,
+  assert.equal((await calendar.check({ date: '2026-11-21' })).status, 'INVALID');
+  const reversed = await calendar.check({
+    date: '2027-02-14',
+    startTime: '20:00',
+    endTime: '14:00',
   });
-  const result = await calendar.check({
-    ...availabilityRequest,
-    booking: { ...availabilityRequest.booking, venueId: 'constructor' },
+  assert.equal(reversed.status === 'INVALID' && reversed.reason, 'time');
+  const started = await calendar.check({
+    date: '2026-11-22',
+    startTime: '09:00',
+    endTime: '11:00',
   });
-  receptionistBookingResultSchema.parse(result);
-  assert.equal(result.status, 'NEEDS_INFO');
-  if (result.status === 'NEEDS_INFO') assert.deepEqual(result.missingFields, ['venue_id']);
+  assert.equal(started.status === 'INVALID' && started.reason, 'time');
   assert.equal(reads, 0);
 });
 
 test('calendar storage failures remain fail-closed', async () => {
   const calendar = createReceptionistCalendarAvailability({
-    source: {
+    source: source({
       async hasConfirmedOverlap() {
         throw new Error('database unavailable');
       },
-    },
+    }),
     now: () => now,
   });
-  const result = await calendar.check(availabilityRequest);
-  assert.equal(result.status, 'ERROR');
-  if (result.status === 'ERROR') {
-    assert.equal(result.errorCode, 'PERSISTENCE_UNAVAILABLE');
-    assert.equal(result.retryable, true);
-  }
+  assert.equal((await calendar.check({ date: '2027-02-14' })).status, 'ERROR');
 });
 
-test('dispatch keeps availability local and sends mutations to the signed booking adapter', async () => {
-  let calendarCalls = 0;
-  let bookingCalls = 0;
-  const available: ReceptionistBookingResult = {
-    schemaVersion: RECEPTIONIST_BOOKING_CONTRACT_VERSION,
-    requestId: availabilityRequest.requestId,
-    conversationId: availabilityRequest.conversationId,
-    turnId: availabilityRequest.turnId,
-    stateRevision: availabilityRequest.stateRevision,
-    respondedAt: now.toISOString(),
-    provenance: { source: 'calendar_system', authoritative: true, observedAt: now.toISOString() },
-    status: 'AVAILABLE',
-    serviceId: availabilityRequest.booking.serviceId,
-    slots: [
-      {
-        date: '2027-02-14',
-        startTime: '14:00',
-        endTime: '20:00',
-        timeZone: 'Asia/Manila',
-      },
-    ],
-  };
-  const dispatch = createReceptionistOrchestrationDispatch({
-    calendar: {
-      async check() {
-        calendarCalls += 1;
-        return available;
-      },
+test('unavailable dates list only Manila dates with a confirmed event in the range', async () => {
+  let received: ReceptionistCalendarQuery | undefined;
+  const spans: ConfirmedSpan[] = [
+    // 26 Nov 2026, 14:00–19:00 Manila.
+    {
+      startsAt: new Date('2026-11-26T06:00:00.000Z'),
+      endsAt: new Date('2026-11-26T11:00:00.000Z'),
     },
-    booking: {
-      async execute(request) {
-        bookingCalls += 1;
-        const parsed = request as typeof availabilityRequest;
-        return {
-          schemaVersion: RECEPTIONIST_BOOKING_CONTRACT_VERSION,
-          requestId: parsed.requestId,
-          conversationId: parsed.conversationId,
-          turnId: parsed.turnId,
-          stateRevision: parsed.stateRevision,
-          respondedAt: now.toISOString(),
-          provenance: {
-            source: 'orchestration_adapter',
-            authoritative: false,
-            observedAt: now.toISOString(),
-          },
-          status: 'ERROR',
-          errorCode: 'NOT_CONFIGURED',
-          retryable: false,
-        };
-      },
+    // 30 Nov 22:00 to 1 Dec 02:00 Manila spans two dates.
+    {
+      startsAt: new Date('2026-11-30T14:00:00.000Z'),
+      endsAt: new Date('2026-11-30T18:00:00.000Z'),
     },
+    // Ends exactly at midnight Manila, so 5 Dec is not occupied.
+    {
+      startsAt: new Date('2026-12-04T08:00:00.000Z'),
+      endsAt: new Date('2026-12-04T16:00:00.000Z'),
+    },
+    // Outside the requested range.
+    {
+      startsAt: new Date('2027-03-01T06:00:00.000Z'),
+      endsAt: new Date('2027-03-01T11:00:00.000Z'),
+    },
+  ];
+  const calendar = createReceptionistCalendarAvailability({
+    source: source({
+      async confirmedSpans(query) {
+        received = query;
+        return spans;
+      },
+    }),
+    now: () => now,
   });
-
-  assert.equal((await dispatch.execute(availabilityRequest)).status, 'AVAILABLE');
-  assert.equal(calendarCalls, 1);
-  assert.equal(bookingCalls, 0);
-
-  const mutationRequest = {
-    ...availabilityRequest,
-    requestId: '44444444-4444-4444-8444-444444444444',
-    intent: 'new_booking' as const,
-    client: { name: 'Visitor', contact: { email: 'visitor@example.test' } },
-    booking: { ...availabilityRequest.booking, specialRequests: '' },
-    termsAcknowledgements: [{ kbReference: 'terms/current', acknowledgedAt: now.toISOString() }],
-    context: {},
-  };
-  assert.equal((await dispatch.execute(mutationRequest)).status, 'ERROR');
-  assert.equal(calendarCalls, 1);
-  assert.equal(bookingCalls, 1);
+  assert.deepEqual(await calendar.unavailableDates('2026-11-22', '2027-01-21'), [
+    '2026-11-26',
+    '2026-11-30',
+    '2026-12-01',
+    '2026-12-04',
+  ]);
+  assert.deepEqual(received, {
+    venue: 'Zion Events Place',
+    startsAt: new Date('2026-11-21T16:00:00.000Z'),
+    endsAt: new Date('2027-01-21T16:00:00.000Z'),
+  });
+  assert.deepEqual(await calendar.unavailableDates('2027-01-21', '2026-11-22'), []);
 });

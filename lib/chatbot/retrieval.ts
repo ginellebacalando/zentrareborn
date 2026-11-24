@@ -1,12 +1,13 @@
 import type { ChatReply, ChatSource } from './types';
-import { chatbotGreeting, chatbotReceptionist } from '@/config/chatbot-receptionist';
+import { zeniCopy } from '@/config/chatbot-receptionist';
 
 const suggestions = ['Where are you located?', 'Wedding packages', 'What are your visiting hours?'];
 const ignored = new Set(
-  'a an the is are am be do does did can could would will i we my our me us you your it that this those these there their of for to from in at on with and or about what which when who how much many please tell know like want need have has any more details information offer offerings offering options find get show list see give provide available zion events place po ba ang ng mga sa ko ako ninyo nyo naman lang'.split(
+  'a an the is are am be do does did can could would will i we my our me us you your it that this those these there their here hi hello hey just also so ok okay thanks thank yes of for to from in at on with and or about what which when who how much many please tell know like want need have has any more details information offer offerings offering options find get show list see give provide available zion events place po ba ang ng mga sa ko ako ninyo nyo naman lang kayo ano may meron pa na yung iyong para'.split(
     ' ',
   ),
 );
+// English and Filipino synonyms that point to the same published fact.
 const aliases: Record<string, string> = {
   facilities: 'facility',
   features: 'feature',
@@ -18,38 +19,58 @@ const aliases: Record<string, string> = {
   rate: 'price',
   magkano: 'price',
   presyo: 'price',
+  halaga: 'price',
   packages: 'package',
   weddings: 'wedding',
   kasal: 'wedding',
   birthdays: 'birthday',
+  kaarawan: 'birthday',
   debuts: 'debut',
+  binyag: 'christening',
+  baptism: 'christening',
+  christenings: 'christening',
   policies: 'policy',
+  patakaran: 'policy',
   rules: 'policy',
   located: 'location',
   address: 'location',
   where: 'location',
   saan: 'location',
+  nasaan: 'location',
+  lugar: 'location',
   directions: 'location',
   guests: 'guest',
+  bisita: 'guest',
+  tao: 'guest',
+  katao: 'guest',
   pax: 'guest',
   capacity: 'guest',
+  kasya: 'guest',
   people: 'guest',
   persons: 'guest',
   payments: 'payment',
   pay: 'payment',
+  bayad: 'payment',
   cancellations: 'cancellation',
   cancel: 'cancellation',
   refund: 'refundable',
   refunds: 'refundable',
   pets: 'pet',
   dogs: 'pet',
+  aso: 'pet',
   hours: 'hour',
+  oras: 'hour',
   opening: 'visiting',
   open: 'visiting',
+  bukas: 'visiting',
   parking: 'parking',
+  paradahan: 'parking',
   inclusions: 'inclusion',
   included: 'inclusion',
   includes: 'inclusion',
+  kasama: 'inclusion',
+  pagkain: 'catering',
+  food: 'catering',
 };
 
 function terms(text: string) {
@@ -75,51 +96,17 @@ function evidence(source: ChatSource) {
   };
 }
 
-export function answerVisitor(
+export type RankedSource = { source: ChatSource; coverage: number; score: number };
+
+/** Keyword retrieval over published sources. Only the best-scoring group is returned. */
+export function rankSources(
   question: string,
   sources: ChatSource[],
   previousQuestion = '',
-): ChatReply {
-  if (/^(salamat|thanks|thank you)[!.\s]*$/i.test(question))
-    return {
-      kind: 'greeting',
-      message: chatbotReceptionist.appreciation,
-      sources: [],
-      suggestions,
-    };
-
-  const greeting = /^(hi|hello|hey|good (day|morning|afternoon|evening)|kumusta)[!.\s]*$/i.test(
+): RankedSource[] {
+  const isFollowUp = /\b(it|that|those|these|them|more|inclusions|iyan|yan|iyon|yun)\b/i.test(
     question,
   );
-  if (greeting)
-    return {
-      kind: 'greeting',
-      message: chatbotGreeting,
-      sources: [],
-      suggestions,
-    };
-
-  // These requests require a person and live operational information, never a search result.
-  const catalogAvailability =
-    /\bpackages?\b/i.test(question) &&
-    !/\b(on|date|day|week|month|tomorrow|today|next|\d+)\b/i.test(question);
-  const liveAvailability =
-    /\b(available|availability|vacant|bakante)\b/i.test(question) && !catalogAvailability;
-  const needsStaff =
-    liveAvailability ||
-    /\b(book (?:a|an|the|my|for)|reserve (?:a|an|the|my)|confirm (?:a|the|my)|cancel my|reschedule my|my (?:booking|reservation|payment)|pay online|refund my|speak|human|staff|agent)\b/i.test(
-      question,
-    );
-  if (needsStaff)
-    return {
-      kind: 'handoff',
-      message:
-        'Please contact the Zion team for live date availability, venue appointments, reservations, payments, or help with an existing event. I cannot check the calendar, make a reservation, or confirm a payment.',
-      sources: [],
-      suggestions: ['Where are you located?', 'What are your visiting hours?'],
-    };
-
-  const isFollowUp = /\b(it|that|those|these|them|more|inclusions)\b/i.test(question);
   const query = terms(`${question} ${isFollowUp ? previousQuestion : ''}`);
   const packageCatalog =
     (query.includes('package') &&
@@ -155,22 +142,67 @@ export function answerVisitor(
     })
     .filter((match) => match.coverage >= 0.75 && match.score >= 1)
     .sort((a, b) => b.coverage - a.coverage || b.score - a.score);
+  return matches.filter((match) => match.score === matches[0]?.score).slice(0, 3);
+}
 
-  if (!matches.length)
+export function answerVisitor(
+  question: string,
+  sources: ChatSource[],
+  previousQuestion = '',
+): ChatReply {
+  if (/^(salamat|thanks|thank you)[!.\s]*$/i.test(question))
+    return {
+      kind: 'greeting',
+      message: zeniCopy.en.appreciation,
+      sources: [],
+      suggestions,
+    };
+
+  const greeting = /^(hi|hello|hey|good (day|morning|afternoon|evening)|kumusta)[!.\s]*$/i.test(
+    question,
+  );
+  if (greeting)
+    return {
+      kind: 'greeting',
+      message: zeniCopy.en.greeting,
+      sources: [],
+      suggestions,
+    };
+
+  // These requests need live operational information or a person, never a search result.
+  const catalogAvailability =
+    /\bpackages?\b/i.test(question) &&
+    !/\b(on|date|day|week|month|tomorrow|today|next|\d+)\b/i.test(question);
+  const liveAvailability =
+    /\b(available|availability|vacant|bakante)\b/i.test(question) && !catalogAvailability;
+  const needsStaff =
+    liveAvailability ||
+    /\b(book (?:a|an|the|my|for)|reserve (?:a|an|the|my)|confirm (?:a|the|my)|cancel my|reschedule my|my (?:booking|reservation|payment)|pay online|refund my|speak|human|staff|agent)\b/i.test(
+      question,
+    );
+  if (needsStaff)
     return {
       kind: 'handoff',
       message:
-        'I couldn’t find a reliable answer in Zion’s published information. Try a specific question about a package, venue, or policy, or contact the team for help.',
+        'Live dates, reservations, payments and existing bookings need the calendar or our staff, not a search result.',
+      sources: [],
+      suggestions: ['Where are you located?', 'What are your visiting hours?'],
+    };
+
+  const matches = rankSources(question, sources, previousQuestion);
+  if (!matches.length)
+    return {
+      kind: 'handoff',
+      message: zeniCopy.en.knowledgeGap,
       sources: [],
       suggestions,
     };
   return {
     kind: 'answer',
     message: 'Here is the published information that matches your question.',
-    sources: matches
-      .filter((match) => match.score === matches[0].score)
-      .slice(0, 3)
-      .map(({ source }) => evidence(source)),
+    sources: matches.map(({ source }) => evidence(source)),
     suggestions: ['Where are you located?', 'How do I contact your team?'],
   };
 }
+
+export { evidence as sourceEvidence };

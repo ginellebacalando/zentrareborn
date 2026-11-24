@@ -29,6 +29,9 @@ await db.exec(`
   VALUES ('preview-package','preview-category','Preview Classic','preview-classic',90000,1,now());
   INSERT INTO package_versions (id,package_id,version_number,snapshot_data)
   VALUES ('preview-version','preview-package',1,'{"packageName":"Preview Classic (demonstration only)","price":90000,"currency":"PHP","paxIncluded":100,"description":"Isolated preview data, not a real quote.","inclusions":[{"inclusionName":"Tables and chairs"}]}');
+  -- One demonstration confirmed event two weeks ahead, so Zeni's calendar card shows a booked date.
+  INSERT INTO zion_admin_bookings (id,reference,"clientName",email,phone,"eventType","packageName",venue,"startsAt","endsAt",guests,"totalCents","depositCents","paymentRule",reservation,"policyVersion","createdBy","updatedBy","updatedAt")
+  VALUES ('preview-booking','PREVIEW-0001','Preview guest (demonstration)','preview@example.test','00000000000','Wedding','Preview Classic','Zion Events Place',date_trunc('day', now()) + interval '14 days 6 hours',date_trunc('day', now()) + interval '14 days 11 hours',100,9000000,3000000,'DEPOSIT_REQUIRED','CONFIRMED',1,'preview','preview',now());
 `);
 const server = createServer(db, { logLevel: LogLevel.Error });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -56,18 +59,19 @@ const child = spawn(
       DATABASE_POOL_MAX: '1',
       AUTH_SECRET: randomBytes(48).toString('hex'),
       RECEPTIONIST_STATE_KEY: randomBytes(32).toString('hex'),
-      RECEPTIONIST_BOOKING_ORCHESTRATION_ENABLED: 'false',
+      // The preview never calls the language model; Zeni uses its deterministic answers.
+      ZENI_LLM_ENABLED: 'false',
       AUTH_URL: `http://localhost:${port}`,
       NEXT_PUBLIC_APP_URL: `http://localhost:${port}`,
       DEVELOPER_PANEL_ENABLED: 'false',
       ADMIN_LOCAL_ACCESS_ENABLED: 'false',
       DEVELOPER_LOCAL_ACCESS_ENABLED: 'false',
-      ADMIN_RESEND_API_KEY: '',
-      ADMIN_MAIL_FROM: '',
-      N8N_WEBHOOK_ENABLED: 'false',
-      N8N_INQUIRY_WEBHOOK_URL: '',
-      N8N_KNOWLEDGE_SYNC_URL: '',
-      N8N_API_KEY: '',
+      // Blank values override .env.local, so the preview can never send real email.
+      SMTP_USER: '',
+      SMTP_PASSWORD: '',
+      MAIL_FROM: '',
+      STAFF_NOTIFICATION_EMAIL: '',
+      CRON_SECRET: '',
     },
   },
 );

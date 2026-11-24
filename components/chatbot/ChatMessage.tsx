@@ -2,46 +2,37 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, FileText } from 'lucide-react';
 import { chatbotReceptionist } from '@/config/chatbot-receptionist';
 import type { ChatReply, ReceptionistAction } from '@/lib/chatbot/types';
 import { ChatAvatar } from './ChatAvatar';
+import { CalendarCard, DetailCard } from './ChatCards';
 import styles from './Chatbot.module.css';
 
-export function ChatMessageFrame({
-  participant = 'receptionist',
-  children,
-}: {
-  participant?: 'receptionist' | 'visitor';
-  children: ReactNode;
-}) {
-  const visitor = participant === 'visitor';
+export function GuestMessage({ message }: { message: string }) {
   return (
-    <div className={visitor ? styles.visitorTurn : styles.assistantTurn}>
-      <span className={styles.senderLabel}>{visitor ? 'You' : chatbotReceptionist.name}</span>
-      <div className={styles.messageRow}>
-        {!visitor && <ChatAvatar participant="receptionist" className={styles.messageAvatar} />}
-        <div className={styles.bubbleWrapper}>{children}</div>
-        {visitor && <ChatAvatar participant="visitor" className={styles.messageAvatar} />}
-      </div>
+    <div className={`${styles.turn} ${styles.guestTurn}`}>
+      <p className={styles.guestBubble}>
+        <span className={styles.srOnly}>{chatbotReceptionist.you}: </span>
+        {message}
+      </p>
     </div>
   );
 }
 
-export function VisitorMessage({ message }: { message: string }) {
+export function ZeniBubble({ children }: { children: ReactNode }) {
   return (
-    <ChatMessageFrame participant="visitor">
-      <div className={styles.outgoingBubble}>
-        <p className={styles.messageText}>{message}</p>
-      </div>
-    </ChatMessageFrame>
+    <div className={`${styles.turn} ${styles.zeniTurn}`}>
+      <ChatAvatar className={styles.turnAvatar} />
+      <div className={styles.zeniStack}>{children}</div>
+    </div>
   );
 }
 
-export function TypingMessage({ label = 'Zeni is replying…' }: { label?: string }) {
+export function TypingMessage({ label = chatbotReceptionist.typing }: { label?: string }) {
   return (
-    <ChatMessageFrame participant="receptionist">
-      <div className={styles.pendingBubble} role="status">
+    <ZeniBubble>
+      <div className={`${styles.zeniBubble} ${styles.typingBubble}`} role="status">
         <span className={styles.srOnly}>{label}</span>
         <span className={styles.typingDots} aria-hidden="true">
           <span />
@@ -49,60 +40,99 @@ export function TypingMessage({ label = 'Zeni is replying…' }: { label?: strin
           <span />
         </span>
       </div>
-    </ChatMessageFrame>
+    </ZeniBubble>
   );
 }
 
-const CONTACT_INTENT_PATTERN =
-  /\b(contact|message\s+us|message\s+the\s+team|reach\s+out|talk\s+to|speak\s+to|call|email|inquir\w*|human|staff|agent|coordinator|zion\s+team)\b/i;
-
-export function ReceptionistMessage({
+/** A Zeni reply: text, then cards, then server-built links and actions, then its sources. */
+export function ZeniMessage({
   reply,
-  question = '',
-  onNavigate,
+  active,
   onAction,
-  disabled = false,
+  onNavigate,
 }: {
   reply: ChatReply;
-  question?: string;
+  /** Only the latest reply's buttons can act; older ones stay visible but inactive. */
+  active: boolean;
+  onAction: (action: ReceptionistAction) => void;
   onNavigate: () => void;
-  onAction?: (action: ReceptionistAction) => void;
-  disabled?: boolean;
 }) {
-  const visibleActions = (reply.actions ?? []).filter(
-    (action) =>
-      action.type !== 'start_escalation' && !/^ask\s+the\s+team$/i.test(action.label.trim()),
-  );
-  const wantsToContactTeam =
-    reply.kind === 'handoff' ||
-    CONTACT_INTENT_PATTERN.test(question) ||
-    Boolean(reply.actions?.some((action) => action.type === 'start_escalation')) ||
-    reply.sources.some((source) => source.href === '/contact');
-
+  const links = reply.links ?? [];
+  const actions = reply.actions ?? [];
+  const sources = reply.sources.slice(0, 2);
   return (
-    <ChatMessageFrame participant="receptionist">
-      <div className={styles.incomingBubble}>
-        <p className={styles.messageText}>{reply.message}</p>
-        {visibleActions.length > 0 && (
-          <div className={styles.messageActions} role="group" aria-label="Next steps">
-            {visibleActions.map((action) => (
-              <button
-                key={`${action.type}-${action.value ?? ''}`}
-                type="button"
-                disabled={disabled || !onAction}
-                onClick={() => onAction?.(action)}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {wantsToContactTeam && (
-          <Link className={styles.sourceLink} href="/contact#message-us" onClick={onNavigate}>
-            Contact the Zion team <ArrowUpRight size={16} aria-hidden="true" />
-          </Link>
-        )}
+    <ZeniBubble>
+      <div className={styles.zeniBubble}>
+        <p className={styles.messageText}>
+          <span className={styles.srOnly}>{chatbotReceptionist.name}: </span>
+          {reply.message}
+        </p>
       </div>
-    </ChatMessageFrame>
+      {(reply.cards ?? []).map((card, index) =>
+        card.type === 'calendar' ? (
+          <CalendarCard
+            key={`calendar-${index}`}
+            card={card}
+            language={reply.language}
+            disabled={!active}
+            onPick={(date, label) => onAction({ type: 'check_availability', value: date, label })}
+          />
+        ) : (
+          <DetailCard key={card.id} card={card} onNavigate={onNavigate} />
+        ),
+      )}
+      {links.length + actions.length > 0 && (
+        <div className={styles.actions} role="group" aria-label={chatbotReceptionist.nextSteps}>
+          {links.map((link) =>
+            link.kind === 'page' ? (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={link.primary ? styles.primaryAction : styles.secondaryAction}
+                onClick={onNavigate}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              // A full page load lets the booking and contact forms read the pre-filled values.
+              <a
+                key={link.href}
+                href={link.href}
+                className={link.primary ? styles.primaryAction : styles.secondaryAction}
+                onClick={onNavigate}
+              >
+                {link.label}
+              </a>
+            ),
+          )}
+          {actions.map((action) => (
+            <button
+              key={`${action.type}-${action.value ?? ''}`}
+              type="button"
+              className={styles.secondaryAction}
+              disabled={!active}
+              onClick={() => onAction(action)}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {sources.length > 0 && (
+        <ul className={styles.sources} aria-label={chatbotReceptionist.sourcesLabel}>
+          {sources.map((source) => (
+            <li key={`${source.href}-${source.title}`}>
+              <Link href={source.href} className={styles.sourceLink} onClick={onNavigate}>
+                <FileText size={14} aria-hidden="true" />
+                <span>
+                  {chatbotReceptionist.sourcesLabel}: {source.title}
+                </span>
+                <ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </ZeniBubble>
   );
 }

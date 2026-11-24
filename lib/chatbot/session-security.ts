@@ -1,10 +1,13 @@
 import 'server-only';
 import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from 'node:crypto';
+import type { ZeniErrorCode } from '@/config/chatbot-receptionist';
 
+/** `code` lets the route answer in the guest's language; `message` stays the English default. */
 export class ConversationError extends Error {
   constructor(
     message: string,
     public status = 503,
+    public code?: ZeniErrorCode,
   ) {
     super(message);
   }
@@ -15,6 +18,8 @@ function encryptionKey() {
   if (!secret || Buffer.byteLength(secret) < 32)
     throw new ConversationError(
       'Conversation memory is temporarily unavailable. Please contact the Zion team.',
+      503,
+      'unavailable',
     );
   // Purpose separation prevents these records from being used as authentication tokens.
   return Buffer.from(
@@ -51,6 +56,7 @@ export function openConversation(value: string, binding: string): unknown {
     throw new ConversationError(
       'Your conversation could not be restored. Start a new chat or contact the Zion team.',
       409,
+      'restore',
     );
   }
 }

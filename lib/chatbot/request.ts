@@ -1,9 +1,13 @@
 import { z } from 'zod';
+import type { ZeniErrorCode } from '@/config/chatbot-receptionist';
+import { receptionistActionTypes } from './types';
 
+/** `code` lets the route answer in the guest's language; `message` stays the English default. */
 export class ChatRequestError extends Error {
   constructor(
     message: string,
     public status = 400,
+    public code?: ZeniErrorCode,
   ) {
     super(message);
   }
@@ -17,18 +21,7 @@ const input = z
     expectedRevision: z.number().int().nonnegative().optional(),
     action: z
       .object({
-        type: z.enum([
-          'start_booking',
-          'check_availability',
-          'select_package',
-          'accept_terms',
-          'confirm_handoff',
-          'decline',
-          'request_human',
-          'confirm_escalation',
-          'confirm_change',
-          'resume',
-        ]),
+        type: z.enum(receptionistActionTypes),
         value: z.string().max(180).optional(),
       })
       .strict()
@@ -41,17 +34,17 @@ export function requireChatOrigin(request: Request) {
     request.headers.get('origin') !== new URL(request.url).origin ||
     request.headers.get('sec-fetch-site') === 'cross-site'
   ) {
-    throw new ChatRequestError('Please use the chatbot on the Zion website.', 403);
+    throw new ChatRequestError('Please use the chatbot on the Zion website.', 403, 'origin');
   }
 }
 
 export async function readChatRequest(request: Request) {
   requireChatOrigin(request);
   if (request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json') {
-    throw new ChatRequestError('Send a JSON question.', 415);
+    throw new ChatRequestError('Send a JSON question.', 415, 'format');
   }
   const reader = request.body?.getReader();
-  if (!reader) throw new ChatRequestError('Enter a question.');
+  if (!reader) throw new ChatRequestError('Enter a question.', 400, 'length');
   let body = '';
   let size = 0;
   const decoder = new TextDecoder();
@@ -62,7 +55,7 @@ export async function readChatRequest(request: Request) {
       size += value.byteLength;
       if (size > 8192) {
         await reader.cancel();
-        throw new ChatRequestError('Your question is too long.', 413);
+        throw new ChatRequestError('Your question is too long.', 413, 'length');
       }
       body += decoder.decode(value, { stream: true });
     }
@@ -74,10 +67,11 @@ export async function readChatRequest(request: Request) {
   try {
     json = JSON.parse(body);
   } catch {
-    throw new ChatRequestError('Send a valid question.');
+    throw new ChatRequestError('Send a valid question.', 400, 'format');
   }
   const parsed = input.safeParse(json);
-  if (!parsed.success) throw new ChatRequestError('Enter a question of 1–600 characters.', 422);
+  if (!parsed.success)
+    throw new ChatRequestError('Enter a question of 1–600 characters.', 422, 'length');
   return parsed.data;
 }
 
@@ -95,6 +89,7 @@ export function createChatBudget(limit = 120, windowMs = 60000) {
       throw new ChatRequestError(
         'The assistant is busy. Please try again in a minute or contact the team.',
         429,
+        'busy',
       );
     count += 1;
   };

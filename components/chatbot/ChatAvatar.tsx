@@ -1,34 +1,15 @@
-'use client';
-
-import Image from 'next/image';
-import { UserRound } from 'lucide-react';
-import { chatbotReceptionist } from '@/config/chatbot-receptionist';
+import ZentraMonogram from '@/components/shared/ZentraMonogram';
 import styles from './Chatbot.module.css';
 
+/** Zeni's avatar is the ZENTRA "Z" monogram; it is decorative next to labelled text. */
 export function ChatAvatar({
-  participant,
+  size = 'sm',
   className = '',
 }: {
-  participant: 'receptionist' | 'visitor';
+  size?: 'sm' | 'md';
   className?: string;
 }) {
-  const isReceptionist = participant === 'receptionist';
   return (
-    <span
-      className={`${styles.avatarFrame} ${isReceptionist ? styles.receptionistAvatar : styles.visitorAvatar} ${className}`}
-      aria-hidden="true"
-    >
-      {isReceptionist ? (
-        <Image
-          {...chatbotReceptionist.avatar}
-          alt=""
-          unoptimized
-          sizes="48px"
-          className={styles.avatarImage}
-        />
-      ) : (
-        <UserRound size={18} strokeWidth={2.2} className={styles.visitorIcon} />
-      )}
-    </span>
+    <ZentraMonogram variant="outline" size={size} className={`${styles.avatar} ${className}`} />
   );
 }

@@ -1,5 +1,6 @@
 import { getPublicSystemSettings } from '@/lib/system-settings';
 import { randomUUID } from 'node:crypto';
+import { zeniCopyFor } from '@/config/chatbot-receptionist';
 import {
   ChatRequestError,
   createChatBudget,
@@ -14,6 +15,7 @@ import {
 } from '@/lib/chatbot/session-security';
 import { conversationSummary, operationalSnapshot } from '@/lib/chatbot/conversation';
 import { containsSensitiveDetails } from '@/lib/chatbot/intent';
+import { detectLanguage, type ZeniLanguage } from '@/lib/chatbot/language';
 import type { ChatReply, ChatSource } from '@/lib/chatbot/types';
 import { visitorSources } from '@/services/chatbot/sources';
 import {
@@ -30,29 +32,31 @@ export const dynamic = 'force-dynamic';
 const consumeBudget = createChatBudget();
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
 
-function failure(error: unknown, session?: ConversationSession) {
+function failure(error: unknown, session?: ConversationSession, language: ZeniLanguage = 'en') {
+  const copy = zeniCopyFor(language);
   const responseHeaders = {
     ...headers,
     ...(session?.created ? { 'Set-Cookie': sessionCookie(session.token) } : {}),
   };
   if (error instanceof ChatRequestError || error instanceof ConversationError)
     return Response.json(
-      { error: error.message, refresh: error.status === 409 },
+      {
+        error: error.code ? copy.errors[error.code] : error.message,
+        refresh: error.status === 409,
+      },
       {
         status: error.status,
         headers: { ...responseHeaders, ...(error.status === 429 ? { 'Retry-After': '60' } : {}) },
       },
     );
-  console.error('[receptionist] The conversation service is unavailable.');
+  console.error('[zeni] The conversation service is unavailable.');
   return Response.json(
-    {
-      error:
-        'Zeni is temporarily unavailable. Your message has been kept below; please retry or contact the Zion team.',
-    },
+    { error: copy.errors.unavailable },
     { status: 503, headers: responseHeaders },
   );
 }
 
+/** Evidence shown to the visitor must still match the currently published source text. */
 function currentEvidence(reply: ChatReply, sources: ChatSource[]): ChatReply {
   const valid = reply.sources.every((item) =>
     sources.some(
@@ -63,23 +67,25 @@ function currentEvidence(reply: ChatReply, sources: ChatSource[]): ChatReply {
           source.text.startsWith(item.excerpt.split('… Read the full source')[0])),
     ),
   );
-  return valid
-    ? reply
-    : {
-        kind: 'handoff',
-        message:
-          'The published information changed while this conversation was open. Please ask again for the current details or contact the team.',
-        sources: [],
-        suggestions: [],
-        actions: [],
-        context: reply.context,
-      };
+  if (valid) return reply;
+  const copy = zeniCopyFor(reply.language);
+  return {
+    kind: 'handoff',
+    message: copy.knowledgeConflict,
+    sources: [],
+    suggestions: [],
+    actions: [{ type: 'request_human', label: copy.labels.talkToStaff }],
+    language: reply.language,
+    context: reply.context,
+  };
 }
 
 export async function POST(request: Request) {
   let session: ConversationSession | undefined;
+  let language: ZeniLanguage = 'en';
   try {
     const input = await readChatRequest(request);
+    language = detectLanguage(input.question);
     consumeBudget();
     const settings = await getPublicSystemSettings();
     if (settings.client.maintenanceMode)
@@ -112,7 +118,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    return failure(error, session);
+    return failure(error, session, language);
   }
 }
 
@@ -123,7 +129,7 @@ export async function GET(request: Request) {
       (request.headers.has('origin') &&
         request.headers.get('origin') !== new URL(request.url).origin)
     )
-      throw new ChatRequestError('Please use Zeni on the Zion website.', 403);
+      throw new ChatRequestError('Please use Zeni on the Zion website.', 403, 'origin');
     const saved = await findConversation(request);
     if (!saved)
       return Response.json(
@@ -136,28 +142,28 @@ export async function GET(request: Request) {
         },
       );
     const state = saved.state;
+    const copy = zeniCopyFor(state.client.language);
     const snapshot = operationalSnapshot(state);
-    const staleAvailability = snapshot.stale && state.booking.intent === 'availability_check';
     const reply: ChatReply = {
       kind: 'discovery',
       message: snapshot.stale
-        ? `Welcome back${state.client.name ? `, ${state.client.name}` : ''}. Your saved details are here, but the previous result needs a fresh check; this does not cancel any booking. ${staleAvailability ? 'Shall I check the schedule again?' : 'Would you like the Zion team to verify the current status?'}`
-        : `Welcome back${state.client.name ? `, ${state.client.name}` : ''}. I have retained the details for this short-lived conversation; previous message bubbles are not restored. What would you like to continue?`,
+        ? `${copy.welcomeBack(state.client.name || undefined)} ${copy.staleResult}`
+        : copy.welcomeBack(state.client.name || undefined),
       sources: [],
-      suggestions: [],
+      suggestions: copy.suggestions.welcome,
+      language: state.client.language,
       context: conversationSummary(state),
       actions: snapshot.stale
         ? [
             {
-              type: staleAvailability ? 'check_availability' : 'request_human',
-              label: staleAvailability ? 'Check the schedule again' : 'Ask the team to verify',
+              type: 'check_availability',
+              label: copy.labels.checkAnotherDate,
+              ...(state.booking.dates[0] ? { value: state.booking.dates[0] } : {}),
             },
           ]
-        : state.flags.needsHuman
-          ? [{ type: 'request_human', label: 'Ask the team' }]
-          : state.booking.intent
-            ? [{ type: 'resume', label: 'Continue my request' }]
-            : [],
+        : state.flags.needsHuman && state.awaiting
+          ? [{ type: 'resume', label: copy.labels.continue }]
+          : [],
     };
     return Response.json(
       { reply, ...(saved.pending ? { retry: saved.pending } : {}) },

@@ -1,25 +1,26 @@
 import 'server-only';
 
 import type { Prisma } from '@prisma/client';
-import {
-  RECEPTIONIST_BOOKING_CONTRACT_VERSION,
-  type ReceptionistBookingRequest,
-  type ReceptionistBookingResult,
-} from './receptionist-booking.contract';
+import { assertDateKey, assertTime, nextDateKey, venueDateKey } from '@/lib/calendar-time';
 
-export type ReceptionistAvailabilityRequest = Extract<
-  ReceptionistBookingRequest,
-  { intent: 'availability_check' }
->;
+/**
+ * Read-only projection of the admin calendar for Zeni. Admin confirmation currently locks and
+ * conflicts on this one venue literal, so every public space (Selah Hall, Pavilion Garden, the
+ * pool) is a conservative alias of the same exclusive scheduling resource.
+ */
+export const RECEPTIONIST_CALENDAR_VENUE = 'Zion Events Place' as const;
 
 export type ReceptionistCalendarQuery = {
-  venue: 'Zion Events Place';
+  venue: typeof RECEPTIONIST_CALENDAR_VENUE;
   startsAt: Date;
   endsAt: Date;
 };
 
+export type ConfirmedSpan = { startsAt: Date; endsAt: Date };
+
 export interface ReceptionistCalendarSource {
   hasConfirmedOverlap(query: ReceptionistCalendarQuery): Promise<boolean>;
+  confirmedSpans(query: ReceptionistCalendarQuery): Promise<ConfirmedSpan[]>;
 }
 
 type CalendarBookingReader = {
@@ -27,6 +28,32 @@ type CalendarBookingReader = {
     where: Prisma.AdminBookingWhereInput;
     select: { id: true };
   }): Promise<{ id: string } | null>;
+  findMany(input: {
+    where: Prisma.AdminBookingWhereInput;
+    select: { startsAt: true; endsAt: true };
+    orderBy: { startsAt: 'asc' };
+    take: number;
+  }): Promise<ConfirmedSpan[]>;
+};
+
+export type AvailabilityCheckRequest = { date: string; startTime?: string; endTime?: string };
+
+export type AvailabilityCheckResult =
+  | {
+      status: 'AVAILABLE' | 'UNAVAILABLE';
+      date: string;
+      startTime?: string;
+      endTime?: string;
+      wholeDay: boolean;
+      observedAt: string;
+    }
+  | { status: 'INVALID'; reason: 'date' | 'time' | 'past'; observedAt: string }
+  | { status: 'ERROR'; observedAt: string };
+
+export type ReceptionistCalendarAvailability = {
+  check(request: AvailabilityCheckRequest): Promise<AvailabilityCheckResult>;
+  /** Manila dates between `from` and `to` (inclusive) that have a confirmed event. */
+  unavailableDates(from: string, to: string): Promise<string[]>;
 };
 
 export type ReceptionistCalendarDependencies = {
@@ -34,98 +61,10 @@ export type ReceptionistCalendarDependencies = {
   now?: () => Date;
 };
 
-export type ReceptionistCalendarAvailability = {
-  check(request: ReceptionistAvailabilityRequest): Promise<ReceptionistBookingResult>;
-};
-
-// Admin confirmation currently locks and conflicts on this one venue literal, so every public
-// space remains a conservative alias of the same exclusive scheduling resource.
-const calendarVenueByPublicId = {
-  'zion-events-place': 'Zion Events Place',
-  'selah-hall': 'Zion Events Place',
-  'pavilion-garden': 'Zion Events Place',
-  pool: 'Zion Events Place',
-} as const;
-
-type PublicVenueId = keyof typeof calendarVenueByPublicId;
-
-function isPublicVenueId(value: string | undefined): value is PublicVenueId {
-  return Boolean(value && Object.hasOwn(calendarVenueByPublicId, value));
-}
+const MAX_CALENDAR_DAYS = 120;
 
 function manilaInstant(date: string, time: string) {
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
-  if (
-    !year ||
-    !month ||
-    !day ||
-    hour === undefined ||
-    minute === undefined ||
-    month < 1 ||
-    month > 12 ||
-    day < 1 ||
-    day > 31
-  ) {
-    return null;
-  }
-  const instant = new Date(Date.UTC(year, month - 1, day, hour - 8, minute));
-  const manila = new Date(instant.getTime() + 8 * 60 * 60 * 1000);
-  if (
-    manila.getUTCFullYear() !== year ||
-    manila.getUTCMonth() !== month - 1 ||
-    manila.getUTCDate() !== day ||
-    manila.getUTCHours() !== hour ||
-    manila.getUTCMinutes() !== minute
-  ) {
-    return null;
-  }
-  return instant;
-}
-
-function commonResult(request: ReceptionistAvailabilityRequest, observedAt: Date) {
-  return {
-    schemaVersion: RECEPTIONIST_BOOKING_CONTRACT_VERSION,
-    requestId: request.requestId,
-    conversationId: request.conversationId,
-    turnId: request.turnId,
-    stateRevision: request.stateRevision,
-    respondedAt: observedAt.toISOString(),
-  } as const;
-}
-
-function needsExplicitWindow(
-  request: ReceptionistAvailabilityRequest,
-  observedAt: Date,
-  missingFields: Array<'venue_id' | 'preferred_slots' | 'time_preference'>,
-): ReceptionistBookingResult {
-  return {
-    ...commonResult(request, observedAt),
-    provenance: {
-      source: 'request_validation',
-      authoritative: true,
-      observedAt: observedAt.toISOString(),
-    },
-    status: 'NEEDS_INFO',
-    missingFields,
-  };
-}
-
-function calendarFailure(
-  request: ReceptionistAvailabilityRequest,
-  observedAt: Date,
-): ReceptionistBookingResult {
-  return {
-    ...commonResult(request, observedAt),
-    provenance: {
-      source: 'orchestration_adapter',
-      authoritative: false,
-      observedAt: observedAt.toISOString(),
-    },
-    status: 'ERROR',
-    errorCode: 'PERSISTENCE_UNAVAILABLE',
-    retryable: true,
-  };
+  return new Date(`${assertDateKey(date)}T${assertTime(time)}:00+08:00`);
 }
 
 export function confirmedCalendarOverlapWhere(
@@ -139,26 +78,46 @@ export function confirmedCalendarOverlapWhere(
   };
 }
 
+/** Selects only an opaque id or the confirmed time span: never names, notes or references. */
 export function createAdminCalendarSource(
   reader?: CalendarBookingReader,
 ): ReceptionistCalendarSource {
+  async function bookingReader(): Promise<CalendarBookingReader> {
+    if (reader) return reader;
+    const { prisma } = await import('@/lib/prisma');
+    return {
+      findFirst: (input) => prisma.adminBooking.findFirst(input),
+      findMany: (input) => prisma.adminBooking.findMany(input),
+    };
+  }
   return {
     async hasConfirmedOverlap(query) {
-      const bookingReader =
-        reader ??
-        ({
-          async findFirst(input) {
-            const { prisma } = await import('@/lib/prisma');
-            return prisma.adminBooking.findFirst(input);
-          },
-        } satisfies CalendarBookingReader);
-      const conflict = await bookingReader.findFirst({
+      const conflict = await (
+        await bookingReader()
+      ).findFirst({
         where: confirmedCalendarOverlapWhere(query),
         select: { id: true },
       });
       return Boolean(conflict);
     },
+    async confirmedSpans(query) {
+      return (await bookingReader()).findMany({
+        where: confirmedCalendarOverlapWhere(query),
+        select: { startsAt: true, endsAt: true },
+        orderBy: { startsAt: 'asc' },
+        take: 500,
+      });
+    },
   };
+}
+
+function validDate(date: string) {
+  try {
+    assertDateKey(date);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function createReceptionistCalendarAvailability(
@@ -169,67 +128,63 @@ export function createReceptionistCalendarAvailability(
 
   return {
     async check(request) {
-      const observedAt = now();
-      const venueId = request.booking.venueId;
-      const slot =
-        request.booking.preferredSlots.length === 1 ? request.booking.preferredSlots[0] : undefined;
-      const missingFields: Array<'venue_id' | 'preferred_slots' | 'time_preference'> = [];
-      if (!isPublicVenueId(venueId)) missingFields.push('venue_id');
-      if (!slot) missingFields.push('preferred_slots');
-      if (!slot?.startTime || !slot.endTime) missingFields.push('time_preference');
-      if (missingFields.length > 0) {
-        return needsExplicitWindow(request, observedAt, missingFields);
+      const observed = now();
+      const observedAt = observed.toISOString();
+      if (!validDate(request.date)) return { status: 'INVALID', reason: 'date', observedAt };
+      if (request.date < venueDateKey(observed))
+        return { status: 'INVALID', reason: 'past', observedAt };
+      const wholeDay = !request.startTime || !request.endTime;
+      let startsAt: Date;
+      let endsAt: Date;
+      try {
+        startsAt = wholeDay
+          ? manilaInstant(request.date, '00:00')
+          : manilaInstant(request.date, request.startTime!);
+        endsAt = wholeDay
+          ? manilaInstant(nextDateKey(request.date), '00:00')
+          : manilaInstant(request.date, request.endTime!);
+      } catch {
+        return { status: 'INVALID', reason: 'time', observedAt };
       }
-      if (!isPublicVenueId(venueId) || !slot?.startTime || !slot.endTime) {
-        return needsExplicitWindow(request, observedAt, ['preferred_slots']);
-      }
-
-      const startsAt = manilaInstant(slot.date, slot.startTime);
-      const endsAt = manilaInstant(slot.date, slot.endTime);
-      if (!startsAt || !endsAt || startsAt >= endsAt || startsAt <= observedAt) {
-        return needsExplicitWindow(request, observedAt, ['preferred_slots']);
-      }
-
+      // An explicit window must lie ahead; a whole-day check also covers the rest of today.
+      if (startsAt >= endsAt || (!wholeDay && startsAt <= observed))
+        return { status: 'INVALID', reason: 'time', observedAt };
       let unavailable: boolean;
       try {
         unavailable = await source.hasConfirmedOverlap({
-          venue: calendarVenueByPublicId[venueId],
+          venue: RECEPTIONIST_CALENDAR_VENUE,
           startsAt,
           endsAt,
         });
       } catch {
-        return calendarFailure(request, now());
-      }
-
-      const responseTime = now();
-      const provenance = {
-        source: 'calendar_system' as const,
-        authoritative: true,
-        observedAt: responseTime.toISOString(),
-      };
-      if (unavailable) {
-        return {
-          ...commonResult(request, responseTime),
-          provenance,
-          status: 'SLOT_UNAVAILABLE',
-          serviceId: request.booking.serviceId,
-          alternatives: [],
-        };
+        return { status: 'ERROR', observedAt: now().toISOString() };
       }
       return {
-        ...commonResult(request, responseTime),
-        provenance,
-        status: 'AVAILABLE',
-        serviceId: request.booking.serviceId,
-        slots: [
-          {
-            date: slot.date,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            timeZone: 'Asia/Manila',
-          },
-        ],
+        status: unavailable ? 'UNAVAILABLE' : 'AVAILABLE',
+        date: request.date,
+        ...(wholeDay ? {} : { startTime: request.startTime, endTime: request.endTime }),
+        wholeDay,
+        observedAt: now().toISOString(),
       };
+    },
+    async unavailableDates(from, to) {
+      if (!validDate(from) || !validDate(to) || from > to) return [];
+      const spans = await source.confirmedSpans({
+        venue: RECEPTIONIST_CALENDAR_VENUE,
+        startsAt: manilaInstant(from, '00:00'),
+        endsAt: manilaInstant(nextDateKey(to), '00:00'),
+      });
+      const dates = new Set<string>();
+      for (const span of spans) {
+        // A span ending exactly at midnight does not occupy the following date.
+        let key = venueDateKey(span.startsAt);
+        const last = venueDateKey(new Date(span.endsAt.getTime() - 1));
+        for (let day = 0; key <= last && day < MAX_CALENDAR_DAYS; day += 1) {
+          if (key >= from && key <= to) dates.add(key);
+          key = nextDateKey(key);
+        }
+      }
+      return [...dates].sort();
     },
   };
 }

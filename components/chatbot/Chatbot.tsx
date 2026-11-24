@@ -1,305 +1,77 @@
 'use client';
+
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Send, Smile, X } from 'lucide-react';
-import { useReducedMotion } from '@/components/shared/useReducedMotion';
-import { chatbotEmojiGroups, chatbotReceptionist } from '@/config/chatbot-receptionist';
+import { Info, RotateCcw, SendHorizontal, X } from 'lucide-react';
+import { chatbotReceptionist, zeniCopyFor } from '@/config/chatbot-receptionist';
+import { detectLanguage, type ZeniLanguage } from '@/lib/chatbot/language';
 import { containDialogFocus } from '@/lib/dialog-focus';
 import type { ChatReply, ConversationSummary, ReceptionistAction } from '@/lib/chatbot/types';
-import {
-  ChatMessageFrame,
-  ReceptionistMessage,
-  TypingMessage,
-  VisitorMessage,
-} from './ChatMessage';
 import { ChatAvatar } from './ChatAvatar';
 import { ChatLauncher } from './ChatLauncher';
+import { GuestMessage, TypingMessage, ZeniBubble, ZeniMessage } from './ChatMessage';
+import { ZeniInfo } from './ZeniInfo';
 import { OPEN_CHATBOT_EVENT, type OpenChatbotDetail } from './OpenChatbotButton';
 import styles from './Chatbot.module.css';
 
 type Exchange = { id: string; question: string; reply: ChatReply };
-
-const initialSuggestions = ['About Us', 'Packages', 'Facilities', 'Visiting Hours', 'FAQ'];
-
-const suggestionQueries: Record<string, string> = {
-  'About Us': 'Tell me about Zion Events Place',
-  Packages: 'Wedding packages',
-  Facilities: 'What facilities and spaces do you have?',
-  FAQ: 'What are your venue policies and FAQs?',
-  'Visiting Hours': 'What are your visiting hours?',
-  Prices: 'Package prices and rates',
-  'Find us': 'Where are you located?',
-  Directions: 'Where are you located?',
-  'Contact the team': 'How do I contact your team?',
-  'Contact Team': 'How do I contact your team?',
-  'Wedding Prices': 'How much is your wedding package?',
-  'Debut Packages': 'Tell me about Debut packages',
-  'Package Prices': 'Package prices and rates',
-  'Customize Package': 'Can we customize our package?',
-  'Rain Backup Venue': 'Is there a backup venue in case of rain?',
-  'Rain Backup': 'Is there a backup venue in case of rain?',
-  'Selah Hall': 'Tell me about Selah Hall',
-  'Pavilion Garden': 'Tell me about Pavilion Garden',
-  'Venue Capacity': 'What is the capacity of your venue?',
-  'Arrange Site Visit': 'What are your visiting hours and how do I arrange a site visit?',
-  'Modes of Payment': 'What are your modes of payment?',
-  'Payment Schedule': 'When are our payments due?',
-  'Payment Due Dates': 'When are our payments due?',
-  'Security Deposit': 'What is the Security Damage Deposit?',
-  'Cancellation Policy': 'What is your cancellation policy?',
-  'Rescheduling Policy': 'Can we reschedule our wedding date?',
-  'Pet Policy': 'Are pets allowed?',
-  'Styling Themes': 'Can we send styling pegs?',
-  'Photo & Video': 'Where do we send our Photo & Video pegs?',
-  'Wedding Tracker': 'Where do we write our wedding details and requests?',
-  'Food & Catering': 'Tell me about your packages and catering inclusions',
-  'Location & Map': 'Where are you located?',
-  Policies: 'What are your venue policies?',
-};
-
-const suggestionLabels: Record<string, string> = {
-  'Where are you located?': 'Find us',
-  'Wedding packages': 'Packages',
-  'What are your visiting hours?': 'Visiting Hours',
-  'How do I contact your team?': 'Contact Team',
-  'Tell me about Zion Events Place': 'About Us',
-  'Package prices and rates': 'Prices',
-  'What are your venue policies and FAQs?': 'FAQ',
-};
-
-type TopicRule = {
-  trigger: RegExp;
-  suggestions: readonly string[];
-};
-
-const TOPIC_SUGGESTION_RULES: readonly TopicRule[] = [
-  {
-    trigger: /\b(wedding|kasal|bride|groom|vows|ceremony|church|prenup)\b/i,
-    suggestions: [
-      'Wedding Prices',
-      'Customize Package',
-      'Rain Backup Venue',
-      'Payment Schedule',
-      'Arrange Site Visit',
-    ],
-  },
-  {
-    trigger: /\b(debut|18th|cotillion|roses|candles)\b/i,
-    suggestions: [
-      'Debut Packages',
-      'Venue Capacity',
-      'Styling Themes',
-      'Payment Schedule',
-      'Arrange Site Visit',
-    ],
-  },
-  {
-    trigger: /\b(birthday|christening|baptism|gender\s*reveal|christmas|corporate|party)\b/i,
-    suggestions: [
-      'Package Prices',
-      'Venue Capacity',
-      'Customize Package',
-      'Facilities',
-      'Arrange Site Visit',
-    ],
-  },
-  {
-    trigger:
-      /\b(selah|pavilion|garden|pool|facilit\w*|space\w*|indoor|outdoor|rain|led|parking|capacity|guests|pax)\b/i,
-    suggestions: [
-      'Selah Hall',
-      'Pavilion Garden',
-      'Rain Backup',
-      'Venue Capacity',
-      'Arrange Site Visit',
-    ],
-  },
-  {
-    trigger:
-      /\b(price\w*|pricing|rate\w*|cost\w*|magkano|presyo|payment\w*|deposit|downpayment|balance|refund\w*|reservation\s*fee|cash|bank)\b/i,
-    suggestions: [
-      'Modes of Payment',
-      'Payment Due Dates',
-      'Security Deposit',
-      'Cancellation Policy',
-      'Packages',
-    ],
-  },
-  {
-    trigger:
-      /\b(polic\w*|terms|conditions|rules|cancel\w*|reschedul\w*|rebook\w*|pet\w*|dog\w*|overtime|corkage|damage)\b/i,
-    suggestions: [
-      'Rescheduling Policy',
-      'Cancellation Policy',
-      'Pet Policy',
-      'Security Deposit',
-      'Contact Team',
-    ],
-  },
-  {
-    trigger:
-      /\b(location|located|address|where|saan|directions|map|visiting|hours|ocular|tour|site\s*visit)\b/i,
-    suggestions: ['Visiting Hours', 'Directions', 'Facilities', 'Packages', 'Contact Team'],
-  },
-  {
-    trigger: /\b(hmua|photo|video|pegs|styling|flowers|motif|tracker|coordinator|catering)\b/i,
-    suggestions: [
-      'Styling Themes',
-      'Photo & Video',
-      'Wedding Tracker',
-      'Customize Package',
-      'Policies',
-    ],
-  },
-  {
-    trigger: /\b(about|story|history|founders|why\s*choose|advantages)\b/i,
-    suggestions: ['Facilities', 'Packages', 'Location & Map', 'Visiting Hours', 'FAQ'],
-  },
-  {
-    trigger: /\b(package\w*|inclusion\w*|classic|premium|ultimate)\b/i,
-    suggestions: [
-      'Package Prices',
-      'Customize Package',
-      'Modes of Payment',
-      'Venue Capacity',
-      'Arrange Site Visit',
-    ],
-  },
-];
-
-function resolveConversationSuggestions(history: Exchange[]): string[] {
-  if (!history.length) return initialSuggestions;
-  const latest = history[history.length - 1];
-  const recentText = [
-    latest.question,
-    latest.reply.message,
-    ...latest.reply.sources.map((source) => `${source.title} ${source.excerpt}`),
-  ].join(' ');
-
-  const lastQuestionLower = latest.question.trim().toLowerCase();
-  const matched = TOPIC_SUGGESTION_RULES.find((rule) => rule.trigger.test(recentText));
-  const candidates = matched
-    ? [...matched.suggestions]
-    : latest.reply.suggestions?.length
-      ? latest.reply.suggestions
-      : initialSuggestions;
-
-  const filtered = candidates.filter((item) => {
-    const query = (suggestionQueries[item] ?? item).trim().toLowerCase();
-    return query !== lastQuestionLower && item.trim().toLowerCase() !== lastQuestionLower;
-  });
-
-  return (filtered.length ? filtered : initialSuggestions).slice(0, 4);
-}
+type Command = Pick<ReceptionistAction, 'type' | 'value'>;
+type Recovery = { question: string; turnId: string; action?: Command };
 
 const subscribeReady = () => () => {};
 const clientReady = () => true;
 const serverReady = () => false;
-const PLACEHOLDER_TEXT = 'Type a message...';
+const MAX_LENGTH = 600;
+const REQUEST_TIMEOUT_MS = 25000;
+const INFO_ID = 'zion-chatbot-info';
+
+function isReply(value: unknown): value is ChatReply {
+  if (!value || typeof value !== 'object') return false;
+  const reply = value as Partial<ChatReply>;
+  return (
+    typeof reply.message === 'string' &&
+    Array.isArray(reply.sources) &&
+    Array.isArray(reply.suggestions)
+  );
+}
 
 export default function Chatbot() {
   // A server-rendered launcher must not accept clicks before its dialog handlers hydrate.
   const ready = useSyncExternalStore(subscribeReady, clientReady, serverReady);
-  const reducedMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [question, setQuestion] = useState('');
-  const [emojiOpen, setEmojiOpen] = useState(false);
-  const [inputFocused, setInputFocused] = useState(false);
-  const [placeholderCount, setPlaceholderCount] = useState(PLACEHOLDER_TEXT.length);
-  const [placeholderDeleting, setPlaceholderDeleting] = useState(false);
-  const [placeholderPaused, setPlaceholderPaused] = useState(false);
-  const [cursorVisible, setCursorVisible] = useState(true);
   const [history, setHistory] = useState<Exchange[]>([]);
   const [pendingQuestion, setPendingQuestion] = useState('');
   const [error, setError] = useState('');
   const [context, setContext] = useState<ConversationSummary | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [recovery, setRecovery] = useState<{
-    question: string;
-    turnId: string;
-    action?: Pick<ReceptionistAction, 'type' | 'value'>;
-  } | null>(null);
+  const [recovery, setRecovery] = useState<Recovery | null>(null);
   const restored = useRef(false);
-  const retryTurn = useRef<{
-    fingerprint: string;
-    turnId: string;
-    question: string;
-    action?: Pick<ReceptionistAction, 'type' | 'value'>;
-  } | null>(null);
+  const retryTurn = useRef<(Recovery & { fingerprint: string }) | null>(null);
   const launcher = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
+  const infoButton = useRef<HTMLButtonElement>(null);
+  const infoHeading = useRef<HTMLHeadingElement>(null);
+  const infoWasOpen = useRef(false);
   const input = useRef<HTMLTextAreaElement>(null);
-  const smileyButton = useRef<HTMLButtonElement>(null);
-  const emojiPicker = useRef<HTMLDivElement>(null);
   const sendButton = useRef<HTMLButtonElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const queuedPrompt = useRef<string | null>(null);
-  const sendQuestionRef = useRef<
-    | ((
-        value: string,
-        selectedAction?: ReceptionistAction,
-        recoveryTurnId?: string,
-      ) => Promise<void>)
-    | null
-  >(null);
-  const shouldAnimatePlaceholder = open && !reducedMotion && !question && !inputFocused;
+  const sendRef = useRef<((value: string, action?: ReceptionistAction) => Promise<void>) | null>(
+    null,
+  );
 
-  useEffect(() => {
-    if (!shouldAnimatePlaceholder) return;
+  const language: ZeniLanguage = history.at(-1)?.reply.language ?? context?.language ?? 'en';
+  const copy = zeniCopyFor(language);
+  const busy = Boolean(pendingQuestion) || restoring || resetting;
 
-    let delay = placeholderDeleting ? 45 : 85;
-    if (!placeholderDeleting && placeholderCount === PLACEHOLDER_TEXT.length) {
-      delay = placeholderPaused ? 2_200 : 120;
-    } else if (placeholderDeleting && placeholderCount === 0) {
-      delay = 450;
-    }
-
-    const timer = window.setTimeout(() => {
-      if (!placeholderDeleting) {
-        if (placeholderCount < PLACEHOLDER_TEXT.length) {
-          setPlaceholderCount((count) => count + 1);
-          setPlaceholderPaused(false);
-        } else if (!placeholderPaused) {
-          setPlaceholderPaused(true);
-        } else {
-          setPlaceholderDeleting(true);
-          setPlaceholderPaused(false);
-        }
-      } else if (placeholderCount > 0) {
-        setPlaceholderCount((count) => count - 1);
-      } else {
-        setPlaceholderDeleting(false);
-      }
-    }, delay);
-
-    return () => window.clearTimeout(timer);
-  }, [shouldAnimatePlaceholder, placeholderCount, placeholderDeleting, placeholderPaused]);
-
-  useEffect(() => {
-    if (!shouldAnimatePlaceholder || !placeholderPaused) return;
-    const blink = window.setInterval(() => {
-      setCursorVisible((visible) => !visible);
-    }, 480);
-    return () => window.clearInterval(blink);
-  }, [shouldAnimatePlaceholder, placeholderPaused]);
-
-  useEffect(() => {
-    if (!emojiOpen) return;
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (emojiPicker.current?.contains(target) || smileyButton.current?.contains(target)) return;
-      setEmojiOpen(false);
-    };
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
-  }, [emojiOpen]);
-
-  const animatedNativePlaceholder = shouldAnimatePlaceholder
-    ? `${PLACEHOLDER_TEXT.slice(0, placeholderCount)}${placeholderPaused ? (cursorVisible ? '|' : '') : '|'}`
-    : PLACEHOLDER_TEXT;
+  function closeChat() {
+    setInfoOpen(false);
+    setOpen(false);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -308,8 +80,8 @@ export default function Chatbot() {
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     if (element && !element.open) element.showModal();
-    const handleDialogKeyDown = (event: KeyboardEvent) => {
-      // The initial heading is outside the sequential Tab order.
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // The heading receives focus on open but stays outside the sequential Tab order.
       if (event.key === 'Tab' && event.shiftKey && document.activeElement === title.current) {
         event.preventDefault();
         (sendButton.current?.disabled ? input.current : sendButton.current)?.focus();
@@ -337,17 +109,19 @@ export default function Chatbot() {
     const handleBackdropClick = (event: MouseEvent) => {
       const dismiss = pointerStartedOutside && event.target === element && outsidePanel(event);
       resetPointer();
-      if (dismiss) setOpen(false);
+      if (dismiss) {
+        setInfoOpen(false);
+        setOpen(false);
+      }
     };
-    element?.addEventListener('keydown', handleDialogKeyDown);
+    element?.addEventListener('keydown', handleKeyDown);
     element?.addEventListener('pointerdown', handlePointerDown);
     element?.addEventListener('pointercancel', resetPointer);
     element?.addEventListener('click', handleBackdropClick);
-    // Start at the welcome rather than scrolling small screens down to the composer.
+    // Start at the header rather than scrolling small screens to the keyboard.
     title.current?.focus({ preventScroll: true });
-    if (element) element.scrollTop = 0;
     return () => {
-      element?.removeEventListener('keydown', handleDialogKeyDown);
+      element?.removeEventListener('keydown', handleKeyDown);
       element?.removeEventListener('pointerdown', handlePointerDown);
       element?.removeEventListener('pointercancel', resetPointer);
       element?.removeEventListener('click', handleBackdropClick);
@@ -356,6 +130,13 @@ export default function Chatbot() {
       trigger?.focus({ preventScroll: true });
     };
   }, [open]);
+
+  // Opening "How Zeni works" moves focus to its heading; closing returns it to the (i) button.
+  useEffect(() => {
+    if (infoOpen) infoHeading.current?.focus({ preventScroll: true });
+    else if (infoWasOpen.current) infoButton.current?.focus({ preventScroll: true });
+    infoWasOpen.current = infoOpen;
+  }, [infoOpen]);
 
   useEffect(
     () => () => {
@@ -366,29 +147,21 @@ export default function Chatbot() {
 
   useEffect(() => {
     const element = conversation.current;
-    if (open && element)
+    if (open && !infoOpen && element)
       element.scrollTop = history.length || pendingQuestion ? element.scrollHeight : 0;
-  }, [history, pendingQuestion, open, restoring]);
+  }, [history, pendingQuestion, open, infoOpen, restoring, resetting]);
 
   async function restoreConversation(showMessage = false) {
     const response = await fetch('/api/client/chatbot', { cache: 'no-store' });
     const payload = (await response.json()) as {
-      reply?: ChatReply;
+      reply?: ChatReply | null;
       error?: string;
-      retry?: {
-        question: string;
-        turnId: string;
-        action?: Pick<ReceptionistAction, 'type' | 'value'>;
-      };
+      retry?: Recovery;
     };
-    if (!response.ok)
-      throw new Error(
-        payload.error ||
-          'Your saved details could not be restored. Please retry or contact the team.',
-      );
+    if (!response.ok) throw new Error(payload.error || copy.errors.restore);
     setContext(payload.reply?.context ?? null);
     setRecovery(payload.retry ?? null);
-    if (showMessage && payload.reply)
+    if (showMessage && payload.reply && isReply(payload.reply))
       setHistory([{ id: crypto.randomUUID(), question: '', reply: payload.reply }]);
     restored.current = true;
   }
@@ -399,9 +172,7 @@ export default function Chatbot() {
     setRestoring(true);
     void restoreConversation(true)
       .catch((failure: unknown) =>
-        setError(
-          failure instanceof Error ? failure.message : 'Saved details could not be restored.',
-        ),
+        setError(failure instanceof Error ? failure.message : copy.errors.restore),
       )
       .finally(() => setRestoring(false));
   }
@@ -413,18 +184,19 @@ export default function Chatbot() {
   ) {
     const submitted = value.trim();
     if (activeRequest.current || restoring || resetting) return;
-    if (!submitted || submitted.length > 600) {
-      setError('Enter a question of 1–600 characters.');
+    const messages = zeniCopyFor(selectedAction ? language : detectLanguage(submitted, language));
+    if (!submitted || submitted.length > MAX_LENGTH) {
+      setError(messages.errors.length);
       input.current?.focus();
       return;
     }
     const controller = new AbortController();
     activeRequest.current = controller;
-    setQuestion(submitted);
+    setQuestion(selectedAction ? question : submitted);
     setPendingQuestion(submitted);
     setError('');
     // Retrying a failed action from the retained composer must preserve its command.
-    const commandAction = selectedAction
+    const commandAction: Command | undefined = selectedAction
       ? {
           type: selectedAction.type,
           ...(selectedAction.value ? { value: selectedAction.value } : {}),
@@ -433,22 +205,16 @@ export default function Chatbot() {
         ? retryTurn.current.action
         : undefined;
     const fingerprint = JSON.stringify({ question: submitted, action: commandAction });
-    if (retryTurn.current?.fingerprint !== fingerprint)
+    if (retryTurn.current?.fingerprint !== fingerprint || recoveryTurnId)
       retryTurn.current = {
         fingerprint,
-        turnId: crypto.randomUUID(),
+        turnId: recoveryTurnId ?? crypto.randomUUID(),
         question: submitted,
         action: commandAction,
       };
-    if (recoveryTurnId)
-      retryTurn.current = {
-        fingerprint,
-        turnId: recoveryTurnId,
-        question: submitted,
-        action: commandAction,
-      };
+    const turnId = retryTurn.current.turnId;
     if (selectedAction) input.current?.focus({ preventScroll: true });
-    const timeout = window.setTimeout(() => controller.abort('timeout'), 25000);
+    const timeout = window.setTimeout(() => controller.abort('timeout'), REQUEST_TIMEOUT_MS);
     try {
       const response = await fetch('/api/client/chatbot', {
         method: 'POST',
@@ -456,46 +222,42 @@ export default function Chatbot() {
         cache: 'no-store',
         body: JSON.stringify({
           question: submitted,
-          turnId: retryTurn.current.turnId,
+          turnId,
           expectedRevision: context?.revision,
           action: commandAction,
         }),
         signal: controller.signal,
       });
-      const payload = await response.json();
+      const payload: unknown = await response.json();
       if (response.status === 409) await restoreConversation();
       if (!response.ok)
         throw new Error(
-          typeof payload.error === 'string'
+          payload &&
+            typeof payload === 'object' &&
+            'error' in payload &&
+            typeof payload.error === 'string'
             ? payload.error
-            : 'The assistant is unavailable. Please try again.',
+            : messages.errors.unavailable,
         );
-      const reply = payload as ChatReply;
-      if (
-        !Array.isArray(reply.sources) ||
-        !Array.isArray(reply.suggestions) ||
-        typeof reply.message !== 'string'
-      ) {
-        throw new Error('The assistant returned an incomplete answer. Please try again.');
-      }
+      if (!isReply(payload)) throw new Error(messages.errors.incomplete);
       setHistory((previous) => [
         ...previous.slice(-19),
-        { id: crypto.randomUUID(), question: submitted, reply },
+        { id: crypto.randomUUID(), question: submitted, reply: payload },
       ]);
-      setContext(reply.context ?? null);
+      setContext(payload.context ?? null);
       retryTurn.current = null;
       setRecovery(null);
-      setQuestion('');
+      if (!selectedAction) setQuestion('');
     } catch (failure) {
       if (!controller.signal.aborted || controller.signal.reason === 'timeout') {
         setError(
           controller.signal.reason === 'timeout'
-            ? 'The assistant took too long to respond. Your question is saved below; try sending it again or contact the team.'
+            ? messages.errors.timeout
             : failure instanceof TypeError
-              ? 'Unable to connect. Check your connection and try again.'
+              ? messages.errors.network
               : failure instanceof Error
                 ? failure.message
-                : 'Unable to answer. Please try again.',
+                : messages.errors.unavailable,
         );
       }
     } finally {
@@ -507,59 +269,44 @@ export default function Chatbot() {
     }
   }
 
-  const suggestions = resolveConversationSuggestions(history);
-
-  const clearConversation = async () => {
+  async function clearConversation() {
     if (activeRequest.current || restoring || resetting) return;
     setResetting(true);
     try {
       const response = await fetch('/api/client/chatbot', { method: 'DELETE', cache: 'no-store' });
-      const payload = await response.json();
-      if (!response.ok)
-        throw new Error(
-          typeof payload.error === 'string'
-            ? payload.error
-            : 'Your saved details could not be cleared. Please retry.',
-        );
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || copy.errors.clear);
       setHistory([]);
       setQuestion('');
       setError('');
       setContext(null);
       setRecovery(null);
+      setInfoOpen(false);
       retryTurn.current = null;
+      restored.current = true;
       title.current?.focus({ preventScroll: true });
     } catch (failure) {
-      setError(
-        failure instanceof Error
-          ? failure.message
-          : 'Your saved details could not be cleared. Please retry.',
-      );
+      setError(failure instanceof Error ? failure.message : copy.errors.clear);
     } finally {
       setResetting(false);
     }
-  };
-
-  const busy = Boolean(pendingQuestion) || restoring || resetting;
+  }
 
   useEffect(() => {
-    sendQuestionRef.current = sendQuestion;
+    sendRef.current = sendQuestion;
   });
 
+  // Other pages can open Zeni with a prompt, for example "Ask about this space".
   useEffect(() => {
     const handleOpenRequest = (event: Event) => {
       const detail = (event as CustomEvent<OpenChatbotDetail>).detail ?? { reset: true };
-      const shouldReset = detail.reset !== false;
       const prompt = detail.prompt?.trim() || '';
-
       setOpen(true);
-
-      if (!shouldReset) {
-        if (prompt) {
-          void sendQuestionRef.current?.(prompt);
-        }
+      setInfoOpen(false);
+      if (detail.reset === false) {
+        if (prompt) void sendRef.current?.(prompt);
         return;
       }
-
       activeRequest.current?.abort();
       activeRequest.current = null;
       setPendingQuestion('');
@@ -573,16 +320,12 @@ export default function Chatbot() {
       retryTurn.current = null;
       restored.current = true;
       queuedPrompt.current = prompt || null;
-
       void fetch('/api/client/chatbot', { method: 'DELETE', cache: 'no-store' })
         .catch(() => {
-          // Proceed with fresh local state even if server session was already empty.
+          // Continue with a fresh local conversation even if the server had none.
         })
-        .finally(() => {
-          setResetting(false);
-        });
+        .finally(() => setResetting(false));
     };
-
     window.addEventListener(OPEN_CHATBOT_EVENT, handleOpenRequest);
     return () => window.removeEventListener(OPEN_CHATBOT_EVENT, handleOpenRequest);
   }, []);
@@ -592,8 +335,14 @@ export default function Chatbot() {
     const prompt = queuedPrompt.current;
     if (!prompt) return;
     queuedPrompt.current = null;
-    void sendQuestionRef.current?.(prompt);
+    void sendRef.current?.(prompt);
   }, [open, resetting, restoring]);
+
+  const latest = history.at(-1);
+  const suggestions = latest?.reply.suggestions.length
+    ? latest.reply.suggestions
+    : copy.suggestions.welcome;
+  const blocked = busy || Boolean(recovery);
 
   return (
     <>
@@ -603,269 +352,216 @@ export default function Chatbot() {
         id="zion-chatbot"
         className={styles.dialog}
         aria-labelledby="zion-chatbot-title"
-        aria-describedby="zion-chatbot-description"
+        aria-describedby="zion-chatbot-subtitle"
         onCancel={(event) => {
           event.preventDefault();
-          if (emojiOpen) {
-            setEmojiOpen(false);
-            smileyButton.current?.focus({ preventScroll: true });
-            return;
-          }
-          setOpen(false);
+          if (infoOpen) setInfoOpen(false);
+          else closeChat();
         }}
+        // Browsers may close a modal without a cancel event (for example repeated Escape);
+        // keep React state in step so the launcher can open it again.
+        onClose={closeChat}
       >
         <header className={styles.header}>
+          <ChatAvatar size="md" />
           <div className={styles.identity}>
-            <ChatAvatar participant="receptionist" className={styles.headerProfile} />
-            <div className={styles.identityText}>
-              <h2 ref={title} id="zion-chatbot-title" tabIndex={-1}>
-                {chatbotReceptionist.name}
-              </h2>
-              <p id="zion-chatbot-description">Virtual Receptionist</p>
-            </div>
+            <h2 ref={title} id="zion-chatbot-title" className={styles.title} tabIndex={-1}>
+              {chatbotReceptionist.title}
+            </h2>
+            <p id="zion-chatbot-subtitle" className={styles.subtitle}>
+              {chatbotReceptionist.subtitle}
+            </p>
           </div>
           <div className={styles.headerActions}>
             <button
+              ref={infoButton}
               type="button"
               className={styles.iconButton}
-              aria-label="Close chat"
-              title="Close chat"
-              onClick={() => setOpen(false)}
+              aria-label={chatbotReceptionist.howItWorks}
+              title={chatbotReceptionist.howItWorks}
+              aria-expanded={infoOpen}
+              aria-controls={INFO_ID}
+              onClick={() => setInfoOpen((value) => !value)}
             >
-              <X aria-hidden="true" size={20} strokeWidth={2.4} />
+              <Info size={20} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={chatbotReceptionist.newConversation}
+              title={chatbotReceptionist.newConversation}
+              disabled={busy}
+              onClick={() => void clearConversation()}
+            >
+              <RotateCcw size={19} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={chatbotReceptionist.close}
+              title={chatbotReceptionist.close}
+              onClick={closeChat}
+            >
+              <X size={20} aria-hidden="true" />
             </button>
           </div>
         </header>
+
+        {infoOpen && (
+          <div className={styles.infoScroller}>
+            <ZeniInfo
+              id={INFO_ID}
+              context={context}
+              headingRef={infoHeading}
+              onBack={() => setInfoOpen(false)}
+            />
+          </div>
+        )}
 
         <div
           ref={conversation}
           className={styles.conversation}
           role="log"
-          aria-label="Conversation with Zeni"
+          aria-live="polite"
           aria-relevant="additions"
+          aria-label="Conversation with Zeni"
+          hidden={infoOpen}
         >
-          {!restoring && !history.length && (
-            <ChatMessageFrame participant="receptionist">
-              <div className={styles.incomingBubble}>
-                <p className={styles.welcome}>Welcome to Zion Events Place.</p>
-                <p>I’m Zeni, your virtual receptionist. How may I assist you today?</p>
+          {restoring && <TypingMessage label={chatbotReceptionist.opening} />}
+
+          {!restoring && history.length === 0 && (
+            <ZeniBubble>
+              <div className={styles.zeniBubble}>
+                <p className={styles.messageText}>{copy.welcome}</p>
               </div>
-            </ChatMessageFrame>
+            </ZeniBubble>
           )}
 
-          {restoring && <TypingMessage label="Opening your conversation…" />}
-
           {recovery && (
-            <div className={styles.recovery}>
-              <p className={styles.welcome}>Your last message was interrupted.</p>
-              <p className={styles.help}>Retry it or forget the saved details to continue.</p>
-              <div
-                className={styles.messageActions}
-                role="group"
-                aria-label="Recover your conversation"
-              >
+            <div className={styles.recovery} role="group" aria-label={chatbotReceptionist.retry}>
+              <p className={styles.recoveryTitle}>{chatbotReceptionist.interruptedTitle}</p>
+              <p className={styles.recoveryHelp}>{chatbotReceptionist.interruptedHelp}</p>
+              <div className={styles.actions}>
                 <button
                   type="button"
+                  className={styles.primaryAction}
                   disabled={busy}
-                  onClick={() => {
+                  onClick={() =>
                     void sendQuestion(
                       recovery.question,
                       recovery.action
                         ? { ...recovery.action, label: recovery.question }
                         : undefined,
                       recovery.turnId,
-                    );
-                  }}
+                    )
+                  }
                 >
-                  Retry previous message
+                  {chatbotReceptionist.retry}
                 </button>
                 <button
                   type="button"
-                  className={styles.forget}
+                  className={styles.secondaryAction}
                   disabled={busy}
-                  onClick={() => {
-                    void clearConversation();
-                  }}
+                  onClick={() => void clearConversation()}
                 >
-                  Forget saved details
+                  {chatbotReceptionist.newConversation}
                 </button>
               </div>
-              <p className={styles.help}>
-                Forgetting details does not cancel bookings or submitted inquiries.
-              </p>
             </div>
           )}
 
           {history.map((exchange, index) => (
             <div key={exchange.id} className={styles.exchange}>
-              {exchange.question && <VisitorMessage message={exchange.question} />}
-              <ReceptionistMessage
+              {exchange.question && <GuestMessage message={exchange.question} />}
+              <ZeniMessage
                 reply={exchange.reply}
-                question={exchange.question}
-                onNavigate={() => setOpen(false)}
-                disabled={busy || Boolean(recovery) || index !== history.length - 1}
-                onAction={(action) => {
-                  void sendQuestion(action.label, action);
-                }}
+                active={index === history.length - 1 && !blocked}
+                onNavigate={closeChat}
+                onAction={(action) => void sendQuestion(action.label, action)}
               />
             </div>
           ))}
 
           {pendingQuestion && (
             <>
-              <VisitorMessage message={pendingQuestion} />
+              <GuestMessage message={pendingQuestion} />
               <TypingMessage />
             </>
           )}
 
-          {resetting && <TypingMessage label="Forgetting your saved details…" />}
+          {resetting && <TypingMessage label={chatbotReceptionist.clearing} />}
 
-          {!restoring && (
-            <div className={styles.suggestions} role="group" aria-label="Suggested questions">
-              {suggestions.map((suggestion) => {
-                const label = suggestionLabels[suggestion] ?? suggestion;
-                const query = suggestionQueries[suggestion] ?? suggestion;
-                return (
-                  <button
-                    type="button"
-                    key={suggestion}
-                    disabled={busy || Boolean(recovery)}
-                    onClick={() => {
-                      void sendQuestion(query);
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className={styles.composer}>
-          {emojiOpen && (
+          {!restoring && !pendingQuestion && (
             <div
-              ref={emojiPicker}
-              id="zion-chatbot-emojis"
-              className={styles.emojiPicker}
-              role="region"
-              aria-label="Event and celebration emojis"
+              className={styles.suggestions}
+              role="group"
+              aria-label={chatbotReceptionist.suggestionsLabel}
             >
-              {chatbotEmojiGroups.map((group) => (
-                <div key={group.label} className={styles.emojiGroup}>
-                  <p className={styles.emojiGroupTitle}>{group.label}</p>
-                  <div className={styles.emojiGrid}>
-                    {group.emojis.map((emoji) => (
-                      <button
-                        key={emoji.symbol}
-                        type="button"
-                        className={styles.emojiButton}
-                        aria-label={`Insert ${emoji.name}`}
-                        title={emoji.name}
-                        onClick={() => {
-                          const el = input.current;
-                          const start = el?.selectionStart ?? question.length;
-                          const end = el?.selectionEnd ?? question.length;
-                          const next =
-                            `${question.slice(0, start)}${emoji.symbol}${question.slice(end)}`.slice(
-                              0,
-                              600,
-                            );
-                          setQuestion(next);
-                          window.requestAnimationFrame(() => {
-                            if (!el) return;
-                            const caret = Math.min(start + emoji.symbol.length, 600);
-                            el.focus();
-                            el.setSelectionRange(caret, caret);
-                          });
-                        }}
-                      >
-                        <span aria-hidden="true">{emoji.symbol}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              {suggestions.slice(0, 4).map((suggestion) => (
+                <button
+                  type="button"
+                  key={suggestion}
+                  className={styles.chip}
+                  disabled={blocked}
+                  onClick={() => void sendQuestion(suggestion)}
+                >
+                  {suggestion}
+                </button>
               ))}
             </div>
           )}
-
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setEmojiOpen(false);
-              void sendQuestion(question);
-            }}
-          >
-            <div className={styles.composerRow}>
-              <button
-                ref={smileyButton}
-                type="button"
-                className={styles.smileyButton}
-                aria-label="Choose an event emoji"
-                title="Event & celebration emojis"
-                aria-expanded={emojiOpen}
-                aria-controls="zion-chatbot-emojis"
-                disabled={busy || Boolean(recovery)}
-                onClick={() => setEmojiOpen((previous) => !previous)}
-              >
-                <Smile size={22} strokeWidth={2} aria-hidden="true" />
-              </button>
-
-              <div className={styles.inputBar}>
-                <textarea
-                  ref={input}
-                  id="zion-chatbot-question"
-                  rows={1}
-                  maxLength={600}
-                  placeholder={animatedNativePlaceholder}
-                  value={question}
-                  readOnly={busy || Boolean(recovery)}
-                  aria-invalid={Boolean(error)}
-                  aria-label="Your message"
-                  aria-describedby={`zion-chatbot-help zion-chatbot-count${error ? ' zion-chatbot-error' : ''}`}
-                  onFocus={() => setInputFocused(true)}
-                  onBlur={() => setInputFocused(false)}
-                  onChange={(event) => setQuestion(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (
-                      event.key === 'Enter' &&
-                      !event.shiftKey &&
-                      !event.nativeEvent.isComposing
-                    ) {
-                      event.preventDefault();
-                      setEmojiOpen(false);
-                      if (question.trim()) void sendQuestion(question);
-                    }
-                  }}
-                />
-                <button
-                  ref={sendButton}
-                  type="submit"
-                  className={styles.send}
-                  disabled={busy || Boolean(recovery) || !question.trim()}
-                  aria-label="Send message"
-                  title="Send message"
-                >
-                  <Send aria-hidden="true" size={18} strokeWidth={2.2} />
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.composerMeta}>
-              <span id="zion-chatbot-count" className={styles.srOnly}>
-                {question.length} / 600 characters
-              </span>
-              <p id="zion-chatbot-help" className={styles.srOnly}>
-                Never share passwords, codes, card details or ID documents.
-              </p>
-              {error && (
-                <p id="zion-chatbot-error" className={styles.error} role="alert">
-                  {error}
-                </p>
-              )}
-            </div>
-          </form>
         </div>
+
+        <form
+          className={styles.composer}
+          hidden={infoOpen}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void sendQuestion(question);
+          }}
+        >
+          {error && (
+            <p id="zion-chatbot-error" className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
+          <div className={styles.inputBar}>
+            <label htmlFor="zion-chatbot-question" className={styles.srOnly}>
+              {chatbotReceptionist.inputLabel}
+            </label>
+            <textarea
+              ref={input}
+              id="zion-chatbot-question"
+              rows={1}
+              maxLength={MAX_LENGTH}
+              placeholder={chatbotReceptionist.placeholder}
+              value={question}
+              readOnly={blocked}
+              aria-invalid={Boolean(error)}
+              aria-describedby={`zion-chatbot-help${error ? ' zion-chatbot-error' : ''}`}
+              onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  if (question.trim()) void sendQuestion(question);
+                }
+              }}
+            />
+            <button
+              ref={sendButton}
+              type="submit"
+              className={styles.send}
+              disabled={blocked || !question.trim()}
+              aria-label={chatbotReceptionist.send}
+              title={chatbotReceptionist.send}
+            >
+              <SendHorizontal size={19} aria-hidden="true" />
+            </button>
+          </div>
+          <p id="zion-chatbot-help" className={styles.srOnly}>
+            {chatbotReceptionist.inputHelp}
+          </p>
+        </form>
       </dialog>
     </>
   );

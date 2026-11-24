@@ -1,214 +1,109 @@
 .dock {
-  --launcher-size: calc(var(--space-12) + var(--space-8));
+  --launcher-size: 3.5rem;
   position: fixed;
   z-index: 999;
-  right: var(--space-2);
-  bottom: calc(var(--layout-floating-control-inset) + var(--space-8));
-  width: var(--launcher-size);
-  height: var(--launcher-size);
+  right: max(var(--space-4), env(safe-area-inset-right));
+  bottom: calc(var(--layout-floating-control-inset) + var(--space-2));
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   font-family: var(--font-zion-sans);
-  line-height: var(--line-body);
   pointer-events: none;
-}
-
-.dock[hidden] {
-  display: none;
-}
-
-.character {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
-  pointer-events: auto;
 }
 
 .launcher {
-  display: block;
+  position: relative;
+  display: grid;
+  place-items: center;
   width: var(--launcher-size);
   height: var(--launcher-size);
-  min-width: var(--layout-touch-target);
-  min-height: var(--layout-touch-target);
   padding: 0;
   border: 0;
-  border-radius: var(--radius-card);
+  border-radius: 50%;
   background: transparent;
+  color: var(--chat-accent);
   cursor: pointer;
-  transition: transform var(--motion-normal) var(--motion-ease);
+  pointer-events: auto;
+  box-shadow: 0 var(--space-2) var(--space-6)
+    color-mix(in srgb, var(--chat-shadow) 16%, transparent);
+  transition:
+    transform var(--motion-normal) var(--motion-ease),
+    box-shadow var(--motion-normal) var(--motion-ease);
 }
 
-.launcher:hover {
+.launcher .mark {
+  position: relative;
+  z-index: 1;
+  width: var(--launcher-size);
+  font-size: 1.85rem;
+  border-color: var(--chat-border);
+  background: var(--chat-surface-card);
+  color: var(--chat-accent);
+}
+
+/* A soft ring that "breathes" three times after load, then rests. */
+.ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--chat-border);
+  border-radius: 50%;
+  opacity: 0;
+  animation: zeni-breathe calc(var(--motion-slow) * 8) var(--motion-ease) var(--motion-slow) 3;
+}
+
+@keyframes zeni-breathe {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+
+.launcher:hover:not(:disabled) {
   transform: translateY(calc(-1 * var(--space-1)));
+  box-shadow: 0 var(--space-3) var(--space-8)
+    color-mix(in srgb, var(--chat-shadow) 22%, transparent);
 }
 
-.launcher:active {
-  transform: scale(0.97);
+.launcher:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.launcher:focus-visible {
+  outline: 3px solid var(--chat-focus);
+  outline-offset: 3px;
 }
 
 .launcher:disabled {
-  opacity: 0.55;
   cursor: wait;
 }
 
-.mascot {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transform-origin: 50% 85%;
-  filter: drop-shadow(
-    0 var(--space-1) var(--space-2) color-mix(in srgb, var(--chat-border) 24%, transparent)
-  );
-  transition:
-    transform var(--motion-normal) var(--motion-ease),
-    filter var(--motion-normal) var(--motion-ease);
-}
-
-.mascotIdle {
-  animation: mascot-breathe 3.6s ease-in-out infinite;
-}
-
-.mascotWave {
-  filter: drop-shadow(
-    0 var(--space-2) var(--space-3) color-mix(in srgb, var(--chat-border) 32%, transparent)
-  );
-  animation: mascot-greet 0.55s var(--motion-ease) 1 both;
-}
-
-@keyframes mascot-breathe {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-3px) scale(1.02);
-  }
-}
-
-@keyframes mascot-greet {
-  0% {
-    transform: translateY(0) rotate(0deg) scale(1);
-  }
-  35% {
-    transform: translateY(-5px) rotate(-3deg) scale(1.05);
-  }
-  70% {
-    transform: translateY(-2px) rotate(2deg) scale(1.03);
-  }
-  100% {
-    transform: translateY(-3px) rotate(0deg) scale(1.04);
-  }
-}
-
-/* ==========================================================================
-   Clean Speech Bubble Greeting (Greeting Only)
-   ========================================================================== */
-.greeting {
-  position: absolute;
-  z-index: 10;
-  right: calc(var(--launcher-size) * 0.55);
-  bottom: calc(100% + var(--space-1));
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  width: max-content;
-  max-width: min(
-    calc(var(--space-12) * 5 + var(--space-6)),
-    calc(100vw - var(--space-12) - var(--space-6))
-  );
-  min-height: var(--layout-touch-target);
-  padding: 0 var(--space-1) 0 var(--space-4);
-  border: 0;
-  border-radius: 24px;
-  background: var(--chat-surface-card);
-  color: var(--chat-ink);
-  filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--chat-border) 22%, transparent))
-    drop-shadow(0 8px 22px color-mix(in srgb, var(--chat-border) 16%, transparent));
-  pointer-events: none;
-  transition:
-    transform var(--motion-fast) var(--motion-ease),
-    filter var(--motion-fast) var(--motion-ease);
-}
-
-.greeting:hover {
-  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--chat-border) 28%, transparent))
-    drop-shadow(0 12px 26px color-mix(in srgb, var(--chat-border) 22%, transparent));
-}
-
-.greeting::after {
-  position: absolute;
-  right: -7px;
-  bottom: 0;
-  width: 20px;
-  height: 20px;
-  background: var(--chat-surface-card);
-  content: '';
-  pointer-events: none;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M0 0 H13 V6 C13 13 15.8 17.5 20 19.6 C14.2 20.4 9.2 18.6 6.2 15.6 C3.5 18 1.5 19.6 0 20 Z' fill='black'/%3E%3C/svg%3E")
-    no-repeat center / contain;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M0 0 H13 V6 C13 13 15.8 17.5 20 19.6 C14.2 20.4 9.2 18.6 6.2 15.6 C3.5 18 1.5 19.6 0 20 Z' fill='black'/%3E%3C/svg%3E")
-    no-repeat center / contain;
-}
-
-.greetingText {
-  min-width: 0;
+.hint {
+  max-width: min(14rem, calc(100vw - var(--launcher-size) - var(--space-12)));
   margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-control);
+  background: var(--chat-surface-card);
+  color: var(--chat-ink);
   font-size: var(--type-small);
-  font-weight: 500;
+  font-weight: var(--weight-medium);
   line-height: 1.35;
-  color: var(--chat-ink);
-  overflow-wrap: anywhere;
-  text-align: left;
-  animation: greeting-appear var(--motion-normal) var(--motion-ease) both;
+  box-shadow: var(--shadow-card);
+  animation: zeni-hint-in var(--motion-slow) var(--motion-ease) both;
 }
 
-.dismiss {
-  display: inline-flex;
-  width: var(--layout-touch-target);
-  height: var(--layout-touch-target);
-  flex: 0 0 var(--layout-touch-target);
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: 9999px;
-  background: transparent;
-  color: var(--chat-ink);
-  font: inherit;
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.dismissCircle {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9999px;
-  background: transparent;
-  color: var(--chat-muted);
-  transition:
-    background-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease);
-}
-
-.dismiss:hover .dismissCircle,
-.dismiss:focus-visible .dismissCircle {
-  background: color-mix(in srgb, var(--palette-border) 26%, transparent);
-  color: var(--chat-ink);
-  transform: scale(1.06);
-}
-
-.dismiss:active .dismissCircle {
-  transform: scale(0.94);
-}
-
-@keyframes greeting-appear {
+@keyframes zeni-hint-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateX(var(--space-2));
   }
   to {
     opacity: 1;
@@ -216,47 +111,26 @@
   }
 }
 
-@media (max-width: 36rem) {
-  .dock {
-    --launcher-size: var(--layout-touch-target);
-    top: calc(var(--space-12) + var(--space-12) + var(--space-12));
-    bottom: auto;
-  }
-
-  .greeting {
-    max-width: calc(100vw - var(--space-12) - var(--space-4));
-    right: calc(var(--launcher-size) * 0.5);
-  }
+:global(.dark) .dock {
+  --chat-surface-card: var(--palette-zentra-night-card);
+  --chat-accent: var(--palette-zentra-glow);
+  --chat-border: var(--palette-zentra-glow);
+  --chat-focus: var(--palette-zentra-glow);
+  --chat-ink: var(--palette-zentra-pearl);
+  --chat-line: var(--palette-zentra-night-raised);
+  --chat-shadow: var(--palette-zentra-night);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .launcher,
-  .launcher:hover,
-  .launcher:active,
-  .dismissCircle,
-  .dismiss:hover .dismissCircle,
-  .dismiss:active .dismissCircle {
+  .launcher:hover:not(:disabled),
+  .launcher:active:not(:disabled) {
     transition: none;
     transform: none;
   }
 
-  .mascot,
-  .mascotIdle,
-  .mascotWave {
+  .ring,
+  .hint {
     animation: none;
-    transition: none;
-    transform: none;
-  }
-
-  .greetingText {
-    animation: none;
-  }
-
-  .greeting {
-    transition: none;
-  }
-
-  .dismiss {
-    transition: none;
   }
 }

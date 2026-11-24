@@ -16,6 +16,7 @@ import {
   sessionToken,
 } from '@/lib/chatbot/session-security';
 import type { ChatReply } from '@/lib/chatbot/types';
+import { zeniCopyFor } from '@/config/chatbot-receptionist';
 
 const globalStore = globalThis as unknown as { receptionistPool?: pg.Pool };
 // Never route encrypted conversation writes through Prisma's development query logger.
@@ -57,7 +58,7 @@ function decode(row: RecordRow): Envelope {
   const envelope = openConversation(row.encrypted_state, `conversation:${row.id}`) as Envelope;
   const state = conversationSchema.parse(envelope.state);
   if (state.id !== row.id || state.revision !== row.revision || !Array.isArray(envelope.receipts))
-    throw new ConversationError('Conversation memory needs to be reset.', 409);
+    throw new ConversationError('Conversation memory needs to be reset.', 409, 'restore');
   return { state, receipts: envelope.receipts.slice(-10) };
 }
 
@@ -71,6 +72,7 @@ function encode(envelope: Envelope) {
     throw new ConversationError(
       'This conversation has reached its memory limit. Please start a new chat.',
       429,
+      'memory',
     );
   return encrypted;
 }
@@ -131,7 +133,11 @@ export async function runConversationTurn(
       [session.id, hashSession(session.token)],
     );
     if (!result.rows[0])
-      throw new ConversationError('Your conversation expired. Start a new chat to continue.', 409);
+      throw new ConversationError(
+        'Your conversation expired. Start a new chat to continue.',
+        409,
+        'expired',
+      );
     const envelope = decode(result.rows[0]);
     const receipt = envelope.receipts.find((item) => item.turnId === command.turnId);
     if (receipt) {
@@ -139,20 +145,27 @@ export async function runConversationTurn(
         throw new ConversationError(
           'This message was already used. Please send the corrected message again.',
           409,
+          'changed',
         );
-      if (receipt.validUntil && new Date(receipt.validUntil).getTime() <= Date.now())
+      if (receipt.validUntil && new Date(receipt.validUntil).getTime() <= Date.now()) {
+        const copy = zeniCopyFor(envelope.state.client.language);
         return contextualReply(envelope.state, {
           kind: 'handoff',
-          message:
-            'That previous operational result has expired. Please request a fresh schedule check or ask the Zion team before relying on it.',
+          message: copy.staleResult,
           sources: [],
           suggestions: [],
           actions: [
-            envelope.state.booking.intent === 'availability_check'
-              ? { type: 'check_availability', label: 'Check the schedule again' }
-              : { type: 'request_human', label: 'Ask the team to verify' },
+            {
+              type: 'check_availability',
+              label: copy.labels.checkAnotherDate,
+              ...(envelope.state.booking.dates[0]
+                ? { value: envelope.state.booking.dates[0] }
+                : {}),
+            },
+            { type: 'request_human', label: copy.labels.talkToStaff },
           ],
         });
+      }
       return contextualReply(envelope.state, {
         ...receipt.reply,
         ...(receipt.reply.context?.revision !== envelope.state.revision ? { actions: [] } : {}),
@@ -165,14 +178,20 @@ export async function runConversationTurn(
       throw new ConversationError(
         'This conversation changed in another tab. Your message is retained; refresh its details and send again.',
         409,
+        'changed',
       );
     if (envelope.state.turn >= 200)
-      throw new ConversationError('Please start a new chat to continue this conversation.', 429);
+      throw new ConversationError(
+        'Please start a new chat to continue this conversation.',
+        429,
+        'memory',
+      );
     const row = result.rows[0];
     if (row.processing_until && row.processing_until.getTime() > Date.now())
       throw new ConversationError(
         'Your previous message is still being processed. Please try again shortly.',
         409,
+        'processing',
       );
     if (
       row.processing_turn_id &&
@@ -182,6 +201,7 @@ export async function runConversationTurn(
       throw new ConversationError(
         'Your previous message was interrupted. Use Retry previous message to recover it, or start a new chat.',
         409,
+        'interrupted',
       );
     const claimed = await receptionistPool.query(
       `UPDATE zion_receptionist_conversations SET processing_turn_id=$3,processing_token=$4,processing_until=now()+interval '60 seconds',processing_fingerprint=$5,encrypted_pending=$6
@@ -200,12 +220,14 @@ export async function runConversationTurn(
       throw new ConversationError(
         'Your previous message is still being processed. Please try again shortly.',
         409,
+        'processing',
       );
     envelope.state.turn += 1;
     envelope.state.revision += 1;
     const reply = contextualReply(envelope.state, await execute(envelope.state));
+    // A replayed calendar result is only trusted for as long as the snapshot is fresh.
     const validUntil =
-      reply.kind === 'booking' && envelope.state.booking.resultExpiresAt
+      reply.kind === 'availability' && envelope.state.booking.resultExpiresAt
         ? new Date(
             Math.min(
               new Date(envelope.state.booking.resultExpiresAt).getTime(),
@@ -231,6 +253,7 @@ export async function runConversationTurn(
       throw new ConversationError(
         'Your conversation changed while the message was being processed. Please restore its details before continuing.',
         409,
+        'changed',
       );
     return reply;
   } catch (error) {
