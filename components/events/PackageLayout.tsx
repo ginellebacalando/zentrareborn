@@ -181,7 +181,7 @@ export default async function PackageLayout({ eventType }: PackageLayoutProps) {
                       {page.packageText}
                     </p>
                     <Link
-                      href="/contact"
+                      href="/booking"
                       className="group pointer-events-auto relative mt-2 inline-flex min-h-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-transparent px-9 py-3.5 transition-all duration-500 ease-out hover:shadow-[0_14px_30px_-12px_color-mix(in_srgb,var(--palette-client-button)_50%,transparent)]"
                     >
                       <span
@@ -189,7 +189,7 @@ export default async function PackageLayout({ eventType }: PackageLayoutProps) {
                         className="absolute inset-0 translate-y-full bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out group-hover:translate-y-0"
                       />
                       <span className="relative z-10 font-sans text-xs font-bold uppercase tracking-[0.2em] text-ink transition-colors duration-500 md:text-sm">
-                        Ask About This Package
+                        Book Now
                       </span>
                     </Link>
                   </div>

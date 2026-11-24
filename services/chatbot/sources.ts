@@ -2,8 +2,13 @@ import 'server-only';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
-import { publicFaqs } from '@/config/public-faqs';
-import { packageSourcePaths, websiteChatSources, publicEventSources } from '@/config/chatbot';
+import { faqPageEntries, publicFaqs } from '@/config/public-faqs';
+import {
+  backupPackageSources,
+  packageSourcePaths,
+  websiteChatSources,
+  publicEventSources,
+} from '@/config/chatbot';
 import type { PublicFaq, ChatSource } from '@/lib/chatbot/types';
 import type { PublicSystemSettings } from '@/lib/system-settings-types';
 
@@ -48,7 +53,7 @@ const packageSnapshot = z.object({
 
 export async function visitorSources(settings: PublicSystemSettings): Promise<ChatSource[]> {
   if (settings.client.maintenanceMode) return [];
-  const [faqs, packages, policy] = await Promise.all([
+  const [faqs, packages, managedPackages, policy] = await Promise.all([
     settings.client.faqVisible ? publishedVisitorFaqs() : [],
     settings.client.packagesVisible
       ? prisma.$queryRaw<
@@ -68,15 +73,30 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
       ORDER BY p.id LIMIT 501
     `
       : [],
+    settings.client.packagesVisible ? prisma.package.count() : 0,
     prisma.adminPolicy.findUnique({
       where: { id: 'venue' },
       select: { reviewed: true, paymentRule: true, version: true },
     }),
   ]);
   if (packages.length > 500) throw new Error('Public package source limit exceeded.');
+  const seenFaqQuestions = new Set(faqs.map((faq) => faq.question.trim().toLowerCase()));
+  const backupFaqPageSources: ChatSource[] = settings.client.faqVisible
+    ? faqPageEntries
+        .filter((faq) => !seenFaqQuestions.has(faq.question.trim().toLowerCase()))
+        .map((faq): ChatSource => ({
+          id: faq.id,
+          kind: 'faq',
+          title: faq.question,
+          text: faq.answer,
+          href: `/faq#${encodeURIComponent(faq.id)}`,
+          keywords: faq.tags ?? [],
+        }))
+    : [];
   const sources: ChatSource[] = [
     ...websiteChatSources,
     ...(settings.client.packagesVisible ? publicEventSources : []),
+    ...backupFaqPageSources,
     ...(policy?.reviewed &&
     ['DEPOSIT_REQUIRED', 'FULL_PAYMENT_REQUIRED', 'NO_PAYMENT_REQUIRED'].includes(
       policy.paymentRule,
@@ -106,6 +126,7 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
       href: `/faq#${encodeURIComponent(faq.id)}`,
       keywords: faq.tags ?? [],
     })),
+    ...(settings.client.packagesVisible && managedPackages === 0 ? backupPackageSources : []),
     ...packages.map((row): ChatSource => {
       // Only the version currently published to visitors is eligible. Never read
       // live draft prices, internal notes, contract fields, or staff records.

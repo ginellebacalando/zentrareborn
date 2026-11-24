@@ -118,10 +118,14 @@ export default function TestimonialSection() {
               className="mt-8 max-w-3xl animate-[fadeInUp_500ms_ease-out] px-8 md:px-12"
             >
               <Stars value={testimony.overallRating} />
-              <MessageSquareQuote className="mx-auto mt-5 h-9 w-9 text-accent-ink/60" />
-              <p className="mt-4 line-clamp-4 font-serif text-lg leading-8 text-muted md:text-xl">
-                “{testimony.comment}”
-              </p>
+              {testimony.comment.trim() && (
+                <>
+                  <MessageSquareQuote className="mx-auto mt-5 h-9 w-9 text-accent-ink/60" />
+                  <p className="mt-4 line-clamp-4 font-serif text-lg leading-8 text-muted md:text-xl">
+                    “{testimony.comment}”
+                  </p>
+                </>
+              )}
               <p className="mt-7 font-sahitya text-xl font-bold text-ink">{testimony.clientName}</p>
               <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-muted">
                 {testimony.eventType}
@@ -133,18 +137,6 @@ export default function TestimonialSection() {
                   year: 'numeric',
                 }).format(new Date(testimony.eventDate))}
               </p>
-            </div>
-
-            <div className="mt-7 flex gap-2">
-              {testimonies.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveIndex(index)}
-                  className={`h-2 rounded-full transition-all ${index === activeIndex ? 'w-7 bg-zion-accent' : 'w-2 bg-neutral-300 hover:bg-neutral-400'}`}
-                  aria-label={`Show testimony ${index + 1}`}
-                />
-              ))}
             </div>
           </>
         ) : (

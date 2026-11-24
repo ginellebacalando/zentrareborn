@@ -1,3 +1,4 @@
+import { revalidatePath } from 'next/cache';
 import {
   getPublicTestimonies,
   submitTestimony,
@@ -24,7 +25,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await requireClientFeature('testimonySubmissions');
-    return Response.json(await submitTestimony(request), { status: 201 });
+    const result = await submitTestimony(request);
+    if (result.isPublic) {
+      revalidatePath('/testimonies');
+      revalidatePath('/');
+    }
+    return Response.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.name === 'ClientFeatureDisabledError') {
       return settingsErrorResponse(error, 'Unable to submit testimony.');

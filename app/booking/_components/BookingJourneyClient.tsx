@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import {
   AlertCircle,
   AlertTriangle,
@@ -18,9 +17,6 @@ import {
   Pencil,
   Phone,
   Plus,
-  Printer,
-  RotateCcw,
-  Send,
   Sparkles,
   User,
   Users,
@@ -29,14 +25,29 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import styles from './BookingJourney.module.css';
+import {
+  DownpaymentView,
+  PackageSuggestionsView,
+  type DownpaymentDetails,
+} from './BookingPostReviewFlow';
 import JourneyMountainMap from './JourneyMountainMap';
+import OfficialBookingReceipt from './OfficialBookingReceipt';
+import { formatPhp, getRecommendedPackages } from './packageRecommendations';
 
 import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDatePicker';
 import ZionSelectPopover from '@/components/client/ZionSelectPopover';
 import { BRAND } from '@/config/brand';
 
-type JourneyPhase = 'journey' | 'loading' | 'summary';
+type JourneyPhase = 'journey' | 'loading' | 'suggestions' | 'downpayment' | 'summary';
 type StepNumber = 1 | 2 | 3 | 4 | 5;
+
+const INITIAL_DOWNPAYMENT: DownpaymentDetails = {
+  method: 'GCash',
+  senderName: '',
+  referenceNumber: '',
+  receiptFileName: '',
+  agreedToTerms: false,
+};
 
 interface JourneyStepMeta {
   readonly step: StepNumber;
@@ -170,7 +181,13 @@ const PACKAGE_STYLES = [
 
 const GUEST_PRESETS = [30, 50, 80, 100, 150] as const;
 
-const BUDGET_RANGES = [
+interface BudgetRangeOption {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+}
+
+const DEFAULT_BUDGET_RANGES: readonly BudgetRangeOption[] = [
   {
     id: 'Under ₱150,000',
     label: 'Under ₱150,000',
@@ -203,6 +220,72 @@ const BUDGET_RANGES = [
   },
 ] as const;
 
+const INTIMATE_MILESTONE_BUDGET_RANGES: readonly BudgetRangeOption[] = [
+  {
+    id: '₱80,000 – ₱100,000',
+    label: '₱80,000 – ₱100,000',
+    detail: 'Intimate celebration & essential setup',
+  },
+  {
+    id: '₱100,000 – ₱125,000',
+    label: '₱100,000 – ₱125,000',
+    detail: 'Classic gathering with curated styling',
+  },
+  {
+    id: '₱125,000 – ₱150,000',
+    label: '₱125,000 – ₱150,000',
+    detail: 'Elevated styling & full-course catering',
+  },
+  {
+    id: '₱150,000 – ₱180,000',
+    label: '₱150,000 – ₱180,000',
+    detail: 'Grand bespoke setup & premium perks',
+  },
+  {
+    id: 'Flexible / Open to Proposal',
+    label: 'Flexible / Open to Proposal',
+    detail: 'Tailored around your celebration priorities',
+  },
+] as const;
+
+const BIRTHDAY_BUDGET_RANGES: readonly BudgetRangeOption[] = [
+  {
+    id: '₱100,000 – ₱130,000',
+    label: '₱100,000 – ₱130,000',
+    detail: 'Intimate birthday celebration & essentials',
+  },
+  {
+    id: '₱130,000 – ₱160,000',
+    label: '₱130,000 – ₱160,000',
+    detail: 'Classic full-service birthday gathering',
+  },
+  {
+    id: '₱160,000 – ₱190,000',
+    label: '₱160,000 – ₱190,000',
+    detail: 'Elevated styling & signature inclusions',
+  },
+  {
+    id: '₱190,000 – ₱220,000',
+    label: '₱190,000 – ₱220,000',
+    detail: 'Grand milestone production & premium perks',
+  },
+  {
+    id: 'Flexible / Open to Proposal',
+    label: 'Flexible / Open to Proposal',
+    detail: 'Tailored around your celebration priorities',
+  },
+] as const;
+
+function getBudgetRangesForEvent(eventType: string): readonly BudgetRangeOption[] {
+  if (eventType === 'Christening' || eventType === 'Gender Reveal') {
+    return INTIMATE_MILESTONE_BUDGET_RANGES;
+  }
+  if (eventType === 'Birthday') {
+    return BIRTHDAY_BUDGET_RANGES;
+  }
+  return DEFAULT_BUDGET_RANGES;
+}
+
 const CURATED_ADDONS = [
   'LED Wall & Ambient Lighting',
   'Full-Course Catering & Grazing',
@@ -223,9 +306,9 @@ const COUNTRY_CODES = [
 ] as const;
 
 const LOADING_MESSAGES = [
-  'Compiling your package & budget selections…',
-  'Formatting your official Zion celebration brief…',
-  'Finalizing your booking summary…',
+  'Matching packages to your event & budget…',
+  'Ranking best-match & best-value options…',
+  'Preparing your tailored Zion recommendations…',
 ] as const;
 
 interface JourneyFormState {
@@ -510,6 +593,8 @@ export default function BookingJourneyClient() {
   const [stepError, setStepError] = useState<string>('');
   const [loadingStepIndex, setLoadingStepIndex] = useState(0);
   const [bookingRef, setBookingRef] = useState<string>('');
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
+  const [downpayment, setDownpayment] = useState<DownpaymentDetails>(INITIAL_DOWNPAYMENT);
 
   const [isSendingInquiry, setIsSendingInquiry] = useState(false);
   const [inquiryFeedback, setInquiryFeedback] = useState<{
@@ -524,6 +609,40 @@ export default function BookingJourneyClient() {
     () => (form.eventDate ? resolveScheduleStatus(form.eventDate) : null),
     [form.eventDate],
   );
+  const activeBudgetRanges = useMemo(
+    () => getBudgetRangesForEvent(form.eventType),
+    [form.eventType],
+  );
+  const recommendations = useMemo(
+    () =>
+      getRecommendedPackages({
+        eventType: form.eventType,
+        packageTier: form.packageTier,
+        guestCount: form.guestCount,
+        budgetRange: form.budgetRange,
+        addOns: form.addOns,
+      }),
+    [form.eventType, form.packageTier, form.guestCount, form.budgetRange, form.addOns],
+  );
+  const selectedRecommendation = useMemo(
+    () =>
+      recommendations.find((item) => item.pkg.id === selectedPackageId) ??
+      recommendations[0] ??
+      null,
+    [recommendations, selectedPackageId],
+  );
+
+  const handleSelectEventType = (eventId: string) => {
+    const allowedBudgets = getBudgetRangesForEvent(eventId);
+    setForm((prev) => ({
+      ...prev,
+      eventType: eventId,
+      budgetRange: allowedBudgets.some((item) => item.id === prev.budgetRange)
+        ? prev.budgetRange
+        : '',
+    }));
+    setStepError('');
+  };
 
   const currentMeta = JOURNEY_STEPS[currentStep - 1];
 
@@ -537,19 +656,27 @@ export default function BookingJourneyClient() {
       return;
     }
 
-    const stepOneTimer = window.setTimeout(() => setLoadingStepIndex(1), 650);
-    const stepTwoTimer = window.setTimeout(() => setLoadingStepIndex(2), 1300);
+    const stepOneTimer = window.setTimeout(() => setLoadingStepIndex(1), 550);
+    const stepTwoTimer = window.setTimeout(() => setLoadingStepIndex(2), 1100);
     const finishTimer = window.setTimeout(() => {
-      setBookingRef(generateBookingReference());
-      setPhase('summary');
-    }, 2000);
+      setSelectedPackageId((prev) =>
+        recommendations.some((item) => item.pkg.id === prev)
+          ? prev
+          : (recommendations[0]?.pkg.id ?? ''),
+      );
+      setDownpayment((prev) => ({
+        ...prev,
+        senderName: prev.senderName.trim() ? prev.senderName : form.fullName.trim(),
+      }));
+      setPhase('suggestions');
+    }, 1650);
 
     return () => {
       window.clearTimeout(stepOneTimer);
       window.clearTimeout(stepTwoTimer);
       window.clearTimeout(finishTimer);
     };
-  }, [phase]);
+  }, [phase, recommendations, form.fullName]);
 
   const scrollToTopOfJourney = () => {
     stageTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -707,6 +834,8 @@ export default function BookingJourneyClient() {
     setForm(INITIAL_FORM_STATE);
     setTouchedStep4(INITIAL_TOUCHED_STEP4);
     setEditingReviewStep(null);
+    setSelectedPackageId('');
+    setDownpayment(INITIAL_DOWNPAYMENT);
     setCurrentStep(1);
     setHighestUnlocked(1);
     setStepError('');
@@ -724,11 +853,24 @@ export default function BookingJourneyClient() {
     const summaryLines = [
       `Booking Reference: ${bookingRef}`,
       `Event Type: ${form.eventType}`,
-      `Package Style: ${form.packageTier}`,
+      `Package Style Preference: ${form.packageTier}`,
+      selectedRecommendation
+        ? `Selected Package: ${selectedRecommendation.pkg.name} (${formatPhp(selectedRecommendation.estimatedTotal)})`
+        : null,
       `Estimated Guests: ${form.guestCount} pax`,
       `Event Date: ${formatReadableDate(form.eventDate)}`,
       `Budget Range: ${form.budgetRange}`,
       `Curated Add-ons: ${form.addOns.length > 0 ? form.addOns.join(', ') : 'None selected'}`,
+      selectedRecommendation
+        ? `Downpayment (${selectedRecommendation.pkg.downpaymentPercent}%): ${formatPhp(selectedRecommendation.downpaymentAmount)} via ${downpayment.method}`
+        : null,
+      downpayment.referenceNumber.trim()
+        ? `Payment Reference No.: ${downpayment.referenceNumber.trim()} (Sender: ${downpayment.senderName.trim()})`
+        : null,
+      downpayment.receiptFileName ? `Receipt Attached: ${downpayment.receiptFileName}` : null,
+      selectedRecommendation
+        ? `Remaining Balance: ${formatPhp(selectedRecommendation.remainingBalance)}`
+        : null,
       `Facebook Account: ${form.facebookAccount.trim()}`,
       form.notes.trim() ? `Booking Requests & Notes: ${form.notes.trim()}` : null,
     ]
@@ -783,10 +925,10 @@ export default function BookingJourneyClient() {
   return (
     <div
       ref={stageTopRef}
-      className="mx-auto w-full max-w-[96rem] scroll-mt-24 px-4 pt-28 pb-20 sm:px-6 lg:px-10 xl:px-12 md:pt-32"
+      className="mx-auto w-full max-w-[96rem] scroll-mt-24 px-4 pt-28 pb-20 sm:px-6 lg:px-10 xl:px-12 md:pt-32 print:p-0"
     >
       {/* Editorial Header */}
-      <header className="mb-8 text-center md:mb-10">
+      <header data-booking-no-print="true" className="mb-8 text-center md:mb-10">
         <span className="inline-flex items-center gap-2 rounded-full border border-[var(--palette-gold)]/30 bg-[var(--palette-paper)]/90 px-4 py-1.5 font-sans text-xs font-semibold uppercase tracking-[0.22em] text-[var(--palette-gold-ink)] shadow-xs">
           <Sparkles className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden="true" />
           Zion Celebration Journey
@@ -803,14 +945,16 @@ export default function BookingJourneyClient() {
       </header>
 
       {/* Flowing Liquid Wave Step Progress Bar */}
-      <JourneyMountainMap
-        phase={phase}
-        currentStep={currentStep}
-        highestUnlocked={highestUnlocked}
-        progressPercent={progressPercent}
-        selectedEventType={form.eventType}
-        onSelectStep={jumpToStep}
-      />
+      <div data-booking-no-print="true">
+        <JourneyMountainMap
+          phase={phase === 'journey' ? 'journey' : phase === 'loading' ? 'loading' : 'summary'}
+          currentStep={currentStep}
+          highestUnlocked={highestUnlocked}
+          progressPercent={progressPercent}
+          selectedEventType={form.eventType}
+          onSelectStep={jumpToStep}
+        />
+      </div>
 
       {/* PHASE 1: Interactive 5-Step Journey */}
       {phase === 'journey' ? (
@@ -850,10 +994,7 @@ export default function BookingJourneyClient() {
                       key={eventOption.id}
                       type="button"
                       aria-pressed={selected}
-                      onClick={() => {
-                        setForm((prev) => ({ ...prev, eventType: eventOption.id }));
-                        setStepError('');
-                      }}
+                      onClick={() => handleSelectEventType(eventOption.id)}
                       className={`group flex flex-col overflow-hidden rounded-[1.5rem] border text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palette-gold-ink)] focus-visible:ring-offset-2 ${
                         selected
                           ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-cream)]/85 shadow-[0_18px_40px_-18px_color-mix(in_srgb,var(--palette-ink)_30%,transparent)] ring-2 ring-[var(--palette-booklet-cover)]/50'
@@ -1186,7 +1327,7 @@ export default function BookingJourneyClient() {
                     Select Budget Range
                   </h3>
                   <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-                    {BUDGET_RANGES.map((budget) => {
+                    {activeBudgetRanges.map((budget) => {
                       const selected = form.budgetRange === budget.id;
                       return (
                         <button
@@ -1596,10 +1737,7 @@ export default function BookingJourneyClient() {
                               key={eventItem.id}
                               type="button"
                               aria-pressed={selected}
-                              onClick={() => {
-                                setForm((prev) => ({ ...prev, eventType: eventItem.id }));
-                                setStepError('');
-                              }}
+                              onClick={() => handleSelectEventType(eventItem.id)}
                               className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left font-sans text-xs font-semibold transition-all ${
                                 selected
                                   ? 'border-[var(--palette-gold)] bg-[var(--palette-cream)] text-ink shadow-xs'
@@ -1858,7 +1996,7 @@ export default function BookingJourneyClient() {
                             Budget Range
                           </p>
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                            {BUDGET_RANGES.map((budget) => {
+                            {activeBudgetRanges.map((budget) => {
                               const selected = form.budgetRange === budget.id;
                               return (
                                 <button
@@ -2187,9 +2325,9 @@ export default function BookingJourneyClient() {
                 onClick={handleNextStep}
                 className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-8 py-3 font-sans text-xs font-bold uppercase tracking-[0.18em] text-ink shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--palette-client-button-hover)] hover:shadow-md"
               >
-                <span>{currentStep === 5 ? 'Complete Booking' : 'Next'}</span>
+                <span>{currentStep === 5 ? 'View Suggested Packages' : 'Next'}</span>
                 {currentStep === 5 ? (
-                  <Award className="h-4 w-4" aria-hidden="true" />
+                  <Sparkles className="h-4 w-4" aria-hidden="true" />
                 ) : (
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 )}
@@ -2197,10 +2335,10 @@ export default function BookingJourneyClient() {
             </div>
           </section>
 
-          {/* Right Live Journey Summary Sidebar */}
+          {/* Right Live Journey Summary Sidebar (Fixed Position) */}
           <aside
             aria-label="Live event selections"
-            className="rounded-[2rem] border border-[var(--palette-gold)]/25 bg-[var(--palette-paper)]/90 p-6 shadow-sm lg:sticky lg:top-28 lg:col-span-3"
+            className="rounded-[2rem] border border-[var(--palette-gold)]/25 bg-[var(--palette-paper)]/90 p-6 shadow-sm lg:col-span-3"
           >
             <div className="flex items-center justify-between border-b border-[var(--palette-gold)]/20 pb-4">
               <div>
@@ -2311,193 +2449,78 @@ export default function BookingJourneyClient() {
           </div>
 
           <h2 className="mt-8 font-serif text-2xl text-ink sm:text-3xl">
-            Preparing Your Zion Booking Summary
+            Curating Your Best-Match Packages
           </h2>
           <p className="mt-2 font-sans text-sm text-ink/70">{LOADING_MESSAGES[loadingStepIndex]}</p>
         </section>
       ) : null}
 
-      {/* PHASE 3: Complete Formal Booking Summary */}
+      {/* PHASE 2B: Relevant Package Suggestions Ranked by Relevancy */}
+      {phase === 'suggestions' ? (
+        <PackageSuggestionsView
+          eventType={form.eventType}
+          guestCount={form.guestCount}
+          eventDateLabel={formatReadableDate(form.eventDate)}
+          budgetRange={form.budgetRange}
+          recommendations={recommendations}
+          selectedPackageId={selectedRecommendation?.pkg.id ?? ''}
+          onSelectPackage={(pkgId) => setSelectedPackageId(pkgId)}
+          onBackToReview={() => {
+            setPhase('journey');
+            setCurrentStep(5);
+            scrollToTopOfJourney();
+          }}
+          onProceedToDownpayment={() => {
+            setPhase('downpayment');
+            scrollToTopOfJourney();
+          }}
+        />
+      ) : null}
+
+      {/* PHASE 2C: Required Downpayment to Secure Exclusive Date */}
+      {phase === 'downpayment' && selectedRecommendation ? (
+        <DownpaymentView
+          eventType={form.eventType}
+          guestCount={form.guestCount}
+          eventDateLabel={formatReadableDate(form.eventDate)}
+          selectedRecommendation={selectedRecommendation}
+          downpayment={downpayment}
+          onChangeDownpayment={setDownpayment}
+          onBackToSuggestions={() => {
+            setPhase('suggestions');
+            scrollToTopOfJourney();
+          }}
+          onSubmitDownpayment={() => {
+            setBookingRef(generateBookingReference());
+            setPhase('summary');
+            scrollToTopOfJourney();
+          }}
+        />
+      ) : null}
+
+      {/* PHASE 3: Official Booking & Downpayment Receipt (PDF / Print Ready) */}
       {phase === 'summary' ? (
-        <section
-          aria-labelledby="booking-summary-heading"
-          className={`${styles.summaryEnter} mx-auto max-w-4xl rounded-[2rem] border border-[var(--palette-gold)]/35 bg-[var(--palette-paper)] p-6 shadow-[0_28px_70px_-30px_color-mix(in_srgb,var(--palette-ink)_25%,transparent)] sm:p-10`}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--palette-gold)]/25 pb-6">
-            <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--palette-booklet-cover)]/45 px-3.5 py-1 font-sans text-xs font-bold uppercase tracking-[0.16em] text-ink">
-                <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden="true" />
-                Booking Summary Ready · Step 5 of 5 Complete
-              </span>
-              <h2
-                id="booking-summary-heading"
-                className="mt-3 font-serif text-3xl text-ink sm:text-4xl"
-              >
-                Your Zion Booking Summary
-              </h2>
-              <p className="mt-1 font-sans text-sm text-ink/70">
-                Reference Code: <strong className="font-semibold text-ink">{bookingRef}</strong>
-              </p>
-            </div>
-
-            <div className="relative h-14 w-28 shrink-0">
-              <Image
-                src={BRAND.logo.src}
-                alt={BRAND.logo.alt}
-                fill
-                sizes="112px"
-                className="object-contain object-right"
-              />
-            </div>
-          </div>
-
-          <div className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-2">
-            {/* Celebration & Package Card */}
-            <div className="rounded-2xl border border-[var(--palette-gold)]/20 bg-[var(--palette-cream)]/35 p-5">
-              <h3 className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--palette-gold-ink)]">
-                Celebration &amp; Package
-              </h3>
-              <dl className="mt-4 space-y-3 font-sans text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-ink/65">Event Type</dt>
-                  <dd className="text-right font-semibold text-ink">{form.eventType}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-ink/65">Package Tier</dt>
-                  <dd className="text-right font-semibold text-ink">{form.packageTier}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-ink/65">Curated Add-Ons</dt>
-                  <dd className="text-right font-medium text-ink">
-                    {form.addOns.length > 0 ? form.addOns.join(', ') : 'None selected'}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            {/* Budget & Schedule Card */}
-            <div className="rounded-2xl border border-[var(--palette-gold)]/20 bg-[var(--palette-cream)]/35 p-5">
-              <h3 className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--palette-gold-ink)]">
-                Budget &amp; Schedule
-              </h3>
-              <dl className="mt-4 space-y-3 font-sans text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-ink/65">Budget Range</dt>
-                  <dd className="text-right font-semibold text-ink">{form.budgetRange}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-ink/65">Event Date</dt>
-                  <dd className="text-right font-semibold text-ink">
-                    {formatReadableDate(form.eventDate)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-ink/65">Estimated Guests</dt>
-                  <dd className="text-right font-semibold text-ink">{form.guestCount} pax</dd>
-                </div>
-              </dl>
-            </div>
-
-            {/* Client Information Card */}
-            <div className="rounded-2xl border border-[var(--palette-gold)]/20 bg-[var(--palette-cream)]/35 p-5 md:col-span-2">
-              <h3 className="font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--palette-gold-ink)]">
-                Client Information
-              </h3>
-              <dl className="mt-4 grid grid-cols-1 gap-4 font-sans text-sm sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <dt className="text-xs text-ink/65">Client Name</dt>
-                  <dd className="mt-0.5 font-semibold text-ink">{form.fullName}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-ink/65">Email Address</dt>
-                  <dd className="mt-0.5 break-all font-semibold text-ink">{form.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-ink/65">Mobile Number</dt>
-                  <dd className="mt-0.5 font-semibold text-ink">
-                    {form.countryCode} {form.phoneNumber}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-ink/65">Facebook Account</dt>
-                  <dd className="mt-0.5 break-all font-semibold text-ink">
-                    {form.facebookAccount}
-                  </dd>
-                </div>
-              </dl>
-              {form.notes.trim() ? (
-                <div className="mt-4 border-t border-[var(--palette-gold)]/15 pt-3">
-                  <p className="text-xs text-ink/65">Booking Requests &amp; Styling Notes</p>
-                  <p className="mt-1 font-sans text-sm text-ink">{form.notes.trim()}</p>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          {inquiryFeedback ? (
-            <div
-              role={inquiryFeedback.type === 'error' ? 'alert' : 'status'}
-              className={`mt-6 flex items-center gap-2.5 rounded-2xl border px-4 py-3.5 font-sans text-sm ${
-                inquiryFeedback.type === 'success'
-                  ? 'border-[var(--palette-success)]/30 bg-[var(--palette-success-soft)] text-[var(--palette-success)]'
-                  : 'border-[var(--palette-danger)]/30 bg-[var(--palette-danger-soft)] text-[var(--palette-danger)]'
-              }`}
-            >
-              {inquiryFeedback.type === 'success' ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-              ) : (
-                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-              )}
-              <span>{inquiryFeedback.text}</span>
-            </div>
-          ) : null}
-
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--palette-gold)]/20 pt-6">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                disabled={isSendingInquiry || inquiryFeedback?.type === 'success'}
-                onClick={handleSendToZion}
-                className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-6 py-3 font-sans text-xs font-bold uppercase tracking-[0.16em] text-ink shadow-sm transition-all hover:bg-[var(--palette-client-button-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Send className="h-4 w-4" aria-hidden="true" />
-                <span>
-                  {isSendingInquiry
-                    ? 'Submitting Booking…'
-                    : inquiryFeedback?.type === 'success'
-                      ? 'Booking Submitted to Zion'
-                      : 'Confirm & Submit Booking'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--palette-gold)]/35 bg-[var(--palette-white)] px-5 py-2.5 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-ink transition-colors hover:bg-[var(--palette-cream)]"
-              >
-                <Printer className="h-4 w-4" aria-hidden="true" />
-                <span>Print Summary</span>
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Link
-                href="/contact"
-                className="inline-flex min-h-12 items-center rounded-full border border-[var(--palette-gold)]/30 px-5 py-2.5 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-ink transition-colors hover:bg-[var(--palette-cream)]"
-              >
-                Contact Us
-              </Link>
-              <button
-                type="button"
-                onClick={handleResetJourney}
-                className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-[var(--palette-gold)]/30 px-5 py-2.5 font-sans text-xs font-semibold uppercase tracking-[0.14em] text-ink transition-colors hover:bg-[var(--palette-cream)]"
-              >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Start New Booking</span>
-              </button>
-            </div>
-          </div>
-        </section>
+        <OfficialBookingReceipt
+          bookingRef={bookingRef}
+          eventType={form.eventType}
+          packageTier={form.packageTier}
+          guestCount={form.guestCount}
+          eventDateLabel={formatReadableDate(form.eventDate)}
+          budgetRange={form.budgetRange}
+          addOns={form.addOns}
+          fullName={form.fullName}
+          email={form.email}
+          countryCode={form.countryCode}
+          phoneNumber={form.phoneNumber}
+          facebookAccount={form.facebookAccount}
+          notes={form.notes}
+          selectedRecommendation={selectedRecommendation}
+          downpayment={downpayment}
+          isSendingInquiry={isSendingInquiry}
+          inquiryFeedback={inquiryFeedback}
+          onSendToZion={handleSendToZion}
+          onResetJourney={handleResetJourney}
+        />
       ) : null}
     </div>
   );

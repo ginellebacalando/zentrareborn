@@ -1,10 +1,12 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { Prisma } from '@prisma/client';
+import { Prisma, TestimonyStatus } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { termsData } from '@/config/terms';
+import { deleteTestimonyPhoto } from '@/lib/testimony-photo-storage';
+import { parseRedFlagReasons } from '@/lib/testimony-service';
 import type { AdminActor } from './access';
 import { AdminError } from './errors';
 import { getAdminPreferences, saveAdminPreferences } from './preferences';
@@ -375,6 +377,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       upcoming,
       outbox,
       inquiries,
+      heldTestimonies,
       p,
       dashboardInsights,
       dashboardKpis,
@@ -410,6 +413,27 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
           requestedEventDate: true,
         },
       }),
+      prisma.testimony.findMany({
+        where: {
+          status: { in: [TestimonyStatus.FLAGGED, TestimonyStatus.PENDING_REVIEW] },
+          deletedAt: null,
+        },
+        orderBy: { submittedAt: 'desc' },
+        take: 25,
+        select: {
+          id: true,
+          clientName: true,
+          nickname: true,
+          eventType: true,
+          eventDate: true,
+          overallRating: true,
+          comment: true,
+          photoUrl: true,
+          status: true,
+          hiddenBy: true,
+          submittedAt: true,
+        },
+      }),
       policy(),
       readDashboardInsights(),
       readDashboardKpis(),
@@ -422,6 +446,18 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       upcoming,
       outbox,
       inquiries,
+      heldTestimonies: heldTestimonies.map((item) => ({
+        id: item.id,
+        clientName: item.nickname || item.clientName,
+        eventType: item.eventType,
+        eventDate: item.eventDate.toISOString(),
+        overallRating: item.overallRating,
+        comment: item.comment,
+        photoUrl: item.photoUrl,
+        status: item.status,
+        flagReasons: parseRedFlagReasons(item.hiddenBy),
+        submittedAt: item.submittedAt.toISOString(),
+      })),
       policyReviewed: p.reviewed,
       dashboardInsights,
       dashboardKpis,
@@ -1002,6 +1038,84 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
       );
     });
     return { saved: true, signInAgain: Boolean(passwordHash) };
+  }
+  if (op === 'testimony-action') {
+    const input = z
+      .object({
+        op: z.literal('testimony-action'),
+        id: identifier,
+        action: z.enum(['ALLOW', 'DELETE']),
+      })
+      .strict()
+      .parse(raw);
+
+    const existing = await prisma.testimony.findUnique({
+      where: { id: input.id },
+      select: {
+        id: true,
+        clientName: true,
+        nickname: true,
+        eventType: true,
+        photoPath: true,
+        deletedAt: true,
+      },
+    });
+    if (!existing || existing.deletedAt) {
+      throw new AdminError('Held testimony not found.', 404);
+    }
+
+    const actorName = actor.fullName || actor.username;
+    const now = new Date();
+    const displayName = existing.nickname || existing.clientName;
+
+    if (input.action === 'ALLOW') {
+      await prisma.$transaction(async (tx) => {
+        await tx.testimony.update({
+          where: { id: existing.id },
+          data: {
+            status: TestimonyStatus.APPROVED,
+            isPublic: true,
+            approvedBy: actorName,
+            approvedAt: now,
+            hiddenBy: null,
+            hiddenAt: null,
+          },
+        });
+        await audit(
+          tx,
+          actor,
+          'Testimonies',
+          `Allowed and published held testimony from ${displayName} (${existing.eventType}).`,
+          'APPROVAL',
+          { testimonyId: existing.id, action: 'ALLOW' },
+        );
+      });
+      return { id: existing.id, status: 'approved' };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.testimony.update({
+        where: { id: existing.id },
+        data: {
+          status: TestimonyStatus.DELETED,
+          isPublic: false,
+          deletedBy: actorName,
+          deletedAt: now,
+        },
+      });
+      await audit(
+        tx,
+        actor,
+        'Testimonies',
+        `Deleted red-flagged testimony from ${displayName} (${existing.eventType}).`,
+        'REJECTION',
+        { testimonyId: existing.id, action: 'DELETE' },
+      );
+    });
+    if (existing.photoPath) {
+      await deleteTestimonyPhoto(existing.photoPath);
+    }
+    return { id: existing.id, status: 'deleted' };
   }
   throw new AdminError('Unknown operation.', 400);
 }

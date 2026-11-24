@@ -6,11 +6,14 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
-  Mail,
   MessageSquareQuote,
   Package,
   Send,
+  ShieldAlert,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   Star,
@@ -19,6 +22,7 @@ import {
 } from 'lucide-react';
 import ZionDatePicker from '@/components/client/ZionDatePicker';
 import ZionSelectPopover from '@/components/client/ZionSelectPopover';
+import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import type { PublicTestimoniesResponse, PublicTestimony } from '@/lib/testimony-types';
 
 const FALLBACK_EVENT_TYPES = [
@@ -34,9 +38,15 @@ const FALLBACK_EVENT_TYPES = [
   'Custom Event',
 ];
 
+const TESTIMONY_PLACEHOLDERS = [
+  'Share what made your celebration special...',
+  'How was the food, service, and venue atmosphere?',
+  'What moment stood out most for you and your guests?',
+  'Tell future celebrants what you loved about Zion...',
+];
+
 const EMPTY_FORM = {
   clientName: '',
-  email: '',
   eventType: '',
   eventDate: '',
   packageName: '',
@@ -52,11 +62,14 @@ const EMPTY_FORM = {
 
 function Stars({ value, size = 'h-4 w-4' }: { value: number; size?: string }) {
   return (
-    <span className="inline-flex gap-0.5" aria-label={`${value} out of 5 stars`}>
+    <span
+      className="inline-flex shrink-0 items-center gap-1"
+      aria-label={`${value} out of 5 stars`}
+    >
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
-          className={`${size} ${star <= value ? 'fill-[var(--palette-gold-hover)] text-accent-ink' : 'text-neutral-300'}`}
+          className={`${size} shrink-0 ${star <= value ? 'fill-[var(--palette-gold-hover)] text-accent-ink' : 'text-neutral-300'}`}
           strokeWidth={1.8}
         />
       ))}
@@ -134,9 +147,11 @@ function formatDate(value: string) {
 function RatingDetail({ label, value }: { label: string; value: number | null }) {
   if (!value) return null;
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted">{label}</span>
-      <Stars value={value} size="h-3.5 w-3.5" />
+    <div className="flex items-center justify-between gap-4 py-1.5 first:pt-0 last:pb-0">
+      <span className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-muted">
+        {label}
+      </span>
+      <Stars value={value} size="h-4 w-4" />
     </div>
   );
 }
@@ -159,9 +174,9 @@ function TestimonyCard({ testimony }: { testimony: PublicTestimony }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-sahitya text-2xl font-bold text-ink">{testimony.clientName}</p>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
+            <p className="mt-1 flex flex-wrap items-center gap-2.5 text-sm text-muted">
               <span>{testimony.eventType}</span>
-              <span className="h-1 w-1 rounded-full bg-zion-accent" />
+              <span aria-hidden="true" className="h-3.5 w-px bg-zion-accent/40" />
               <span>{formatDate(testimony.eventDate)}</span>
             </p>
           </div>
@@ -176,12 +191,16 @@ function TestimonyCard({ testimony }: { testimony: PublicTestimony }) {
           </p>
         )}
 
-        <MessageSquareQuote className="mt-6 h-8 w-8 text-accent-ink/60" />
-        <p className="mt-3 whitespace-pre-wrap font-serif text-[17px] leading-7 text-muted">
-          “{testimony.comment}”
-        </p>
+        {testimony.comment.trim() && (
+          <>
+            <MessageSquareQuote className="mt-6 h-8 w-8 text-accent-ink/60" />
+            <p className="mt-3 whitespace-pre-wrap font-serif text-[17px] leading-7 text-muted">
+              “{testimony.comment}”
+            </p>
+          </>
+        )}
 
-        <div className="mt-6 grid grid-cols-1 gap-2 rounded-2xl border border-zion-accent/15 bg-[var(--palette-paper)]/70 p-4 sm:grid-cols-2">
+        <div className="mt-6 flex flex-col divide-y divide-zion-accent/10 rounded-2xl border border-zion-accent/15 bg-[var(--palette-paper)]/70 p-4">
           <RatingDetail label="Approach" value={testimony.approachRating} />
           <RatingDetail label="Food" value={testimony.foodRating} />
           <RatingDetail label="Service" value={testimony.serviceRating} />
@@ -243,9 +262,7 @@ function FilterSelect({
           onClick={toggleOpen}
           className={`flex h-[46px] w-full items-center justify-between rounded-xl border ${open ? 'border-zion-accent bg-surface ring-2 ring-zion-accent/20 ' : 'border-zion-accent/20 bg-surface '} px-4 font-sans text-sm shadow-sm transition-all duration-300 hover:border-zion-accent/50 hover:bg-[var(--palette-gold-soft)]/30 cursor-pointer`}
         >
-          <span
-            className={`block min-w-0 truncate pr-10 text-left ${value ? 'text-gray-900 font-medium ' : 'text-gray-600 '}`}
-          >
+          <span className="block min-w-0 truncate pr-10 text-left font-sans text-sm font-medium text-ink">
             {selected?.label || placeholder}
           </span>
         </button>
@@ -306,7 +323,19 @@ export default function TestimoniesClient({
   const [photo, setPhoto] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [submissionNotice, setSubmissionNotice] = useState<{
+    message: string;
+    flagged: boolean;
+    reasons: string[];
+  } | null>(null);
+  const reducedMotion = useReducedMotion();
+  const [rotationIndex, setRotationIndex] = useState(0);
+  const [isGridPaused, setIsGridPaused] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [typedLength, setTypedLength] = useState(0);
+  const [isDeletingPlaceholder, setIsDeletingPlaceholder] = useState(false);
+  const [isPlaceholderPaused, setIsPlaceholderPaused] = useState(false);
+  const [placeholderCursorVisible, setPlaceholderCursorVisible] = useState(true);
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -327,6 +356,7 @@ export default function TestimoniesClient({
       const payload = (await response.json()) as PublicTestimoniesResponse;
       if (!response.ok) throw new Error(payload.error || 'Unable to load testimonies.');
       setTestimonies(payload.testimonies);
+      setRotationIndex(0);
       setFilterOptions({
         eventTypes: payload.filterOptions.eventTypes.length
           ? payload.filterOptions.eventTypes
@@ -380,16 +410,43 @@ export default function TestimoniesClient({
       return;
     }
 
+    const trimmedComment = form.comment.trim();
+    if (trimmedComment.length > 0 && trimmedComment.length < 8) {
+      setSubmitError(
+        'If you write a testimony, please enter at least 8 characters (or leave it blank).',
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.set(key, String(value)));
       if (photo) body.set('photo', photo);
       const response = await fetch('/api/client/testimonies', { method: 'POST', body });
-      const payload = (await response.json()) as { error?: string; message?: string };
+      const payload = (await response.json()) as {
+        error?: string;
+        message?: string;
+        flagged?: boolean;
+        flagReasons?: string[];
+        testimony?: PublicTestimony | null;
+      };
       if (!response.ok) throw new Error(payload.error || 'Unable to submit testimony.');
 
-      setSuccessMessage(payload.message || 'Thank you for sharing your experience.');
+      if (!payload.flagged && payload.testimony) {
+        const created = payload.testimony;
+        setTestimonies((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+        void loadTestimonies();
+      }
+
+      setSubmissionNotice({
+        message: payload.flagged
+          ? payload.message ||
+            'Your testimony was automatically tagged for safety review and placed on hold.'
+          : 'Your testimony has been successfully shared and is now visible below.',
+        flagged: Boolean(payload.flagged),
+        reasons: payload.flagReasons ?? [],
+      });
       setForm(EMPTY_FORM);
       setPhoto(null);
       setIsFormOpen(false);
@@ -421,26 +478,97 @@ export default function TestimoniesClient({
     };
   }, [isFormOpen]);
 
-  const completedRequiredCount = [
-    Boolean(form.clientName.trim()),
-    Boolean(form.eventType),
-    Boolean(form.eventDate),
-    form.overallRating > 0 &&
-      form.approachRating > 0 &&
-      form.foodRating > 0 &&
-      form.serviceRating > 0,
-    form.comment.trim().length >= 20,
-    form.consent,
-  ].filter(Boolean).length;
-  const formProgressPercent = (completedRequiredCount / 6) * 100;
+  useEffect(() => {
+    if (!submissionNotice) return;
+    const timeout = window.setTimeout(() => setSubmissionNotice(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [submissionNotice]);
+
+  const stepEntries = useCallback(
+    (direction: 1 | -1) => {
+      setRotationIndex((current) => {
+        if (testimonies.length < 2) return 0;
+        return (current + direction + testimonies.length) % testimonies.length;
+      });
+    },
+    [testimonies.length],
+  );
+
+  useEffect(() => {
+    if (isGridPaused || isFormOpen || testimonies.length < 2) return;
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+    const interval = window.setInterval(() => stepEntries(1), 5000);
+    return () => window.clearInterval(interval);
+  }, [isGridPaused, isFormOpen, stepEntries, testimonies.length]);
+
+  const activePlaceholderText =
+    TESTIMONY_PLACEHOLDERS[placeholderIndex] ?? TESTIMONY_PLACEHOLDERS[0];
+  const shouldAnimatePlaceholder = isFormOpen && !reducedMotion && form.comment.length === 0;
+
+  useEffect(() => {
+    if (!shouldAnimatePlaceholder) return;
+
+    let delay = isDeletingPlaceholder ? 20 : 38;
+    if (!isDeletingPlaceholder && typedLength === activePlaceholderText.length) {
+      delay = isPlaceholderPaused ? 1700 : 100;
+    } else if (isDeletingPlaceholder && typedLength === 0) {
+      delay = 280;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (!isDeletingPlaceholder) {
+        if (typedLength < activePlaceholderText.length) {
+          setTypedLength((count) => count + 1);
+          setIsPlaceholderPaused(false);
+        } else if (!isPlaceholderPaused) {
+          setIsPlaceholderPaused(true);
+        } else {
+          setIsDeletingPlaceholder(true);
+          setIsPlaceholderPaused(false);
+        }
+      } else if (typedLength > 0) {
+        setTypedLength((count) => count - 1);
+      } else {
+        setIsDeletingPlaceholder(false);
+        setPlaceholderIndex((current) => (current + 1) % TESTIMONY_PLACEHOLDERS.length);
+      }
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    shouldAnimatePlaceholder,
+    activePlaceholderText.length,
+    typedLength,
+    isDeletingPlaceholder,
+    isPlaceholderPaused,
+  ]);
+
+  useEffect(() => {
+    if (!shouldAnimatePlaceholder || !isPlaceholderPaused) return;
+    const blink = window.setInterval(() => {
+      setPlaceholderCursorVisible((visible) => !visible);
+    }, 480);
+    return () => window.clearInterval(blink);
+  }, [shouldAnimatePlaceholder, isPlaceholderPaused]);
+
+  const rotatedTestimonies = useMemo(() => {
+    if (testimonies.length < 2) return testimonies;
+    const start = rotationIndex % testimonies.length;
+    return [...testimonies.slice(start), ...testimonies.slice(0, start)];
+  }, [rotationIndex, testimonies]);
 
   const modalInputClasses =
     'w-full rounded-2xl border border-zion-accent/25 bg-surface/85 py-3.5 pl-11 pr-4 font-sans text-sm font-normal text-ink shadow-sm transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15';
 
   return (
     <>
-      <section className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 md:px-12 md:py-20">
-        <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <section className="relative z-10 mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6 md:px-8 md:py-12">
+        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent-ink">
               Real celebrations. Real stories.
@@ -455,7 +583,7 @@ export default function TestimoniesClient({
               if (allowSubmissions) {
                 setIsFormOpen(true);
               } else {
-                setSuccessMessage('');
+                setSubmissionNotice(null);
                 setSubmitError(disabledMessage);
               }
             }}
@@ -476,6 +604,54 @@ export default function TestimoniesClient({
         {!allowSubmissions && (
           <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-800">
             {disabledMessage}
+          </div>
+        )}
+
+        {submissionNotice && (
+          <div
+            role={submissionNotice.flagged ? 'alert' : 'status'}
+            aria-live="polite"
+            className={`mb-8 flex items-start justify-between gap-4 rounded-2xl border px-5 py-4 shadow-sm animate-[fadeIn_300ms_ease-out] ${
+              submissionNotice.flagged
+                ? 'border-[var(--palette-danger)]/45 bg-[var(--palette-danger-soft)] text-[var(--palette-danger)]'
+                : 'border-[var(--palette-success)]/30 bg-[var(--palette-success-soft)] text-[var(--palette-success)]'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              {submissionNotice.flagged ? (
+                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              )}
+              <div>
+                <p className="font-sans text-sm font-bold">
+                  {submissionNotice.flagged
+                    ? 'Entry placed on hold for safety review'
+                    : 'Successfully shared'}
+                </p>
+                <p className="mt-0.5 font-sans text-sm text-ink/85">{submissionNotice.message}</p>
+                {submissionNotice.flagged && submissionNotice.reasons.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {submissionNotice.reasons.map((reason) => (
+                      <span
+                        key={reason}
+                        className="inline-flex items-center rounded-full border border-[var(--palette-danger)]/35 bg-white/80 px-2.5 py-0.5 font-sans text-xs font-semibold text-[var(--palette-danger)]"
+                      >
+                        {reason}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss status indicator"
+              onClick={() => setSubmissionNotice(null)}
+              className="rounded-full p-1 text-muted transition-colors hover:bg-black/5 hover:text-ink"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
         )}
 
@@ -546,8 +722,8 @@ export default function TestimoniesClient({
             </button>
           </div>
         ) : isLoading ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {[1, 2, 3, 4].map((item) => (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
               <div
                 key={item}
                 className="h-96 animate-pulse rounded-[2rem] border border-white/70 bg-surface/50"
@@ -563,10 +739,44 @@ export default function TestimoniesClient({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-            {testimonies.map((testimony) => (
-              <TestimonyCard key={testimony.id} testimony={testimony} />
-            ))}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsGridPaused(true)}
+            onMouseLeave={() => setIsGridPaused(false)}
+            onFocusCapture={() => setIsGridPaused(true)}
+            onBlurCapture={() => setIsGridPaused(false)}
+          >
+            {testimonies.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => stepEntries(-1)}
+                  aria-label="Previous testimonies"
+                  className="touch-target absolute left-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] motion-reduce:transform-none sm:-left-4 lg:-left-5"
+                >
+                  <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepEntries(1)}
+                  aria-label="Next testimonies"
+                  className="touch-target absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] motion-reduce:transform-none sm:-right-4 lg:-right-5"
+                >
+                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </>
+            )}
+
+            <div
+              key={rotationIndex}
+              className={`grid grid-cols-1 items-start gap-6 animate-[fadeInUp_500ms_ease-out] motion-reduce:animate-none md:grid-cols-2 xl:grid-cols-3 ${
+                testimonies.length > 1 ? 'px-12 sm:px-8' : ''
+              }`}
+            >
+              {rotatedTestimonies.map((testimony) => (
+                <TestimonyCard key={testimony.id} testimony={testimony} />
+              ))}
+            </div>
           </div>
         )}
       </section>
@@ -604,9 +814,17 @@ export default function TestimoniesClient({
                   >
                     Share your Zion experience
                   </h2>
-                  <p className="mt-1 font-serif text-sm text-muted">
-                    Your story is reviewed by our team before it appears publicly.
-                  </p>
+                  <div className="mt-3 flex items-start gap-2.5 rounded-2xl border border-zion-accent/25 bg-[var(--palette-gold-soft)]/45 px-4 py-3 text-left">
+                    <ShieldCheck
+                      className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink"
+                      aria-hidden="true"
+                    />
+                    <p className="font-sans text-xs leading-relaxed text-ink/90">
+                      <span className="font-bold text-ink">Community reminder:</span> Please use
+                      proper, respectful, and ethical words when sharing your experience, and avoid
+                      curses, profanity, or any inappropriate or unethical remarks and photos.
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -616,22 +834,6 @@ export default function TestimoniesClient({
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
-              </div>
-
-              {/* Live completion bar */}
-              <div className="mt-4 flex items-center gap-3">
-                <div
-                  aria-hidden="true"
-                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-zion-accent/15"
-                >
-                  <div
-                    className="h-full rounded-full bg-[var(--palette-client-button)] transition-all duration-500 ease-out"
-                    style={{ width: `${formProgressPercent}%` }}
-                  />
-                </div>
-                <span className="shrink-0 font-sans text-xs font-semibold text-muted">
-                  {completedRequiredCount}/6 steps
-                </span>
               </div>
             </div>
 
@@ -675,24 +877,24 @@ export default function TestimoniesClient({
 
                   <div className="group/input">
                     <label
-                      htmlFor="testimony-email"
+                      htmlFor="testimony-package"
                       className="mb-2 block font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
                     >
-                      Email <span className="font-normal lowercase text-muted">(private)</span>
+                      Package Availed{' '}
+                      <span className="font-normal lowercase text-muted">(optional)</span>
                     </label>
                     <div className="relative flex items-center">
-                      <Mail
+                      <Package
                         aria-hidden="true"
                         className="pointer-events-none absolute left-4 h-4 w-4 text-muted/80 transition-colors group-focus-within/input:text-accent-ink"
                       />
                       <input
-                        id="testimony-email"
-                        type="email"
+                        id="testimony-package"
                         maxLength={255}
-                        placeholder="you@example.com"
-                        value={form.email}
+                        placeholder="e.g., Wedding Premium Package"
+                        value={form.packageName}
                         onChange={(event) =>
-                          setForm((current) => ({ ...current, email: event.target.value }))
+                          setForm((current) => ({ ...current, packageName: event.target.value }))
                         }
                         className={modalInputClasses}
                       />
@@ -736,32 +938,6 @@ export default function TestimoniesClient({
                       placeholder="Select event date"
                       onChange={(value) => setForm((current) => ({ ...current, eventDate: value }))}
                     />
-                  </div>
-
-                  <div className="group/input md:col-span-2">
-                    <label
-                      htmlFor="testimony-package"
-                      className="mb-2 block font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
-                    >
-                      Package Availed{' '}
-                      <span className="font-normal lowercase text-muted">(optional)</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <Package
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-4 h-4 w-4 text-muted/80 transition-colors group-focus-within/input:text-accent-ink"
-                      />
-                      <input
-                        id="testimony-package"
-                        maxLength={255}
-                        placeholder="e.g., Wedding Premium Package, Debut Classic"
-                        value={form.packageName}
-                        onChange={(event) =>
-                          setForm((current) => ({ ...current, packageName: event.target.value }))
-                        }
-                        className={modalInputClasses}
-                      />
-                    </div>
                   </div>
                 </div>
               </section>
@@ -834,25 +1010,46 @@ export default function TestimoniesClient({
                       htmlFor="testimony-comment"
                       className="font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
                     >
-                      Written Testimony <span className="text-accent-ink">*</span>
+                      Written Testimony{' '}
+                      <span className="font-normal lowercase text-muted">(optional)</span>
                     </label>
                     <span className="font-sans text-xs font-medium text-muted">
                       {form.comment.length.toLocaleString()} / 1,000
                     </span>
                   </div>
-                  <textarea
-                    id="testimony-comment"
-                    required
-                    minLength={20}
-                    maxLength={1000}
-                    rows={5}
-                    value={form.comment}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, comment: event.target.value }))
-                    }
-                    placeholder="Tell future clients what made your celebration special... (at least 20 characters)"
-                    className="w-full resize-y rounded-2xl border border-zion-accent/25 bg-surface/85 px-5 py-4 font-serif text-base leading-relaxed text-ink shadow-sm transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15"
-                  />
+                  <div className="relative">
+                    {form.comment.length === 0 && (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-x-5 top-4 select-none font-serif text-base leading-relaxed text-muted/70"
+                      >
+                        {shouldAnimatePlaceholder
+                          ? activePlaceholderText.slice(0, typedLength)
+                          : TESTIMONY_PLACEHOLDERS[0]}
+                        {shouldAnimatePlaceholder && (
+                          <span
+                            className={`ml-0.5 inline-block font-sans font-light text-accent-ink transition-opacity duration-150 ${
+                              isPlaceholderPaused && !placeholderCursorVisible
+                                ? 'opacity-0'
+                                : 'opacity-100'
+                            }`}
+                          >
+                            |
+                          </span>
+                        )}
+                      </span>
+                    )}
+                    <textarea
+                      id="testimony-comment"
+                      maxLength={1000}
+                      rows={5}
+                      value={form.comment}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, comment: event.target.value }))
+                      }
+                      className="w-full resize-y rounded-2xl border border-zion-accent/25 bg-surface/85 px-5 py-4 font-serif text-base leading-relaxed text-ink shadow-sm transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-zion-accent/40 bg-surface/65 p-5 transition-colors duration-300 hover:border-zion-accent/70 hover:bg-surface/90 sm:flex-row sm:items-center sm:justify-between">
@@ -899,8 +1096,8 @@ export default function TestimoniesClient({
                     className="mt-1 h-4 w-4 flex-shrink-0 accent-[var(--palette-gold-ink)]"
                   />
                   <span className="font-serif">
-                    I consent to Zion Events Place displaying this feedback publicly after
-                    moderation. My email will remain private.
+                    I consent to Zion Events Place publishing my ratings, written testimony, and any
+                    attached photo publicly right away.
                   </span>
                 </label>
               </section>
@@ -946,19 +1143,6 @@ export default function TestimoniesClient({
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="fixed inset-x-4 bottom-6 z-[170] mx-auto flex max-w-xl items-start gap-3 rounded-2xl border border-emerald-200 bg-surface p-4 shadow-2xl">
-          <CheckCircle2 className="mt-0.5 h-6 w-6 flex-shrink-0 text-emerald-600" />
-          <div className="flex-1">
-            <p className="font-bold text-emerald-800">Experience shared</p>
-            <p className="mt-1 text-sm text-muted">{successMessage}</p>
-          </div>
-          <button type="button" onClick={() => setSuccessMessage('')}>
-            <X className="h-5 w-5 text-neutral-400" />
-          </button>
         </div>
       )}
     </>

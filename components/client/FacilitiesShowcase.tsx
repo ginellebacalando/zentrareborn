@@ -12,8 +12,8 @@ import {
   Wine,
 } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
 
+import OpenChatbotButton from '@/components/chatbot/OpenChatbotButton';
 import FadeIn from '@/components/shared/FadeIn';
 import { optimizedPublicMediaPath } from '@/lib/public-media';
 
@@ -163,13 +163,13 @@ export default function FacilitiesShowcase({
                     ))}
                   </ul>
 
-                  <Link
-                    href="/contact"
+                  <OpenChatbotButton
+                    prompt={`Tell me about ${space.name}`}
                     className="mt-9 inline-flex min-h-11 w-fit items-center gap-3 rounded-full border border-[var(--palette-night-subtle)]/15 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--palette-night-subtle)] transition-all duration-300 hover:border-[var(--palette-gold-border)] hover:bg-[var(--palette-night-subtle)] hover:text-[var(--palette-gold-soft)] motion-reduce:transition-none"
                   >
                     Ask about this space
                     <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
+                  </OpenChatbotButton>
                 </div>
               </article>
             </FadeIn>
@@ -196,8 +196,8 @@ export default function FacilitiesShowcase({
                 choose the space that best supports your guest experience.
               </p>
               <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link
-                  href="/contact"
+                <OpenChatbotButton
+                  prompt="What are your visiting hours and how do I arrange a site visit?"
                   className="group relative inline-flex min-h-12 w-full items-center justify-center px-8 py-3.5 bg-[var(--palette-night-subtle)] text-white font-sans text-xs font-bold uppercase tracking-[0.18em] overflow-hidden rounded-full transition-all shadow-[0_15px_30px_-10px_color-mix(in_srgb,var(--palette-night)_40%,transparent)] hover:shadow-[0_20px_40px_-15px_color-mix(in_srgb,var(--palette-gold)_50%,transparent)] sm:w-auto"
                 >
                   <div className="absolute inset-0 bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out translate-y-full group-hover:translate-y-0" />
@@ -205,7 +205,7 @@ export default function FacilitiesShowcase({
                     Arrange a site visit
                     <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
                   </span>
-                </Link>
+                </OpenChatbotButton>
               </div>
             </div>
           </div>

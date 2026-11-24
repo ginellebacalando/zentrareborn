@@ -154,7 +154,8 @@ export default function ContactPage() {
 
             {/* Right Column: Form */}
             <div
-              className="flex w-full flex-col items-start"
+              id="message-us"
+              className="flex w-full scroll-mt-28 flex-col items-start"
               style={{ animation: 'fadeInUp 0.6s ease-out 0.5s both' }}
             >
               <span className="mb-4 rounded-full bg-gradient-to-r from-zion-accent to-[var(--palette-gold)] px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-md">

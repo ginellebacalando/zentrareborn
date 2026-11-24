@@ -83,7 +83,7 @@ export default function AboutPage() {
               </p>
 
               <Link
-                href="/contact"
+                href="/booking"
                 className="group relative inline-flex items-center gap-4 px-10 py-4 bg-transparent border border-[var(--palette-night-subtle)] text-ink font-sans text-sm font-bold uppercase tracking-widest overflow-hidden rounded-full transition-all hover:border-zion-accent hover:shadow-[0_0_20px_color-mix(in_srgb,var(--palette-gold)_30%,transparent)]"
               >
                 <div className="absolute inset-0 bg-[var(--palette-night-subtle)] transition-transform duration-500 ease-in-out -translate-x-full group-hover:translate-x-0" />

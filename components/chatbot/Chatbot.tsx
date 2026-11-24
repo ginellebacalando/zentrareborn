@@ -13,36 +13,183 @@ import {
 } from './ChatMessage';
 import { ChatAvatar } from './ChatAvatar';
 import { ChatLauncher } from './ChatLauncher';
+import { OPEN_CHATBOT_EVENT, type OpenChatbotDetail } from './OpenChatbotButton';
 import styles from './Chatbot.module.css';
 
 type Exchange = { id: string; question: string; reply: ChatReply };
 
-const initialSuggestions = ['About Us', 'Packages', 'FAQ', 'Visiting Hours', 'Prices'];
+const initialSuggestions = ['About Us', 'Packages', 'Facilities', 'Visiting Hours', 'FAQ'];
 
 const suggestionQueries: Record<string, string> = {
   'About Us': 'Tell me about Zion Events Place',
   Packages: 'Wedding packages',
+  Facilities: 'What facilities and spaces do you have?',
   FAQ: 'What are your venue policies and FAQs?',
   'Visiting Hours': 'What are your visiting hours?',
   Prices: 'Package prices and rates',
   'Find us': 'Where are you located?',
+  Directions: 'Where are you located?',
   'Contact the team': 'How do I contact your team?',
+  'Contact Team': 'How do I contact your team?',
+  'Wedding Prices': 'How much is your wedding package?',
+  'Debut Packages': 'Tell me about Debut packages',
+  'Package Prices': 'Package prices and rates',
+  'Customize Package': 'Can we customize our package?',
+  'Rain Backup Venue': 'Is there a backup venue in case of rain?',
+  'Rain Backup': 'Is there a backup venue in case of rain?',
+  'Selah Hall': 'Tell me about Selah Hall',
+  'Pavilion Garden': 'Tell me about Pavilion Garden',
+  'Venue Capacity': 'What is the capacity of your venue?',
+  'Arrange Site Visit': 'What are your visiting hours and how do I arrange a site visit?',
+  'Modes of Payment': 'What are your modes of payment?',
+  'Payment Schedule': 'When are our payments due?',
+  'Payment Due Dates': 'When are our payments due?',
+  'Security Deposit': 'What is the Security Damage Deposit?',
+  'Cancellation Policy': 'What is your cancellation policy?',
+  'Rescheduling Policy': 'Can we reschedule our wedding date?',
+  'Pet Policy': 'Are pets allowed?',
+  'Styling Themes': 'Can we send styling pegs?',
+  'Photo & Video': 'Where do we send our Photo & Video pegs?',
+  'Wedding Tracker': 'Where do we write our wedding details and requests?',
+  'Food & Catering': 'Tell me about your packages and catering inclusions',
+  'Location & Map': 'Where are you located?',
+  Policies: 'What are your venue policies?',
 };
 
 const suggestionLabels: Record<string, string> = {
   'Where are you located?': 'Find us',
   'Wedding packages': 'Packages',
   'What are your visiting hours?': 'Visiting Hours',
-  'How do I contact your team?': 'Contact the team',
+  'How do I contact your team?': 'Contact Team',
   'Tell me about Zion Events Place': 'About Us',
   'Package prices and rates': 'Prices',
   'What are your venue policies and FAQs?': 'FAQ',
-  'About Us': 'About Us',
-  Packages: 'Packages',
-  FAQ: 'FAQ',
-  'Visiting Hours': 'Visiting Hours',
-  Prices: 'Prices',
 };
+
+type TopicRule = {
+  trigger: RegExp;
+  suggestions: readonly string[];
+};
+
+const TOPIC_SUGGESTION_RULES: readonly TopicRule[] = [
+  {
+    trigger: /\b(wedding|kasal|bride|groom|vows|ceremony|church|prenup)\b/i,
+    suggestions: [
+      'Wedding Prices',
+      'Customize Package',
+      'Rain Backup Venue',
+      'Payment Schedule',
+      'Arrange Site Visit',
+    ],
+  },
+  {
+    trigger: /\b(debut|18th|cotillion|roses|candles)\b/i,
+    suggestions: [
+      'Debut Packages',
+      'Venue Capacity',
+      'Styling Themes',
+      'Payment Schedule',
+      'Arrange Site Visit',
+    ],
+  },
+  {
+    trigger: /\b(birthday|christening|baptism|gender\s*reveal|christmas|corporate|party)\b/i,
+    suggestions: [
+      'Package Prices',
+      'Venue Capacity',
+      'Customize Package',
+      'Facilities',
+      'Arrange Site Visit',
+    ],
+  },
+  {
+    trigger:
+      /\b(selah|pavilion|garden|pool|facilit\w*|space\w*|indoor|outdoor|rain|led|parking|capacity|guests|pax)\b/i,
+    suggestions: [
+      'Selah Hall',
+      'Pavilion Garden',
+      'Rain Backup',
+      'Venue Capacity',
+      'Arrange Site Visit',
+    ],
+  },
+  {
+    trigger:
+      /\b(price\w*|pricing|rate\w*|cost\w*|magkano|presyo|payment\w*|deposit|downpayment|balance|refund\w*|reservation\s*fee|cash|bank)\b/i,
+    suggestions: [
+      'Modes of Payment',
+      'Payment Due Dates',
+      'Security Deposit',
+      'Cancellation Policy',
+      'Packages',
+    ],
+  },
+  {
+    trigger:
+      /\b(polic\w*|terms|conditions|rules|cancel\w*|reschedul\w*|rebook\w*|pet\w*|dog\w*|overtime|corkage|damage)\b/i,
+    suggestions: [
+      'Rescheduling Policy',
+      'Cancellation Policy',
+      'Pet Policy',
+      'Security Deposit',
+      'Contact Team',
+    ],
+  },
+  {
+    trigger:
+      /\b(location|located|address|where|saan|directions|map|visiting|hours|ocular|tour|site\s*visit)\b/i,
+    suggestions: ['Visiting Hours', 'Directions', 'Facilities', 'Packages', 'Contact Team'],
+  },
+  {
+    trigger: /\b(hmua|photo|video|pegs|styling|flowers|motif|tracker|coordinator|catering)\b/i,
+    suggestions: [
+      'Styling Themes',
+      'Photo & Video',
+      'Wedding Tracker',
+      'Customize Package',
+      'Policies',
+    ],
+  },
+  {
+    trigger: /\b(about|story|history|founders|why\s*choose|advantages)\b/i,
+    suggestions: ['Facilities', 'Packages', 'Location & Map', 'Visiting Hours', 'FAQ'],
+  },
+  {
+    trigger: /\b(package\w*|inclusion\w*|classic|premium|ultimate)\b/i,
+    suggestions: [
+      'Package Prices',
+      'Customize Package',
+      'Modes of Payment',
+      'Venue Capacity',
+      'Arrange Site Visit',
+    ],
+  },
+];
+
+function resolveConversationSuggestions(history: Exchange[]): string[] {
+  if (!history.length) return initialSuggestions;
+  const latest = history[history.length - 1];
+  const recentText = [
+    latest.question,
+    latest.reply.message,
+    ...latest.reply.sources.map((source) => `${source.title} ${source.excerpt}`),
+  ].join(' ');
+
+  const lastQuestionLower = latest.question.trim().toLowerCase();
+  const matched = TOPIC_SUGGESTION_RULES.find((rule) => rule.trigger.test(recentText));
+  const candidates = matched
+    ? [...matched.suggestions]
+    : latest.reply.suggestions?.length
+      ? latest.reply.suggestions
+      : initialSuggestions;
+
+  const filtered = candidates.filter((item) => {
+    const query = (suggestionQueries[item] ?? item).trim().toLowerCase();
+    return query !== lastQuestionLower && item.trim().toLowerCase() !== lastQuestionLower;
+  });
+
+  return (filtered.length ? filtered : initialSuggestions).slice(0, 4);
+}
 
 const subscribeReady = () => () => {};
 const clientReady = () => true;
@@ -88,6 +235,15 @@ export default function Chatbot() {
   const sendButton = useRef<HTMLButtonElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
   const activeRequest = useRef<AbortController | null>(null);
+  const queuedPrompt = useRef<string | null>(null);
+  const sendQuestionRef = useRef<
+    | ((
+        value: string,
+        selectedAction?: ReceptionistAction,
+        recoveryTurnId?: string,
+      ) => Promise<void>)
+    | null
+  >(null);
   const shouldAnimatePlaceholder = open && !reducedMotion && !question && !inputFocused;
 
   useEffect(() => {
@@ -351,9 +507,7 @@ export default function Chatbot() {
     }
   }
 
-  const suggestions = history.at(-1)?.reply.suggestions?.length
-    ? history.at(-1)!.reply.suggestions
-    : initialSuggestions;
+  const suggestions = resolveConversationSuggestions(history);
 
   const clearConversation = async () => {
     if (activeRequest.current || restoring || resetting) return;
@@ -386,6 +540,60 @@ export default function Chatbot() {
   };
 
   const busy = Boolean(pendingQuestion) || restoring || resetting;
+
+  useEffect(() => {
+    sendQuestionRef.current = sendQuestion;
+  });
+
+  useEffect(() => {
+    const handleOpenRequest = (event: Event) => {
+      const detail = (event as CustomEvent<OpenChatbotDetail>).detail ?? { reset: true };
+      const shouldReset = detail.reset !== false;
+      const prompt = detail.prompt?.trim() || '';
+
+      setOpen(true);
+
+      if (!shouldReset) {
+        if (prompt) {
+          void sendQuestionRef.current?.(prompt);
+        }
+        return;
+      }
+
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+      setPendingQuestion('');
+      setRestoring(false);
+      setResetting(true);
+      setHistory([]);
+      setQuestion('');
+      setError('');
+      setContext(null);
+      setRecovery(null);
+      retryTurn.current = null;
+      restored.current = true;
+      queuedPrompt.current = prompt || null;
+
+      void fetch('/api/client/chatbot', { method: 'DELETE', cache: 'no-store' })
+        .catch(() => {
+          // Proceed with fresh local state even if server session was already empty.
+        })
+        .finally(() => {
+          setResetting(false);
+        });
+    };
+
+    window.addEventListener(OPEN_CHATBOT_EVENT, handleOpenRequest);
+    return () => window.removeEventListener(OPEN_CHATBOT_EVENT, handleOpenRequest);
+  }, []);
+
+  useEffect(() => {
+    if (!open || resetting || restoring || activeRequest.current) return;
+    const prompt = queuedPrompt.current;
+    if (!prompt) return;
+    queuedPrompt.current = null;
+    void sendQuestionRef.current?.(prompt);
+  }, [open, resetting, restoring]);
 
   return (
     <>
@@ -493,6 +701,7 @@ export default function Chatbot() {
               {exchange.question && <VisitorMessage message={exchange.question} />}
               <ReceptionistMessage
                 reply={exchange.reply}
+                question={exchange.question}
                 onNavigate={() => setOpen(false)}
                 disabled={busy || Boolean(recovery) || index !== history.length - 1}
                 onAction={(action) => {

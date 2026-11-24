@@ -57,6 +57,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
     }
     const op = raw && typeof raw === 'object' && 'op' in raw ? raw.op : null;
     const allowed: Record<string, string[]> = {
+      dashboard: ['testimony-action'],
       bookings: ['create-booking', 'booking-action'],
       payments: ['cash-receipt', 'void-receipt'],
       contracts: ['create-contract', 'contract-action'],
@@ -70,6 +71,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
     const result = await adminMutate(raw, actor);
     if (op === 'preferences' || op === 'catalog-category' || op === 'catalog-package')
       revalidatePath('/', 'layout');
+    if (op === 'testimony-action') {
+      revalidatePath('/testimonies');
+      revalidatePath('/');
+    }
     return adminResponse(result);
   } catch (e) {
     return failure(e);

@@ -2688,3 +2688,188 @@
   mix-blend-mode: normal;
   background: var(--admin-ivory);
 }
+
+/* Dashboard Testimonies Hold container */
+.testimonyHoldCountRed,
+.testimonyHoldCountClear {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+.testimonyHoldCountRed {
+  background: var(--palette-danger-soft);
+  color: var(--palette-danger);
+  border: 1px solid color-mix(in srgb, var(--palette-danger) 40%, transparent);
+}
+.testimonyHoldCountClear {
+  background: var(--palette-success-soft);
+  color: var(--palette-success);
+  border: 1px solid color-mix(in srgb, var(--palette-success) 30%, transparent);
+}
+.testimonyHoldList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 28rem;
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+.testimonyHoldItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  border: 1px solid color-mix(in srgb, var(--palette-danger) 35%, var(--admin-divider));
+  border-left: 4px solid var(--palette-danger);
+  background: color-mix(in srgb, var(--palette-danger-soft) 55%, var(--admin-surface-card));
+}
+.testimonyHoldTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.testimonyHoldTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.testimonyRedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--palette-danger);
+  color: var(--palette-white);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+.testimonyRatingInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+}
+.testimonyReasonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.testimonyReasonChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--palette-danger) 38%, transparent);
+  background: var(--admin-surface-card);
+  color: var(--palette-danger);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+}
+.testimonyHoldComment {
+  margin: 0 !important;
+  color: var(--ink) !important;
+  font-size: var(--type-small);
+  line-height: 1.55;
+  word-break: break-word;
+}
+.testimonyPhotoPreview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--admin-divider);
+  background: var(--admin-surface-card);
+}
+.testimonyPhotoThumb {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--admin-divider);
+  flex-shrink: 0;
+}
+.testimonyPhotoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  color: var(--admin-ink);
+  text-decoration: underline;
+}
+.testimonyHoldActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+}
+.testimonyAllowBtn,
+.testimonyDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+.testimonyAllowBtn {
+  background: var(--palette-success);
+  color: var(--palette-white);
+  border: 1px solid var(--palette-success);
+}
+.testimonyAllowBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--palette-success) 88%, var(--palette-night));
+}
+.testimonyDeleteBtn {
+  background: var(--admin-surface-card);
+  color: var(--palette-danger);
+  border: 1px solid color-mix(in srgb, var(--palette-danger) 55%, transparent);
+}
+.testimonyDeleteBtn:hover:not(:disabled) {
+  background: var(--palette-danger);
+  color: var(--palette-white);
+  border-color: var(--palette-danger);
+}
+.adminDark .testimonyHoldCountRed {
+  background: var(--palette-danger-dark);
+  color: var(--palette-danger-light);
+  border-color: color-mix(in srgb, var(--palette-danger-light) 35%, transparent);
+}
+.adminDark .testimonyHoldCountClear {
+  background: var(--palette-success-dark);
+  color: var(--palette-success-light);
+  border-color: color-mix(in srgb, var(--palette-success-light) 35%, transparent);
+}
+.adminDark .testimonyHoldItem {
+  background: color-mix(in srgb, var(--palette-danger-dark) 55%, var(--admin-night-card));
+  border-color: color-mix(in srgb, var(--palette-danger-light) 35%, var(--admin-divider));
+  border-left-color: var(--palette-danger-light);
+}
+.adminDark .testimonyReasonChip {
+  background: var(--admin-night-raised);
+  color: var(--palette-danger-light);
+  border-color: color-mix(in srgb, var(--palette-danger-light) 35%, transparent);
+}
+.adminDark .testimonyDeleteBtn {
+  background: var(--admin-night-raised);
+  color: var(--palette-danger-light);
+  border-color: color-mix(in srgb, var(--palette-danger-light) 45%, transparent);
+}

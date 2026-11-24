@@ -197,7 +197,7 @@ export default function JourneyMountainMap({
                   aria-current={isCurrent ? 'step' : undefined}
                   aria-label={`${node.code}: ${node.milestoneTitle}`}
                   className={`group flex w-full flex-col items-center rounded-2xl px-2 py-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--palette-gold-ink)] ${
-                    isUnlocked ? 'cursor-pointer' : 'cursor-default opacity-65'
+                    isUnlocked ? 'cursor-pointer' : 'cursor-default'
                   }`}
                 >
                   <span
@@ -206,31 +206,39 @@ export default function JourneyMountainMap({
                         ? `${styles.activeNodeHalo} scale-105 border-[var(--palette-booklet-cover)] bg-[var(--palette-paper)] shadow-md`
                         : isCompleted
                           ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-cream)] shadow-sm group-hover:scale-105'
-                          : 'border-[var(--palette-gold)]/30 bg-[var(--palette-paper)]/95'
+                          : 'border-[var(--palette-gold)]/35 bg-[var(--palette-paper)] shadow-2xs'
                     }`}
                   >
                     <span
                       key={`${selectedEventType || 'default'}-${node.step}`}
                       role="img"
                       aria-hidden="true"
-                      className={`${styles.emotePop} leading-none`}
+                      className={`${styles.emotePop} leading-none ${
+                        isCurrent || isCompleted ? '' : 'opacity-55'
+                      }`}
                     >
                       {emoji}
                     </span>
 
                     {isCompleted ? (
-                      <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border border-[var(--palette-paper)] bg-[var(--palette-booklet-cover)] text-ink shadow-xs">
+                      <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--palette-paper)] bg-[var(--palette-booklet-cover)] text-ink shadow-xs">
                         <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
                       </span>
                     ) : null}
                   </span>
 
-                  <span className="mt-2.5 font-sans text-xs font-bold uppercase tracking-[0.14em] text-[var(--palette-gold-ink)]">
+                  <span
+                    className={`mt-2.5 font-sans text-xs font-bold uppercase tracking-[0.14em] ${
+                      isCurrent || isCompleted
+                        ? 'text-[var(--palette-gold-ink)]'
+                        : 'text-[var(--palette-gold-ink)]/60'
+                    }`}
+                  >
                     {node.code}
                   </span>
                   <span
                     className={`mt-0.5 font-serif text-sm font-medium ${
-                      isCurrent || isCompleted ? 'text-ink' : 'text-ink/65'
+                      isCurrent || isCompleted ? 'text-ink' : 'text-ink/55'
                     }`}
                   >
                     {node.milestoneTitle}

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { ArrowUpRight, BookOpen } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { chatbotReceptionist } from '@/config/chatbot-receptionist';
 import type { ChatReply, ReceptionistAction } from '@/lib/chatbot/types';
 import { ChatAvatar } from './ChatAvatar';
@@ -53,39 +53,39 @@ export function TypingMessage({ label = 'Zeni is replying…' }: { label?: strin
   );
 }
 
+const CONTACT_INTENT_PATTERN =
+  /\b(contact|message\s+us|message\s+the\s+team|reach\s+out|talk\s+to|speak\s+to|call|email|inquir\w*|human|staff|agent|coordinator|zion\s+team)\b/i;
+
 export function ReceptionistMessage({
   reply,
+  question = '',
   onNavigate,
   onAction,
   disabled = false,
 }: {
   reply: ChatReply;
+  question?: string;
   onNavigate: () => void;
   onAction?: (action: ReceptionistAction) => void;
   disabled?: boolean;
 }) {
+  const visibleActions = (reply.actions ?? []).filter(
+    (action) =>
+      action.type !== 'start_escalation' && !/^ask\s+the\s+team$/i.test(action.label.trim()),
+  );
+  const wantsToContactTeam =
+    reply.kind === 'handoff' ||
+    CONTACT_INTENT_PATTERN.test(question) ||
+    Boolean(reply.actions?.some((action) => action.type === 'start_escalation')) ||
+    reply.sources.some((source) => source.href === '/contact');
+
   return (
     <ChatMessageFrame participant="receptionist">
       <div className={styles.incomingBubble}>
         <p className={styles.messageText}>{reply.message}</p>
-        {reply.sources.length > 0 && (
-          <details className={styles.additionalSource}>
-            <summary>
-              <BookOpen size={16} aria-hidden="true" /> Sources ({reply.sources.length})
-            </summary>
-            {reply.sources.map((source, index) => (
-              <div className={styles.sourceItem} key={`${source.href}-${index}`}>
-                <Link className={styles.sourceLink} href={source.href} onClick={onNavigate}>
-                  {source.title} <ArrowUpRight size={16} aria-hidden="true" />
-                </Link>
-                <p className={styles.messageText}>{source.excerpt}</p>
-              </div>
-            ))}
-          </details>
-        )}
-        {Boolean(reply.actions?.length) && (
+        {visibleActions.length > 0 && (
           <div className={styles.messageActions} role="group" aria-label="Next steps">
-            {reply.actions?.map((action) => (
+            {visibleActions.map((action) => (
               <button
                 key={`${action.type}-${action.value ?? ''}`}
                 type="button"
@@ -97,8 +97,8 @@ export function ReceptionistMessage({
             ))}
           </div>
         )}
-        {reply.kind === 'handoff' && (
-          <Link className={styles.sourceLink} href="/contact" onClick={onNavigate}>
+        {wantsToContactTeam && (
+          <Link className={styles.sourceLink} href="/contact#message-us" onClick={onNavigate}>
             Contact the Zion team <ArrowUpRight size={16} aria-hidden="true" />
           </Link>
         )}

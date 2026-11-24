@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown, List, MessageCircle, Search } from 'lucide-react';
+import OpenChatbotButton from '@/components/chatbot/OpenChatbotButton';
 import type { PublicFaq } from '@/lib/chatbot/types';
 
 type FaqGroupDefinition = {
@@ -360,13 +361,13 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
               We highly encourage ocular visits so you can experience the elegance of Zion Events
               Place in person.
             </p>
-            <Link
-              href="/contact"
+            <OpenChatbotButton
+              prompt="What are your visiting hours and how do I arrange a site visit?"
               className="relative z-10 inline-flex items-center border-b-[1.5px] border-zion-accent/40 pb-1 text-sm font-bold uppercase tracking-[0.2em] text-accent-ink transition-colors duration-300 hover:border-zion-accent hover:text-ink"
             >
               Arrange a Visit{' '}
               <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
-            </Link>
+            </OpenChatbotButton>
           </section>
         </aside>
       </div>

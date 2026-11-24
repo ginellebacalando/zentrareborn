@@ -12,10 +12,13 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
   ChevronDown,
   Clock3,
+  Star,
+  Trash2,
 } from 'lucide-react';
 import { money, paidTotal, paymentStatus } from '@/lib/admin/domain';
 import BookingDetail from './BookingDetail';
@@ -30,7 +33,7 @@ import DashboardCharts from './DashboardCharts';
 import DashboardKpis from './DashboardKpis';
 import { useAdminDate } from './AdminPreferencesProvider';
 import { BookingForm, SettingsForm, ProfileForm } from './Forms';
-import type { AdminData, Booking, Notice } from './types';
+import type { AdminData, Booking, Mutate, Notice } from './types';
 import styles from './admin.module.css';
 
 const titles: Record<string, [string, string]> = {
@@ -548,7 +551,7 @@ export default function AdminWorkspace({
           )}
         </>
       )}
-      {data && section === 'dashboard' && <Dashboard data={data} />}
+      {data && section === 'dashboard' && <Dashboard data={data} busy={busy} mutate={mutate} />}
       {data?.analyticsReport && section === 'analytics' && (
         <AnalyticsOverview
           report={data.analyticsReport}
@@ -759,8 +762,19 @@ function Empty({ title, detail }: { title: string; detail: string }) {
 function Clipboard() {
   return <Clock3 size={28} aria-hidden="true" />;
 }
-function Dashboard({ data }: { data: AdminData }) {
+function Dashboard({ data, busy, mutate }: { data: AdminData; busy: boolean; mutate: Mutate }) {
   const eventDate = useAdminDate();
+  const heldTestimonies = data.heldTestimonies ?? [];
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  const handleTestimonyDecision = async (id: string, action: 'ALLOW' | 'DELETE') => {
+    setActingId(id);
+    try {
+      await mutate('dashboard', { op: 'testimony-action', id, action });
+    } finally {
+      setActingId(null);
+    }
+  };
   return (
     <>
       <DashboardKpis summary={data.dashboardKpis} />
@@ -799,38 +813,117 @@ function Dashboard({ data }: { data: AdminData }) {
           )}
         </div>
         <div className={styles.card}>
-          <h2>Operational checks</h2>
-          <div className={styles.checkRow}>
-            <ShieldCheck size={20} />
+          <div className={styles.cardHeading}>
             <div>
-              <strong>Reservation safeguards</strong>
+              <h2>Testimonies hold</h2>
+              <small>
+                Entries automatically flagged for profanity, propaganda, nudity, or unethical
+                content await your final decision.
+              </small>
             </div>
+            <span
+              className={
+                heldTestimonies.length > 0
+                  ? styles.testimonyHoldCountRed
+                  : styles.testimonyHoldCountClear
+              }
+            >
+              {heldTestimonies.length > 0
+                ? `${heldTestimonies.length} flagged on hold`
+                : 'All clear'}
+            </span>
           </div>
-          <div className={styles.checkRow}>
-            <CheckCircle2 size={20} />
-            <div>
-              <strong>Policy review</strong>
-              <p>{data.policyReviewed ? 'Reviewed' : 'Review required · confirmation blocked'}</p>
-              <Link href="/admin/settings">Review policy →</Link>
+          {heldTestimonies.length > 0 ? (
+            <div className={styles.testimonyHoldList}>
+              {heldTestimonies.map((item) => {
+                const isItemBusy = busy || actingId === item.id;
+                return (
+                  <article className={styles.testimonyHoldItem} key={item.id}>
+                    <div className={styles.testimonyHoldTop}>
+                      <div className={styles.grow}>
+                        <div className={styles.testimonyHoldTitleRow}>
+                          <strong>{item.clientName}</strong>
+                          <span className={styles.testimonyRedTag}>
+                            <ShieldAlert size={13} aria-hidden="true" />
+                            Red · On Hold
+                          </span>
+                        </div>
+                        <small>
+                          {item.eventType} · {eventDate(item.eventDate)} ·{' '}
+                          <span className={styles.testimonyRatingInline}>
+                            <Star size={12} aria-hidden="true" />
+                            {item.overallRating}/5
+                          </span>
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className={styles.testimonyReasonRow}>
+                      {item.flagReasons.map((reason) => (
+                        <span className={styles.testimonyReasonChip} key={reason}>
+                          {reason}
+                        </span>
+                      ))}
+                    </div>
+
+                    <p className={styles.testimonyHoldComment}>&ldquo;{item.comment}&rdquo;</p>
+
+                    {item.photoUrl && (
+                      <div className={styles.testimonyPhotoPreview}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.photoUrl}
+                          alt={`Attachment from ${item.clientName}`}
+                          className={styles.testimonyPhotoThumb}
+                        />
+                        <a
+                          href={item.photoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.testimonyPhotoLink}
+                        >
+                          Inspect attached image
+                          <ArrowUpRight size={13} aria-hidden="true" />
+                        </a>
+                      </div>
+                    )}
+
+                    <div className={styles.testimonyHoldActions}>
+                      <button
+                        type="button"
+                        className={styles.testimonyAllowBtn}
+                        disabled={isItemBusy}
+                        aria-label={`Allow and publish testimony from ${item.clientName}`}
+                        onClick={() => void handleTestimonyDecision(item.id, 'ALLOW')}
+                      >
+                        <CheckCircle2 size={15} aria-hidden="true" />
+                        Allow &amp; Publish
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.testimonyDeleteBtn}
+                        disabled={isItemBusy}
+                        aria-label={`Delete testimony from ${item.clientName}`}
+                        onClick={() => void handleTestimonyDecision(item.id, 'DELETE')}
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
-          </div>
-          <div className={styles.checkRow}>
-            <Clock3 size={20} />
-            <div>
-              <strong>Notification automation</strong>
+          ) : (
+            <div className={styles.empty}>
+              <ShieldCheck size={28} aria-hidden="true" />
+              <h3>No testimonies on hold</h3>
               <p>
-                {data.notificationConfigured
-                  ? 'Delivery configured'
-                  : 'Delivery unavailable · notices queued'}
+                Clean client testimonies publish automatically. Any flagged text or image will
+                appear here in red for your review.
               </p>
-              <Link href="/admin/logs">
-                {(data.outbox as { status: string; _count: number }[] | undefined)
-                  ?.map((v) => `${v._count} ${v.status.toLowerCase().replaceAll('_', ' ')}`)
-                  .join(' · ') || 'No dispatch history'}{' '}
-                →
-              </Link>
             </div>
-          </div>
+          )}
         </div>
       </div>
       <div className={styles.card}>

@@ -542,3 +542,23 @@ html[data-home-logo-scroll='true'][data-home-hero-text-ready='false']
     transform: translateY(-10px);
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  body:has([data-zion-receipt='true']) {
+    background: var(--palette-white) !important;
+    padding: 12mm !important;
+  }
+
+  body:has([data-zion-receipt='true']) header,
+  body:has([data-zion-receipt='true']) nav,
+  body:has([data-zion-receipt='true']) footer,
+  body:has([data-zion-receipt='true']) [data-booking-no-print='true'],
+  body:has([data-zion-receipt='true']) [aria-label='Ask Zion Events Assistant'] {
+    display: none !important;
+  }
+}

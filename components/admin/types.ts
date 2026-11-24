@@ -77,6 +77,18 @@ export type Log = {
   description: string;
   status: string;
 };
+export type HeldTestimony = {
+  id: string;
+  clientName: string;
+  eventType: string;
+  eventDate: string;
+  overallRating: number;
+  comment: string;
+  photoUrl: string | null;
+  status: string;
+  flagReasons: string[];
+  submittedAt: string;
+};
 export type Notice = {
   id: string;
   event: string;
@@ -128,6 +140,7 @@ export type AdminData = {
   cashCents?: number;
   upcoming?: Booking[];
   inquiries?: Inquiry[];
+  heldTestimonies?: HeldTestimony[];
   outbox?: Notice[] | { status: string; _count: number }[];
   logs?: Log[];
   workflows?: {

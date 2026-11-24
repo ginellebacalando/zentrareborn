@@ -10,8 +10,8 @@
   position: fixed;
   z-index: 10000;
   inset: auto var(--space-4) var(--space-4) auto;
-  width: min(24.5rem, calc(100% - var(--space-6)));
-  height: min(34.5rem, calc(100dvh - var(--space-6)));
+  width: min(28rem, calc(100% - var(--space-6)));
+  height: min(38.5rem, calc(100dvh - var(--space-6)));
   max-width: none;
   max-height: calc(100dvh - var(--space-6));
   margin: 0;
@@ -338,8 +338,9 @@
 .suggestions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding-left: 48px;
+  align-items: center;
+  gap: 6px;
+  padding-left: 0;
   margin-top: 2px;
 }
 
@@ -348,13 +349,17 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  padding: 6px 14px;
-  border: 1.5px solid var(--chat-border);
+  min-height: 28px;
+  min-width: 0;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--chat-border) 55%, transparent);
   border-radius: 9999px;
   background: var(--chat-surface-pill);
   color: var(--chat-ink);
-  font-size: var(--type-small);
+  font-size: var(--type-caption);
+  line-height: 1.25;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background-color var(--motion-fast) var(--motion-ease),
