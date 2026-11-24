@@ -386,7 +386,7 @@ export default function OfficialBookingReceipt({
               type="button"
               disabled={isSendingInquiry || inquiryFeedback?.type === 'success'}
               onClick={onSendToZion}
-              className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-6 py-3 font-sans text-xs font-bold uppercase tracking-[0.16em] text-ink shadow-sm transition-all hover:bg-[var(--palette-client-button-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-6 py-3 font-sans text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] shadow-sm transition-all hover:bg-[var(--palette-client-button-hover)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Send className="h-4 w-4" aria-hidden="true" />
               <span>

@@ -71,7 +71,7 @@ export default function PoliciesClient() {
                   <div className="mt-8 flex flex-wrap justify-center gap-4">
                     <Link
                       href="/contact"
-                      className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-ink transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
                     >
                       Contact Us
                     </Link>
@@ -122,7 +122,7 @@ export default function PoliciesClient() {
                         <div
                           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all duration-500 ease-out motion-reduce:transition-none ${
                             isOpen
-                              ? 'rotate-180 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] text-ink shadow-lg shadow-[var(--palette-client-button)]/30'
+                              ? 'rotate-180 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] text-[var(--text-on-action)] shadow-lg shadow-[var(--palette-client-button)]/30'
                               : 'border-zion-accent/30 bg-surface text-accent-ink group-hover:scale-105 group-hover:border-[var(--palette-client-button)] group-hover:bg-[var(--palette-cream)]/75'
                           }`}
                         >

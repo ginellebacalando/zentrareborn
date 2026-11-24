@@ -1,7 +1,7 @@
 import Image from 'next/image';
 
 import { optimizedPublicMediaPath } from '@/lib/public-media';
-import styles from './FeaturesSection.module.css';
+import styles from './GalleryRibbon.module.css';
 
 export type GalleryRibbonImage =
   | string

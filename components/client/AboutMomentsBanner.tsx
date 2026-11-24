@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BRAND } from '@/config/brand';
+import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { MediaPlaybackControl } from './MediaPlaybackControl';
 
@@ -175,16 +175,11 @@ export default function AboutMomentsBanner({
           showEndLogo ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
         }`}
       >
-        <div className="w-[clamp(9.5rem,18vw,14rem)]">
-          <Image
-            src={BRAND.logo.src}
-            alt={BRAND.logo.alt}
-            width={1254}
-            height={1254}
-            unoptimized
-            className="cream-brand-logo-image h-auto w-full drop-shadow-lg"
-          />
-        </div>
+        <ZentraWordmark
+          size="lg"
+          subtitle={BRAND.legalName}
+          className="drop-shadow-lg [--brand-wordmark:var(--palette-white)] [--text-muted:var(--palette-white)]"
+        />
       </div>
 
       {!prefersReducedMotion && (

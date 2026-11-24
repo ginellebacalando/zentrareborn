@@ -1,0 +1,411 @@
+/* Shared home-section layout in the Figma style: white sections, centered uppercase green titles. */
+.section {
+  padding-block: var(--layout-section-space);
+  scroll-margin-top: var(--layout-header-height);
+}
+
+.subtle {
+  background: var(--surface-subtle);
+}
+
+.container {
+  width: min(100%, var(--layout-max-width));
+  margin-inline: auto;
+  padding-inline: var(--layout-gutter);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: clamp(var(--space-8), 4vw, var(--space-12));
+  text-align: center;
+}
+
+.title {
+  color: var(--text-accent);
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-section-title);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-display);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  max-width: 40rem;
+  color: var(--text-muted);
+  font-size: var(--type-lead);
+}
+
+.rule {
+  width: 3.5rem;
+  height: 1px;
+  background: var(--text-accent);
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--layout-touch-target);
+  color: var(--text-accent);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-decoration: underline;
+  text-transform: uppercase;
+  text-underline-offset: 0.4em;
+}
+
+.textLink:hover {
+  text-decoration-thickness: 2px;
+}
+
+.centered {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-8);
+}
+
+.buttonPrimary,
+.buttonOutline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--layout-touch-target);
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--action-primary);
+  cursor: pointer;
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    background-color var(--motion-normal) var(--motion-ease),
+    color var(--motion-normal) var(--motion-ease);
+}
+
+.buttonPrimary {
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+.buttonPrimary:hover {
+  background: var(--action-primary-hover);
+}
+
+.buttonOutline {
+  background: transparent;
+  color: var(--text-accent);
+}
+
+.buttonOutline:hover {
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+/* The Archive: an edge-to-edge row of captioned photographs. */
+.archive {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.archiveItem {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  background: var(--surface-subtle);
+}
+
+.archiveItem img {
+  object-fit: cover;
+  transition: transform var(--motion-slow) var(--motion-ease);
+}
+
+.archiveItem:hover img {
+  transform: scale(1.03);
+}
+
+.caption {
+  position: absolute;
+  inset: auto 0 0;
+  padding: var(--space-8) var(--space-4) var(--space-4);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--palette-zentra-night) 72%, transparent)
+  );
+  color: var(--palette-white);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* Events & Packages: portrait cards. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: clamp(var(--space-6), 3vw, var(--space-8));
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardMedia {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  background: var(--surface-subtle);
+}
+
+.cardMedia img {
+  object-fit: cover;
+  transition: transform var(--motion-slow) var(--motion-ease);
+}
+
+.card:hover .cardMedia img {
+  transform: scale(1.03);
+}
+
+.cardLabel {
+  margin-top: var(--space-4);
+  color: var(--text-accent);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.cardTitle {
+  margin-top: var(--space-1);
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-medium);
+}
+
+.cardMore {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--type-small);
+  text-decoration: underline;
+  text-underline-offset: 0.3em;
+}
+
+/* Available dates: explanation, actions and the booking steps. */
+.split {
+  display: grid;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.lead {
+  color: var(--text-muted);
+  font-size: var(--type-lead);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: 1px solid var(--line-hairline);
+  background: var(--surface-page);
+  counter-increment: step;
+}
+
+.step::before {
+  content: counter(step, decimal-leading-zero);
+  color: var(--text-accent);
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+}
+
+.stepTitle {
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stepText {
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+/* Reviews */
+.reviews {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-6);
+}
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--layout-card-padding);
+  border: 1px solid var(--line-hairline);
+  background: var(--surface-page);
+}
+
+.stars {
+  display: inline-flex;
+  gap: var(--space-1);
+  color: var(--text-accent);
+}
+
+.stars svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.starFilled {
+  fill: currentColor;
+}
+
+.starEmpty {
+  color: var(--palette-zentra-line-strong);
+}
+
+.quote {
+  flex: 1;
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+}
+
+.reviewer {
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.reviewMeta {
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+/* FAQ */
+.faqList {
+  display: grid;
+  max-width: var(--layout-reading-width);
+  margin-inline: auto;
+  border-top: 1px solid var(--line-hairline);
+}
+
+.faqItem {
+  border-bottom: 1px solid var(--line-hairline);
+}
+
+.faqQuestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--layout-touch-target);
+  padding-block: var(--space-4);
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+  list-style: none;
+}
+
+.faqQuestion::-webkit-details-marker {
+  display: none;
+}
+
+.faqQuestion::after {
+  content: '+';
+  color: var(--text-accent);
+  font-size: var(--type-card-title);
+  line-height: 1;
+}
+
+.faqItem[open] .faqQuestion::after {
+  content: '–';
+}
+
+.faqAnswer {
+  padding-bottom: var(--space-4);
+  color: var(--text-muted);
+}
+
+/* Contact */
+.contactGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-8);
+}
+
+.contactLabel {
+  margin-bottom: var(--space-2);
+  color: var(--text-accent);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.contactText {
+  display: grid;
+  gap: var(--space-1);
+  font-style: normal;
+}
+
+.contactText a {
+  width: fit-content;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+@media (min-width: 64rem) {
+  .archive {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: var(--space-12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archiveItem img,
+  .cardMedia img {
+    transition: none;
+  }
+}

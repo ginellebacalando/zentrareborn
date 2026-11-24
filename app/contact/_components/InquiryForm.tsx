@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import ZionSelectPopover from '@/components/client/ZionSelectPopover';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
+import { parseVisitPrefill } from './visitPrefill';
 
 const COUNTRIES = [
   {
@@ -316,6 +317,23 @@ export default function InquiryForm({
   const [toastTick, setToastTick] = useState(0);
   const [placeholderText, setPlaceholderText] = useState('Write your message here...');
   const toastDismissTimeoutRef = useRef<number | null>(null);
+
+  // A Zeni "Schedule an ocular visit" link (?topic=visit&date=) starts a visit request.
+  // Applied after hydration; the visitor can still edit or replace every value.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const visit = parseVisitPrefill(window.location.search, today);
+      if (!visit) return;
+      setForm((current) =>
+        current.subject || current.message
+          ? current
+          : { ...current, subject: visit.subject, message: visit.message },
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     const text = 'Write your message here...';
@@ -814,7 +832,7 @@ export default function InquiryForm({
                   onClick={() => setField('subject', option)}
                   className={`rounded-full border px-4 py-2 font-sans text-xs font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
                     isSelected
-                      ? 'border-[var(--palette-client-button)] bg-[var(--palette-client-button)] text-ink shadow-sm'
+                      ? 'border-[var(--palette-client-button)] bg-[var(--palette-client-button)] text-[var(--text-on-action)] shadow-sm'
                       : 'border-zion-accent/25 bg-surface/85 text-muted hover:-translate-y-0.5 hover:border-[var(--palette-client-button)] hover:bg-surface hover:text-ink'
                   }`}
                 >
@@ -873,7 +891,7 @@ export default function InquiryForm({
           <button
             type="submit"
             disabled={isSubmitting || !enabled}
-            className="group/submit relative z-0 inline-flex min-h-12 w-full items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-10 py-3.5 font-sans text-sm font-bold uppercase tracking-[0.18em] text-ink shadow-sm transition-all duration-500 hover:shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] focus:outline-none focus:ring-4 focus:ring-[var(--palette-client-button)]/30 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+            className="group/submit relative z-0 inline-flex min-h-12 w-full items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-10 py-3.5 font-sans text-sm font-bold uppercase tracking-[0.18em] text-[var(--text-on-action)] shadow-sm transition-all duration-500 hover:shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] focus:outline-none focus:ring-4 focus:ring-[var(--palette-client-button)]/30 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           >
             <span
               aria-hidden="true"

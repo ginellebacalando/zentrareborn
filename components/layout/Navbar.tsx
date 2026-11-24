@@ -76,9 +76,7 @@ export default function Navbar() {
         aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
         ref={menuButtonRef}
         className={`touch-target relative z-[70] flex items-center justify-center rounded-full text-center transition-all duration-300 ${
-          isMenuOpen
-            ? 'scale-105 bg-black/10 text-[var(--palette-gold)] drop-shadow-[0_0_10px_color-mix(in_srgb,var(--palette-gold)_60%,transparent)] backdrop-blur-sm'
-            : 'text-white drop-shadow-md hover:scale-105 hover:bg-black/10 hover:text-[var(--palette-gold)] hover:drop-shadow-[0_0_10px_color-mix(in_srgb,var(--palette-gold)_40%,transparent)]'
+          isMenuOpen ? 'bg-zentra-soft text-zentra-green' : 'text-zentra-green hover:bg-zentra-soft'
         }`}
         onClick={() => setIsMenuOpen((open) => !open)}
         type="button"
@@ -124,7 +122,7 @@ export default function Navbar() {
         <button
           type="button"
           onClick={closeMenu}
-          className="group touch-target absolute left-0 top-6 inline-flex h-12 w-12 items-center justify-center rounded-r-2xl bg-[var(--palette-client-button)] text-ink transition-all duration-300 hover:bg-[var(--palette-client-button-hover)] active:scale-95"
+          className="group touch-target absolute left-0 top-6 inline-flex h-12 w-12 items-center justify-center rounded-r-2xl bg-zentra-green text-[var(--text-on-action)] transition-all duration-300 hover:bg-zentra-green-hover active:scale-95"
           aria-label="Close navigation menu"
           title="Close navigation menu"
         >
@@ -229,7 +227,7 @@ export default function Navbar() {
             href="/booking"
             data-cta-button="true"
             aria-current={pathname === '/booking' ? 'page' : undefined}
-            className="group relative inline-flex min-h-12 w-full items-center justify-center gap-4 overflow-hidden border border-[var(--palette-client-button)] bg-transparent px-6 py-3 font-sans text-[0.95rem] font-medium uppercase tracking-[0.2em] text-ink no-underline transition-[background-color,color,border-color] duration-300 hover:border-[var(--palette-client-button)] motion-reduce:transition-none sm:text-base"
+            className="group relative inline-flex min-h-12 w-full items-center justify-center gap-4 overflow-hidden border border-[var(--palette-client-button)] bg-transparent px-6 py-3 font-sans text-[0.95rem] font-medium uppercase tracking-[0.2em] text-zentra-green no-underline transition-[background-color,color,border-color] duration-300 hover:border-[var(--palette-client-button)] hover:text-[var(--text-on-action)] focus-visible:text-[var(--text-on-action)] motion-reduce:transition-none motion-reduce:hover:bg-zentra-green sm:text-base"
             onClick={closeMenu}
             tabIndex={isMenuOpen ? 0 : -1}
           >

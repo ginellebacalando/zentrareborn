@@ -588,7 +588,7 @@ export default function TestimoniesClient({
               }
             }}
             disabled={!allowSubmissions}
-            className="group relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-7 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-ink shadow-lg transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="group relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-7 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-on-action)] shadow-lg transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <span
               aria-hidden="true"
@@ -752,7 +752,7 @@ export default function TestimoniesClient({
                   type="button"
                   onClick={() => stepEntries(-1)}
                   aria-label="Previous testimonies"
-                  className="touch-target absolute left-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] motion-reduce:transform-none sm:-left-4 lg:-left-5"
+                  className="touch-target absolute left-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] hover:text-[var(--text-on-action)] motion-reduce:transform-none sm:-left-4 lg:-left-5"
                 >
                   <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -760,7 +760,7 @@ export default function TestimoniesClient({
                   type="button"
                   onClick={() => stepEntries(1)}
                   aria-label="Next testimonies"
-                  className="touch-target absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] motion-reduce:transform-none sm:-right-4 lg:-right-5"
+                  className="touch-target absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] hover:text-[var(--text-on-action)] motion-reduce:transform-none sm:-right-4 lg:-right-5"
                 >
                   <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -1122,7 +1122,7 @@ export default function TestimoniesClient({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="group/submit relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-8 py-3 font-sans text-xs font-bold uppercase tracking-[0.18em] text-ink shadow-sm transition-all duration-500 hover:shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="group/submit relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-8 py-3 font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--text-on-action)] shadow-sm transition-all duration-500 hover:shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <span
                     aria-hidden="true"

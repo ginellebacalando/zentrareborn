@@ -241,7 +241,7 @@ export default function AboutPage() {
               className="group relative inline-flex items-center justify-center px-12 py-5 bg-[var(--palette-night-subtle)] text-white font-sans text-sm font-bold uppercase tracking-[0.2em] overflow-hidden rounded-full transition-all shadow-[0_15px_30px_-10px_color-mix(in_srgb,var(--palette-night)_40%,transparent)] hover:shadow-[0_20px_40px_-15px_color-mix(in_srgb,var(--palette-gold)_50%,transparent)]"
             >
               <div className="absolute inset-0 bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out translate-y-full group-hover:translate-y-0" />
-              <span className="relative z-10 transition-colors duration-500 group-hover:text-ink">
+              <span className="relative z-10 transition-colors duration-500 group-hover:text-[var(--text-on-action)]">
                 CONTACT OUR TEAM
               </span>
             </Link>

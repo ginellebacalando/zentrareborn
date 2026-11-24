@@ -74,11 +74,8 @@ export default function CinematicPageHero({
     : undefined;
 
   return (
-    <section
-      className="hero-scroll-stage relative isolate w-full bg-zion-dark"
-      data-home-hero="true"
-    >
-      <div className="sticky top-0 flex min-h-[40rem] w-full items-center justify-center overflow-hidden px-[var(--layout-gutter)] pb-12 pt-36 text-center sm:min-h-svh">
+    <section className="relative isolate w-full bg-zion-dark">
+      <div className="relative flex min-h-[clamp(24rem,60svh,38rem)] w-full items-center justify-center overflow-hidden px-[var(--layout-gutter)] py-20 text-center">
         <div className="absolute inset-0 -z-20 bg-zion-dark">
           {videoSrc ? (
             <video
@@ -129,10 +126,10 @@ export default function CinematicPageHero({
 
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10 bg-black/60"
+          className="pointer-events-none absolute inset-0 -z-10 bg-[color-mix(in_srgb,var(--palette-zentra-night)_58%,transparent)]"
         />
 
-        <div className="hero-scroll-follow mx-auto flex max-w-5xl flex-col items-center text-white">
+        <div className="mx-auto flex max-w-5xl flex-col items-center text-white">
           <h1 className="page-title">{title}</h1>
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/95 sm:text-lg">
             {subtitle}
@@ -140,15 +137,9 @@ export default function CinematicPageHero({
           {ctaLabel && ctaHref && (
             <a
               href={ctaHref}
-              className="group relative mt-8 inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-transparent px-9 py-3 font-sans text-sm font-bold uppercase tracking-[0.18em] text-white transition-all duration-500 hover:shadow-[0_18px_36px_-14px_color-mix(in_srgb,var(--palette-client-button)_55%,transparent)]"
+              className="mt-8 inline-flex min-h-11 items-center justify-center border border-[var(--palette-white)] bg-transparent px-8 py-3 font-sans text-sm font-semibold uppercase tracking-[0.16em] text-white transition-colors duration-200 hover:bg-[var(--palette-white)] hover:text-zentra-green focus-visible:bg-[var(--palette-white)] focus-visible:text-zentra-green"
             >
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 translate-y-full bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out group-hover:translate-y-0"
-              />
-              <span className="relative z-10 transition-colors duration-500 group-hover:text-ink">
-                {ctaLabel}
-              </span>
+              {ctaLabel}
             </a>
           )}
         </div>

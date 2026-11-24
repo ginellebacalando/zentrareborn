@@ -24,8 +24,16 @@
   --color-muted: var(--text-muted);
   --color-accent-ink: var(--text-accent);
   --color-action: var(--action-primary);
+  --color-zentra-green: var(--palette-zentra-green);
+  --color-zentra-green-hover: var(--palette-zentra-green-hover);
+  --color-zentra-soft: var(--palette-zentra-green-soft);
+  --color-zentra-mist: var(--palette-zentra-mist);
+  --color-zentra-line: var(--palette-zentra-line);
+  --color-hairline: var(--line-hairline);
+  --color-subtle: var(--surface-subtle);
 
   --font-sans: var(--font-zion-sans);
+  --font-brand: var(--font-zion-brand);
   --font-serif: var(--font-zion-serif);
   --font-script: var(--font-zion-script);
   --font-sahitya: var(--font-zion-sahitya);
@@ -243,97 +251,6 @@ html[data-public-menu-open='true'] .public-smart-guide {
     transition-duration: 0.01ms !important;
     transition-delay: 0ms !important;
   }
-}
-
-.hero-scroll-stage {
-  min-height: 40rem;
-}
-
-@media (min-width: 640px) {
-  .hero-scroll-stage {
-    min-height: 100svh;
-  }
-}
-
-html[data-home-logo-scroll='true'] .hero-scroll-stage {
-  min-height: 155svh;
-}
-
-.global-centered-brand-logo {
-  position: fixed;
-  z-index: 10;
-  left: 50%;
-  top: max(-0.2rem, calc(env(safe-area-inset-top) - 0.2rem));
-  width: clamp(8.25rem, 13vw, 11.25rem);
-  transform-origin: center top;
-  transform: translate3d(-50%, 0, 0) scale(1);
-  filter: drop-shadow(0 0.4rem 1.1rem color-mix(in srgb, var(--palette-night) 48%, transparent));
-}
-
-html[data-home-logo-scroll='true'] .global-centered-brand-logo {
-  width: clamp(17.75rem, 28vw, 24.2rem);
-  --logo-scroll-progress: var(--hero-logo-progress, 0);
-  --logo-y: calc((1 - var(--logo-scroll-progress)) * max(3rem, calc(50svh - 12rem)));
-  --logo-scale: calc(1 - var(--logo-scroll-progress) * 0.535);
-  transform: translate3d(-50%, var(--logo-y), 0) scale(var(--logo-scale));
-  will-change: transform;
-}
-
-html[data-home-logo-scroll='true'] .hero-scroll-follow {
-  --text-reveal: var(--hero-text-reveal, 0);
-  --text-exit: var(--hero-text-exit, 0);
-  --hero-follow-y: calc((1 - var(--text-reveal)) * 3.5rem - var(--text-exit) * 5.5rem);
-  --hero-follow-scale: calc(0.95 + var(--text-reveal) * 0.05);
-  opacity: var(--text-reveal);
-  filter: blur(calc((1 - var(--text-reveal)) * 6px));
-  transform: translate3d(0, var(--hero-follow-y), 0) scale(var(--hero-follow-scale));
-  will-change: opacity, transform, filter;
-}
-
-html[data-home-logo-scroll='true'][data-home-hero-text-ready='false']
-  .hero-scroll-follow:not(:focus-within) {
-  pointer-events: none;
-}
-
-@media (max-width: 639px) {
-  html[data-home-logo-scroll='true'] .global-centered-brand-logo {
-    width: clamp(13.6rem, 36vw, 16rem);
-    --logo-y: calc((1 - var(--logo-scroll-progress)) * max(2.5rem, calc(50svh - 7.5rem)));
-    --logo-scale: calc(1 - var(--logo-scroll-progress) * 0.394);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html[data-home-logo-scroll='true'] .hero-scroll-stage {
-    min-height: 100svh;
-  }
-
-  html[data-home-logo-scroll='true'] .global-centered-brand-logo {
-    width: clamp(8.25rem, 13vw, 11.25rem);
-    transform: translate3d(-50%, 0, 0) scale(1);
-    will-change: auto;
-  }
-
-  html[data-home-logo-scroll='true'] .hero-scroll-follow {
-    opacity: 1;
-    filter: none;
-    transform: none;
-    pointer-events: auto;
-    will-change: auto;
-  }
-}
-
-.global-centered-brand-logo > img {
-  display: block;
-  width: 100%;
-  height: auto;
-  filter: brightness(0) saturate(100%) invert(96%) sepia(16%) saturate(482%) hue-rotate(334deg)
-    brightness(103%) contrast(96%);
-}
-
-.cream-brand-logo-image {
-  filter: brightness(0) saturate(100%) invert(96%) sepia(16%) saturate(482%) hue-rotate(334deg)
-    brightness(103%) contrast(96%);
 }
 
 /* Global Uniform Scrollbar (System Logs Design) */

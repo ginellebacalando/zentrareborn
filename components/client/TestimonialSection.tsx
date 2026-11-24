@@ -156,7 +156,7 @@ export default function TestimonialSection() {
             aria-hidden="true"
             className="absolute inset-0 translate-y-full bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out group-hover:translate-y-0"
           />
-          <span className="relative z-10 transition-colors duration-500 group-hover:text-ink">
+          <span className="relative z-10 transition-colors duration-500 group-hover:text-[var(--text-on-action)]">
             Read all testimonies
           </span>
         </Link>

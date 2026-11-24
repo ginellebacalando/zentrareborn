@@ -229,7 +229,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
                 <div className="mt-8 flex flex-wrap justify-center gap-4">
                   <Link
                     href="/contact"
-                    className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-ink transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
+                    className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
                   >
                     <MessageCircle className="h-4 w-4" />
                     Contact Us
@@ -342,7 +342,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
             <div className="relative z-10 flex flex-col gap-4">
               <Link
                 href="/contact"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3.5 text-sm font-bold uppercase tracking-[0.16em] text-ink transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3.5 text-sm font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
               >
                 <MessageCircle className="h-4 w-4" />
                 Contact Us

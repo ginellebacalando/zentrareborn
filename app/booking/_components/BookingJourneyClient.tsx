@@ -33,6 +33,7 @@ import {
 import JourneyMountainMap from './JourneyMountainMap';
 import OfficialBookingReceipt from './OfficialBookingReceipt';
 import { formatPhp, getRecommendedPackages } from './packageRecommendations';
+import { bookingPrefillNote, hasBookingPrefill, parseBookingPrefill } from './bookingPrefill';
 
 import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDatePicker';
 import ZionSelectPopover from '@/components/client/ZionSelectPopover';
@@ -557,29 +558,15 @@ function getGuestScaleLabel(count: number): string {
  * - 'inquired': available, but another client is actively inquiring (high demand)
  * - 'available': open for exclusive full-day reservation
  */
-function resolveScheduleStatus(iso: string): ZionDateStatus {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return 'available';
-  const [year, month, day] = iso.split('-').map(Number);
-  const dateObj = new Date(year, month - 1, day);
-  const weekday = dateObj.getDay();
-  const hash = (year * 31 + month * 17 + day * 13) % 19;
+type CalendarDays = { booked: ReadonlySet<string>; inquired: ReadonlySet<string> };
 
-  // Mondays on periodic maintenance cycles are marked unavailable
-  if (weekday === 1 && day % 3 === 0) {
-    return 'unavailable';
-  }
-  // Select peak weekend dates are marked already booked
-  if ((weekday === 6 || weekday === 0) && (hash === 2 || hash === 7 || hash === 14)) {
-    return 'booked';
-  }
-  if (hash === 5) {
-    return 'booked';
-  }
-  // High-demand dates where another client is also inquiring
-  if (weekday === 5 || weekday === 6 || hash === 3 || hash === 9 || hash === 15) {
-    return 'inquired';
-  }
-  return 'available';
+const EMPTY_CALENDAR: CalendarDays = { booked: new Set(), inquired: new Set() };
+/** How far ahead the date picker loads real availability. */
+const AVAILABILITY_WINDOW_DAYS = 365;
+
+function addDaysToIso(iso: string, days: number) {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
 
 export default function BookingJourneyClient() {
@@ -604,10 +591,62 @@ export default function BookingJourneyClient() {
 
   const stageTopRef = useRef<HTMLDivElement>(null);
   const todayIso = useMemo(() => getTodayIso(), []);
-  const getDateStatus = useCallback((iso: string) => resolveScheduleStatus(iso), []);
+
+  // Zeni links may pre-fill the journey (see ./bookingPrefill.ts); invalid values are ignored.
+  // Applied after hydration so the server-rendered first step always matches.
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const prefill = parseBookingPrefill(window.location.search, todayIso);
+      if (!hasBookingPrefill(prefill)) return;
+      const eventType = EVENT_TYPES.find((item) => item.id === prefill.eventType)?.id;
+      const packageTier = PACKAGE_STYLES.find((item) => item.id === prefill.packageTier)?.id;
+      const note = bookingPrefillNote(prefill);
+      setForm((prev) => ({
+        ...prev,
+        ...(eventType ? { eventType } : {}),
+        ...(packageTier ? { packageTier } : {}),
+        ...(prefill.guestCount ? { guestCount: prefill.guestCount } : {}),
+        ...(prefill.eventDate ? { eventDate: prefill.eventDate } : {}),
+        ...(note && !prev.notes.includes(note)
+          ? { notes: prev.notes ? `${prev.notes}\n${note}` : note }
+          : {}),
+      }));
+      const firstOpenStep: StepNumber = !eventType ? 1 : !packageTier ? 2 : 3;
+      setCurrentStep(firstOpenStep);
+      setHighestUnlocked(firstOpenStep);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [todayIso]);
+
+  // Real availability from the admin calendar: confirmed reservations are "booked" and open
+  // requests are "inquired". Until it loads (or if it fails) dates show as open; staff confirmation
+  // still rechecks every conflict.
+  const [calendarDays, setCalendarDays] = useState<CalendarDays>(EMPTY_CALENDAR);
+  useEffect(() => {
+    const controller = new AbortController();
+    const to = addDaysToIso(todayIso, AVAILABILITY_WINDOW_DAYS);
+    fetch(`/api/client/availability?from=${todayIso}&to=${to}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { booked?: string[]; inquired?: string[] } | null) => {
+        if (data) {
+          setCalendarDays({ booked: new Set(data.booked), inquired: new Set(data.inquired) });
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [todayIso]);
+  const getDateStatus = useCallback(
+    (iso: string): ZionDateStatus =>
+      calendarDays.booked.has(iso)
+        ? 'booked'
+        : calendarDays.inquired.has(iso)
+          ? 'inquired'
+          : 'available',
+    [calendarDays],
+  );
   const selectedDateStatus = useMemo(
-    () => (form.eventDate ? resolveScheduleStatus(form.eventDate) : null),
-    [form.eventDate],
+    () => (form.eventDate ? getDateStatus(form.eventDate) : null),
+    [form.eventDate, getDateStatus],
   );
   const activeBudgetRanges = useMemo(
     () => getBudgetRangesForEvent(form.eventType),
@@ -704,7 +743,7 @@ export default function BookingJourneyClient() {
     }
     if (step === 3) {
       if (!form.eventDate) return 'Please pick an available celebration date.';
-      const status = resolveScheduleStatus(form.eventDate);
+      const status = getDateStatus(form.eventDate);
       if (status === 'booked' || status === 'unavailable') {
         return 'That date is no longer open. Please choose an available date.';
       }
@@ -1022,7 +1061,7 @@ export default function BookingJourneyClient() {
                         </span>
 
                         {selected ? (
-                          <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-3 py-1 font-sans text-xs font-bold uppercase tracking-[0.12em] text-ink shadow-sm">
+                          <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-3 py-1 font-sans text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-on-action)] shadow-sm">
                             <Check className="h-3.5 w-3.5" strokeWidth={2.8} aria-hidden="true" />
                             Selected
                           </span>
@@ -1083,7 +1122,7 @@ export default function BookingJourneyClient() {
                               className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-transparent"
                             />
                             {selected ? (
-                              <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-3 py-1 font-sans text-xs font-bold uppercase tracking-[0.12em] text-ink shadow-sm">
+                              <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-3 py-1 font-sans text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-on-action)] shadow-sm">
                                 <Check className="h-3.5 w-3.5" strokeWidth={2.8} />
                                 Selected
                               </span>
@@ -1138,7 +1177,7 @@ export default function BookingJourneyClient() {
                         onClick={() => adjustGuestCount(-1)}
                         disabled={form.guestCount <= 1}
                         aria-label="Decrease guest count by 1"
-                        className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--palette-booklet-cover)]/70 bg-[var(--palette-booklet-cover)]/35 text-ink shadow-xs transition-all hover:bg-[var(--palette-booklet-cover)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--palette-booklet-cover)]/70 bg-[var(--palette-booklet-cover)]/35 text-ink shadow-xs transition-all hover:bg-[var(--palette-booklet-cover)] hover:text-[var(--text-on-action)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Minus className="h-5 w-5" strokeWidth={2.4} />
                       </button>
@@ -1178,7 +1217,7 @@ export default function BookingJourneyClient() {
                         onClick={() => adjustGuestCount(1)}
                         disabled={form.guestCount >= 500}
                         aria-label="Increase guest count by 1"
-                        className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--palette-booklet-cover)]/70 bg-[var(--palette-booklet-cover)]/35 text-ink shadow-xs transition-all hover:bg-[var(--palette-booklet-cover)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--palette-booklet-cover)]/70 bg-[var(--palette-booklet-cover)]/35 text-ink shadow-xs transition-all hover:bg-[var(--palette-booklet-cover)] hover:text-[var(--text-on-action)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Plus className="h-5 w-5" strokeWidth={2.4} />
                       </button>
@@ -1196,7 +1235,7 @@ export default function BookingJourneyClient() {
                           }}
                           className={`min-h-10 rounded-full border px-4 py-1.5 font-sans text-xs font-semibold transition-all ${
                             form.guestCount === preset
-                              ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-ink shadow-xs'
+                              ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] shadow-xs'
                               : 'border-[var(--palette-gold)]/30 bg-[var(--palette-white)] text-ink/80 hover:border-[var(--palette-booklet-cover)] hover:bg-[var(--palette-cream)]/60'
                           }`}
                         >
@@ -1376,7 +1415,7 @@ export default function BookingJourneyClient() {
                           onClick={() => toggleAddOn(addon)}
                           className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-4 py-2 font-sans text-xs font-semibold transition-all ${
                             active
-                              ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-ink shadow-xs'
+                              ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] shadow-xs'
                               : 'border-[var(--palette-gold)]/30 bg-[var(--palette-white)] text-ink/80 hover:bg-[var(--palette-cream)]/60'
                           }`}
                         >
@@ -1710,7 +1749,7 @@ export default function BookingJourneyClient() {
                         onClick={() => handleToggleReviewEdit(1)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-sans text-xs font-semibold transition-colors ${
                           editingReviewStep === 1
-                            ? 'bg-[var(--palette-booklet-cover)] text-ink hover:bg-[var(--palette-client-button-hover)]'
+                            ? 'bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] hover:bg-[var(--palette-client-button-hover)]'
                             : 'text-ink underline underline-offset-4 hover:text-[var(--palette-gold-ink)]'
                         }`}
                       >
@@ -1780,7 +1819,7 @@ export default function BookingJourneyClient() {
                         onClick={() => handleToggleReviewEdit(2)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-sans text-xs font-semibold transition-colors ${
                           editingReviewStep === 2
-                            ? 'bg-[var(--palette-booklet-cover)] text-ink hover:bg-[var(--palette-client-button-hover)]'
+                            ? 'bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] hover:bg-[var(--palette-client-button-hover)]'
                             : 'text-ink underline underline-offset-4 hover:text-[var(--palette-gold-ink)]'
                         }`}
                       >
@@ -1886,7 +1925,7 @@ export default function BookingJourneyClient() {
                                 aria-label="Increase guest count by 1"
                                 onClick={() => adjustGuestCount(1)}
                                 disabled={form.guestCount >= 500}
-                                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-ink transition-colors hover:bg-[var(--palette-client-button-hover)] disabled:cursor-not-allowed disabled:opacity-40"
+                                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] transition-colors hover:bg-[var(--palette-client-button-hover)] disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 <Plus className="h-4 w-4" aria-hidden="true" />
                               </button>
@@ -1903,7 +1942,7 @@ export default function BookingJourneyClient() {
                                 }}
                                 className={`rounded-full border px-3 py-1 font-sans text-xs font-semibold transition-colors ${
                                   form.guestCount === preset
-                                    ? 'border-[var(--palette-gold)] bg-[var(--palette-booklet-cover)] text-ink'
+                                    ? 'border-[var(--palette-gold)] bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)]'
                                     : 'border-[var(--palette-gold)]/25 bg-[var(--palette-white)] text-ink/75 hover:border-[var(--palette-gold)]'
                                 }`}
                               >
@@ -1940,7 +1979,7 @@ export default function BookingJourneyClient() {
                         onClick={() => handleToggleReviewEdit(3)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-sans text-xs font-semibold transition-colors ${
                           editingReviewStep === 3
-                            ? 'bg-[var(--palette-booklet-cover)] text-ink hover:bg-[var(--palette-client-button-hover)]'
+                            ? 'bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] hover:bg-[var(--palette-client-button-hover)]'
                             : 'text-ink underline underline-offset-4 hover:text-[var(--palette-gold-ink)]'
                         }`}
                       >
@@ -2083,7 +2122,7 @@ export default function BookingJourneyClient() {
                         onClick={() => handleToggleReviewEdit(4)}
                         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-sans text-xs font-semibold transition-colors ${
                           editingReviewStep === 4
-                            ? 'bg-[var(--palette-booklet-cover)] text-ink hover:bg-[var(--palette-client-button-hover)]'
+                            ? 'bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] hover:bg-[var(--palette-client-button-hover)]'
                             : 'text-ink underline underline-offset-4 hover:text-[var(--palette-gold-ink)]'
                         }`}
                       >
@@ -2323,7 +2362,7 @@ export default function BookingJourneyClient() {
               <button
                 type="button"
                 onClick={handleNextStep}
-                className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-8 py-3 font-sans text-xs font-bold uppercase tracking-[0.18em] text-ink shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--palette-client-button-hover)] hover:shadow-md"
+                className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-8 py-3 font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--text-on-action)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--palette-client-button-hover)] hover:shadow-md"
               >
                 <span>{currentStep === 5 ? 'View Suggested Packages' : 'Next'}</span>
                 {currentStep === 5 ? (

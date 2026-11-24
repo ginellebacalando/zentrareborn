@@ -1,48 +1,151 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import CinematicHeroBackground from './CinematicHeroBackground';
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { homeHeroSlides } from '@/config/home';
+import { useReducedMotion } from '@/components/shared/useReducedMotion';
+import styles from './HeroSection.module.css';
+
+/** Figma home hero: a full-width photo carousel with a centered headline and an outlined CTA. */
+const SLIDE_INTERVAL_MS = 7000;
+const SWIPE_THRESHOLD_PX = 40;
 
 export default function HeroSection() {
+  const slides = homeHeroSlides;
+  const reducedMotion = useReducedMotion();
+  const [active, setActive] = useState(0);
+  const [userPaused, setUserPaused] = useState(false);
+  const [interacting, setInteracting] = useState(false);
+  const [announce, setAnnounce] = useState(false);
+  const pointerStart = useRef<number | null>(null);
+  const autoplay = !reducedMotion && !userPaused && !interacting;
+
+  const goTo = useCallback(
+    (index: number, fromUser = true) => {
+      setActive((index + slides.length) % slides.length);
+      if (fromUser) setAnnounce(true);
+    },
+    [slides.length],
+  );
+
+  useEffect(() => {
+    if (!autoplay) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') goTo(active + 1, false);
+    }, SLIDE_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [active, autoplay, goTo]);
+
+  const onPointerDown = (event: PointerEvent<HTMLElement>) => {
+    pointerStart.current = event.clientX;
+  };
+  const onPointerUp = (event: PointerEvent<HTMLElement>) => {
+    if (pointerStart.current === null) return;
+    const distance = event.clientX - pointerStart.current;
+    pointerStart.current = null;
+    if (Math.abs(distance) >= SWIPE_THRESHOLD_PX) goTo(active + (distance < 0 ? 1 : -1));
+  };
+
   return (
     <section
-      className="hero-scroll-stage relative isolate w-full bg-zion-dark"
-      data-home-hero="true"
+      className={styles.hero}
+      aria-roledescription="carousel"
+      aria-label="Zion Events Place highlights"
+      onMouseEnter={() => setInteracting(true)}
+      onMouseLeave={() => setInteracting(false)}
+      onFocus={() => setInteracting(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setInteracting(false);
+      }}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
     >
-      <div className="sticky top-0 flex min-h-[40rem] w-full items-center justify-center overflow-hidden px-[var(--layout-gutter)] pb-12 pt-36 text-center sm:min-h-svh">
-        <div className="absolute inset-0 -z-20">
-          <Image
-            src="/images/events/weddings/elegant-lakefront-wedding-ceremony-with-white-floral-arch-luxury-aisle-inspiration.webp"
-            alt=""
-            fill
-            preload
-            sizes="100vw"
-            className="object-cover"
-          />
-          <CinematicHeroBackground />
+      <h1 className="sr-only">Zion Events Place, an events venue in San Pedro, Laguna</h1>
+      <div className={styles.track} aria-live={announce && !autoplay ? 'polite' : 'off'}>
+        {slides.map((slide, index) => {
+          const isActive = index === active;
+          return (
+            <div
+              key={slide.imageSrc}
+              className={styles.slide}
+              data-active={isActive ? 'true' : 'false'}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${index + 1} of ${slides.length}`}
+              aria-hidden={!isActive}
+              inert={!isActive}
+            >
+              <Image
+                src={slide.imageSrc}
+                alt={slide.imageAlt}
+                fill
+                sizes="100vw"
+                preload={index === 0}
+                className={styles.photo}
+              />
+              <div className={styles.scrim} aria-hidden="true" />
+              <div className={styles.content}>
+                <p className={styles.title}>{slide.title}</p>
+                <p className={styles.subtitle}>{slide.subtitle}</p>
+                <div className={styles.actions}>
+                  <Link href="/booking" className={styles.primary}>
+                    Book now
+                  </Link>
+                  <Link href="#event-packages" className={styles.secondary}>
+                    See packages
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        className={`${styles.arrow} ${styles.previous}`}
+        onClick={() => goTo(active - 1)}
+        aria-label="Previous slide"
+      >
+        <ChevronLeft aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        className={`${styles.arrow} ${styles.next}`}
+        onClick={() => goTo(active + 1)}
+        aria-label="Next slide"
+      >
+        <ChevronRight aria-hidden="true" />
+      </button>
+
+      <div className={styles.controls}>
+        <div className={styles.dots}>
+          {slides.map((slide, index) => (
+            <button
+              key={slide.imageSrc}
+              type="button"
+              className={styles.dot}
+              onClick={() => goTo(index)}
+              aria-label={`Show slide ${index + 1}: ${slide.title}`}
+              aria-current={index === active ? 'true' : undefined}
+            >
+              <span aria-hidden="true" />
+            </button>
+          ))}
         </div>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-10 bg-black/60"
-        />
-        <div className="hero-scroll-follow mx-auto flex max-w-5xl flex-col items-center text-white">
-          <h1 className="page-title">Experience Timeless Elegance</h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed sm:text-lg">
-            Where cherished milestones meet unparalleled luxury, framed by breathtaking views of San
-            Pedro City.
-          </p>
-          <Link
-            href="/about"
-            className="group relative mt-8 inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-transparent px-9 py-3 font-sans text-sm font-bold uppercase tracking-[0.18em] text-white transition-all duration-500 hover:shadow-[0_18px_36px_-14px_color-mix(in_srgb,var(--palette-client-button)_55%,transparent)]"
+        {reducedMotion ? null : (
+          <button
+            type="button"
+            className={styles.pause}
+            onClick={() => setUserPaused((paused) => !paused)}
+            aria-label={userPaused ? 'Play slideshow' : 'Pause slideshow'}
+            aria-pressed={userPaused}
           >
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 translate-y-full bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out group-hover:translate-y-0"
-            />
-            <span className="relative z-10 transition-colors duration-500 group-hover:text-ink">
-              Our story
-            </span>
-          </Link>
-        </div>
+            {userPaused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
+          </button>
+        )}
       </div>
     </section>
   );

@@ -55,3 +55,9 @@ outputs/
 next-env.d.ts
 
 /app/generated/prisma
+
+# licensed / trial fonts: local preview only, never committed (see app/_fonts/index.ts)
+/public/fonts/licensed/
+
+# local development database, generated secrets and demo credentials (scripts/dev-local.mjs)
+/.local/

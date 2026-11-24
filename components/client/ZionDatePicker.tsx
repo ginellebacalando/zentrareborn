@@ -324,7 +324,7 @@ export default function ZionDatePicker({
                     }}
                     className={`relative flex h-9 w-full flex-col items-center justify-center rounded-xl font-sans text-sm transition-all duration-200 ${
                       isSelected
-                        ? 'bg-[var(--palette-client-button)] font-bold text-ink shadow-sm'
+                        ? 'bg-[var(--palette-client-button)] font-bold text-[var(--text-on-action)] shadow-sm'
                         : dateStatus === 'booked'
                           ? 'cursor-not-allowed bg-[var(--palette-danger-soft)] text-[var(--palette-danger)]/65 line-through'
                           : dateStatus === 'unavailable'

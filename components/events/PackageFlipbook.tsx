@@ -146,7 +146,7 @@ export default function PackageFlipbook({ eventType }: PackageFlipbookProps) {
                 ref={closeModalButtonRef}
                 type="button"
                 onClick={closeFullscreen}
-                className="absolute top-3 right-3 z-20 inline-flex min-h-10 min-w-10 items-center justify-center rounded-full border border-[var(--palette-gold)]/35 bg-[var(--palette-paper)]/95 text-ink shadow-md transition-colors hover:bg-[var(--palette-booklet-cover)]"
+                className="absolute top-3 right-3 z-20 inline-flex min-h-10 min-w-10 items-center justify-center rounded-full border border-[var(--palette-gold)]/35 bg-[var(--palette-paper)]/95 text-ink shadow-md transition-colors hover:bg-[var(--palette-booklet-cover)] hover:text-[var(--text-on-action)]"
                 aria-label="Close full-screen package booklet"
                 title="Close"
               >
@@ -242,7 +242,7 @@ export default function PackageFlipbook({ eventType }: PackageFlipbookProps) {
               >
                 <span className={styles.spineCrease} aria-hidden="true" />
                 <span className={styles.innerFrame}>
-                  <span className="font-sans text-xs font-medium uppercase tracking-[0.28em] text-ink/75">
+                  <span className="font-sans text-xs font-medium uppercase tracking-[0.28em] text-[var(--palette-zentra-pearl)]">
                     Event Packages
                   </span>
 
@@ -253,13 +253,13 @@ export default function PackageFlipbook({ eventType }: PackageFlipbookProps) {
                       width={520}
                       height={300}
                       priority
-                      className="h-auto w-full object-contain"
+                      className="h-auto w-full object-contain brightness-0 invert"
                     />
                   </span>
 
                   <span className="flex flex-col items-center gap-3">
-                    <span className="h-px w-12 bg-ink/30" />
-                    <span className="font-serif text-lg tracking-wide text-ink sm:text-xl">
+                    <span className="h-px w-12 bg-[var(--palette-zentra-pearl)]/50" />
+                    <span className="font-serif text-lg tracking-wide text-[var(--palette-white)] sm:text-xl">
                       {label} Edition
                     </span>
                     <span className={styles.flipHint}>

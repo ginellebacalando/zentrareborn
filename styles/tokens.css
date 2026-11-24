@@ -1,35 +1,80 @@
 /* Approved foundations. Add palette values here, then use semantic tokens in UI. */
 :root {
-  --palette-cream: #ffecce;
-  --palette-paper: #fffbe9;
+  /*
+   * ZENTRA brand palette, from the team's Figma file (New Zentra): white surfaces, deep green
+   * #03422E for the wordmark, headings and key actions, and #D9D9D9 hairlines. Every panel
+   * (public site, Zeni, admin) builds on these values; panel blocks below may alias them.
+   */
+  --palette-zentra-green: #03422e;
+  --palette-zentra-green-hover: #02301f;
+  --palette-zentra-green-soft: #e7f1ec;
+  --palette-zentra-mist: #f5f8f6;
+  --palette-zentra-ink: #121a17;
+  --palette-zentra-muted: #4d5a54;
+  --palette-zentra-line: #d9d9d9;
+  --palette-zentra-line-strong: #7a8a83;
+  --palette-zentra-teal: #0f766e;
+  --palette-zentra-teal-soft: #dff3ef;
+  --palette-zentra-chart: #34c79a;
+  --palette-zentra-night: #07140f;
+  --palette-zentra-night-card: #0d1d17;
+  --palette-zentra-night-raised: #163026;
+  --palette-zentra-pearl: #eef4f1;
+  --palette-zentra-sage: #a9c4b8;
+  --palette-zentra-glow: #8fd3b0;
+
+  /*
+   * Booking status hues from Figma (request yellow, pending orange, confirmed green, cancelled
+   * red), tuned for contrast. Use the base hue for dots and borders, the soft hue for chip
+   * backgrounds and the ink hue for text on the soft hue. Always pair color with a text label.
+   */
+  --palette-status-request: #f2c200;
+  --palette-status-request-soft: #fff6cc;
+  --palette-status-request-ink: #5c4a00;
+  --palette-status-pending: #f08a00;
+  --palette-status-pending-soft: #ffecd5;
+  --palette-status-pending-ink: #7a4100;
+  --palette-status-confirmed: #1f9d45;
+  --palette-status-confirmed-soft: #e2f5e7;
+  --palette-status-confirmed-ink: #135f2a;
+  --palette-status-cancelled: #e0242b;
+  --palette-status-cancelled-soft: #fde4e5;
+  --palette-status-cancelled-ink: #8e1218;
+
+  /*
+   * Public palette roles. The legacy names stay because components and the design check
+   * (scripts/check-design-system.mjs) refer to them; their values now come from ZENTRA.
+   */
+  --palette-cream: #ffffff;
+  --palette-paper: #f7f9f8;
   --palette-white: #ffffff;
-  --palette-forest: #4a372c;
-  --palette-ink: #2b211b;
-  --palette-muted: #665043;
-  --palette-gold: #ad8b73;
-  --palette-gold-hover: #96735b;
-  --palette-gold-ink: #6b4f3d;
-  --palette-border: #8c6d58;
-  --palette-night: #0c100b;
-  --palette-night-card: #141a13;
-  --palette-night-border: #879580;
-  --palette-pearl: #f4f4f0;
-  --palette-sage: #b6c4ae;
-  --palette-success: #236044;
-  --palette-success-soft: #e5f2e9;
+  --palette-forest: #03422e;
+  --palette-ink: #121a17;
+  --palette-muted: #4d5a54;
+  --palette-gold: #8fd3b0;
+  --palette-gold-hover: #02301f;
+  --palette-gold-ink: #03422e;
+  --palette-border: #7a8a83;
+  --palette-night: #07140f;
+  --palette-night-card: #0d1d17;
+  --palette-night-border: #6f8a7e;
+  --palette-pearl: #eef4f1;
+  --palette-sage: #a9c4b8;
+  --palette-success: #135f2a;
+  --palette-success-soft: #e2f5e7;
   --palette-danger: #a32f35;
   --palette-danger-soft: #fff0f0;
-  --palette-canvas: #fffbe9;
-  --palette-divider: #ffe1af;
-  --palette-subtle: #ffecce;
-  --palette-gold-soft: #ffe1af;
-  --palette-gold-border: #ad8b73;
-  --palette-client-button: #ffce80;
-  --palette-client-button-hover: #f5bc62;
-  --palette-client-section: #ffc76e;
-  --palette-booklet-cover: #fbc46b;
-  --palette-night-raised: #233021;
-  --palette-night-subtle: #1a2319;
+  --palette-canvas: #ffffff;
+  --palette-divider: #d9d9d9;
+  --palette-subtle: #e7f1ec;
+  --palette-gold-soft: #e7f1ec;
+  --palette-gold-border: #7a8a83;
+  --palette-client-button: #03422e;
+  --palette-client-button-hover: #02301f;
+  --palette-client-section: #e7f1ec;
+  --palette-booklet-cover: #03422e;
+  --palette-night-raised: #163026;
+  --palette-night-subtle: #10231b;
   --palette-mint: #d5f3e5;
   --palette-info: #245b83;
   --palette-info-soft: #edf5ff;
@@ -39,95 +84,163 @@
   --palette-success-light: #a9d9b9;
   --palette-success-dark: #162b20;
 
-  /* Receptionist chatbot layout palette */
-  --palette-chat-canvas: #ffe1af;
-  --palette-chat-input: #ffecce;
-  --palette-chat-bubble: #c1b178;
-  --palette-chat-pill: #fff5d3;
-  --palette-chat-send: #ddcb8d;
-  --palette-chat-border: #211610;
-
-  /* User-approved admin palette; public and developer foundations retain their roles. */
-  --palette-admin-canvas: #f5efe1;
+  /*
+   * Admin palette (ZENTRA admin frames in Figma): white surfaces, deep green actions, active states
+   * and headings, #D9D9D9 hairlines, teal KPI cards, the status hues above and a night palette for
+   * the dark theme. Admin roles alias the ZENTRA brand palette; the values below only add what the
+   * brand palette lacks (a dark hairline and dark-theme status chips). ivory, ink and muted keep
+   * their earlier warm values solely because the receptionist chat block aliases them; no admin
+   * role uses them any more.
+   */
   --palette-admin-ivory: #fffbe9;
-  --palette-admin-oak: #e3caa5;
-  --palette-admin-peach: #ffe1af;
-  --palette-admin-taupe: #ad8b73;
-  --palette-admin-rose: #b77466;
   --palette-admin-ink: #211610;
   --palette-admin-muted: #6b5143;
-  --palette-admin-action: #382b24;
-  --palette-admin-action-hover: #4c372b;
-  --palette-admin-rose-ink: #7f4339;
-  --palette-admin-night: #211916;
-  --palette-admin-night-card: #302622;
-  --palette-admin-night-raised: #41322c;
+  --palette-admin-night-line: #2a4a3e;
+  --palette-admin-night-request: #2b2608;
+  --palette-admin-night-request-ink: #ffe27a;
+  --palette-admin-night-pending: #2e1c08;
+  --palette-admin-night-pending-ink: #ffc27a;
+  --palette-admin-night-confirmed: #0f2a19;
+  --palette-admin-night-confirmed-ink: #8fe0a8;
+  --palette-admin-night-cancelled: #33161a;
+  --palette-admin-night-cancelled-ink: #ffb3b6;
 
-  --admin-surface-page: var(--palette-admin-canvas);
-  --admin-surface-sidebar: var(--palette-admin-oak);
+  --admin-surface-page: var(--palette-white);
+  --admin-surface-sidebar: var(--palette-white);
   --admin-surface-card: var(--palette-white);
   --admin-surface-input: var(--palette-white);
-  --admin-surface-subtle: var(--palette-admin-ivory);
-  --admin-surface-highlight: var(--palette-admin-peach);
-  --admin-surface-selected: var(--palette-admin-oak);
-  --admin-ink: var(--palette-admin-ink);
-  --admin-muted: var(--palette-admin-muted);
-  --admin-action: var(--palette-admin-action);
-  --admin-action-hover: var(--palette-admin-action-hover);
-  --admin-on-action: var(--palette-admin-ivory);
-  --admin-border: var(--palette-admin-taupe);
-  --admin-divider: var(--palette-admin-oak);
-  --admin-focus: var(--palette-admin-rose-ink);
-  --admin-focus-halo: var(--palette-admin-ivory);
-  --admin-accent: var(--palette-admin-taupe);
-  --admin-accent-ink: var(--palette-admin-muted);
-  --admin-accent-soft: var(--palette-admin-peach);
-  --admin-danger: var(--palette-admin-rose-ink);
-  --admin-danger-soft: var(--palette-admin-peach);
-  --admin-success: var(--palette-admin-muted);
-  --admin-success-soft: var(--palette-admin-oak);
-  --admin-info: var(--palette-admin-muted);
-  --admin-info-soft: var(--palette-admin-peach);
-  --admin-on-color: var(--palette-admin-ink);
-  --admin-shadow: var(--palette-admin-ink);
-  --admin-ivory: var(--palette-admin-ivory);
-  --admin-oak: var(--palette-admin-oak);
-  --admin-peach: var(--palette-admin-peach);
-  --admin-taupe: var(--palette-admin-taupe);
-  --admin-rose: var(--palette-admin-rose);
-  --admin-night: var(--palette-admin-night);
-  --admin-night-card: var(--palette-admin-night-card);
-  --admin-night-raised: var(--palette-admin-night-raised);
+  --admin-surface-subtle: var(--palette-zentra-mist);
+  --admin-surface-highlight: var(--palette-zentra-green-soft);
+  --admin-surface-selected: var(--palette-zentra-green-soft);
+  --admin-ink: var(--palette-zentra-ink);
+  --admin-muted: var(--palette-zentra-muted);
+  --admin-heading: var(--palette-zentra-green);
+  --admin-wordmark: var(--palette-zentra-green);
+  --admin-action: var(--palette-zentra-green);
+  --admin-action-hover: var(--palette-zentra-green-hover);
+  --admin-on-action: var(--palette-white);
+  --admin-border: var(--palette-zentra-line-strong);
+  --admin-divider: var(--palette-zentra-line);
+  --admin-focus: var(--palette-zentra-green);
+  --admin-focus-halo: var(--palette-white);
+  --admin-accent: var(--palette-zentra-teal);
+  --admin-accent-ink: var(--palette-zentra-green);
+  --admin-accent-soft: var(--palette-zentra-green-soft);
+  --admin-danger: var(--palette-status-cancelled-ink);
+  --admin-danger-soft: var(--palette-status-cancelled-soft);
+  --admin-success: var(--palette-status-confirmed-ink);
+  --admin-success-soft: var(--palette-status-confirmed-soft);
+  --admin-info: var(--palette-zentra-teal);
+  --admin-info-soft: var(--palette-zentra-teal-soft);
+  --admin-on-color: var(--palette-zentra-ink);
+  --admin-shadow: var(--palette-zentra-ink);
+  /* Teal KPI cards and charts (white on teal passes 4.5:1). */
+  --admin-teal: var(--palette-zentra-teal);
+  --admin-on-teal: var(--palette-white);
+  --admin-teal-soft: var(--palette-zentra-teal-soft);
+  --admin-teal-ink: var(--palette-zentra-teal);
+  --admin-chart-line: var(--palette-zentra-teal);
+  --admin-chart-fill: var(--palette-zentra-chart);
+  --admin-series-1: var(--palette-zentra-green);
+  --admin-series-2: var(--palette-zentra-teal);
+  --admin-series-3: var(--palette-zentra-line-strong);
+  --admin-series-4: var(--palette-zentra-chart);
+  --admin-series-5: var(--palette-zentra-sage);
+  /* Dark "This month" calendar panel; it stays dark in both themes. */
+  --admin-night-panel: var(--palette-zentra-night);
+  --admin-on-night: var(--palette-zentra-pearl);
+  --admin-night-muted: var(--palette-zentra-sage);
+  --admin-night-accent: var(--palette-zentra-glow);
+  /* Booking display statuses: dot/border, chip background and chip text. */
+  --admin-status-request: var(--palette-status-request);
+  --admin-status-request-soft: var(--palette-status-request-soft);
+  --admin-status-request-ink: var(--palette-status-request-ink);
+  --admin-status-pending: var(--palette-status-pending);
+  --admin-status-pending-soft: var(--palette-status-pending-soft);
+  --admin-status-pending-ink: var(--palette-status-pending-ink);
+  --admin-status-confirmed: var(--palette-status-confirmed);
+  --admin-status-confirmed-soft: var(--palette-status-confirmed-soft);
+  --admin-status-confirmed-ink: var(--palette-status-confirmed-ink);
+  --admin-status-cancelled: var(--palette-status-cancelled);
+  --admin-status-cancelled-soft: var(--palette-status-cancelled-soft);
+  --admin-status-cancelled-ink: var(--palette-status-cancelled-ink);
+  /* Count badges (white on the cancelled red passes 4.5:1). */
+  --admin-badge: var(--palette-status-cancelled);
+  --admin-on-badge: var(--palette-white);
+  /*
+   * Legacy accent slots (oak, peach, taupe, rose) keep their names for the design check and any
+   * remaining consumers; they now hold soft ZENTRA tints that carry --admin-on-color text.
+   */
+  --admin-ivory: var(--palette-white);
+  --admin-oak: var(--palette-zentra-green-soft);
+  --admin-peach: var(--palette-zentra-teal-soft);
+  --admin-taupe: var(--palette-zentra-glow);
+  --admin-rose: var(--palette-zentra-sage);
+  --admin-night: var(--palette-zentra-night);
+  --admin-night-card: var(--palette-zentra-night-card);
+  --admin-night-raised: var(--palette-zentra-night-raised);
 
-  /* Semantic tokens for receptionist chatbot layout */
-  --chat-surface-page: var(--palette-chat-canvas);
-  --chat-surface-card: var(--palette-admin-ivory);
-  --chat-surface-input: var(--palette-chat-input);
-  --chat-surface-bubble: var(--palette-chat-bubble);
-  --chat-surface-pill: var(--palette-chat-pill);
-  --chat-surface-send: var(--palette-chat-send);
-  --chat-border: var(--palette-chat-border);
-  --chat-ink: var(--palette-admin-ink);
-  --chat-muted: var(--palette-admin-muted);
+  /*
+   * Zeni chat (components/chatbot), from the Figma frame "ZENI CHATBOT LOOK LIKE": a white card
+   * with a thin deep-green frame, Zeni bubbles on mist, guest bubbles in deep green. Aliases of the
+   * ZENTRA brand and status palettes only; the chat CSS Module swaps them for its dark theme.
+   */
+  --chat-surface-page: var(--palette-white);
+  --chat-surface-card: var(--palette-white);
+  --chat-surface-zeni: var(--palette-zentra-mist);
+  --chat-surface-guest: var(--palette-zentra-green);
+  --chat-surface-input: var(--palette-white);
+  --chat-surface-subtle: var(--palette-zentra-green-soft);
+  --chat-on-guest: var(--palette-white);
+  --chat-action: var(--palette-zentra-green);
+  --chat-action-hover: var(--palette-zentra-green-hover);
+  --chat-on-action: var(--palette-white);
+  --chat-border: var(--palette-zentra-green);
+  --chat-line: var(--palette-zentra-line);
+  --chat-control-border: var(--palette-zentra-line-strong);
+  --chat-ink: var(--palette-zentra-ink);
+  --chat-muted: var(--palette-zentra-muted);
+  --chat-accent: var(--palette-zentra-green);
+  --chat-focus: var(--palette-zentra-green);
+  --chat-shadow: var(--palette-zentra-ink);
+  --chat-unavailable-surface: var(--palette-status-cancelled-soft);
+  --chat-unavailable-ink: var(--palette-status-cancelled-ink);
+  --chat-error-surface: var(--palette-status-cancelled-soft);
+  --chat-error-ink: var(--palette-status-cancelled-ink);
 
   --surface-page: var(--palette-cream);
   --surface-card: var(--palette-paper);
+  --surface-subtle: var(--palette-zentra-mist);
   --surface-input: var(--palette-white);
   --text-primary: var(--palette-ink);
   --text-muted: var(--palette-muted);
   --text-accent: var(--palette-gold-ink);
   --text-on-action: var(--palette-white);
   --action-primary: var(--palette-forest);
+  --action-primary-hover: var(--palette-zentra-green-hover);
   --border-control: var(--palette-border);
+  --line-hairline: var(--palette-divider);
+  --brand-wordmark: var(--palette-zentra-green);
   --focus-ring: var(--palette-forest);
   --focus-halo: var(--palette-white);
   --background: var(--surface-page);
   --foreground: var(--text-primary);
 
-  --font-zion-sans: var(--font-inter, 'Segoe UI'), Arial, sans-serif;
-  --font-zion-serif: var(--font-playfair, Georgia), 'Times New Roman', serif;
-  --font-zion-script: var(--font-alex-brush, 'Segoe Script'), cursive;
-  --font-zion-sahitya: var(--font-zion-serif);
+  /*
+   * Fonts follow the plan: Zenitha Classic for the ZENTRA wordmark only and SFT Schrifted Sans for
+   * all other text. Those files are trial / personal-use, so they are never committed: they load
+   * from the ignored public/fonts/licensed/ folder when `npm run fonts:licensed` has copied them
+   * (see app/layout.tsx). Otherwise the bundled SIL OFL fallbacks render: Hedvig Letters Serif
+   * (Figma's stand-in wordmark font) and Archivo. Archivo's latin-ext face supplies the peso sign,
+   * which neither licensed font contains.
+   */
+  --font-zion-brand: 'Zenitha Classic', var(--font-hedvig, Georgia), 'Times New Roman', serif;
+  --font-zion-sans:
+    'SFT Schrifted Sans', var(--font-archivo-ext, Arial), var(--font-archivo, 'Segoe UI'), Arial,
+    sans-serif;
+  --font-zion-serif: var(--font-zion-sans);
+  --font-zion-script: var(--font-zion-sans);
+  --font-zion-sahitya: var(--font-zion-sans);
   --type-caption: 0.75rem;
   --type-small: 0.875rem;
   --type-body: 1rem;
@@ -135,7 +248,11 @@
   --type-card-title: 1.25rem;
   --type-section-title: clamp(1.75rem, 1.25rem + 2vw, 3rem);
   --type-page-title: clamp(2.25rem, 1.5rem + 3vw, 4.5rem);
+  --type-display: clamp(2.5rem, 1.4rem + 4.6vw, 5.5rem);
+  --type-wordmark: clamp(2.25rem, 1.6rem + 2.4vw, 3.5rem);
   --type-workspace-title: clamp(1.75rem, 1.25rem + 1.5vw, 2.5rem);
+  --tracking-label: 0.16em;
+  --tracking-display: 0.12em;
   --line-body: 1.6;
   --line-heading: 1.2;
   --weight-regular: 400;
@@ -151,7 +268,7 @@
   --space-12: 3rem;
   --radius-control: 0.5rem;
   --radius-card: 1rem;
-  --shadow-card: 0 0.5rem 1.5rem rgb(32 44 36 / 8%);
+  --shadow-card: 0 0.5rem 1.5rem rgb(3 66 46 / 8%);
   --motion-fast: 120ms;
   --motion-normal: 180ms;
   --motion-slow: 320ms;
@@ -174,41 +291,73 @@
 }
 
 [data-admin-theme='dark'] {
-  --admin-surface-page: var(--palette-admin-night);
-  --admin-surface-sidebar: var(--palette-admin-night-card);
-  --admin-surface-card: var(--palette-admin-night-card);
-  --admin-surface-input: var(--palette-admin-night-card);
-  --admin-surface-subtle: var(--palette-admin-night-raised);
-  --admin-surface-highlight: var(--palette-admin-night-raised);
-  --admin-surface-selected: var(--palette-admin-night-raised);
-  --admin-ink: var(--palette-admin-ivory);
-  --admin-muted: var(--palette-admin-oak);
-  --admin-action: var(--palette-admin-oak);
-  --admin-action-hover: var(--palette-admin-peach);
-  --admin-on-action: var(--palette-admin-ink);
-  --admin-divider: var(--palette-admin-night-raised);
-  --admin-focus: var(--palette-admin-peach);
-  --admin-focus-halo: var(--palette-admin-night);
-  --admin-accent-ink: var(--palette-admin-peach);
-  --admin-accent-soft: var(--palette-admin-night-raised);
-  --admin-danger: var(--palette-admin-ivory);
-  --admin-danger-soft: var(--palette-admin-rose-ink);
-  --admin-success: var(--palette-admin-oak);
-  --admin-success-soft: var(--palette-admin-night-raised);
-  --admin-info: var(--palette-admin-peach);
-  --admin-info-soft: var(--palette-admin-night-raised);
+  --admin-surface-page: var(--palette-zentra-night);
+  --admin-surface-sidebar: var(--palette-zentra-night-card);
+  --admin-surface-card: var(--palette-zentra-night-card);
+  --admin-surface-input: var(--palette-zentra-night-card);
+  --admin-surface-subtle: var(--palette-zentra-night-raised);
+  --admin-surface-highlight: var(--palette-zentra-night-raised);
+  --admin-surface-selected: var(--palette-zentra-night-raised);
+  --admin-ink: var(--palette-zentra-pearl);
+  --admin-muted: var(--palette-zentra-sage);
+  --admin-heading: var(--palette-zentra-pearl);
+  --admin-wordmark: var(--palette-zentra-pearl);
+  --admin-action: var(--palette-zentra-glow);
+  --admin-action-hover: var(--palette-zentra-pearl);
+  --admin-on-action: var(--palette-zentra-night);
+  --admin-border: var(--palette-zentra-line-strong);
+  --admin-divider: var(--palette-admin-night-line);
+  --admin-focus: var(--palette-zentra-glow);
+  --admin-focus-halo: var(--palette-zentra-night);
+  --admin-accent: var(--palette-zentra-glow);
+  --admin-accent-ink: var(--palette-zentra-glow);
+  --admin-accent-soft: var(--palette-zentra-night-raised);
+  --admin-danger: var(--palette-admin-night-cancelled-ink);
+  --admin-danger-soft: var(--palette-admin-night-cancelled);
+  --admin-success: var(--palette-admin-night-confirmed-ink);
+  --admin-success-soft: var(--palette-admin-night-confirmed);
+  --admin-info: var(--palette-zentra-glow);
+  --admin-info-soft: var(--palette-zentra-night-raised);
+  --admin-on-color: var(--palette-zentra-pearl);
+  --admin-shadow: var(--palette-zentra-night);
+  --admin-teal-soft: var(--palette-zentra-night-raised);
+  --admin-teal-ink: var(--palette-zentra-glow);
+  --admin-chart-line: var(--palette-zentra-glow);
+  --admin-series-1: var(--palette-zentra-glow);
+  --admin-series-2: var(--palette-zentra-chart);
+  --admin-series-3: var(--palette-zentra-sage);
+  --admin-series-4: var(--palette-zentra-teal);
+  --admin-series-5: var(--palette-zentra-line-strong);
+  --admin-night-panel: var(--palette-zentra-night-raised);
+  --admin-status-request-soft: var(--palette-admin-night-request);
+  --admin-status-request-ink: var(--palette-admin-night-request-ink);
+  --admin-status-pending-soft: var(--palette-admin-night-pending);
+  --admin-status-pending-ink: var(--palette-admin-night-pending-ink);
+  --admin-status-confirmed-soft: var(--palette-admin-night-confirmed);
+  --admin-status-confirmed-ink: var(--palette-admin-night-confirmed-ink);
+  --admin-status-cancelled-soft: var(--palette-admin-night-cancelled);
+  --admin-status-cancelled-ink: var(--palette-admin-night-cancelled-ink);
+  --admin-ivory: var(--palette-zentra-night-card);
+  --admin-oak: var(--palette-zentra-night-raised);
+  --admin-peach: var(--palette-zentra-green);
+  --admin-taupe: var(--palette-zentra-teal);
+  --admin-rose: var(--palette-zentra-night-card);
 }
 
 .dark {
   --surface-page: var(--palette-night);
   --surface-card: var(--palette-night-card);
+  --surface-subtle: var(--palette-night-subtle);
   --surface-input: var(--palette-night-card);
   --text-primary: var(--palette-pearl);
   --text-muted: var(--palette-sage);
   --text-accent: var(--palette-gold);
   --text-on-action: var(--palette-night);
   --action-primary: var(--palette-gold);
+  --action-primary-hover: var(--palette-zentra-pearl);
   --border-control: var(--palette-night-border);
+  --line-hairline: var(--palette-night-raised);
+  --brand-wordmark: var(--palette-zentra-pearl);
   --focus-ring: var(--palette-gold);
   --focus-halo: var(--palette-night);
 }

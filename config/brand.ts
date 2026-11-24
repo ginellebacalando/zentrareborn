@@ -4,6 +4,9 @@ const MAPS_QUERY = encodeURIComponent('Zion Events Place, San Pedro, Laguna');
 
 export const BRAND = {
   name: 'Zion',
+  /** Website wordmark from the team's Figma file; the venue keeps its name in content. */
+  wordmark: 'ZENTRA',
+  siteTitle: 'ZENTRA | Zion Events Place',
   legalName: 'Zion Events Place',
   nameUpper: 'ZION EVENTS PLACE',
   shortName: 'Zion',

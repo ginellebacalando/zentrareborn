@@ -185,7 +185,7 @@ export default function JourneyMountainMap({
             return (
               <li key={node.step} className="relative flex flex-col items-center text-center">
                 {isCurrent ? (
-                  <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-[0.12em] text-[var(--palette-booklet-cover)] shadow-sm">
+                  <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-zentra-green px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-on-action)] shadow-sm">
                     You are here
                   </span>
                 ) : null}
@@ -221,7 +221,7 @@ export default function JourneyMountainMap({
                     </span>
 
                     {isCompleted ? (
-                      <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--palette-paper)] bg-[var(--palette-booklet-cover)] text-ink shadow-xs">
+                      <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--palette-paper)] bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] shadow-xs">
                         <Check className="h-3 w-3" strokeWidth={3} aria-hidden="true" />
                       </span>
                     ) : null}

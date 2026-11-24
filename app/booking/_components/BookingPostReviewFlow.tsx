@@ -237,7 +237,7 @@ export function PackageSuggestionsView({
                 {/* Top-Left Best Match / Best Value Badge */}
                 <div className="absolute top-2.5 left-2.5">
                   {rec.badge === 'Best Match' ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-[0.1em] text-ink shadow-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-on-action)] shadow-sm">
                       <Crown className="h-3 w-3" strokeWidth={2.4} aria-hidden="true" />
                       Best Match
                     </span>
@@ -329,9 +329,9 @@ export function PackageSuggestionsView({
                     onClick={() => onSelectPackage(rec.pkg.id)}
                     className={`flex min-h-10 w-full items-center justify-center gap-1.5 rounded-full border px-4 py-2 font-sans text-xs font-bold uppercase tracking-[0.14em] transition-all ${
                       isSelected
-                        ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-ink shadow-xs'
+                        ? 'border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] text-[var(--text-on-action)] shadow-xs'
                         : isTopPick
-                          ? 'border-[var(--palette-gold)] bg-[var(--palette-cream)] text-ink hover:bg-[var(--palette-booklet-cover)]'
+                          ? 'border-[var(--palette-gold)] bg-[var(--palette-cream)] text-ink hover:bg-[var(--palette-booklet-cover)] hover:text-[var(--text-on-action)]'
                           : 'border-[var(--palette-gold)]/35 bg-[var(--palette-white)] text-ink hover:border-[var(--palette-booklet-cover)] hover:bg-[var(--palette-cream)]/60'
                     }`}
                   >
@@ -377,7 +377,7 @@ export function PackageSuggestionsView({
           <button
             type="button"
             onClick={onProceedToDownpayment}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--palette-client-button-hover)] hover:shadow-md"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-on-action)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--palette-client-button-hover)] hover:shadow-md"
           >
             <Lock className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Proceed to Downpayment</span>
@@ -788,7 +788,7 @@ export function DownpaymentView({
             <button
               type="button"
               onClick={handleConfirm}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-[0.16em] text-ink shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--palette-client-button-hover)] hover:shadow-md"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--palette-booklet-cover)] bg-[var(--palette-booklet-cover)] px-6 py-2.5 font-sans text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-[var(--palette-client-button-hover)] hover:shadow-md"
             >
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               <span>Submit Downpayment &amp; Secure Date</span>
@@ -807,7 +807,7 @@ export function DownpaymentView({
               className="object-cover"
             />
             {selectedRecommendation.badge ? (
-              <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-[0.1em] text-ink shadow-xs">
+              <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-[var(--palette-booklet-cover)] px-2.5 py-0.5 font-sans text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-on-action)] shadow-xs">
                 {selectedRecommendation.badge}
               </span>
             ) : null}

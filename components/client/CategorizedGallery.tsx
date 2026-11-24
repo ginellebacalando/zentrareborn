@@ -432,7 +432,7 @@ export default function CategorizedGallery() {
             onClick={() => setActiveCategory(cat)}
             className={`px-6 py-2 rounded-full font-serif text-sm tracking-wide transition-all duration-300 border focus:outline-none ${
               activeCategory === cat
-                ? 'bg-[var(--palette-client-button)] text-ink border-[var(--palette-client-button)] shadow-[0_4px_20px_color-mix(in_srgb,var(--palette-client-button)_40%,transparent)] scale-105 font-semibold'
+                ? 'bg-[var(--palette-client-button)] text-[var(--text-on-action)] border-[var(--palette-client-button)] shadow-[0_4px_20px_color-mix(in_srgb,var(--palette-client-button)_40%,transparent)] scale-105 font-semibold'
                 : 'bg-transparent text-muted border-zion-accent/40 hover:border-[var(--palette-client-button)] hover:text-ink'
             }`}
           >
@@ -478,7 +478,7 @@ export default function CategorizedGallery() {
               </p>
               <button
                 onClick={restartGallery}
-                className="flex items-center gap-2 px-8 py-3.5 bg-[var(--palette-client-button)] text-ink rounded-full font-bold uppercase tracking-widest text-sm hover:bg-[var(--palette-client-button-hover)] hover:shadow-lg transition-all active:scale-95"
+                className="flex items-center gap-2 px-8 py-3.5 bg-[var(--palette-client-button)] text-[var(--text-on-action)] rounded-full font-bold uppercase tracking-widest text-sm hover:bg-[var(--palette-client-button-hover)] hover:shadow-lg transition-all active:scale-95"
               >
                 Restart Gallery
               </button>

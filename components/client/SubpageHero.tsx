@@ -60,7 +60,7 @@ export default function SubpageHero({ videoSrc }: SubpageHeroProps) {
   return (
     <section
       aria-label="Featured venue header"
-      className="relative z-0 flex h-[clamp(32rem,68dvh,48rem)] min-h-[32rem] w-full flex-col items-center justify-center overflow-hidden bg-zion-dark px-[var(--layout-gutter)] text-center"
+      className="relative z-0 flex h-[clamp(22rem,52dvh,34rem)] min-h-[22rem] w-full flex-col items-center justify-center overflow-hidden bg-zion-dark px-[var(--layout-gutter)] text-center"
     >
       <video
         ref={videoRef}
@@ -75,7 +75,10 @@ export default function SubpageHero({ videoSrc }: SubpageHeroProps) {
         className="absolute inset-0 -z-10 h-full w-full object-cover"
       />
 
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-black/25" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[color-mix(in_srgb,var(--palette-zentra-night)_25%,transparent)]"
+      />
 
       {!prefersReducedMotion && (
         <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] z-10">
