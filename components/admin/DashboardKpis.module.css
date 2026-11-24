@@ -1,0 +1,97 @@
+.section {
+  margin-bottom: var(--space-6);
+}
+.section .grid {
+  align-items: stretch;
+  margin-bottom: var(--space-2);
+}
+.card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--admin-border) 20%, var(--admin-surface-card));
+  border-radius: var(--radius-card);
+  background: var(--admin-surface-card);
+  color: var(--admin-ink);
+}
+.card .label {
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+  font-weight: var(--weight-medium);
+}
+.sales {
+  background: var(--admin-peach);
+  color: var(--admin-on-color);
+}
+.amountRow {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.value {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+.value strong {
+  font-family: var(--font-zion-sans);
+  font-size: calc(var(--type-body) * 1.5);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-heading);
+  overflow-wrap: anywhere;
+}
+.qualifier {
+  font-size: var(--type-small);
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-card);
+  color: var(--admin-muted);
+  background: var(--admin-surface-subtle);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-heading);
+  white-space: nowrap;
+}
+.badge svg {
+  flex-shrink: 0;
+}
+.improving {
+  color: var(--palette-success);
+  background: var(--palette-success-soft);
+}
+:global([data-admin-theme='dark']) .improving {
+  color: var(--palette-success-light);
+  background: var(--palette-success-dark);
+}
+.card .quality {
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+  overflow-wrap: anywhere;
+}
+.sales .label,
+.sales .quality {
+  color: var(--admin-on-color);
+}
+@media (max-width: 1100px) {
+  .section .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .section .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

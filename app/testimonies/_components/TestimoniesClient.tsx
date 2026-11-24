@@ -7,11 +7,18 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader2,
+  Mail,
   MessageSquareQuote,
+  Package,
+  Send,
   SlidersHorizontal,
+  Sparkles,
   Star,
+  User,
   X,
 } from 'lucide-react';
+import ZionDatePicker from '@/components/client/ZionDatePicker';
+import ZionSelectPopover from '@/components/client/ZionSelectPopover';
 import type { PublicTestimoniesResponse, PublicTestimony } from '@/lib/testimony-types';
 
 const FALLBACK_EVENT_TYPES = [
@@ -49,7 +56,7 @@ function Stars({ value, size = 'h-4 w-4' }: { value: number; size?: string }) {
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
-          className={`${size} ${star <= value ? 'fill-[#D6B53B] text-[#D6B53B]' : 'text-neutral-300'}`}
+          className={`${size} ${star <= value ? 'fill-[var(--palette-gold-hover)] text-accent-ink' : 'text-neutral-300'}`}
           strokeWidth={1.8}
         />
       ))}
@@ -73,26 +80,42 @@ function StarInput({
   const ratingLabel = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][display];
 
   return (
-    <fieldset className="rounded-2xl border border-[#D6B53B]/20 bg-[#F9F8F1]/80 p-4">
-      <legend className="px-1 text-sm font-bold text-[#1a1f18]">
-        {label}{required && <span className="text-red-500"> *</span>}
+    <fieldset className="rounded-2xl border border-zion-accent/20 bg-surface/80 p-4 shadow-sm transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface">
+      <legend className="px-1 font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink">
+        {label}
+        {required && <span className="text-accent-ink"> *</span>}
       </legend>
-      <div className="mt-1 flex items-center gap-1" onMouseLeave={() => setHovered(0)}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => onChange(star)}
-            onMouseEnter={() => setHovered(star)}
-            className="rounded-md p-1 transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-[#D6B53B]"
-            aria-label={`${star} star${star > 1 ? 's' : ''} for ${label}`}
-          >
-            <Star
-              className={`h-7 w-7 ${star <= display ? 'fill-[#D6B53B] text-[#D6B53B]' : 'text-neutral-300'}`}
-            />
-          </button>
-        ))}
-        <span className="ml-2 min-w-20 text-xs font-semibold text-neutral-500">
+      <div
+        className="mt-2 flex items-center justify-between gap-2"
+        onMouseLeave={() => setHovered(0)}
+      >
+        <div className="flex items-center gap-0.5">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => onChange(star)}
+              onMouseEnter={() => setHovered(star)}
+              className="rounded-lg p-1 transition-transform duration-200 hover:scale-115 focus:outline-none focus:ring-2 focus:ring-zion-accent"
+              aria-label={`${star} star${star > 1 ? 's' : ''} for ${label}`}
+            >
+              <Star
+                className={`h-6 w-6 transition-colors duration-200 sm:h-7 sm:w-7 ${
+                  star <= display
+                    ? 'fill-[var(--palette-client-button)] text-accent-ink'
+                    : 'text-neutral-300'
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 font-sans text-xs font-semibold transition-colors ${
+            display > 0
+              ? 'bg-[var(--palette-client-button)]/25 text-ink'
+              : 'bg-zion-accent/10 text-muted'
+          }`}
+        >
           {ratingLabel || 'Select'}
         </span>
       </div>
@@ -112,7 +135,7 @@ function RatingDetail({ label, value }: { label: string; value: number | null })
   if (!value) return null;
   return (
     <div className="flex items-center justify-between gap-3">
-      <span className="text-xs font-bold uppercase tracking-[0.12em] text-neutral-500">{label}</span>
+      <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted">{label}</span>
       <Stars value={value} size="h-3.5 w-3.5" />
     </div>
   );
@@ -120,7 +143,7 @@ function RatingDetail({ label, value }: { label: string; value: number | null })
 
 function TestimonyCard({ testimony }: { testimony: PublicTestimony }) {
   return (
-    <article className="group overflow-hidden rounded-[2rem] border border-white/80 bg-white/75 shadow-[0_18px_60px_rgba(58,75,60,0.08)] backdrop-blur-md transition duration-500 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(142,119,34,0.16)]">
+    <article className="group overflow-hidden rounded-[2rem] border border-white/80 bg-surface/75 shadow-[0_18px_60px_color-mix(in_srgb,var(--palette-night)_8%,transparent)] backdrop-blur-md transition duration-500 hover:-translate-y-1 hover:shadow-[0_24px_70px_color-mix(in_srgb,var(--palette-gold)_16%,transparent)]">
       {testimony.photoUrl && (
         <div className="relative h-56 overflow-hidden">
           <Image
@@ -135,30 +158,30 @@ function TestimonyCard({ testimony }: { testimony: PublicTestimony }) {
       <div className="p-6 md:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-sahitya text-2xl font-bold text-[#1a1f18]">{testimony.clientName}</p>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-neutral-500">
+            <p className="font-sahitya text-2xl font-bold text-ink">{testimony.clientName}</p>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
               <span>{testimony.eventType}</span>
-              <span className="h-1 w-1 rounded-full bg-[#D6B53B]" />
+              <span className="h-1 w-1 rounded-full bg-zion-accent" />
               <span>{formatDate(testimony.eventDate)}</span>
             </p>
           </div>
-          <div className="rounded-full border border-[#D6B53B]/25 bg-[#FDF5CC]/75 px-3 py-1.5">
+          <div className="rounded-full border border-zion-accent/25 bg-[var(--palette-gold-soft)]/75 px-3 py-1.5">
             <Stars value={testimony.overallRating} />
           </div>
         </div>
 
         {testimony.packageName && (
-          <p className="mt-4 inline-flex rounded-full bg-[#3A4B3C]/8 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#3A4B3C]">
+          <p className="mt-4 inline-flex rounded-full bg-[var(--palette-forest)]/8 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-ink">
             {testimony.packageName}
           </p>
         )}
 
-        <MessageSquareQuote className="mt-6 h-8 w-8 text-[#D6B53B]/60" />
-        <p className="mt-3 whitespace-pre-wrap font-serif text-[17px] leading-7 text-neutral-700">
+        <MessageSquareQuote className="mt-6 h-8 w-8 text-accent-ink/60" />
+        <p className="mt-3 whitespace-pre-wrap font-serif text-[17px] leading-7 text-muted">
           “{testimony.comment}”
         </p>
 
-        <div className="mt-6 grid grid-cols-1 gap-2 rounded-2xl border border-[#D6B53B]/15 bg-[#F9F8F1]/70 p-4 sm:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-2 rounded-2xl border border-zion-accent/15 bg-[var(--palette-paper)]/70 p-4 sm:grid-cols-2">
           <RatingDetail label="Approach" value={testimony.approachRating} />
           <RatingDetail label="Food" value={testimony.foodRating} />
           <RatingDetail label="Service" value={testimony.serviceRating} />
@@ -176,7 +199,7 @@ function FilterSelect({
   value,
   onChange,
   options,
-  placeholder = 'Select...'
+  placeholder = 'Select...',
 }: {
   label?: string;
   value: string;
@@ -205,34 +228,47 @@ function FilterSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const selected = options.find(opt => opt.value === value);
+  const selected = options.find((opt) => opt.value === value);
 
   return (
     <div className="flex-1 min-w-[140px]">
-      {label && <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em] text-gray-500">{label}</label>}
+      {label && (
+        <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-gray-500">
+          {label}
+        </label>
+      )}
       <div className={`relative group/input ${open ? 'z-50' : 'z-10'}`} ref={ref}>
         <button
           type="button"
           onClick={toggleOpen}
-          className={`flex h-[46px] w-full items-center justify-between rounded-xl border ${open ? 'border-[#D6B53B] bg-white ring-2 ring-[#D6B53B]/20 ' : 'border-[#D6B53B]/20 bg-white '} px-4 font-sans text-sm shadow-sm transition-all duration-300 hover:border-[#D6B53B]/50 hover:bg-[#FFF2DB]/30 cursor-pointer`}
+          className={`flex h-[46px] w-full items-center justify-between rounded-xl border ${open ? 'border-zion-accent bg-surface ring-2 ring-zion-accent/20 ' : 'border-zion-accent/20 bg-surface '} px-4 font-sans text-sm shadow-sm transition-all duration-300 hover:border-zion-accent/50 hover:bg-[var(--palette-gold-soft)]/30 cursor-pointer`}
         >
-          <span className={`block min-w-0 truncate pr-10 text-left ${value ? 'text-gray-900 font-medium ' : 'text-gray-600 '}`}>
+          <span
+            className={`block min-w-0 truncate pr-10 text-left ${value ? 'text-gray-900 font-medium ' : 'text-gray-600 '}`}
+          >
             {selected?.label || placeholder}
           </span>
         </button>
 
-        <div className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${open ? 'text-[#D6B53B] rotate-180' : 'text-gray-400 group-hover/input:text-[#D6B53B]'}`}>
+        <div
+          className={`pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 transition-all duration-300 ${open ? 'text-accent-ink rotate-180' : 'text-gray-400 group-hover/input:text-accent-ink'}`}
+        >
           <ChevronDown className="h-4 w-4" />
         </div>
 
         {open && (
-          <div className={`absolute left-0 w-full max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-xl shadow-[0_12px_40px_rgba(47,62,50,0.15)] z-50 py-1.5 ${direction === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}>
-            {options.map(opt => (
+          <div
+            className={`events-scrollbar absolute left-0 z-50 max-h-64 w-full overflow-y-auto rounded-2xl border border-zion-accent/25 bg-surface/95 py-1.5 shadow-[0_12px_40px_color-mix(in_srgb,var(--palette-night)_15%,transparent)] backdrop-blur-xl ${direction === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+          >
+            {options.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => { onChange(opt.value); setOpen(false); }}
-                className={`flex w-full items-center px-4 py-2.5 text-left text-sm transition-colors ${value === opt.value ? 'bg-[#FFF2DB] text-[#8E7722] font-semibold ' : 'text-gray-700 hover:bg-gray-100 '}`}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`flex w-full cursor-pointer items-center px-4 py-2.5 text-left text-sm transition-colors ${value === opt.value ? 'bg-[var(--palette-gold-soft)] font-semibold text-accent-ink' : 'text-ink/85 hover:bg-[var(--palette-gold-soft)]/50 hover:text-ink'}`}
               >
                 {opt.label}
               </button>
@@ -288,7 +324,7 @@ export default function TestimoniesClient({
 
     try {
       const response = await fetch(`/api/client/testimonies?${query}`, { cache: 'no-store' });
-      const payload = await response.json() as PublicTestimoniesResponse;
+      const payload = (await response.json()) as PublicTestimoniesResponse;
       if (!response.ok) throw new Error(payload.error || 'Unable to load testimonies.');
       setTestimonies(payload.testimonies);
       setFilterOptions({
@@ -310,7 +346,13 @@ export default function TestimoniesClient({
   }, [loadTestimonies]);
 
   const updateRating = (
-    key: 'overallRating' | 'approachRating' | 'foodRating' | 'serviceRating' | 'venueRating' | 'communicationRating',
+    key:
+      | 'overallRating'
+      | 'approachRating'
+      | 'foodRating'
+      | 'serviceRating'
+      | 'venueRating'
+      | 'communicationRating',
     value: number,
   ) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -320,6 +362,16 @@ export default function TestimoniesClient({
 
     if (!allowSubmissions) {
       setSubmitError(disabledMessage);
+      return;
+    }
+
+    if (!form.eventType) {
+      setSubmitError('Please select an event type.');
+      return;
+    }
+
+    if (!form.eventDate) {
+      setSubmitError('Please select your event date.');
       return;
     }
 
@@ -334,7 +386,7 @@ export default function TestimoniesClient({
       Object.entries(form).forEach(([key, value]) => body.set(key, String(value)));
       if (photo) body.set('photo', photo);
       const response = await fetch('/api/client/testimonies', { method: 'POST', body });
-      const payload = await response.json() as { error?: string; message?: string };
+      const payload = (await response.json()) as { error?: string; message?: string };
       if (!response.ok) throw new Error(payload.error || 'Unable to submit testimony.');
 
       setSuccessMessage(payload.message || 'Thank you for sharing your experience.');
@@ -342,19 +394,60 @@ export default function TestimoniesClient({
       setPhoto(null);
       setIsFormOpen(false);
     } catch (caughtError) {
-      setSubmitError(caughtError instanceof Error ? caughtError.message : 'Unable to submit testimony.');
+      setSubmitError(
+        caughtError instanceof Error ? caughtError.message : 'Unable to submit testimony.',
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!isFormOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFormOpen(false);
+      }
+    };
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFormOpen]);
+
+  const completedRequiredCount = [
+    Boolean(form.clientName.trim()),
+    Boolean(form.eventType),
+    Boolean(form.eventDate),
+    form.overallRating > 0 &&
+      form.approachRating > 0 &&
+      form.foodRating > 0 &&
+      form.serviceRating > 0,
+    form.comment.trim().length >= 20,
+    form.consent,
+  ].filter(Boolean).length;
+  const formProgressPercent = (completedRequiredCount / 6) * 100;
+
+  const modalInputClasses =
+    'w-full rounded-2xl border border-zion-accent/25 bg-surface/85 py-3.5 pl-11 pr-4 font-sans text-sm font-normal text-ink shadow-sm transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15';
 
   return (
     <>
       <section className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 md:px-12 md:py-20">
         <div className="mb-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#8E7722]">Real celebrations. Real stories.</p>
-            <h2 className="mt-3 font-sahitya text-4xl text-[#1a1f18] md:text-5xl">Experiences worth sharing</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent-ink">
+              Real celebrations. Real stories.
+            </p>
+            <h1 className="mt-3 font-sahitya text-4xl text-ink md:text-5xl">
+              Experiences worth sharing
+            </h1>
           </div>
           <button
             type="button"
@@ -367,10 +460,16 @@ export default function TestimoniesClient({
               }
             }}
             disabled={!allowSubmissions}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1a1f18] px-7 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#D6B53B] hover:text-[#1a1f18]"
+            className="group relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-7 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-ink shadow-lg transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <MessageSquareQuote className="h-5 w-5" />
-            Share Your Experience
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 translate-y-full bg-[var(--palette-client-button-hover)] transition-transform duration-500 ease-in-out group-hover:translate-y-0 motion-reduce:hidden"
+            />
+            <span className="relative z-10 inline-flex items-center gap-2">
+              <MessageSquareQuote className="h-5 w-5" aria-hidden="true" />
+              Share Your Experience
+            </span>
           </button>
         </div>
 
@@ -380,9 +479,9 @@ export default function TestimoniesClient({
           </div>
         )}
 
-        <div className="relative z-30 mb-8 rounded-[1.75rem] border border-white/80 bg-white/65 p-4 shadow-sm backdrop-blur-md md:p-5">
-          <div className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.14em] text-[#3A4B3C]">
-            <SlidersHorizontal className="h-4 w-4 text-[#D6B53B]" />
+        <div className="relative z-30 mb-8 rounded-[1.75rem] border border-white/80 bg-surface/65 p-4 shadow-sm backdrop-blur-md md:p-5">
+          <div className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.14em] text-ink">
+            <SlidersHorizontal className="h-4 w-4 text-accent-ink" />
             Browse testimonies
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 relative z-40">
@@ -391,7 +490,7 @@ export default function TestimoniesClient({
               onChange={(value) => setFilters((current) => ({ ...current, eventType: value }))}
               options={[
                 { value: '', label: 'All event types' },
-                ...filterOptions.eventTypes.map(type => ({ value: type, label: type }))
+                ...filterOptions.eventTypes.map((type) => ({ value: type, label: type })),
               ]}
             />
             <FilterSelect
@@ -399,7 +498,10 @@ export default function TestimoniesClient({
               onChange={(value) => setFilters((current) => ({ ...current, rating: value }))}
               options={[
                 { value: '', label: 'All ratings' },
-                ...[5, 4, 3, 2, 1].map(rating => ({ value: String(rating), label: `${rating} star${rating === 1 ? '' : 's'}` }))
+                ...[5, 4, 3, 2, 1].map((rating) => ({
+                  value: String(rating),
+                  label: `${rating} star${rating === 1 ? '' : 's'}`,
+                })),
               ]}
             />
             <FilterSelect
@@ -407,7 +509,7 @@ export default function TestimoniesClient({
               onChange={(value) => setFilters((current) => ({ ...current, sort: value }))}
               options={[
                 { value: 'recent', label: 'Most recent' },
-                { value: 'highest', label: 'Highest rated' }
+                { value: 'highest', label: 'Highest rated' },
               ]}
             />
             <FilterSelect
@@ -415,15 +517,17 @@ export default function TestimoniesClient({
               onChange={(value) => setFilters((current) => ({ ...current, package: value }))}
               options={[
                 { value: '', label: 'All packages' },
-                ...filterOptions.packages.map(pkg => ({ value: pkg, label: pkg }))
+                ...filterOptions.packages.map((pkg) => ({ value: pkg, label: pkg })),
               ]}
             />
             <FilterSelect
               value={filters.withPhotos ? 'true' : ''}
-              onChange={(value) => setFilters((current) => ({ ...current, withPhotos: value === 'true' }))}
+              onChange={(value) =>
+                setFilters((current) => ({ ...current, withPhotos: value === 'true' }))
+              }
               options={[
                 { value: '', label: 'Any photo' },
-                { value: 'true', label: 'With photos' }
+                { value: 'true', label: 'With photos' },
               ]}
             />
           </div>
@@ -433,120 +537,411 @@ export default function TestimoniesClient({
           <div className="rounded-3xl border border-red-200 bg-red-50 p-10 text-center">
             <p className="font-bold text-red-700">Unable to load testimonies.</p>
             <p className="mt-1 text-sm text-red-600">Please try again later.</p>
-            <button type="button" onClick={() => void loadTestimonies()} className="mt-5 rounded-full bg-red-700 px-5 py-2 text-sm font-bold text-white">
+            <button
+              type="button"
+              onClick={() => void loadTestimonies()}
+              className="mt-5 rounded-full bg-red-700 px-5 py-2 text-sm font-bold text-white"
+            >
               Try again
             </button>
           </div>
         ) : isLoading ? (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="h-96 animate-pulse rounded-[2rem] border border-white/70 bg-white/50" />
+              <div
+                key={item}
+                className="h-96 animate-pulse rounded-[2rem] border border-white/70 bg-surface/50"
+              />
             ))}
           </div>
         ) : testimonies.length === 0 ? (
-          <div className="rounded-[2rem] border border-dashed border-[#D6B53B]/40 bg-white/50 px-6 py-20 text-center">
-            <MessageSquareQuote className="mx-auto h-12 w-12 text-[#D6B53B]" />
-            <h3 className="mt-5 font-sahitya text-3xl text-[#1a1f18]">No testimonies yet.</h3>
-            <p className="mt-2 text-neutral-600">Be the first to share your Zion Events Place experience.</p>
+          <div className="rounded-[2rem] border border-dashed border-zion-accent/40 bg-surface/50 px-6 py-20 text-center">
+            <MessageSquareQuote className="mx-auto h-12 w-12 text-accent-ink" />
+            <h3 className="mt-5 font-sahitya text-3xl text-ink">No testimonies yet.</h3>
+            <p className="mt-2 text-muted">
+              Be the first to share your Zion Events Place experience.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-            {testimonies.map((testimony) => <TestimonyCard key={testimony.id} testimony={testimony} />)}
+            {testimonies.map((testimony) => (
+              <TestimonyCard key={testimony.id} testimony={testimony} />
+            ))}
           </div>
         )}
       </section>
 
       {isFormOpen && (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/55 px-3 py-6 backdrop-blur-sm">
-          <div className="max-h-[94vh] w-full max-w-4xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[#D6B53B]/15 bg-white/95 px-6 py-5 backdrop-blur-md md:px-8">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#8E7722]">Client testimony</p>
-                <h2 className="mt-1 font-sahitya text-3xl text-[#1a1f18]">Share your Zion experience</h2>
-                <p className="mt-1 text-sm text-neutral-500">Your feedback is reviewed before it appears publicly.</p>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="share-experience-title"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsFormOpen(false);
+            }
+          }}
+          className="fixed inset-0 z-[160] flex items-center justify-center overscroll-contain bg-black/55 px-3 py-6 backdrop-blur-md animate-[fadeIn_200ms_ease-out]"
+        >
+          <div className="events-scrollbar relative max-h-[92vh] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-[2rem] border border-zion-accent/25 bg-[var(--palette-paper)] shadow-[0_32px_90px_-24px_color-mix(in_srgb,var(--palette-night)_45%,transparent)]">
+            {/* Top gold accent bar */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none sticky top-0 z-20 h-1 w-full bg-gradient-to-r from-transparent via-[var(--palette-client-button)] to-transparent"
+            />
+
+            {/* Sticky Modal Header */}
+            <div className="sticky top-1 z-10 border-b border-zion-accent/15 bg-[var(--palette-paper)]/95 px-6 py-5 backdrop-blur-md md:px-10">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--palette-client-button)]/25 px-3 py-1 font-sans text-xs font-bold uppercase tracking-[0.2em] text-ink">
+                    <Sparkles className="h-3.5 w-3.5 text-accent-ink" aria-hidden="true" />
+                    Client Testimony
+                  </span>
+                  <h2
+                    id="share-experience-title"
+                    className="mt-2 font-sahitya text-3xl text-ink md:text-4xl"
+                  >
+                    Share your Zion experience
+                  </h2>
+                  <p className="mt-1 font-serif text-sm text-muted">
+                    Your story is reviewed by our team before it appears publicly.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close share experience dialog"
+                  onClick={() => setIsFormOpen(false)}
+                  className="touch-target flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zion-accent/25 bg-surface/80 text-muted transition-all duration-300 hover:border-[var(--palette-client-button)] hover:bg-[var(--palette-client-button)] hover:text-ink"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
               </div>
-              <button type="button" onClick={() => setIsFormOpen(false)} className="rounded-full bg-neutral-100 p-2 text-neutral-600 hover:bg-neutral-200">
-                <X className="h-5 w-5" />
-              </button>
+
+              {/* Live completion bar */}
+              <div className="mt-4 flex items-center gap-3">
+                <div
+                  aria-hidden="true"
+                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-zion-accent/15"
+                >
+                  <div
+                    className="h-full rounded-full bg-[var(--palette-client-button)] transition-all duration-500 ease-out"
+                    style={{ width: `${formProgressPercent}%` }}
+                  />
+                </div>
+                <span className="shrink-0 font-sans text-xs font-semibold text-muted">
+                  {completedRequiredCount}/6 steps
+                </span>
+              </div>
             </div>
 
-            <form onSubmit={submit} className="space-y-6 p-6 md:p-8">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="text-sm font-bold text-[#1a1f18]">
-                  Name or nickname <span className="text-red-500">*</span>
-                  <input required maxLength={160} value={form.clientName} onChange={(event) => setForm((current) => ({ ...current, clientName: event.target.value }))} className="mt-2 w-full rounded-xl border border-neutral-200 px-4 py-3 font-sans font-normal outline-none focus:border-[#D6B53B]" />
-                </label>
-                <label className="text-sm font-bold text-[#1a1f18]">
-                  Email <span className="font-normal text-neutral-400">(not displayed)</span>
-                  <input type="email" maxLength={255} value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} className="mt-2 w-full rounded-xl border border-neutral-200 px-4 py-3 font-sans font-normal outline-none focus:border-[#D6B53B]" />
-                </label>
-                <label className="text-sm font-bold text-[#1a1f18]">
-                  Event type <span className="text-red-500">*</span>
-                  <select required value={form.eventType} onChange={(event) => setForm((current) => ({ ...current, eventType: event.target.value }))} className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 font-sans font-normal outline-none focus:border-[#D6B53B]">
-                    <option value="">Select event type</option>
-                    {filterOptions.eventTypes.map((eventType) => <option key={eventType}>{eventType}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-bold text-[#1a1f18]">
-                  Event date <span className="text-red-500">*</span>
-                  <input required type="date" max={new Date().toISOString().slice(0, 10)} value={form.eventDate} onChange={(event) => setForm((current) => ({ ...current, eventDate: event.target.value }))} className="mt-2 w-full rounded-xl border border-neutral-200 px-4 py-3 font-sans font-normal outline-none focus:border-[#D6B53B]" />
-                </label>
-                <label className="text-sm font-bold text-[#1a1f18]">
-                  Package availed <span className="font-normal text-neutral-400">(optional)</span>
-                  <input maxLength={255} value={form.packageName} onChange={(event) => setForm((current) => ({ ...current, packageName: event.target.value }))} className="mt-2 w-full rounded-xl border border-neutral-200 px-4 py-3 font-sans font-normal outline-none focus:border-[#D6B53B]" />
-                </label>
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.14em] text-[#3A4B3C]">Rate your experience</h3>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <StarInput label="Overall rating" value={form.overallRating} onChange={(value) => updateRating('overallRating', value)} required />
-                  <StarInput label="Approach" value={form.approachRating} onChange={(value) => updateRating('approachRating', value)} required />
-                  <StarInput label="Food" value={form.foodRating} onChange={(value) => updateRating('foodRating', value)} required />
-                  <StarInput label="Service" value={form.serviceRating} onChange={(value) => updateRating('serviceRating', value)} required />
-                  <StarInput label="Venue" value={form.venueRating} onChange={(value) => updateRating('venueRating', value)} />
-                  <StarInput label="Communication" value={form.communicationRating} onChange={(value) => updateRating('communicationRating', value)} />
+            <form onSubmit={submit} className="space-y-8 p-6 md:p-10">
+              {/* Section 01: Your Celebration */}
+              <section className="space-y-5">
+                <div className="flex items-center gap-3">
+                  <span className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-accent-ink">
+                    01
+                  </span>
+                  <span aria-hidden="true" className="h-px w-8 bg-zion-accent/50" />
+                  <h3 className="font-serif text-xl font-semibold text-ink">Your Celebration</h3>
                 </div>
-              </div>
 
-              <label className="block text-sm font-bold text-[#1a1f18]">
-                Written testimony <span className="text-red-500">*</span>
-                <textarea
-                  required
-                  minLength={20}
-                  maxLength={1000}
-                  rows={6}
-                  value={form.comment}
-                  onChange={(event) => setForm((current) => ({ ...current, comment: event.target.value }))}
-                  placeholder="Tell future clients what made your celebration special..."
-                  className="mt-2 w-full resize-none rounded-xl border border-neutral-200 px-4 py-3 font-sans font-normal leading-6 outline-none focus:border-[#D6B53B]"
-                />
-                <span className="mt-1 block text-right text-xs font-normal text-neutral-400">{form.comment.length}/1,000</span>
-              </label>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="group/input">
+                    <label
+                      htmlFor="testimony-client-name"
+                      className="mb-2 block font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
+                    >
+                      Name or Nickname <span className="text-accent-ink">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <User
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-4 h-4 w-4 text-muted/80 transition-colors group-focus-within/input:text-accent-ink"
+                      />
+                      <input
+                        id="testimony-client-name"
+                        required
+                        maxLength={160}
+                        placeholder="e.g., Maria & Juan"
+                        value={form.clientName}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, clientName: event.target.value }))
+                        }
+                        className={modalInputClasses}
+                      />
+                    </div>
+                  </div>
 
-              <label className="flex cursor-pointer items-center gap-4 rounded-2xl border border-dashed border-[#D6B53B]/40 bg-[#FDF5CC]/25 p-4">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#8E7722] shadow-sm">
-                  <Camera className="h-5 w-5" />
-                </span>
-                <span className="flex-1">
-                  <span className="block text-sm font-bold text-[#1a1f18]">Optional event photo</span>
-                  <span className="mt-1 block text-xs text-neutral-500">{photo ? photo.name : 'JPG, PNG, or WebP up to 4 MB'}</span>
-                </span>
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} className="sr-only" />
-              </label>
+                  <div className="group/input">
+                    <label
+                      htmlFor="testimony-email"
+                      className="mb-2 block font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
+                    >
+                      Email <span className="font-normal lowercase text-muted">(private)</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <Mail
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-4 h-4 w-4 text-muted/80 transition-colors group-focus-within/input:text-accent-ink"
+                      />
+                      <input
+                        id="testimony-email"
+                        type="email"
+                        maxLength={255}
+                        placeholder="you@example.com"
+                        value={form.email}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, email: event.target.value }))
+                        }
+                        className={modalInputClasses}
+                      />
+                    </div>
+                  </div>
 
-              <label className="flex items-start gap-3 rounded-xl bg-neutral-50 p-4 text-sm leading-6 text-neutral-600">
-                <input required type="checkbox" checked={form.consent} onChange={(event) => setForm((current) => ({ ...current, consent: event.target.checked }))} className="mt-1 h-4 w-4 flex-shrink-0 accent-[#8E7722]" />
-                I consent to Zion Events Place displaying this feedback publicly after moderation. My email will remain private.
-              </label>
+                  <div className="group/input">
+                    <label
+                      htmlFor="testimony-event-type"
+                      className="mb-2 block font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
+                    >
+                      Event Type <span className="text-accent-ink">*</span>
+                    </label>
+                    <ZionSelectPopover
+                      id="testimony-event-type"
+                      value={form.eventType}
+                      placeholder="Select event type"
+                      leadingIcon={
+                        <Sparkles aria-hidden="true" className="h-4 w-4 text-accent-ink" />
+                      }
+                      options={filterOptions.eventTypes.map((eventType) => ({
+                        value: eventType,
+                        label: eventType,
+                      }))}
+                      onChange={(value) => setForm((current) => ({ ...current, eventType: value }))}
+                      triggerClassName="rounded-2xl border border-zion-accent/25 bg-surface/85 px-4 py-3.5 shadow-sm hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:ring-4 focus:ring-zion-accent/15"
+                    />
+                  </div>
 
-              {submitError && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{submitError}</div>}
+                  <div className="group/input">
+                    <label
+                      htmlFor="testimony-event-date"
+                      className="mb-2 block font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
+                    >
+                      Event Date <span className="text-accent-ink">*</span>
+                    </label>
+                    <ZionDatePicker
+                      id="testimony-event-date"
+                      value={form.eventDate}
+                      maxDate={new Date().toISOString().slice(0, 10)}
+                      placeholder="Select event date"
+                      onChange={(value) => setForm((current) => ({ ...current, eventDate: value }))}
+                    />
+                  </div>
 
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button type="button" onClick={() => setIsFormOpen(false)} className="rounded-full border border-neutral-200 px-6 py-3 text-sm font-bold text-neutral-600 hover:bg-neutral-50">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1a1f18] px-7 py-3 text-sm font-bold text-white hover:bg-[#D6B53B] hover:text-[#1a1f18] disabled:cursor-not-allowed disabled:opacity-60">
-                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Submit Testimony
+                  <div className="group/input md:col-span-2">
+                    <label
+                      htmlFor="testimony-package"
+                      className="mb-2 block font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
+                    >
+                      Package Availed{' '}
+                      <span className="font-normal lowercase text-muted">(optional)</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <Package
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-4 h-4 w-4 text-muted/80 transition-colors group-focus-within/input:text-accent-ink"
+                      />
+                      <input
+                        id="testimony-package"
+                        maxLength={255}
+                        placeholder="e.g., Wedding Premium Package, Debut Classic"
+                        value={form.packageName}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, packageName: event.target.value }))
+                        }
+                        className={modalInputClasses}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Section 02: Ratings */}
+              <section className="space-y-5 border-t border-zion-accent/15 pt-7">
+                <div className="flex items-center gap-3">
+                  <span className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-accent-ink">
+                    02
+                  </span>
+                  <span aria-hidden="true" className="h-px w-8 bg-zion-accent/50" />
+                  <h3 className="font-serif text-xl font-semibold text-ink">
+                    Rate Your Experience
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <StarInput
+                    label="Overall rating"
+                    value={form.overallRating}
+                    onChange={(value) => updateRating('overallRating', value)}
+                    required
+                  />
+                  <StarInput
+                    label="Approach"
+                    value={form.approachRating}
+                    onChange={(value) => updateRating('approachRating', value)}
+                    required
+                  />
+                  <StarInput
+                    label="Food"
+                    value={form.foodRating}
+                    onChange={(value) => updateRating('foodRating', value)}
+                    required
+                  />
+                  <StarInput
+                    label="Service"
+                    value={form.serviceRating}
+                    onChange={(value) => updateRating('serviceRating', value)}
+                    required
+                  />
+                  <StarInput
+                    label="Venue"
+                    value={form.venueRating}
+                    onChange={(value) => updateRating('venueRating', value)}
+                  />
+                  <StarInput
+                    label="Communication"
+                    value={form.communicationRating}
+                    onChange={(value) => updateRating('communicationRating', value)}
+                  />
+                </div>
+              </section>
+
+              {/* Section 03: Written Testimony & Photo */}
+              <section className="space-y-5 border-t border-zion-accent/15 pt-7">
+                <div className="flex items-center gap-3">
+                  <span className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-accent-ink">
+                    03
+                  </span>
+                  <span aria-hidden="true" className="h-px w-8 bg-zion-accent/50" />
+                  <h3 className="font-serif text-xl font-semibold text-ink">
+                    Your Story &amp; Photo
+                  </h3>
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <label
+                      htmlFor="testimony-comment"
+                      className="font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink"
+                    >
+                      Written Testimony <span className="text-accent-ink">*</span>
+                    </label>
+                    <span className="font-sans text-xs font-medium text-muted">
+                      {form.comment.length.toLocaleString()} / 1,000
+                    </span>
+                  </div>
+                  <textarea
+                    id="testimony-comment"
+                    required
+                    minLength={20}
+                    maxLength={1000}
+                    rows={5}
+                    value={form.comment}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, comment: event.target.value }))
+                    }
+                    placeholder="Tell future clients what made your celebration special... (at least 20 characters)"
+                    className="w-full resize-y rounded-2xl border border-zion-accent/25 bg-surface/85 px-5 py-4 font-serif text-base leading-relaxed text-ink shadow-sm transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-zion-accent/40 bg-surface/65 p-5 transition-colors duration-300 hover:border-zion-accent/70 hover:bg-surface/90 sm:flex-row sm:items-center sm:justify-between">
+                  <label className="flex flex-1 cursor-pointer items-center gap-4">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--palette-client-button)]/25 text-accent-ink shadow-sm">
+                      <Camera className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-sans text-sm font-bold text-ink">
+                        Optional event photo
+                      </span>
+                      <span className="mt-0.5 block truncate font-sans text-xs text-muted">
+                        {photo ? photo.name : 'Click to upload JPG, PNG, or WebP (up to 4 MB)'}
+                      </span>
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+                      className="sr-only"
+                    />
+                  </label>
+                  {photo && (
+                    <button
+                      type="button"
+                      onClick={() => setPhoto(null)}
+                      aria-label="Remove selected photo"
+                      className="inline-flex items-center gap-1.5 self-start rounded-full border border-zion-accent/25 bg-surface px-3 py-1.5 font-sans text-xs font-semibold text-muted transition-colors hover:border-zion-accent hover:text-ink sm:self-center"
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                <label className="flex cursor-pointer items-start gap-3.5 rounded-2xl border border-zion-accent/20 bg-surface/75 p-4 text-sm leading-6 text-muted transition-colors hover:border-zion-accent/35">
+                  <input
+                    required
+                    type="checkbox"
+                    checked={form.consent}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, consent: event.target.checked }))
+                    }
+                    className="mt-1 h-4 w-4 flex-shrink-0 accent-[var(--palette-gold-ink)]"
+                  />
+                  <span className="font-serif">
+                    I consent to Zion Events Place displaying this feedback publicly after
+                    moderation. My email will remain private.
+                  </span>
+                </label>
+              </section>
+
+              {submitError && (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-red-200 bg-red-50 px-5 py-3.5 text-sm font-semibold text-red-700"
+                >
+                  {submitError}
+                </div>
+              )}
+
+              <div className="flex flex-col-reverse gap-3 border-t border-zion-accent/15 pt-6 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsFormOpen(false)}
+                  className="inline-flex min-h-12 items-center justify-center rounded-full border border-zion-accent/30 bg-transparent px-7 py-3 font-sans text-xs font-bold uppercase tracking-[0.16em] text-muted transition-colors duration-300 hover:border-zion-accent hover:bg-surface hover:text-ink"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="group/submit relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-8 py-3 font-sans text-xs font-bold uppercase tracking-[0.18em] text-ink shadow-sm transition-all duration-500 hover:shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 translate-y-full bg-[var(--palette-client-button-hover)] transition-transform duration-500 ease-in-out group-hover/submit:translate-y-0 motion-reduce:hidden"
+                  />
+                  <span className="relative z-10 inline-flex items-center gap-2">
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Send
+                        className="h-4 w-4 transition-transform duration-300 group-hover/submit:-translate-y-0.5 group-hover/submit:translate-x-0.5 motion-reduce:transform-none"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {isSubmitting ? 'Submitting...' : 'Submit Testimony'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -555,13 +950,15 @@ export default function TestimoniesClient({
       )}
 
       {successMessage && (
-        <div className="fixed inset-x-4 bottom-6 z-[170] mx-auto flex max-w-xl items-start gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl">
+        <div className="fixed inset-x-4 bottom-6 z-[170] mx-auto flex max-w-xl items-start gap-3 rounded-2xl border border-emerald-200 bg-surface p-4 shadow-2xl">
           <CheckCircle2 className="mt-0.5 h-6 w-6 flex-shrink-0 text-emerald-600" />
           <div className="flex-1">
             <p className="font-bold text-emerald-800">Experience shared</p>
-            <p className="mt-1 text-sm text-neutral-600">{successMessage}</p>
+            <p className="mt-1 text-sm text-muted">{successMessage}</p>
           </div>
-          <button type="button" onClick={() => setSuccessMessage('')}><X className="h-5 w-5 text-neutral-400" /></button>
+          <button type="button" onClick={() => setSuccessMessage('')}>
+            <X className="h-5 w-5 text-neutral-400" />
+          </button>
         </div>
       )}
     </>

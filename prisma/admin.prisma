@@ -1,0 +1,109 @@
+// Additive admin schema. Generate SQL from this file only; never reset the client database.
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+}
+model AdminBooking {
+  id String @id @default(cuid())
+  reference String @unique
+  clientName String @db.VarChar(180)
+  email String @db.VarChar(255)
+  phone String @db.VarChar(40)
+  eventType String @db.VarChar(100)
+  packageName String @db.VarChar(180)
+  venue String @db.VarChar(100)
+  startsAt DateTime
+  endsAt DateTime
+  guests Int
+  totalCents Int
+  depositCents Int
+  paymentRule String @db.VarChar(30)
+  approval String @default("PENDING") @db.VarChar(20)
+  reservation String @default("REQUESTED") @db.VarChar(20)
+  verification String @default("UNREVIEWED") @db.VarChar(20)
+  verificationNote String @default("") @db.Text
+  verifiedBy String?
+  verifiedAt DateTime?
+  notes String @default("") @db.Text
+  decisionReason String @default("") @db.Text
+  policyVersion Int
+  revision Int @default(1)
+  createdBy String
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payments AdminCashPayment[]
+  contracts AdminContract[]
+  @@index([startsAt, reservation])
+  @@index([approval, createdAt])
+  @@index([email])
+  @@map("zion_admin_bookings")
+}
+model AdminCashPayment {
+  id String @id @default(cuid())
+  bookingId String
+  booking AdminBooking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  receiptNumber String @unique @db.VarChar(80)
+  amountCents Int
+  receivedAt DateTime
+  recordedBy String
+  note String @default("") @db.Text
+  voidedAt DateTime?
+  voidedBy String?
+  voidReason String?
+  createdAt DateTime @default(now())
+  @@index([bookingId, receivedAt])
+  @@map("zion_admin_cash_payments")
+}
+model AdminContract {
+  id String @id @default(cuid())
+  bookingId String
+  booking AdminBooking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  version Int
+  bookingRevision Int
+  body String @db.Text
+  status String @default("DRAFT") @db.VarChar(20)
+  createdBy String
+  finalizedBy String?
+  signedBy String?
+  signedAt DateTime?
+  signedReference String?
+  createdAt DateTime @default(now())
+  @@unique([bookingId, version])
+  @@map("zion_admin_contracts")
+}
+model AdminPolicy {
+  id String @id @default("venue")
+  reviewed Boolean @default(false)
+  paymentRule String @default("DEPOSIT_REQUIRED") @db.VarChar(30)
+  cashInstructions String @default("Pay cash at Zion Events Place after staff approval. Ask staff to confirm the amount and payment deadline before paying.") @db.Text
+  contractTerms String @default("") @db.Text
+  version Int @default(1)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  @@map("zion_admin_policy")
+}
+model AdminOutbox {
+  id String @id @default(cuid())
+  bookingId String
+  event String @db.VarChar(40)
+  recipient String @db.VarChar(255)
+  subject String
+  body String @db.Text
+  status String @default("QUEUED") @db.VarChar(20)
+  attempts Int @default(0)
+  lastError String?
+  nextAttemptAt DateTime @default(now())
+  sentAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([status, nextAttemptAt])
+  @@map("zion_admin_outbox")
+}
+model AdminRateLimit {
+  key String @id
+  attempts Int @default(1)
+  windowAt DateTime @default(now())
+  @@map("zion_admin_rate_limits")
+}

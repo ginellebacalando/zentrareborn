@@ -1,7 +1,4 @@
-import {
-  getFeaturedTestimonies,
-  testimonyErrorResponse,
-} from '@/lib/testimony-service';
+import { getFeaturedTestimonies, testimonyErrorResponse } from '@/lib/testimony-service';
 import { requireClientFeature, settingsErrorResponse } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';

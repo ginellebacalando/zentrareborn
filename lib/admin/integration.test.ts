@@ -1,0 +1,727 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { createServer } from 'pglite-server';
+
+test(
+  'admin workflows persist safely in an isolated PostgreSQL test database',
+  { timeout: 120000 },
+  async () => {
+    const db = new PGlite();
+    await db.waitReady;
+    const sql = execFileSync(
+      process.execPath,
+      [
+        'node_modules/prisma/build/index.js',
+        'migrate',
+        'diff',
+        '--from-empty',
+        '--to-schema',
+        'prisma/schema.prisma',
+        '--script',
+      ],
+      { encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 },
+    );
+    const start = sql.indexOf('-- CreateSchema');
+    assert.ok(start >= 0, 'Expected generated schema SQL');
+    await db.exec(sql.slice(start));
+    const adminSql = readFileSync('prisma/admin.sql', 'utf8');
+    await db.exec(adminSql.slice(adminSql.indexOf('-- Admin-only data')));
+    const server = createServer(db);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    process.env.DATABASE_URL = `postgresql://postgres@127.0.0.1:${address.port}/postgres`;
+    process.env.DATABASE_POOL_MAX = '1';
+    process.env.AUTH_SECRET = randomBytes(32).toString('hex');
+    const { prisma } = await import('../prisma');
+    const { adminMutate, adminRead } = await import('./service');
+    const actor = {
+      id: 'test-owner',
+      email: 'owner@example.test',
+      username: 'owner',
+      fullName: 'Test Owner',
+      profileImage: null,
+      contactNumber: null,
+      role: 'SUPERADMIN' as const,
+      status: 'ACTIVE' as const,
+      mustChangePassword: false,
+      lastPasswordChangedAt: null,
+    };
+    const administrator = {
+      ...actor,
+      id: 'test-admin',
+      role: 'ADMIN' as const,
+    };
+    try {
+      await prisma.user.create({
+        data: {
+          id: actor.id,
+          username: actor.username,
+          email: actor.email,
+          role: actor.role,
+          status: 'ACTIVE',
+        },
+      });
+      await prisma.user.create({
+        data: {
+          id: 'test-client-account',
+          username: 'client',
+          email: 'client-account@example.test',
+          role: 'CLIENT',
+          status: 'ACTIVE',
+        },
+      });
+      await prisma.inquiry.create({
+        data: {
+          id: 'test-business-inquiry',
+          inquiryReference: 'INQ-TEST-001',
+          fullName: 'Inquiry Client',
+          email: 'inquiry@example.test',
+          message: 'Please share the available wedding packages.',
+          eventInterest: 'Wedding',
+        },
+      });
+      const directory = await adminRead('team', new URLSearchParams(), actor);
+      assert.ok('team' in directory && directory.team);
+      assert.deepEqual(
+        directory.team.map((member) => member.id),
+        [actor.id],
+      );
+      assert.ok(directory.team.every((member) => !('passwordHash' in member)));
+      const inbox = await adminRead('inquiries', new URLSearchParams(), actor);
+      assert.ok('inquiries' in inbox && inbox.inquiries);
+      assert.equal(inbox.inquiries.length, 1);
+      assert.equal(inbox.inquiries[0].id, 'test-business-inquiry');
+      await assert.rejects(
+        adminMutate(
+          {
+            op: 'settings',
+            version: 1,
+            reviewed: true,
+            paymentRule: 'NO_PAYMENT_REQUIRED',
+            cashInstructions: 'Pay cash at the venue after approval.',
+            contractTerms: 'Test reviewed terms. '.repeat(10),
+          },
+          administrator,
+        ),
+        /super administrator/,
+      );
+      await adminMutate(
+        {
+          op: 'settings',
+          version: 1,
+          reviewed: true,
+          paymentRule: 'DEPOSIT_REQUIRED',
+          cashInstructions:
+            'Pay the agreed reservation fee in cash at Zion Events Place after approval; the balance is due before the event.',
+          contractTerms: 'Venue reviewed terms and cash policy. '.repeat(10),
+        },
+        actor,
+      );
+      const startsAt = new Date(Date.now() + 86400000).toISOString(),
+        endsAt = new Date(Date.now() + 90000000).toISOString();
+      const input = {
+        clientName: 'Test Client',
+        email: 'client@example.test',
+        phone: '09123456789',
+        eventType: 'Wedding',
+        packageName: 'Classic',
+        venue: 'Zion Events Place',
+        startsAt,
+        endsAt,
+        guests: 50,
+        totalCents: 10000000,
+        depositCents: 3000000,
+        paymentRule: 'DEPOSIT_REQUIRED',
+        notes: 'Test data only',
+      };
+      const inquiryPrefill = await adminRead(
+        'bookings',
+        new URLSearchParams({ inquiry: 'test-business-inquiry' }),
+        actor,
+      );
+      assert.ok(
+        'inquiry' in inquiryPrefill && inquiryPrefill.inquiry?.id === 'test-business-inquiry',
+      );
+      await assert.rejects(
+        adminMutate(
+          { op: 'create-booking', booking: input, sourceInquiryId: 'missing-inquiry' },
+          actor,
+        ),
+        /Source inquiry not found/,
+      );
+      assert.equal(await prisma.adminBooking.count(), 0);
+      const created = (await adminMutate(
+        { op: 'create-booking', booking: input, sourceInquiryId: 'test-business-inquiry' },
+        actor,
+      )) as {
+        id: string;
+      };
+      const originAudit = await prisma.auditLog.findFirst({
+        where: { module: 'Bookings', action: 'CREATE' },
+        orderBy: { timestamp: 'desc' },
+      });
+      assert.deepEqual(originAudit?.metadata, {
+        bookingId: created.id,
+        sourceInquiryId: 'test-business-inquiry',
+      });
+      const alerts = await adminRead('notifications', new URLSearchParams(), actor);
+      assert.ok('notifications' in alerts && alerts.notifications);
+      assert.deepEqual(
+        alerts.notifications.map((notice) => notice.id),
+        ['pending-bookings', 'new-inquiries'],
+      );
+      assert.ok(alerts.notifications.every((notice) => notice.href.startsWith('/admin/')));
+      const insights = await adminRead('analytics', new URLSearchParams(), actor);
+      assert.ok('analytics' in insights);
+      assert.deepEqual(insights.analytics, {
+        totalBookings: 1,
+        inquiryCount: 1,
+        cashCents: 0,
+        reservations: [{ label: 'REQUESTED', count: 1 }],
+        eventTypes: [{ label: 'Wedding', count: 1 }],
+      });
+      const get = () =>
+        prisma.adminBooking.findUniqueOrThrow({
+          where: { id: created.id },
+          include: { payments: true, contracts: true },
+        });
+      const action = async (action: string) => {
+        const b = await get();
+        return adminMutate(
+          {
+            op: 'booking-action',
+            id: b.id,
+            revision: b.revision,
+            action,
+            reason: 'Verified by staff telephone call.',
+          },
+          actor,
+        );
+      };
+      await assert.rejects(action('APPROVE'), /Verify the client/);
+      await action('VERIFY');
+      await action('APPROVE');
+      const reviewedAlerts = await adminRead('notifications', new URLSearchParams(), actor);
+      assert.ok('notifications' in reviewedAlerts && reviewedAlerts.notifications);
+      assert.ok(!reviewedAlerts.notifications.some((notice) => notice.id === 'pending-bookings'));
+      let b = await get();
+      assert.equal(b.reservation, 'REQUESTED');
+      assert.equal(b.payments.length, 0);
+      await assert.rejects(action('CONFIRM'), /reservation fee/);
+      const receipt = {
+        op: 'cash-receipt',
+        id: b.id,
+        revision: b.revision,
+        amountCents: 3000000,
+        receiptNumber: 'TEST-001',
+        receivedAt: new Date().toISOString(),
+        note: 'Cash collected at venue',
+      };
+      await adminMutate(receipt, actor);
+      await assert.rejects(adminMutate(receipt, actor), /changed/);
+      b = await get();
+      await assert.rejects(
+        adminMutate(
+          {
+            ...receipt,
+            revision: b.revision,
+            amountCents: 99999999,
+            receiptNumber: 'TEST-OVER',
+          },
+          actor,
+        ),
+        /exceeds/,
+      );
+      await action('CONFIRM');
+      b = await get();
+      assert.equal(b.reservation, 'CONFIRMED');
+      await assert.rejects(
+        adminMutate(
+          {
+            op: 'void-receipt',
+            id: b.id,
+            paymentId: b.payments[0].id,
+            revision: b.revision,
+            reason: 'Correction required',
+          },
+          administrator,
+        ),
+        /super administrator/,
+      );
+      await assert.rejects(
+        adminMutate(
+          {
+            op: 'void-receipt',
+            id: b.id,
+            paymentId: b.payments[0].id,
+            revision: b.revision,
+            reason: 'Correction required',
+          },
+          actor,
+        ),
+        /Cancel the reservation/,
+      );
+      await adminMutate({ op: 'create-contract', id: b.id, revision: b.revision }, actor);
+      b = await get();
+      const c = b.contracts[0];
+      assert.match(c.body, /Test Client/);
+      assert.match(c.body, /ZION EVENTS PLACE/);
+      await adminMutate(
+        {
+          op: 'contract-action',
+          id: b.id,
+          revision: b.revision,
+          contractId: c.id,
+          action: 'ISSUE',
+        },
+        actor,
+      );
+      await adminMutate(
+        {
+          op: 'contract-action',
+          id: b.id,
+          revision: b.revision,
+          contractId: c.id,
+          action: 'SIGN',
+          signer: 'Test Client',
+          reference: 'Filed signed document 001',
+        },
+        actor,
+      );
+      assert.equal((await get()).contracts[0].status, 'SIGNED');
+      const other = (await adminMutate(
+        {
+          op: 'create-booking',
+          booking: { ...input, email: 'other@example.test' },
+        },
+        actor,
+      )) as { id: string };
+      for (const decision of ['VERIFY', 'APPROVE']) {
+        const x = await prisma.adminBooking.findUniqueOrThrow({
+          where: { id: other.id },
+        });
+        await adminMutate(
+          {
+            op: 'booking-action',
+            id: x.id,
+            revision: x.revision,
+            action: decision,
+            reason: 'Confirmed contact by telephone.',
+          },
+          actor,
+        );
+      }
+      let x = await prisma.adminBooking.findUniqueOrThrow({
+        where: { id: other.id },
+      });
+      await adminMutate(
+        {
+          ...receipt,
+          id: x.id,
+          revision: x.revision,
+          receiptNumber: 'TEST-002',
+        },
+        actor,
+      );
+      x = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
+      await assert.rejects(
+        adminMutate(
+          {
+            op: 'booking-action',
+            id: x.id,
+            revision: x.revision,
+            action: 'CONFIRM',
+            reason: 'Request for same date',
+          },
+          actor,
+        ),
+        /conflicts/,
+      );
+      const dashboard = (await adminRead('dashboard', new URLSearchParams(), actor)) as {
+        confirmed: number;
+        cashCents: number;
+      };
+      assert.equal(dashboard.confirmed, 1);
+      assert.equal(dashboard.cashCents, 6000000);
+      await adminMutate(
+        {
+          op: 'settings',
+          version: 2,
+          reviewed: true,
+          paymentRule: 'FULL_PAYMENT_REQUIRED',
+          cashInstructions:
+            'Pay the entire agreed price in cash at Zion Events Place before staff confirms the reservation.',
+          contractTerms: 'Venue reviewed revised terms and full cash policy. '.repeat(10),
+        },
+        actor,
+      );
+      b = await get();
+      await assert.rejects(
+        adminMutate({ op: 'create-contract', id: b.id, revision: b.revision }, actor),
+        /older policy/,
+      );
+      assert.equal(
+        (await prisma.adminContract.findUniqueOrThrow({ where: { id: c.id } })).body,
+        c.body,
+        'New policy must not rewrite an existing signed agreement',
+      );
+      x = await prisma.adminBooking.findUniqueOrThrow({
+        where: { id: other.id },
+      });
+      await assert.rejects(
+        adminMutate({ op: 'create-contract', id: x.id, revision: x.revision }, actor),
+        /Re-review/,
+      );
+      for (const decision of ['REVIEW_POLICY', 'APPROVE']) {
+        x = await prisma.adminBooking.findUniqueOrThrow({
+          where: { id: x.id },
+        });
+        await adminMutate(
+          {
+            op: 'booking-action',
+            id: x.id,
+            revision: x.revision,
+            action: decision,
+            reason: 'Owner reviewed the updated full cash policy.',
+          },
+          actor,
+        );
+      }
+      x = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
+      assert.equal(x.policyVersion, 3);
+      assert.equal(x.paymentRule, 'FULL_PAYMENT_REQUIRED');
+      await assert.rejects(
+        adminMutate(
+          {
+            op: 'booking-action',
+            id: x.id,
+            revision: x.revision,
+            action: 'CONFIRM',
+            reason: 'Checked cash prerequisites.',
+          },
+          actor,
+        ),
+        /Full cash payment/,
+      );
+      assert.ok((await prisma.auditLog.count({ where: { source: 'zion-admin' } })) > 5);
+      assert.ok((await prisma.adminOutbox.count()) > 3);
+      assert.equal(
+        await prisma.adminOutbox.count({ where: { status: 'ACCEPTED' } }),
+        0,
+        'Queued messages must not be presented as sent',
+      );
+      const { processAdminNotifications } = await import('./notifications');
+      const originalFetch = globalThis.fetch,
+        originalKey = process.env.ADMIN_RESEND_API_KEY,
+        originalFrom = process.env.ADMIN_MAIL_FROM;
+      try {
+        delete process.env.ADMIN_RESEND_API_KEY;
+        await assert.rejects(processAdminNotifications(), /not configured/);
+        process.env.ADMIN_RESEND_API_KEY = 'isolated-mock-key';
+        process.env.ADMIN_MAIL_FROM = 'Zion <venue@example.test>';
+        let requests = 0;
+        globalThis.fetch = async (input, options) => {
+          assert.equal(input, 'https://api.resend.com/emails');
+          const headers = options?.headers as Record<string, string>;
+          assert.match(headers['Idempotency-Key'], /^zion-admin-/);
+          const message = JSON.parse(String(options?.body));
+          assert.match(message.body ?? message.text, /Approval:.*\nReservation:.*\nPayment:/);
+          requests++;
+          return requests === 1
+            ? Response.json({ error: 'Test rejection' }, { status: 400 })
+            : Response.json({ id: `mock-${requests}` });
+        };
+        const dispatched = await processAdminNotifications();
+        assert.ok(dispatched.accepted > 0);
+        assert.equal(dispatched.processed, requests);
+        assert.equal(
+          await prisma.adminOutbox.count({
+            where: { status: 'REVIEW_REQUIRED' },
+          }),
+          1,
+          'Rejected sends must be held for review, not retried blindly',
+        );
+        assert.equal(
+          await prisma.adminOutbox.count({ where: { status: 'ACCEPTED' } }),
+          dispatched.accepted,
+        );
+      } finally {
+        globalThis.fetch = originalFetch;
+        if (originalKey === undefined) delete process.env.ADMIN_RESEND_API_KEY;
+        else process.env.ADMIN_RESEND_API_KEY = originalKey;
+        if (originalFrom === undefined) delete process.env.ADMIN_MAIL_FROM;
+        else process.env.ADMIN_MAIL_FROM = originalFrom;
+      }
+      const security = await db.query<{ relrowsecurity: boolean }>(
+        "SELECT relrowsecurity FROM pg_class WHERE relname LIKE 'zion_admin_%' AND relkind='r'",
+      );
+      assert.equal(security.rows.length, 6);
+      assert.ok(security.rows.every((r) => r.relrowsecurity));
+
+      const { getAdminPreferences, saveAdminPreferences, activityCsv, csvCell } =
+        await import('./preferences');
+      const { getPublicSystemSettings, requireClientFeature } = await import('../system-settings');
+      await prisma.systemSetting.create({
+        data: {
+          id: 'singleton',
+          settings: { unrelated: { preserved: true }, client: { faqVisible: false } },
+        },
+      });
+      const initialPreferences = await getAdminPreferences();
+      const preferenceDraft = structuredClone(initialPreferences.settings);
+      preferenceDraft.appearance.defaultTheme = 'dark';
+      preferenceDraft.admin.security.sessionTimeoutMinutes = 15;
+      preferenceDraft.admin.notifications.customerInquiries = false;
+      preferenceDraft.admin.notifications.systemAlerts = false;
+      preferenceDraft.admin.localization.timezone = 'Asia/Tokyo';
+      preferenceDraft.admin.localization.dateFormat = 'YYYY-MM-DD (ISO)';
+      preferenceDraft.client.maintenanceMode = true;
+      preferenceDraft.client.disabledMessage = 'Temporarily closed for testing.';
+      const updatePreferences = {
+        op: 'preferences',
+        settings: preferenceDraft,
+        updatedAt: initialPreferences.updatedAt,
+      };
+      await assert.rejects(
+        saveAdminPreferences(updatePreferences, administrator),
+        /super administrator/,
+      );
+      const savedPreferences = await saveAdminPreferences(updatePreferences, actor);
+      assert.deepEqual(savedPreferences.settings, preferenceDraft);
+      const storedPreferences = await prisma.systemSetting.findUniqueOrThrow({
+        where: { id: 'singleton' },
+      });
+      assert.deepEqual((storedPreferences.settings as { unrelated: unknown }).unrelated, {
+        preserved: true,
+      });
+      await assert.rejects(saveAdminPreferences(updatePreferences, actor), /another window/);
+      await assert.rejects(
+        saveAdminPreferences(
+          {
+            ...updatePreferences,
+            updatedAt: savedPreferences.updatedAt,
+            settings: {
+              ...preferenceDraft,
+              admin: { ...preferenceDraft.admin, security: { sessionTimeoutMinutes: 0 } },
+            },
+          },
+          actor,
+        ),
+      );
+      const publicPreferences = await getPublicSystemSettings();
+      assert.equal(publicPreferences.appearance.defaultTheme, 'dark');
+      assert.equal(publicPreferences.localization.timezone, 'Asia/Tokyo');
+      assert.equal(publicPreferences.client.faqVisible, false);
+      assert.ok(!('admin' in publicPreferences));
+      await assert.rejects(
+        requireClientFeature('inquirySubmissions'),
+        /Temporarily closed for testing/,
+      );
+      const filteredAlerts = await adminRead('notifications', new URLSearchParams(), actor);
+      assert.ok('notifications' in filteredAlerts && filteredAlerts.notifications);
+      assert.ok(
+        !filteredAlerts.notifications.some((notice) =>
+          ['new-inquiries', 'delivery-issues', 'policy-review'].includes(notice.id),
+        ),
+      );
+      assert.ok(filteredAlerts.notifications.some((notice) => notice.id === 'payment-updates'));
+      const mutedDraft = structuredClone(preferenceDraft);
+      mutedDraft.admin.notifications.paymentUpdates = false;
+      mutedDraft.admin.notifications.bookingConfirmations = false;
+      mutedDraft.admin.notifications.bookingCancellations = false;
+      mutedDraft.admin.notifications.contractUpdates = false;
+      await saveAdminPreferences(
+        { op: 'preferences', settings: mutedDraft, updatedAt: savedPreferences.updatedAt },
+        actor,
+      );
+      const mutedAlerts = await adminRead('notifications', new URLSearchParams(), actor);
+      assert.ok('notifications' in mutedAlerts && mutedAlerts.notifications);
+      assert.ok(
+        !mutedAlerts.notifications.some((notice) =>
+          [
+            'payment-updates',
+            'booking-confirmations',
+            'booking-cancellations',
+            'contract-updates',
+          ].includes(notice.id),
+        ),
+      );
+      await prisma.auditLog.create({
+        data: {
+          userId: 'test-client-account',
+          userName: 'Other user',
+          userRole: 'CLIENT',
+          action: 'UPDATE',
+          module: 'Settings',
+          description: 'OTHER-USER-PRIVATE-LOG',
+          status: 'SUCCESS',
+        },
+      });
+      const ownCsv = await activityCsv({ ...actor, role: 'ADMIN' }, 'Asia/Manila');
+      assert.ok(ownCsv.startsWith('\uFEFF"Date and time"'));
+      assert.ok(!ownCsv.includes('OTHER-USER-PRIVATE-LOG'));
+      assert.equal(csvCell('=SUM(1,2)'), '"\'=SUM(1,2)"');
+      await assert.rejects(activityCsv(actor, 'Invalid/Timezone'), /Unsupported export timezone/);
+
+      const { readCatalog, saveCatalog } = await import('./catalog');
+      const { getPublicPackageBySlug, getPublicEventCategories } =
+        await import('../services-packages');
+      const categoryInput = {
+        op: 'catalog-category',
+        id: null,
+        updatedAt: null,
+        category: {
+          name: 'Catalog Weddings',
+          slug: 'catalog-weddings',
+          description: 'Wedding services in the isolated test catalog.',
+          coverImageUrl: '',
+          displayOrder: 10,
+          status: 'ACTIVE',
+          clientVisible: true,
+        },
+      };
+      await assert.rejects(saveCatalog(categoryInput, administrator), /super administrator/);
+      const newCategory = await saveCatalog(categoryInput, actor);
+      const packageInput = {
+        op: 'catalog-package',
+        id: null,
+        updatedAt: null,
+        package: {
+          eventCategoryId: newCategory.categoryId,
+          packageName: 'Classic Catalog',
+          slug: 'classic-catalog-test',
+          description: 'Original package description.',
+          price: 50000,
+          currency: 'PHP',
+          paxIncluded: 100,
+          excessPaxFee: 500,
+          reservationFee: 10000,
+          downPaymentAmount: 15000,
+          fullPaymentAmount: 50000,
+          checkInTime: '2 PM',
+          checkOutTime: '10 PM',
+          packageImageUrl: '',
+          contractItemDescription: 'Wedding package',
+          contractInclusionDescription: 'Tables and chairs',
+          internalNotes: 'OWNER-ONLY-CATALOG-NOTE',
+          status: 'ACTIVE',
+          clientVisible: true,
+          inclusions: [
+            {
+              inclusionName: 'Tables and chairs',
+              description: '',
+              isFree: true,
+              isOptional: false,
+              displayOrder: 0,
+            },
+          ],
+        },
+      };
+      await assert.rejects(saveCatalog(packageInput, administrator), /super administrator/);
+      await saveCatalog(packageInput, actor);
+      const catalog = await readCatalog(
+        new URLSearchParams({ category: newCategory.categoryId }),
+        actor,
+      );
+      assert.equal(catalog.packages.length, 1);
+      const firstPackage = catalog.packages[0];
+      assert.equal(firstPackage.currentVersion, 1);
+      const published = await getPublicPackageBySlug(packageInput.package.slug);
+      assert.equal(published.price, 50000);
+      assert.equal(published.inclusions.length, 1);
+      assert.ok(!('internalNotes' in published));
+      const editPackage = {
+        ...packageInput,
+        id: firstPackage.id,
+        updatedAt: firstPackage.updatedAt.toISOString(),
+        package: {
+          ...packageInput.package,
+          price: 60000,
+          description: 'Updated package description.',
+          inclusions: [
+            { ...packageInput.package.inclusions[0], id: firstPackage.inclusions[0].id },
+          ],
+        },
+      };
+      await saveCatalog(editPackage, actor);
+      const updatedCatalog = await readCatalog(
+        new URLSearchParams({ category: newCategory.categoryId, q: 'Classic' }),
+        actor,
+      );
+      assert.equal(updatedCatalog.total, 1);
+      assert.equal(updatedCatalog.packages[0].currentVersion, 2);
+      assert.equal(updatedCatalog.packages[0].inclusions[0].id, firstPackage.inclusions[0].id);
+      assert.equal((await getPublicPackageBySlug(packageInput.package.slug)).price, 60000);
+      const versions = await prisma.packageVersion.findMany({
+        where: { packageId: firstPackage.id },
+        orderBy: { versionNumber: 'asc' },
+      });
+      assert.deepEqual(
+        versions.map((version) => (version.snapshotData as { price: number }).price),
+        [50000, 60000],
+      );
+      assert.ok(
+        versions.every((version) => !('internalNotes' in (version.snapshotData as object))),
+      );
+      await assert.rejects(saveCatalog(editPackage, actor), /record changed/);
+      await assert.rejects(saveCatalog(packageInput, actor), /slug already exists/);
+      await assert.rejects(
+        saveCatalog({ ...packageInput, package: { ...packageInput.package, price: -1 } }, actor),
+      );
+      await assert.rejects(
+        saveCatalog(
+          {
+            ...packageInput,
+            package: { ...packageInput.package, packageImageUrl: 'javascript:alert(1)' },
+          },
+          actor,
+        ),
+      );
+      await assert.rejects(
+        saveCatalog(
+          {
+            ...editPackage,
+            updatedAt: updatedCatalog.packages[0].updatedAt.toISOString(),
+            package: {
+              ...editPackage.package,
+              inclusions: [
+                { ...editPackage.package.inclusions[0], id: 'another-package-inclusion' },
+              ],
+            },
+          },
+          actor,
+        ),
+        /belongs to another package/,
+      );
+      await saveCatalog(
+        {
+          ...categoryInput,
+          id: newCategory.categoryId,
+          updatedAt: updatedCatalog.category!.updatedAt.toISOString(),
+          category: {
+            ...categoryInput.category,
+            name: 'Updated Catalog Weddings',
+            clientVisible: false,
+          },
+        },
+        actor,
+      );
+      assert.ok(
+        !(await getPublicEventCategories()).some(
+          (category) => category?.id === newCategory.categoryId,
+        ),
+      );
+      await assert.rejects(getPublicPackageBySlug(packageInput.package.slug), /not found/);
+      assert.equal(await prisma.packageVersion.count({ where: { packageId: firstPackage.id } }), 2);
+    } finally {
+      await prisma.$disconnect();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await db.close();
+    }
+  },
+);

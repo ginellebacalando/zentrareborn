@@ -54,9 +54,7 @@ export default function GalleryRibbon({
             key={groupIndex}
           >
             {group.map(({ image, isOriginal }, imageIndex) => {
-              const src = optimizedPublicMediaPath(
-                typeof image === 'string' ? image : image.src,
-              );
+              const src = optimizedPublicMediaPath(typeof image === 'string' ? image : image.src);
               const alt = typeof image === 'string' ? '' : image.alt;
               const isAccessibleItem = groupIndex === 0 && isOriginal;
 

@@ -1,0 +1,273 @@
+.stepEnter {
+  animation: stepSlideIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.summaryEnter {
+  animation: summaryReveal 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.activeNodeHalo {
+  animation: nodePulse 2.4s ease-in-out infinite;
+}
+
+.emotePop {
+  display: inline-block;
+  animation: emoteSwapPop 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Clean borderless guest count input (outer stepper pill displays focus ring) */
+.guestCountInput:focus,
+.guestCountInput:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Active water fill: stays solidly filled up to previous step and surges toward the current ongoing step */
+.liquidFillComplete {
+  width: 100%;
+}
+
+.liquidFillSurging {
+  width: var(--surge-target, 0%);
+  animation: liquidReachCurrentStep 2.8s ease-in-out infinite;
+}
+
+/* Realistic flowing multi-wave layers inside the horizontal glass tube */
+.liquidWaveSvg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  min-width: 200%;
+  max-width: none;
+  height: 100%;
+}
+
+.liquidWaveBack {
+  animation: liquidFlowRight 4.2s linear infinite;
+}
+
+.liquidWaveMid {
+  animation: liquidFlowRight 2.7s linear infinite;
+}
+
+.liquidWaveFront {
+  animation: liquidFlowRight 1.9s linear infinite;
+}
+
+.liquidCurrentShimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 10%,
+    color-mix(in srgb, var(--palette-white) 42%, transparent) 38%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  animation: liquidShimmerFlow 2.6s linear infinite;
+}
+
+.liquidBubbles {
+  position: absolute;
+  inset: 0.35rem 0 0.15rem;
+  background-image:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--palette-white) 75%, transparent) 0 1.4px,
+      transparent 1.8px
+    ),
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--palette-white) 55%, transparent) 0 1px,
+      transparent 1.4px
+    );
+  background-size:
+    46px 14px,
+    30px 12px;
+  background-position:
+    0 4px,
+    18px 8px;
+  animation: liquidBubblesDrift 2.2s linear infinite;
+}
+
+/* Concentric luxury golden spinner with Zion logo centered inside */
+.zionLoaderRing {
+  position: relative;
+  display: flex;
+  height: 11.5rem;
+  width: 11.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.zionLoaderTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 3px solid color-mix(in srgb, var(--palette-gold) 24%, transparent);
+}
+
+.zionLoaderArcOuter {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  border-top-color: var(--palette-booklet-cover);
+  border-right-color: var(--palette-client-section);
+  animation: spinClockwise 1.25s cubic-bezier(0.55, 0.25, 0.45, 0.75) infinite;
+}
+
+.zionLoaderArcInner {
+  position: absolute;
+  inset: 0.7rem;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  border-bottom-color: var(--palette-gold);
+  border-left-color: color-mix(in srgb, var(--palette-gold-ink) 65%, transparent);
+  animation: spinCounterClockwise 1.9s linear infinite;
+}
+
+.zionLoaderCore {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  height: 7.75rem;
+  width: 7.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--palette-paper);
+  border: 1px solid color-mix(in srgb, var(--palette-gold) 28%, transparent);
+  box-shadow: 0 14px 36px -18px color-mix(in srgb, var(--palette-ink) 35%, transparent);
+  padding: 1rem;
+}
+
+@keyframes stepSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes summaryReveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes emoteSwapPop {
+  from {
+    opacity: 0.4;
+    transform: scale(0.72);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes nodePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--palette-booklet-cover) 60%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--palette-booklet-cover) 0%, transparent);
+  }
+}
+
+@keyframes liquidReachCurrentStep {
+  0% {
+    width: var(--surge-start, 0%);
+  }
+
+  70% {
+    width: var(--surge-target, 25%);
+  }
+
+  88% {
+    width: calc(var(--surge-target, 25%) - 2.5%);
+  }
+
+  100% {
+    width: var(--surge-start, 0%);
+  }
+}
+
+@keyframes liquidFlowRight {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes liquidShimmerFlow {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -40% 0;
+  }
+}
+
+@keyframes liquidBubblesDrift {
+  from {
+    background-position:
+      0 4px,
+      18px 8px;
+  }
+
+  to {
+    background-position:
+      46px 4px,
+      48px 8px;
+  }
+}
+
+@keyframes spinClockwise {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinCounterClockwise {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepEnter,
+  .summaryEnter,
+  .activeNodeHalo,
+  .emotePop,
+  .liquidFillSurging,
+  .liquidWaveBack,
+  .liquidWaveMid,
+  .liquidWaveFront,
+  .liquidCurrentShimmer,
+  .liquidBubbles,
+  .zionLoaderArcOuter,
+  .zionLoaderArcInner {
+    animation: none;
+  }
+}

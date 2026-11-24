@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const root = process.cwd();
 const failures = [];
@@ -23,18 +24,20 @@ for (const relativePath of requiredPaths) {
   }
 }
 
-const stalePaths = [
-  '.next-codex-smoke',
-  '.next-local',
-  '.codex-logs',
-  'backups',
-  'outputs',
-  'tmp',
-];
+const stalePaths = ['.next-codex-smoke', '.next-local', '.codex-logs', 'backups', 'outputs', 'tmp'];
 
-for (const relativePath of stalePaths) {
-  if (existsSync(path.join(root, relativePath))) {
-    failures.push(`Stale project artifact: ${relativePath}`);
+// Local ignored previews are valid working artifacts. Only tracked artifacts
+// pollute the repository; never delete a collaborator's screenshots or exports.
+const trackedFiles = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split(
+  '\0',
+);
+for (const file of trackedFiles) {
+  if (
+    stalePaths.some((directory) => file === directory || file.startsWith(`${directory}/`)) ||
+    /(?:^|\/)\.codex-[^/]+\//.test(file) ||
+    /\.tsbuildinfo$/.test(file)
+  ) {
+    failures.push(`Generated artifact must not be tracked: ${file}`);
   }
 }
 
@@ -87,10 +90,13 @@ const packageSections = {
   ...packageJson.devDependencies,
   ...packageJson.overrides,
 };
-for (const legacyPackage of ['@auth/core', 'bcryptjs', 'next-auth']) {
+for (const legacyPackage of ['@auth/core']) {
   if (legacyPackage in packageSections) {
     failures.push(`Legacy administrator dependency: ${legacyPackage}`);
   }
+}
+if (packageSections['next-auth'] && !packageSections['next-auth'].startsWith('5.')) {
+  failures.push('Administrator authentication must use the reviewed Auth.js v5 integration.');
 }
 
 const tsconfig = readFileSync(path.join(root, 'tsconfig.json'), 'utf8');

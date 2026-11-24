@@ -1,11 +1,12 @@
-import { handlePublicContentError, listPublishedContent, parseContentType } from '@/services/public-content';
+import {
+  handlePublicContentError,
+  listPublishedContent,
+  parseContentType,
+} from '@/services/public-content';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ type: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ type: string }> }) {
   try {
     const { type } = await params;
     const contentType = parseContentType(decodeURIComponent(type));
@@ -14,4 +15,3 @@ export async function GET(
     return handlePublicContentError(error);
   }
 }
-

@@ -6,12 +6,13 @@ import PublicSubpageShell from '@/components/client/PublicSubpageShell';
 export default function RulesFallback() {
   return (
     <PublicSubpageShell heroKey="rules">
-      
       <div className="relative z-10 w-full bg-transparent pb-24">
         <div className="mx-auto max-w-5xl px-6 pt-16 md:pt-20">
-          <div className="mb-12 text-center font-serif text-neutral-900">
-            <p className="mx-auto max-w-3xl text-lg leading-relaxed text-neutral-600 md:text-xl">
-              These general guidelines help protect guests, suppliers, and the venue. Your signed agreement and the latest instructions from the Zion team remain the final authority for your event.
+          <div className="mb-12 text-center font-serif text-ink">
+            <p className="mx-auto max-w-3xl text-lg leading-relaxed text-muted md:text-xl">
+              These general guidelines help protect guests, suppliers, and the venue. Your signed
+              agreement and the latest instructions from the Zion team remain the final authority
+              for your event.
             </p>
           </div>
 
@@ -44,29 +45,28 @@ export default function RulesFallback() {
             ].map((rule, index) => (
               <section
                 key={rule.title}
-                className="rounded-3xl border border-[#D6B53B]/25 bg-white/55 p-7 shadow-sm backdrop-blur-sm md:p-9"
+                className="rounded-3xl border border-zion-accent/25 bg-surface/55 p-7 shadow-sm backdrop-blur-sm md:p-9"
               >
-                <p className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-[#B69222]">
+                <p className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-[var(--palette-gold-border)]">
                   Guideline {index + 1}
                 </p>
-                <h2 className="mb-4 font-sahitya text-2xl text-[#1a1f18] md:text-3xl">
-                  {rule.title}
-                </h2>
-                <p className="font-serif text-lg leading-relaxed text-neutral-600">
-                  {rule.text}
-                </p>
+                <h2 className="mb-4 font-sahitya text-2xl text-ink md:text-3xl">{rule.title}</h2>
+                <p className="font-serif text-lg leading-relaxed text-muted">{rule.text}</p>
               </section>
             ))}
           </div>
 
-          <div className="mt-12 rounded-3xl bg-[#1a1f18] px-7 py-10 text-center text-white md:px-12">
-            <h2 className="mb-4 font-sahitya text-3xl md:text-4xl">Need to confirm a venue requirement?</h2>
+          <div className="mt-12 rounded-3xl bg-[var(--palette-night-subtle)] px-7 py-10 text-center text-white md:px-12">
+            <h2 className="mb-4 font-sahitya text-3xl md:text-4xl">
+              Need to confirm a venue requirement?
+            </h2>
             <p className="mx-auto mb-7 max-w-2xl font-serif text-lg leading-relaxed text-white/80">
-              Contact the Zion team before finalizing suppliers, equipment, or special effects so the correct event-specific guidance can be documented.
+              Contact the Zion team before finalizing suppliers, equipment, or special effects so
+              the correct event-specific guidance can be documented.
             </p>
             <Link
               href="/contact"
-              className="inline-flex rounded-full border border-[#FDEB9E] px-8 py-3 text-sm font-bold uppercase tracking-[0.18em] text-[#FDEB9E] transition-colors hover:bg-[#FDEB9E] hover:text-[#1a1f18]"
+              className="inline-flex rounded-full border border-[var(--palette-gold-soft)] px-8 py-3 text-sm font-bold uppercase tracking-[0.18em] text-[var(--palette-gold-soft)] transition-colors hover:bg-[var(--palette-gold-soft)] hover:text-ink"
             >
               Contact Zion
             </Link>

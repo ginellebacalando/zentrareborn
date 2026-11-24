@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from './useReducedMotion';
 
 interface AnimatedNumberProps {
   end: number;
@@ -8,52 +9,91 @@ interface AnimatedNumberProps {
   duration?: number;
 }
 
-export default function AnimatedNumber({ end, suffix = '', duration = 2000 }: AnimatedNumberProps) {
-  const [count, setCount] = useState(0);
-  const [isVisible, setIsVisible] = useState(false);
-  const domRef = useRef<HTMLSpanElement>(null);
+const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
+
+export default function AnimatedNumber({ end, suffix = '', duration = 1100 }: AnimatedNumberProps) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const reducedMotion = useReducedMotion();
+  const [rolled, setRolled] = useState(false);
 
   useEffect(() => {
+    if (reducedMotion || !('IntersectionObserver' in window)) return;
+    const node = ref.current;
+    if (!node) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          setIsVisible(true);
-          if (domRef.current) observer.unobserve(domRef.current);
-        }
+        entries.forEach((entry) => {
+          setRolled(entry.isIntersecting);
+        });
       },
-      { threshold: 0.1 }
+      { threshold: 0.15 },
     );
-    
-    if (domRef.current) {
-      observer.observe(domRef.current);
-    }
-    
+
+    observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [reducedMotion]);
 
-  useEffect(() => {
-    if (!isVisible) return;
+  const chars = String(end).split('');
 
-    let startTime: number | null = null;
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = timestamp - startTime;
-      const percentage = Math.min(progress / duration, 1);
-      
-      // Easing function (easeOutExpo)
-      const easeOut = percentage === 1 ? 1 : 1 - Math.pow(2, -10 * percentage);
-      
-      setCount(Math.floor(end * easeOut));
+  if (reducedMotion) {
+    return (
+      <span ref={ref} className="inline-flex items-baseline tabular-nums">
+        {end}
+        {suffix}
+      </span>
+    );
+  }
 
-      if (percentage < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setCount(end);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  }, [isVisible, end, duration]);
-
-  return <span ref={domRef}>{count}{suffix}</span>;
+  return (
+    <span ref={ref} className="inline-flex items-baseline tabular-nums">
+      <span className="sr-only">
+        {end}
+        {suffix}
+      </span>
+      <span aria-hidden="true" className="inline-flex items-baseline">
+        {chars.map((char, index) => {
+          const numeric = Number(char);
+          if (Number.isNaN(numeric)) {
+            return <span key={`${index}-${char}`}>{char}</span>;
+          }
+          return (
+            <span
+              key={`${index}-${char}`}
+              className="relative inline-block h-[1.15em] overflow-hidden align-bottom leading-[1.15]"
+            >
+              <span
+                className="flex flex-col transition-transform ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+                style={{
+                  transitionDuration: `${duration}ms`,
+                  transitionDelay: `${index * 110}ms`,
+                  transform: rolled
+                    ? `translate3d(0, -${numeric * 10}%, 0)`
+                    : 'translate3d(0, 0, 0)',
+                }}
+              >
+                {DIGITS.map((digit) => (
+                  <span key={digit} className="block h-[1.15em] leading-[1.15]">
+                    {digit}
+                  </span>
+                ))}
+              </span>
+            </span>
+          );
+        })}
+        {suffix && (
+          <span
+            className="inline-block transition-all duration-500 ease-out"
+            style={{
+              transitionDelay: `${chars.length * 100}ms`,
+              opacity: rolled ? 1 : 0,
+              transform: rolled ? 'translate3d(0, 0, 0)' : 'translate3d(0, 0.35em, 0)',
+            }}
+          >
+            {suffix}
+          </span>
+        )}
+      </span>
+    </span>
+  );
 }

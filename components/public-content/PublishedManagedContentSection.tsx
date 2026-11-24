@@ -4,14 +4,12 @@ import StructuredContentRenderer from './StructuredContentRenderer';
 
 export type ManagedPublicContentType = 'ABOUT' | 'CONTACT';
 
-const MANAGED_PUBLIC_CONTENT_TYPES = new Set<ManagedPublicContentType>([
-  'ABOUT',
-  'CONTACT',
-]);
+const MANAGED_PUBLIC_CONTENT_TYPES = new Set<ManagedPublicContentType>(['ABOUT', 'CONTACT']);
 
 function isManagedPublicContentType(value: unknown): value is ManagedPublicContentType {
-  return typeof value === 'string'
-    && MANAGED_PUBLIC_CONTENT_TYPES.has(value as ManagedPublicContentType);
+  return (
+    typeof value === 'string' && MANAGED_PUBLIC_CONTENT_TYPES.has(value as ManagedPublicContentType)
+  );
 }
 
 export default async function PublishedManagedContentSection({
@@ -30,17 +28,26 @@ export default async function PublishedManagedContentSection({
   try {
     items = await listPublishedContent(type as ContentType);
   } catch {
-    console.warn(`[public-content] Optional ${type} content is unavailable; rendering the page fallback.`);
+    console.warn(
+      `[public-content] Optional ${type} content is unavailable; rendering the page fallback.`,
+    );
     return null;
   }
 
   if (!items.length) return null;
 
   return (
-    <section aria-label={label} className="relative z-10 w-full bg-[#FFF9DC]/75 px-4 py-12 md:px-8 md:py-16">
+    <section
+      aria-label={label}
+      className="relative z-10 w-full bg-[var(--palette-gold-soft)]/75 px-4 py-12 md:px-8 md:py-16"
+    >
       <div className="mx-auto max-w-5xl space-y-12">
         {items.map((item) => (
-          <div id={`${type.toLowerCase()}-${item.slug}`} key={item.id} className="scroll-mt-28 rounded-3xl border border-[#D6B53B]/20 bg-white/75 p-6 shadow-sm md:p-10">
+          <div
+            id={`${type.toLowerCase()}-${item.slug}`}
+            key={item.id}
+            className="scroll-mt-28 rounded-3xl border border-zion-accent/20 bg-surface/75 p-6 shadow-sm md:p-10"
+          >
             <StructuredContentRenderer type={item.type} payload={item.version?.payload} />
           </div>
         ))}

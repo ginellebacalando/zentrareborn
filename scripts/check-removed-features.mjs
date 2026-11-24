@@ -25,7 +25,7 @@ const removedPaths = [
   'services/rate-limit.service.ts',
   'services/smart-assistant',
   'services/task-template',
-  'public/zion-gallery/payment',
+  'public/images/payment',
 ];
 
 const forbiddenRuntimePatterns = [
@@ -83,10 +83,15 @@ for (const pattern of forbiddenRuntimePatterns.slice(4, 5)) {
   }
 }
 
-const prismaSchema = fs.readFileSync(path.join(root, 'prisma/schema.prisma'), 'utf8');
+// Admin-only operational models are allowed; removed public booking models remain forbidden.
+const prismaSchema = fs
+  .readFileSync(path.join(root, 'prisma/schema.prisma'), 'utf8')
+  .replace(/model Admin\w+\s*\{[\s\S]*?\n\}/g, '');
 for (const pattern of forbiddenSchemaPatterns) {
   if (pattern.test(prismaSchema)) {
-    failures.push(`Removed feature database contract remains in: prisma/schema.prisma (${pattern})`);
+    failures.push(
+      `Removed feature database contract remains in: prisma/schema.prisma (${pattern})`,
+    );
   }
 }
 

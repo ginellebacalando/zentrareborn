@@ -1,7 +1,4 @@
-import {
-  getPublicPackagesForCategory,
-  handleServicesError,
-} from '@/lib/services-packages';
+import { getPublicPackagesForCategory, handleServicesError } from '@/lib/services-packages';
 import { requireClientFeature, settingsErrorResponse } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';
@@ -11,14 +8,16 @@ export async function GET(request: Request) {
     await requireClientFeature('packages');
     const url = new URL(request.url);
     const categorySlug = (
-      url.searchParams.get('categorySlug') ??
-      url.searchParams.get('slug')
+      url.searchParams.get('categorySlug') ?? url.searchParams.get('slug')
     )?.trim();
 
     if (!categorySlug) {
-      return Response.json({
-        error: 'categorySlug is required.',
-      }, { status: 400 });
+      return Response.json(
+        {
+          error: 'categorySlug is required.',
+        },
+        { status: 400 },
+      );
     }
 
     return Response.json(

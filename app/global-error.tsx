@@ -49,7 +49,7 @@ export default function GlobalError({
             again in a moment.
           </p>
           {error.digest ? (
-            <p style={{ color: '#777', fontSize: '12px' }}>Reference: {error.digest}</p>
+            <p style={{ color: '#526255', fontSize: '12px' }}>Reference: {error.digest}</p>
           ) : null}
           <button
             type="button"

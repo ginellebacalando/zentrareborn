@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.next-*/
+out/
+build/
+coverage/
+outputs/
+.codex-*/
+public/
+package-lock.json
+next-env.d.ts
+*.tsbuildinfo
+app/_fonts/*.txt
+prisma/*.sql

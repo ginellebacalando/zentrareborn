@@ -1,0 +1,311 @@
+.section {
+  margin-bottom: var(--space-6);
+  min-width: 0;
+}
+.sectionHeading,
+.cardHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.sectionHeading {
+  align-items: flex-end;
+  margin-bottom: var(--space-4);
+}
+.sectionHeading p,
+.section .cardHeading p {
+  margin: var(--space-1) 0 0;
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+.scope {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+.period {
+  min-width: 10rem;
+}
+.period select {
+  border-color: var(--admin-action);
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: var(--space-6);
+}
+.grid > .card {
+  margin-bottom: 0;
+  padding: var(--layout-card-padding);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.section .card h3 {
+  font-size: var(--type-card-title);
+  color: var(--admin-ink);
+}
+.cardHeading {
+  margin-bottom: var(--space-4);
+}
+.total {
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-section-title);
+  line-height: var(--line-heading);
+  color: var(--admin-ink);
+  overflow-wrap: anywhere;
+}
+.total small {
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-caption);
+  color: var(--admin-muted);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+.legend span,
+.reservationLegend li > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.oak {
+  --chart-tone: var(--admin-oak);
+}
+.rose {
+  --chart-tone: var(--admin-rose);
+}
+.taupe {
+  --chart-tone: var(--admin-taupe);
+}
+.peach {
+  --chart-tone: var(--admin-peach);
+}
+.ink {
+  --chart-tone: var(--admin-on-color);
+}
+.swatch {
+  display: inline-block;
+  width: var(--space-3);
+  height: var(--space-3);
+  flex: 0 0 var(--space-3);
+  border: 1px solid var(--admin-muted);
+  border-radius: var(--space-1);
+  background: var(--chart-tone);
+}
+.plotLayout {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  gap: var(--space-2);
+  min-width: 0;
+}
+.axis {
+  height: 15rem;
+  padding-block: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  line-height: 1;
+}
+.plot {
+  position: relative;
+  min-width: 0;
+  height: 15rem;
+}
+.plot svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.gridLines {
+  stroke: var(--admin-divider);
+  stroke-dasharray: 3 5;
+  stroke-width: 1;
+}
+.floor {
+  fill: var(--admin-surface-subtle);
+  stroke: var(--admin-divider);
+  stroke-width: 1;
+}
+.barFront {
+  fill: var(--chart-tone);
+  stroke: var(--admin-on-color);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.barSide,
+.donutSide {
+  fill: color-mix(in srgb, var(--chart-tone) 70%, var(--admin-on-color));
+}
+.barTop {
+  fill: color-mix(in srgb, var(--chart-tone) 72%, var(--admin-ivory));
+  stroke: var(--admin-on-color);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.labelsInset {
+  margin-left: calc(3.25rem + var(--space-2));
+}
+.monthLabels {
+  list-style: none;
+  margin: var(--space-2) 0 var(--space-4);
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--month-count), minmax(0, 1fr));
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  text-align: center;
+}
+.monthLabels abbr {
+  text-decoration: none;
+  white-space: nowrap;
+}
+.emptyPlot {
+  position: absolute;
+  inset: var(--space-4) var(--space-2) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  pointer-events: none;
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+.emptyPlot strong,
+.emptyPlot span {
+  background: var(--admin-surface-card);
+  padding-inline: var(--space-2);
+}
+.donutScene {
+  width: 100%;
+  max-width: 22rem;
+  margin: 0 auto var(--space-2);
+  position: relative;
+}
+.donutScene svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.donutShadow {
+  fill: color-mix(in srgb, var(--admin-shadow) 12%, transparent);
+  filter: blur(6px);
+}
+.donutTop {
+  fill: var(--chart-tone);
+  stroke: var(--admin-on-color);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.emptyRingSide {
+  fill: var(--admin-border);
+}
+.emptyRingTop {
+  fill: var(--admin-surface-selected);
+  stroke: var(--admin-border);
+}
+.donutCenter {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: 45%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--admin-ink);
+}
+.donutCenter strong {
+  display: block;
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-workspace-title);
+  line-height: 1;
+}
+.donutCenter span {
+  display: block;
+  margin-top: var(--space-2);
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+}
+.reservationLegend {
+  padding: 0;
+  margin: 0 0 var(--space-4);
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+.reservationLegend li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+.reservationLegend strong {
+  color: var(--admin-ink);
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.reservationLegend small {
+  margin: 0;
+  min-width: 3rem;
+  text-align: right;
+}
+.cash {
+  grid-column: 1 / -1;
+}
+.cashGradientStart {
+  stop-color: color-mix(in srgb, var(--admin-taupe) 75%, var(--admin-surface-card));
+}
+.cashGradientEnd {
+  stop-color: color-mix(in srgb, var(--admin-peach) 75%, var(--admin-surface-card));
+}
+.areaSide {
+  fill: color-mix(in srgb, var(--admin-taupe) 70%, var(--admin-on-color));
+}
+.cashLine {
+  fill: none;
+  stroke: var(--admin-accent-ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.cashPoint {
+  fill: var(--admin-surface-card);
+  stroke: var(--admin-accent-ink);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+@media (max-width: 1150px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cash {
+    grid-column: auto;
+  }
+}
+@media (max-width: 640px) {
+  .fullYear li:nth-child(even) {
+    visibility: hidden;
+  }
+  .period {
+    width: 100%;
+  }
+  .total {
+    font-size: var(--type-workspace-title);
+  }
+}

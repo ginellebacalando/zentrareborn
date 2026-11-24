@@ -1,0 +1,17 @@
+export function chartMaximum(values: number[]) {
+  const maximum = Math.max(0, ...values);
+  if (maximum <= 4) return 4;
+  const magnitude = 10 ** Math.floor(Math.log10(maximum / 4));
+  const fraction = maximum / 4 / magnitude;
+  const step = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10;
+  return step * magnitude * 4;
+}
+
+export function donutWedgePath(start: number, end: number) {
+  const finish = Math.min(end, start + Math.PI * 2 - 0.000001);
+  const point = (angle: number, x: number, y: number) =>
+    `${160 + Math.cos(angle) * x},${104 + Math.sin(angle) * y}`;
+  const largeArc = finish - start > Math.PI ? 1 : 0;
+  return `M${point(start, 126, 80)} A126,80 0 ${largeArc} 1 ${point(finish, 126, 80)}
+    L${point(finish, 76, 48)} A76,48 0 ${largeArc} 0 ${point(start, 76, 48)} Z`;
+}

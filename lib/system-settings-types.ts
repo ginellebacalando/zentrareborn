@@ -20,11 +20,7 @@ export type PublicSystemSettings = {
   };
 };
 
-export const LANGUAGE_OPTIONS = [
-  'English (US)',
-  'Tagalog (PH)',
-  'Spanish (ES)',
-] as const;
+export const LANGUAGE_OPTIONS = ['English (US)', 'Tagalog (PH)', 'Spanish (ES)'] as const;
 
 export const TIMEZONE_OPTIONS = [
   { value: 'Asia/Manila', label: '(GMT+08:00) Manila, Taipei' },
@@ -50,7 +46,8 @@ export const DEFAULT_PUBLIC_SYSTEM_SETTINGS: PublicSystemSettings = {
     faqVisible: true,
     publicTestimoniesVisible: true,
     testimonySubmissionsEnabled: true,
-    disabledMessage: 'This feature is temporarily unavailable. Please contact Zion Events Place directly for assistance.',
+    disabledMessage:
+      'This feature is temporarily unavailable. Please contact Zion Events Place directly for assistance.',
   },
   localization: {
     language: 'English (US)',

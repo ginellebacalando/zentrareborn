@@ -1,0 +1,396 @@
+# Zion Events Place — private admin workspace
+
+## Scope and preservation
+
+Local development and production-start commands are pinned to port 3001. Open
+`http://localhost:3001/admin`; local auth and public/developer origins use that port.
+
+The staff panel is available at `/admin`. Its sidebar contains Dashboard,
+Booking, Contract, Calendar, Inquiries, Payment, Services & Packages, Analytics,
+and Team, in that order,
+with System Logs immediately above Settings at the bottom. Logout is available only as
+Sign out in the profile menu. The menu scrolls independently on short screens
+so both bottom links remain visible. The notification bell and admin profile stay
+at the upper right inside a fixed header, with a 10px gap between their
+control groups (8px on mobile). The header shows the current page name only while
+the desktop sidebar is collapsed or the mobile drawer is closed.
+Settings appears only in the sidebar; the profile dropdown contains My Profile
+and Sign out. The admin footer and its copyright/workspace/timezone/currency text
+are removed.
+The notification bell sits to the left of the admin account. Its panel
+shows live summaries of pending requests, unanswered inquiries, flagged requests,
+delivery issues, and owner policy review, with links to the relevant modules.
+The badge counts actionable alert groups, not unread messages; no fabricated
+notification history or read receipts are shown. Updates refresh every minute
+and when the bell is opened. The account control follows the old ZenTra design:
+a flat taupe circular photo/initial avatar, separate round chevron control, and a
+compact dropdown showing a larger avatar, truncated name and email, warm brown
+role label, My Profile link, and a separated red Sign out action.
+Both popovers support Escape, outside-click dismissal, and narrow screens.
+The Profile page also follows the old layout with a branded identity card,
+taupe avatar and role badge, contact details, and a separate security card.
+It uses the current profile fields and save workflow; the account controls refresh
+after an account detail change.
+System Logs is a standalone sidebar destination at `/admin/logs`, immediately above
+Settings, with its own active state. The old `/admin/settings/logs` bookmark redirects
+to it after the existing access checks. Settings contains only its settings content,
+without section tabs linking to Logs. The log activity filters, pagination, notification
+outbox, and workflow history remain separate from the main settings forms.
+Only the current sidebar destination is selected. Inquiries
+shows received business inquiries, Analytics shows real booking and cash aggregates,
+and Team provides a read-only directory of administrator accounts.
+
+The sidebar header follows the old ZenTra layout: a compact full organization logo,
+the stacked name "Zion Events Place" and "Admin Panel", and an adjacent toggle.
+The logo is 48px square, with balanced insets and spacing so the full name and
+toggle remain clear; it is centered in the collapsed rail. The logo/brand remain in the sidebar.
+Dashboard uses its original content gutters again, matching the other pages.
+The mobile drawer retains its logo, with sufficient space for the separate menu/account controls.
+The mobile menu trigger stays fixed in the header, with a clear surface behind it
+even when page content scrolls underneath. Its Close control stays above the drawer.
+Its 20px panel-and-arrow icon has no background, border, or button shadow, while
+retaining a 44px click target. The divider slides and
+the arrow rotates when opening or closing, with hover and press feedback.
+On desktop, the toggle smoothly reduces the sidebar to an 80px rail showing
+the logo, page icons, and Settings icon. Labels fade out; accessible names and hover
+titles identify the links. In the compact rail, the 44px expand button sits over
+the organization logo and appears when the pointer hovers over that logo.
+The logo fades away during the reveal so the plain icon remains clear.
+Keyboard focus also reveals it; devices without hover keep it visible for tapping.
+The logo's dashboard link is hidden from keyboard and assistive navigation while
+the expand button occupies its place. Expanded and mobile toggle behavior is retained.
+The attached extension and its 3D/jelly effects are removed. Sidebar icons reuse the exact old ZenTra
+PNG masks for Dashboard, Booking, Calendar, Inquiries, Analytics, and Settings,
+and the same Flaticon glyphs for Contract, Payment, and Team.
+The sidebar uses Pale Oak (`#E3CAA5` via `--palette-admin-oak`) in light mode, alongside the main
+`#F5EFE1` page canvas, establishing a clear visual distinction between the navigation sidebar and the workspace background. The header uses a softly tinted inset surface, rounded card frame and restrained shadow. The selected nav row uses the canvas background (`--admin-surface-page`)
+to bridge seamlessly into the main content area, with rounded left ends and inverse curves on the right.
+The sidebar retains its rounded outer right corners.
+Settings uses the same selection shape; compact rails keep the curves. Dark mode
+uses `--palette-admin-night-card` (`#302622`) for the sidebar over the `--palette-admin-night` (`#211916`) canvas,
+maintaining readable navigation text and clear surface separation in both themes.
+The mobile dismissal backdrop blurs the underlying page so its text does not
+compete with the open menu.
+Existing labels, order, icons, and destinations remain in place.
+The main heading and selected sidebar link identify the current page in both sidebar states;
+the header adds the page name when the sidebar is collapsed.
+The repeated "Zion Events Place" caption above admin page titles and on the login
+page is removed; the organization branding remains in the sidebar.
+The dashboard greets the signed-in administrator by name with Good morning,
+Good afternoon, or Good evening in the configured system timezone, refreshing
+every minute and when the window regains focus. A short purpose sentence below it
+reads: "Track revenue, bookings, upcoming events, and pending inquiries in one place."
+On mobile,
+the full drawer, focus handling, and reduced-motion support still apply.
+
+The current public client design, navigation, contact flow, published terms, services, and removed public features are preserved. Only the root chrome bridge hides the public header/background/footer inside `/admin`. No public booking form, online payment gateway, assistant, or public admin link was restored. Prior image organization and branding edits were not repeated or overwritten.
+
+## Admin color theme
+
+Admin page controls use a 16px radius derived from the shared card token, scoped
+to the content area. Buttons and fields retain their 44px targets, persistent
+labels, visible focus and disabled states. Cards/filter/settings/report panels use
+a restrained shadow from the approved admin ink role. Circular account controls,
+the plain sidebar toggle and navigation curves keep their existing shapes.
+
+The fixed admin header follows the user's rounded inset-container reference. It
+sits 16px from the top/right/sidebar on desktop and 8px from the viewport edges on
+mobile, with a 20px outer radius, 4px semantic card frame and softly tinted inner
+surface. Existing account controls and collapsed-page identification remain; no
+sample search/mail controls were added. Header heights remain 70px/62px.
+Where supported, a separate background layer combines a 94% tint with 16px blur;
+the opaque fallback uses the same semantic surface. Keeping the filter on that
+layer preserves viewport positioning for mobile popovers. Main-content top spacing
+is 110px desktop/94px mobile; scroll clearance is 102px/86px. Controls and opened
+menus remain above page features. Mobile popovers and the drawer start at 78px,
+with bounded heights and scrolling within the viewport.
+The sidebar, drawer and dismissal backdrop remain above the header; native dialogs
+keep their browser top layer and focus behavior. No recurring animation is added;
+the existing reduced-motion guards also disable the header's sidebar-resize transition.
+
+The four Dashboard cards show current-year secured contract sales, unresolved
+inquiries without secured bookings, all future confirmed bookings, and all-time
+confirmed/completed bookings. Each includes a dated comparison, numeric change
+and direction. Pending growth describes review workload. Missing confirmation or
+inquiry attribution history is disclosed rather than treated as a reliable zero.
+See [the Dashboard KPI contract](dashboard-kpi-contract.md) for exact scopes.
+The overview order and exact visible labels are Total Revenue, Total Bookings,
+Upcoming Events, Pending Inquiries. Total Revenue uses Soft Peach (`#FFE1AF`,
+`--admin-peach`) with dark ink in both themes. The other cards use white surfaces
+(semantic dark surfaces in Evening Gala), muted labels, 24px semibold Inter totals,
+small arrow/percentage pills. Comparison sentences and the native Comparison
+details disclosure are removed from the visible overview.
+Large sales totals (at least PHP 10,000) and changes use the existing compact
+formatter. Exact PHP values, comparison dates and definitions remain in accessible
+card names and visually hidden static content, with no invisible keyboard controls. Green pills indicate
+increased sales/bookings or fewer unresolved inquiries; neutral pills describe
+other changes. All directions also use arrows and signed numbers.
+The Analytics module continues to report receipt-based cash income separately.
+
+The user-approved palette is defined in `styles/tokens.css`: Ivory Mist (`#FFFBE9`),
+Pale Oak (`#E3CAA5`), Soft Peach (`#FFE1AF`), Dusty Taupe (`#AD8B73`), and Dusty Rose
+(`#B77466`). Admin components use the `--admin-*` semantic roles; their light/dark
+switch is scoped by `data-admin-theme`, preserving the other surfaces' foundations.
+
+The light page canvas uses `#F5EFE1` via `--palette-admin-canvas`; light cards carry
+the longer forms, lists, and tables. The sidebar uses its own
+`--admin-surface-sidebar` role: Pale Oak (`#E3CAA5`) in light mode and
+warm charcoal card surface (`#302622`) in dark mode, ensuring visual separation from the page canvas in both themes.
+Analytics summary cards use oak, peach, taupe, and rose in that order. The Dashboard
+summary now follows the user's neutral card reference and reuses the existing
+success palette for favourable badges. Oak/peach appear in section states, table headings, and notices; taupe
+and rose are restrained accents for avatars, notifications, and state feedback.
+Primary actions use a dark warm neutral with readable ivory text. All four summary
+colors use dark ink rather than low-contrast white labels. Dark mode uses warm
+charcoal surfaces with the same palette accents. Existing content and workflows
+are retained; the reference charts and business figures are not demonstration data.
+
+The design gate checks the admin's semantic text, focus, control-border, status,
+and summary-card color pairs in both themes, alongside the existing shared checks.
+Rendered blends, keyboard behavior, responsive layout, and theme states also need
+contextual browser review; those checks are recorded in the design change log.
+
+## Admin controls and page layout
+
+The administrator pages share scoped controls, readable opaque placeholders,
+44px control targets, visible focus, quieter secondary actions and spaced cards.
+Control borders derive from the approved admin semantic palette; the existing
+warm light/dark themes and fonts remain the foundation. Motion is limited to
+brief control feedback, with reduced-motion rules covering pseudo-elements too.
+
+Booking, payment, contract and calendar searches keep their existing scope.
+Optional status/date filters sit in a keyboard-accessible disclosure with an
+active count and a visible applied-filter summary. Booking forms separate client,
+event and agreement details using fieldsets. Mobile booking registers use labeled
+cards with independent approval, reservation and payment states. Team uses a
+responsive directory. Receipts use readable cards; correction forms and secondary
+agreement details can be expanded when needed. Payment/contract views open their
+relevant booking detail section. Existing role and server validation remain in force.
+
+Advanced Settings sections use native disclosures. Required owner policy review
+remains prominent. Theme choices include a visible selected checkmark. Dashboard
+and Analytics favor charts, short labels, totals, arrows and percentages. Their
+explanatory paragraphs, comparison sentences and chart-data disclosures are removed
+from view. Exact data tables and calculation definitions remain available to
+assistive technology as static content; Analytics CSV export and data definitions
+are preserved. Quality/error/loading notices remain visible. The all-time Analytics
+breakdown uses labelled proportional bars rather than a text-heavy disclosure.
+
+Catalog editors keep native modal semantics, visible labels, focus containment,
+Escape/Cancel return focus, and a logical return target after a successful save.
+Server errors retain values and receive focus at the top of the editor. Booking
+review similarly focuses its heading and returns to the opener, with search as a
+fallback when that opener is no longer present. No new booking, payment channel,
+automatic approval, model or notification workflow is introduced by this UI change.
+
+## Dashboard charts
+
+The dashboard includes a grouped bar chart of booking requests and business inquiries,
+an extruded donut/pie chart of current reservation statuses, and a cash-collection area
+trend. Faceted bars, layered donut walls, and a shallow area extrusion provide the
+requested 3D appearance using the existing warm palette. The charts use native SVG;
+there is no external chart service or new rendering dependency.
+
+The Chart period control switches the activity and cash charts between the last six
+and twelve calendar months, including the current month through the response time.
+Month boundaries use Asia/Manila. Requests use their recorded date; inquiries use
+submission date; cash uses receipt date and excludes voided or future-dated receipts.
+The reservation mix is explicitly all-time and reflects each request's current status.
+Receipt-based cash remains distinct from Dashboard's annual secured-contract sales.
+
+The authenticated dashboard response includes only aggregate chart values from
+`lib/admin/dashboard.ts`. Missing months are zero-filled; empty charts show an honest
+zero-data state. No sample values are inserted into the venue database. Every chart
+has a static exact-value table available to assistive technology, an accessible summary,
+and visible essential labels. There are no hidden focusable table-disclosure controls.
+Charts reflow at 320px and use the existing light/dark roles. Depth is static, with no
+automatic movement, rotation, or dependency on animation to read the data.
+
+## Business analytics
+
+Analytics includes weekly, monthly, quarterly, and yearly reports with a date
+selector, previous/current/next period controls, aggregate CSV export, and an
+income/booking trajectory indicator. It compares actual non-voided cash receipts
+and newly secured bookings against the previous equivalent interval. Current
+periods compare elapsed time; full historical periods compare calendar periods.
+Dates and boundaries use Asia/Manila, with Monday weeks and calendar quarters.
+
+The overview distinguishes selected-period cash income, all-time cash income,
+current pending balances on secured bookings, approved prospective request value,
+newly secured bookings, secured event dates, completed events, and current inquiry
+cohort outcomes. Balances and inquiry outcomes are current snapshots, even when
+viewing a past reporting period. Expenses are not recorded, so the indicator is
+not a profit/loss result. Existing all-time reservation and event-type summaries
+remain available below the new reports.
+
+Faceted SVG event/conversion bars, a collection-progress donut, and an extruded
+cash area chart reuse the dashboard chart primitives and approved warm palette.
+Brief entry/period-change and hover depth effects honor the shared JavaScript
+reduced-motion hook and CSS preference. Values remain visible without motion;
+there is no recurring animation. Each chart includes an exact-value table.
+
+Booking creation now stores a verified source inquiry id (or known direct origin)
+in existing CREATE audit metadata. Historical names, emails, and editable notes
+are never used to guess conversions. Tracking gaps make the overall conversion
+rate unavailable, while verified counts remain visible. Missing dated confirmation
+history similarly limits the combined trajectory. No database migration or public
+intake module is introduced. See [the reporting contract](analytics-report-contract.md)
+for exact definitions, date bases, and safeguards.
+
+## Settings copied from old ZenTra
+
+Services & Packages is placed immediately after Payment in the sidebar, using
+the original services icon. Administrators can view current categories and
+packages; super administrators can create and edit categories, pricing, visibility,
+package details, and inclusions. New entries start hidden from clients. Saves are
+validated, audited, checked for stale edits, and invalidate the relevant public
+page cache. Package edits create version snapshots while preserving earlier
+versions and unchanged inclusion identities. Private notes are excluded from
+published snapshots. The page reads the existing catalog tables; it does not
+seed, import, or modify records merely by opening the page. Existing bookings
+retain their agreed details. Image fields accept existing local paths or HTTPS
+URLs; no new upload provider or deletion feature was introduced.
+
+Settings includes Appearance & Theme, Session & Advanced Security, Client Panel
+Controls, Communications, and Localization & Data. Existing reservation/cash
+policy and delivery information remain below these sections. Changes require an
+explicit Save Changes action by a super administrator; viewing the page or
+previewing a theme never writes preferences. Unrelated settings JSON is preserved,
+and concurrent stale saves are rejected.
+
+Light Mode and Evening Gala preview the admin theme. Saved defaults and client
+feature controls use the existing system_settings row and public settings reader.
+Session timeouts apply at the next regular login; existing sessions and temporary
+local preview access keep their expiry. Alert preferences filter attention items
+and recent confirmation, cancellation, payment, and contract updates. Client
+transaction emails are independent. Display dates and CSV exports use saved
+localization; venue scheduling and contract timestamps remain in Manila time.
+Language selection controls date formatting rather than translating the full UI.
+
+Online Booking and Smart Assistant are unavailable, per the user's clarification.
+Testimony/support admin alerts, authenticator enrollment, and destructive-action
+password prompts are unavailable where their supporting modules or flows do not
+exist. No missing modules are restored. CSV export downloads at most 10,000
+activity records, scoped to the administrator's own records unless they are a
+super administrator, with formula escaping, private response headers, and auditing.
+Public settings responses never expose private admin/security preferences.
+
+## Panel-feedback traceability
+
+The three source PDFs were reviewed as project feedback, not as authorization for unrelated actions. This table records paraphrases, not verbatim quotations.
+
+| Panel / feedback                                               | Admin implementation or scope boundary                                                                                                                                                      |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cruz — form presentation and buttons                           | Clearly labeled forms, grouped actions, validation messages, loading states, and responsive controls.                                                                                       |
+| Cruz — repeated breadcrumb/title                               | One page heading; no repeated module breadcrumb.                                                                                                                                            |
+| Cruz — meaningful search                                       | Database-backed search by booking reference, client, email, event, or package; logs search activity descriptions.                                                                           |
+| Cruz — demonstrate real automation                             | Transactional notice queue, conflict checks, contract preparation, and actual dispatch states; no fabricated success metric.                                                                |
+| Cruz — explain contract generation                             | Versioned snapshots of verified booking details, cash policy, reviewed terms, and signature lines; review before issue.                                                                     |
+| Cruz — reduce redundant UI                                     | Shared module shell and booking detail; distinct dashboard metrics and status labels.                                                                                                       |
+| Cruz — calendar date filters                                   | Manila-time date range, month navigation, approval/reservation filters, and mobile agenda.                                                                                                  |
+| Cruz — active vs client-visible services                       | Settings explains the distinction. Existing services and visibility controls are not changed by this private panel.                                                                         |
+| Cruz — inquiry vs complaint/suggestion                         | Dashboard identifies existing business inquiries as inquiries, not reservations or support reports. The public form remains unchanged.                                                      |
+| Villarama — real business flow                                 | Staff review, contact verification, approval, actual cash collection, confirmation, contract review, and completion.                                                                        |
+| Villarama — process-driven UX                                  | Clear tentative/confirmed distinction and server-enforced safeguards with actionable error messages.                                                                                        |
+| Villarama — dashboard improvement                              | Annual secured-contract sales, unresolved inquiries, upcoming/all-time secured bookings, numeric comparisons, policy review, and outbox states.                                             |
+| Villarama — organization                                       | Eight consistent modules, scoped reusable UI, separate server workflows, and private data tables.                                                                                           |
+| Villarama — actual automation health                           | Actual queued/accepted/review-required notices and existing inquiry workflow execution records, not a simulated health score.                                                               |
+| Villarama — payment/downpayment reservation                    | Owner-reviewed deposit-required, full-payment-required, or no-payment-required confirmation policy; cash only.                                                                              |
+| Villarama — scam/prank prevention                              | Staff-recorded verification, suspicious-request flags, restricted admin access, login throttling, and audit history.                                                                        |
+| Marfil — standardized notifications                            | Shared templates state approval, reservation, payment, cash requirement, and venue instructions separately.                                                                                 |
+| Marfil — clarify cash-only flow                                | Receipt number, amount, collection time, and staff note; no payment gateway or automatic paid state.                                                                                        |
+| Marfil — no-payment timing/location                            | A no-payment-required confirmation option still requires owner-reviewed cash instructions explaining when/where payment is due. It does not mean the event is free.                         |
+| Marfil — distinct statuses                                     | Approval, reservation, payment, verification, and contract status are independent. Approval never silently confirms or marks paid.                                                          |
+| Rubric — authentication, authorization, privacy, secure coding | Server-side role/status/session checks; owner-only policy and voiding; CSRF/origin checks; strict validation; private RLS tables; password hashing; session revocation; no secret exposure. |
+
+## Operating workflow
+
+1. Sign in using an existing active ADMIN or SUPERADMIN account. No live accounts or passwords were created/reset. Password-change-only accounts are restricted to Profile until the password is changed.
+2. A SUPERADMIN reviews Settings, confirms the venue's cash instructions and agreement terms, chooses the reservation rule, and marks the policy reviewed. Unreviewed policy blocks confirmation and contract preparation.
+3. Staff create a request, optionally prefilling it from an existing client inquiry. An inquiry does not automatically reserve a date. The booking starts PENDING / REQUESTED / UNPAID / UNREVIEWED.
+4. Verify the contact and record the method/result. Flagged contacts cannot be approved or confirmed. Approval remains separate from reservation confirmation.
+5. Record only cash actually received, with a unique receipt number. Cash is stored in integer centavos, cannot exceed the outstanding balance, and does not automatically secure the date.
+6. Confirm only when approval, verified contact, reviewed current policy, cash requirement, and venue availability checks pass. Transaction-scoped locks prevent overlapping confirmations and stale writes.
+7. Prepare a versioned agreement, review its snapshot, and issue it. A physical signature is recorded only with signer and filed-document reference. Downloads are text agreements, not PDF exports, uploaded signed documents, or electronic signatures. Later booking changes make prior snapshots historical.
+8. Completion requires a past confirmed event with its cash balance settled. Cancellation retains history. Only a SUPERADMIN can void a cash receipt, with a reason; a confirmed reservation cannot lose required cash without cancellation first. Voiding is a ledger correction, not an actual refund transfer.
+
+Changing policy does not rewrite public terms or existing agreements. Pending requests must be re-reviewed and re-approved under the current policy. New drafts are blocked if an older booking policy would mix with new terms; a confirmed older-policy booking needs the owner's review of an amendment rather than silently substituted terms.
+
+Existing published terms provide Classic/Premium/Ultimate reservation fees of PHP 30,000 / 40,000 / 50,000. These were copied into the initial review draft, not treated as a substitute for venue approval. Staff must enter the actual agreed package, total, and fee. This is not a restored service-catalog management module.
+
+## Database and access
+
+Six additive tables were installed in the configured database with user approval: `zion_admin_bookings`, `zion_admin_cash_payments`, `zion_admin_contracts`, `zion_admin_policy`, `zion_admin_outbox`, and `zion_admin_rate_limits`. Existing tables/data were not removed, migrated, or rewritten. Old operational booking records were not imported; they are not fabricated as new admin data.
+
+All six tables have RLS enabled and no direct grants to Supabase `anon` or `authenticated`. The server uses its private PostgreSQL connection only after admin authorization. Existing User, AccountSession, AuditLog, Inquiry, and workflow-log models are reused. Every request rechecks role, account status, password timestamp, and an active non-revoked database session. Sign-out/password change revokes sessions. Role changes are not exposed through Profile.
+
+`prisma/admin.sql` is the additive schema; `prisma/admin.prisma` is its standalone generation source. `scripts/install-admin-schema.mjs` checks by default. Installation requires `--apply`, plus `--allow-remote` for a remote database; partial installations are refused. Do not use a full-schema reset or destructive Prisma push for this feature.
+
+## Subsequent user-approved local reset — 8 October 2026
+
+After the original additive installation, the user requested a fresh database. The local PostgreSQL database `ZenTra` was backed up, and 1,604 old records were cleared from 62 explicitly inventoried application tables, including old accounts, sessions, operational records, and published-content/catalog records. The 34 migration-history entries, table definitions, indexes, constraints, triggers, RLS policies, and grants were preserved. A fresh SUPERADMIN was created with a random temporary password and mandatory password change. Actual sign-in, Profile access, blocked operational access before the password change, and sign-out revocation were verified; the resulting new security logs are not old retained data.
+
+The native PostgreSQL backup archive was checked for all 63 table-data entries and saved with a SHA-256 checksum under `C:/Users/jerom/Downloads/Zion-Database-Backups/database-reset-2026-10-08T04-21-27-995Z-61e739/`, outside the source repository. It is readable by the current Windows user and SYSTEM, not other ordinary users. `admin-login.txt` in that folder contains the private temporary login details; remove that file after changing the password. No password was printed in the tool output. No cloud storage files, local public images, or website code/design were removed; built-in static website defaults can still be displayed independently of database records.
+
+The reset helper `scripts/reset-local-project-db.mjs` is inspection-only by default and fails closed for a remote host, a different database/port, changed table inventory, inherited tables, blobs, materialized views, or TRUNCATE triggers. Actual execution requires the exact full-reset confirmation flag and an explicit `--admin-email=...`. It creates/verifies the private archive first and resets data transactionally without DROP or CASCADE. Do not run it again merely to change a password.
+
+## Deployment and real notifications
+
+Temporary local access can be enabled for a development session with the server-only
+`ADMIN_LOCAL_ACCESS_ENABLED`, `ADMIN_LOCAL_ACCESS_EMAIL`,
+`ADMIN_LOCAL_ACCESS_TOKEN_HASH`, and `ADMIN_LOCAL_ACCESS_UNTIL` settings. A private
+link carries a random access token in its URL fragment and signs in as the configured
+existing administrator without changing their password. The usual database session,
+role checks, password-change restrictions, audit logging, and sign-out revocation
+still apply. This entry requires a local app origin and local PostgreSQL database;
+it rejects production, preview, cross-site, and remotely forwarded requests. Local
+sessions stop working when access is disabled or expires, and cannot carry over to
+production. Keep the generated link private; set `ADMIN_LOCAL_ACCESS_ENABLED=false`
+to restore password-only local sign-in immediately.
+
+For a temporary password-free local preview, additionally set server-only
+`ADMIN_LOCAL_ACCESS_AUTO_LOGIN=true` and `ADMIN_LOCAL_ACCESS_TOKEN` to the matching
+private token. Visiting `/admin` on the configured loopback host then signs in
+automatically through the credentials provider. Production, remote databases,
+non-loopback hosts, cross-site requests, and remote forwarded requests cannot use
+this entry. Existing sessions visiting `/admin` go directly to Dashboard.
+Explicit sign-out uses `/admin?signed-out=1` to keep the session signed out;
+visiting the plain `/admin` URL enables automatic entry again while configured.
+
+- Keep `AUTH_SECRET` server-only and use a securely generated value of at least 32 bytes. A local secret was generated in the ignored `.env.local` without printing it. Set the approved production secret separately in the hosting environment; no deployment was performed.
+- Set `AUTH_URL` to the exact HTTPS production origin, alongside the correct public app URL and existing private database configuration. Use HTTPS; never expose database credentials or service-role/API keys through `NEXT_PUBLIC_` variables.
+- Optional email delivery uses Resend's HTTPS API. Set server-only `ADMIN_RESEND_API_KEY` and `ADMIN_MAIL_FROM` with an authorized verified sender. No provider account/domain was provisioned and no live emails were sent. Existing inquiry webhooks remain separate and unchanged.
+- Notices are generated transactionally and remain QUEUED without delivery configuration. A SUPERADMIN can process the queue in Logs; `npm run notifications:admin` can be run by an externally configured scheduler. No scheduler was installed automatically.
+- Dispatch claims up to ten notices safely across workers. An outbox-ID idempotency key protects provider submission. ACCEPTED means provider acceptance, not recipient delivery. Provider rejection or interruption is held as REVIEW_REQUIRED; there is no blind automatic resend. Inspect delivery before a separately reviewed recovery operation.
+- Provider reference: [send-email API](https://resend.com/docs/api-reference/emails/send-email) and [idempotency keys](https://resend.com/docs/dashboard/emails/idempotency-keys). Provider idempotency keys expire after 24 hours, so they are not a substitute for retained outbox state or manual interruption review.
+
+## Verification and limitations
+
+### Open shared reflow finding — 22 November 2026
+
+The receptionist owner reported a root-font scaling check in which the document's
+minimum width became 640px at a 32px root size, despite its fixed chat panel
+remaining bounded. Source inspection confirms that `app/globals.css` applies
+`min-width: var(--layout-min-width)` to `html`, while `styles/tokens.css` defines
+that token as `20rem`; at a 32px root this resolves to 640px. The shared
+`overflow-x: clip` rule can conceal overflow rather than establish reflow.
+
+This remains an open shared-foundation finding affecting any panel using those
+rules. The reported scaling check and this source inspection are not an
+independent administrator-panel runtime test or a native 200% text/400% zoom pass.
+Earlier 320px checks at the normal root size do not resolve it. Coordinate shared
+source ownership and retest all affected panels before changing the foundation.
+Only this admin documentation note was added; CSS, tokens and workflows remain
+unchanged by this record.
+
+`npm run verify` passed: client boundary, project hygiene, TypeScript, removed-public-feature boundary, all six automated admin tests, ESLint, and the production build. ESLint has one pre-existing unused-variable warning in the unrelated spreadsheet-tracker helper; no lint errors.
+
+The isolated PostgreSQL integration test covers verification/approval, cash prerequisites, unique/stale receipt protection, overpayment, confirmed conflicts, owner-only voiding, contract issue/physical-signature states, real aggregates, audit persistence, private-table RLS, and mocked email acceptance/rejection. It never writes QA records into the configured database or contacts an email provider.
+
+Browser verification covered all eight modules and the complete request → verify → approve → reject confirmation before cash → record cash → confirm → prepare agreement flow. Desktop month filtering and a 390px mobile agenda worked without horizontal page overflow. The browser reported no console errors. The saved preview contains disposable QA data, not a real booking or receipt.
+
+For repeatable UI verification, run `node scripts/preview-admin.mjs`; it creates an in-memory PostgreSQL fixture and local-only preview at port 3011, with fake accounts and email/webhooks disabled. While it is running, `node scripts/check-admin-preview.mjs` checks unauthenticated access, client-role denial, cross-site rejection, input validation, protected modules, and database session revocation. Stopping the preview discards only its disposable fixture.
+
+Next.js and its matching ESLint configuration were updated to 16.3.8, with compatible security overrides for sharp/PostCSS and the MySQL tooling dependency. The unused optional Auth.js mail peer is pinned to patched Nodemailer 10.0.16; credentials authentication and the HTTPS dispatcher do not use its email-provider API.
+
+The final dependency audit has zero critical advisories but still reports eight upstream high advisories in the ESLint glob/brace chain and Prisma config/deepmerge tooling. These were not hidden or fixed through an incompatible forced downgrade/major rewrite. They need follow-up before a production security sign-off. Email delivery, owner policy review, deployment settings, and any required historical booking migration are not claimed complete.

@@ -1,0 +1,214 @@
+/* Approved foundations. Add palette values here, then use semantic tokens in UI. */
+:root {
+  --palette-cream: #ffecce;
+  --palette-paper: #fffbe9;
+  --palette-white: #ffffff;
+  --palette-forest: #4a372c;
+  --palette-ink: #2b211b;
+  --palette-muted: #665043;
+  --palette-gold: #ad8b73;
+  --palette-gold-hover: #96735b;
+  --palette-gold-ink: #6b4f3d;
+  --palette-border: #8c6d58;
+  --palette-night: #0c100b;
+  --palette-night-card: #141a13;
+  --palette-night-border: #879580;
+  --palette-pearl: #f4f4f0;
+  --palette-sage: #b6c4ae;
+  --palette-success: #236044;
+  --palette-success-soft: #e5f2e9;
+  --palette-danger: #a32f35;
+  --palette-danger-soft: #fff0f0;
+  --palette-canvas: #fffbe9;
+  --palette-divider: #ffe1af;
+  --palette-subtle: #ffecce;
+  --palette-gold-soft: #ffe1af;
+  --palette-gold-border: #ad8b73;
+  --palette-client-button: #ffce80;
+  --palette-client-button-hover: #f5bc62;
+  --palette-client-section: #ffc76e;
+  --palette-booklet-cover: #fbc46b;
+  --palette-night-raised: #233021;
+  --palette-night-subtle: #1a2319;
+  --palette-mint: #d5f3e5;
+  --palette-info: #245b83;
+  --palette-info-soft: #edf5ff;
+  --palette-info-light: #b8d7f5;
+  --palette-danger-light: #ffb4b4;
+  --palette-danger-dark: #321f24;
+  --palette-success-light: #a9d9b9;
+  --palette-success-dark: #162b20;
+
+  /* Receptionist chatbot layout palette */
+  --palette-chat-canvas: #ffe1af;
+  --palette-chat-input: #ffecce;
+  --palette-chat-bubble: #c1b178;
+  --palette-chat-pill: #fff5d3;
+  --palette-chat-send: #ddcb8d;
+  --palette-chat-border: #211610;
+
+  /* User-approved admin palette; public and developer foundations retain their roles. */
+  --palette-admin-canvas: #f5efe1;
+  --palette-admin-ivory: #fffbe9;
+  --palette-admin-oak: #e3caa5;
+  --palette-admin-peach: #ffe1af;
+  --palette-admin-taupe: #ad8b73;
+  --palette-admin-rose: #b77466;
+  --palette-admin-ink: #211610;
+  --palette-admin-muted: #6b5143;
+  --palette-admin-action: #382b24;
+  --palette-admin-action-hover: #4c372b;
+  --palette-admin-rose-ink: #7f4339;
+  --palette-admin-night: #211916;
+  --palette-admin-night-card: #302622;
+  --palette-admin-night-raised: #41322c;
+
+  --admin-surface-page: var(--palette-admin-canvas);
+  --admin-surface-sidebar: var(--palette-admin-oak);
+  --admin-surface-card: var(--palette-white);
+  --admin-surface-input: var(--palette-white);
+  --admin-surface-subtle: var(--palette-admin-ivory);
+  --admin-surface-highlight: var(--palette-admin-peach);
+  --admin-surface-selected: var(--palette-admin-oak);
+  --admin-ink: var(--palette-admin-ink);
+  --admin-muted: var(--palette-admin-muted);
+  --admin-action: var(--palette-admin-action);
+  --admin-action-hover: var(--palette-admin-action-hover);
+  --admin-on-action: var(--palette-admin-ivory);
+  --admin-border: var(--palette-admin-taupe);
+  --admin-divider: var(--palette-admin-oak);
+  --admin-focus: var(--palette-admin-rose-ink);
+  --admin-focus-halo: var(--palette-admin-ivory);
+  --admin-accent: var(--palette-admin-taupe);
+  --admin-accent-ink: var(--palette-admin-muted);
+  --admin-accent-soft: var(--palette-admin-peach);
+  --admin-danger: var(--palette-admin-rose-ink);
+  --admin-danger-soft: var(--palette-admin-peach);
+  --admin-success: var(--palette-admin-muted);
+  --admin-success-soft: var(--palette-admin-oak);
+  --admin-info: var(--palette-admin-muted);
+  --admin-info-soft: var(--palette-admin-peach);
+  --admin-on-color: var(--palette-admin-ink);
+  --admin-shadow: var(--palette-admin-ink);
+  --admin-ivory: var(--palette-admin-ivory);
+  --admin-oak: var(--palette-admin-oak);
+  --admin-peach: var(--palette-admin-peach);
+  --admin-taupe: var(--palette-admin-taupe);
+  --admin-rose: var(--palette-admin-rose);
+  --admin-night: var(--palette-admin-night);
+  --admin-night-card: var(--palette-admin-night-card);
+  --admin-night-raised: var(--palette-admin-night-raised);
+
+  /* Semantic tokens for receptionist chatbot layout */
+  --chat-surface-page: var(--palette-chat-canvas);
+  --chat-surface-card: var(--palette-admin-ivory);
+  --chat-surface-input: var(--palette-chat-input);
+  --chat-surface-bubble: var(--palette-chat-bubble);
+  --chat-surface-pill: var(--palette-chat-pill);
+  --chat-surface-send: var(--palette-chat-send);
+  --chat-border: var(--palette-chat-border);
+  --chat-ink: var(--palette-admin-ink);
+  --chat-muted: var(--palette-admin-muted);
+
+  --surface-page: var(--palette-cream);
+  --surface-card: var(--palette-paper);
+  --surface-input: var(--palette-white);
+  --text-primary: var(--palette-ink);
+  --text-muted: var(--palette-muted);
+  --text-accent: var(--palette-gold-ink);
+  --text-on-action: var(--palette-white);
+  --action-primary: var(--palette-forest);
+  --border-control: var(--palette-border);
+  --focus-ring: var(--palette-forest);
+  --focus-halo: var(--palette-white);
+  --background: var(--surface-page);
+  --foreground: var(--text-primary);
+
+  --font-zion-sans: var(--font-inter, 'Segoe UI'), Arial, sans-serif;
+  --font-zion-serif: var(--font-playfair, Georgia), 'Times New Roman', serif;
+  --font-zion-script: var(--font-alex-brush, 'Segoe Script'), cursive;
+  --font-zion-sahitya: var(--font-zion-serif);
+  --type-caption: 0.75rem;
+  --type-small: 0.875rem;
+  --type-body: 1rem;
+  --type-lead: 1.125rem;
+  --type-card-title: 1.25rem;
+  --type-section-title: clamp(1.75rem, 1.25rem + 2vw, 3rem);
+  --type-page-title: clamp(2.25rem, 1.5rem + 3vw, 4.5rem);
+  --type-workspace-title: clamp(1.75rem, 1.25rem + 1.5vw, 2.5rem);
+  --line-body: 1.6;
+  --line-heading: 1.2;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --radius-control: 0.5rem;
+  --radius-card: 1rem;
+  --shadow-card: 0 0.5rem 1.5rem rgb(32 44 36 / 8%);
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 320ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --layout-min-width: 20rem;
+  --layout-max-width: 80rem;
+  --layout-reading-width: 48rem;
+  --layout-gutter: clamp(1rem, 0.72rem + 1.4vw, 2.5rem);
+  --layout-section-space: clamp(3rem, 2.15rem + 4.25vw, 6rem);
+  --layout-card-padding: clamp(1rem, 0.82rem + 0.9vw, 1.75rem);
+  --layout-touch-target: 2.75rem;
+  --layout-header-height: 5rem;
+  --layout-radius: var(--radius-card);
+  --layout-floating-control-size: 3rem;
+  --layout-floating-control-inset: max(0.75rem, env(safe-area-inset-bottom));
+  --layout-floating-control-clearance: calc(
+    var(--layout-floating-control-size) + var(--layout-floating-control-inset) + 0.75rem
+  );
+}
+
+[data-admin-theme='dark'] {
+  --admin-surface-page: var(--palette-admin-night);
+  --admin-surface-sidebar: var(--palette-admin-night-card);
+  --admin-surface-card: var(--palette-admin-night-card);
+  --admin-surface-input: var(--palette-admin-night-card);
+  --admin-surface-subtle: var(--palette-admin-night-raised);
+  --admin-surface-highlight: var(--palette-admin-night-raised);
+  --admin-surface-selected: var(--palette-admin-night-raised);
+  --admin-ink: var(--palette-admin-ivory);
+  --admin-muted: var(--palette-admin-oak);
+  --admin-action: var(--palette-admin-oak);
+  --admin-action-hover: var(--palette-admin-peach);
+  --admin-on-action: var(--palette-admin-ink);
+  --admin-divider: var(--palette-admin-night-raised);
+  --admin-focus: var(--palette-admin-peach);
+  --admin-focus-halo: var(--palette-admin-night);
+  --admin-accent-ink: var(--palette-admin-peach);
+  --admin-accent-soft: var(--palette-admin-night-raised);
+  --admin-danger: var(--palette-admin-ivory);
+  --admin-danger-soft: var(--palette-admin-rose-ink);
+  --admin-success: var(--palette-admin-oak);
+  --admin-success-soft: var(--palette-admin-night-raised);
+  --admin-info: var(--palette-admin-peach);
+  --admin-info-soft: var(--palette-admin-night-raised);
+}
+
+.dark {
+  --surface-page: var(--palette-night);
+  --surface-card: var(--palette-night-card);
+  --surface-input: var(--palette-night-card);
+  --text-primary: var(--palette-pearl);
+  --text-muted: var(--palette-sage);
+  --text-accent: var(--palette-gold);
+  --text-on-action: var(--palette-night);
+  --action-primary: var(--palette-gold);
+  --border-control: var(--palette-night-border);
+  --focus-ring: var(--palette-gold);
+  --focus-halo: var(--palette-night);
+}

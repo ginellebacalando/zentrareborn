@@ -13,17 +13,11 @@ export function normalizeCategoryKey(value: string) {
     .slice(0, 80);
 }
 
-export async function generateUniqueCategoryKey(
-  name: string,
-  db: CategoryKeyDb,
-) {
+export async function generateUniqueCategoryKey(name: string, db: CategoryKeyDb) {
   const baseKey = normalizeCategoryKey(name) || 'event';
   const existing = await db.eventCategory.findMany({
     where: {
-      OR: [
-        { categoryKey: baseKey },
-        { categoryKey: { startsWith: `${baseKey}_` } },
-      ],
+      OR: [{ categoryKey: baseKey }, { categoryKey: { startsWith: `${baseKey}_` } }],
     },
     select: { categoryKey: true },
   });

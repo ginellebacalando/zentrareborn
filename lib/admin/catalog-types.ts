@@ -1,0 +1,54 @@
+export type CatalogInclusion = {
+  id?: string;
+  inclusionName: string;
+  description: string | null;
+  isFree: boolean;
+  isOptional: boolean;
+  displayOrder: number;
+};
+export type CatalogCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  displayOrder: number;
+  status: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
+  clientVisible: boolean;
+  updatedAt: string;
+  _count: { packages: number };
+};
+export type CatalogPackage = {
+  id: string;
+  eventCategoryId: string;
+  packageName: string;
+  slug: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  paxIncluded: number;
+  excessPaxFee: number;
+  reservationFee: number;
+  downPaymentAmount: number;
+  fullPaymentAmount: number;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  packageImageUrl: string | null;
+  contractItemDescription: string | null;
+  contractInclusionDescription: string | null;
+  internalNotes: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | 'HIDDEN' | 'ARCHIVED';
+  clientVisible: boolean;
+  currentVersion: number;
+  updatedAt: string;
+  inclusions: CatalogInclusion[];
+};
+export type CatalogData = {
+  categories: CatalogCategory[];
+  category: CatalogCategory | null;
+  categoryCount: number;
+  packages: CatalogPackage[];
+  total: number;
+  page: number;
+  canEdit: boolean;
+};

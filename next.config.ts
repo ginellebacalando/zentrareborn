@@ -1,7 +1,10 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const securityHeaders = [
-  { key: 'Content-Security-Policy', value: "base-uri 'self'; frame-ancestors 'none'; object-src 'none'" },
+  {
+    key: 'Content-Security-Policy',
+    value: "base-uri 'self'; frame-ancestors 'none'; object-src 'none'",
+  },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -13,7 +16,17 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Keep isolated verification from locking or overwriting the user's dev cache.
+  distDir:
+    process.env.CHATBOT_ISOLATED_PREVIEW === '1'
+      ? '.next/chatbot-preview'
+      : process.env.DEVELOPER_ISOLATED_PREVIEW === '1'
+        ? '.next/developer-preview'
+        : process.env.ADMIN_ISOLATED_PREVIEW === '1'
+          ? '.next/admin-preview'
+          : '.next',
   devIndicators: false,
+  poweredByHeader: false,
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'pg'],
   images: {
     remotePatterns: [
@@ -45,6 +58,14 @@ const nextConfig: NextConfig = {
         source: '/:path*',
         headers: securityHeaders,
       },
+      ...['/developer/:path*', '/api/developer/:path*'].map((source) => ({
+        source,
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
+        ],
+      })),
     ];
   },
 };

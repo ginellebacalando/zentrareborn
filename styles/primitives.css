@@ -1,0 +1,174 @@
+/* Component-level shared rules; feature layouts belong in their CSS Modules. */
+.skip-link {
+  position: fixed;
+  inset: var(--space-4) auto auto var(--space-4);
+  z-index: 2000;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--palette-forest);
+  color: var(--palette-white);
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-body);
+  transform: translateY(calc(-100% - 2rem));
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.page-title {
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-page-title);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-heading);
+  text-wrap: balance;
+}
+
+.section-title {
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-section-title);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-heading);
+  text-wrap: balance;
+}
+
+.eyebrow {
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  line-height: 1.5;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.public-page :where(h1) {
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-page-title);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-heading);
+  text-wrap: balance;
+}
+
+.public-page :where(h2) {
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-section-title);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-heading);
+  letter-spacing: normal;
+  text-wrap: balance;
+}
+
+.public-page :where(h3, h4) {
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-card-title);
+  line-height: var(--line-heading);
+}
+
+.public-page .info-heading {
+  font-size: var(--type-card-title);
+}
+
+.public-page :where(p, li, label, input, select, textarea) {
+  font-family: var(--font-zion-sans);
+  line-height: var(--line-body);
+}
+
+.public-page :where(input, select, textarea) {
+  font-size: var(--type-body);
+}
+
+.public-page :where(button, summary) {
+  min-height: var(--layout-touch-target);
+  min-width: var(--layout-touch-target);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-home-hero] {
+    height: 100svh;
+    min-height: 40rem;
+  }
+}
+
+.media-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: var(--layout-touch-target);
+  min-height: var(--layout-touch-target);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--palette-white);
+  border-radius: var(--radius-control);
+  background: var(--palette-night);
+  color: var(--palette-white);
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-small);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.media-control:hover {
+  background: var(--palette-forest);
+}
+
+.navigation-dialog {
+  --text-primary: var(--palette-ink);
+  --text-muted: var(--palette-muted);
+  --text-accent: var(--palette-gold-ink);
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(90vw, 22rem);
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: max(5rem, calc(env(safe-area-inset-top) + 4rem)) var(--layout-gutter)
+    max(1.5rem, env(safe-area-inset-bottom));
+  border: 0;
+  background: var(--palette-paper);
+  color: var(--palette-ink);
+  box-shadow: var(--shadow-card);
+}
+
+.navigation-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.navigation-dialog::backdrop {
+  background: color-mix(in srgb, var(--palette-night) 60%, transparent);
+}
+
+.navigation-dialog a[aria-current='page']:not([data-cta-button]) {
+  text-decoration: underline;
+  text-underline-offset: 0.4em;
+}
+
+.reveal {
+  opacity: 1;
+  transform: none;
+}
+
+/* Only the observer enhances this attribute. SSR/no-script content stays readable. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    transition:
+      opacity 720ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 720ms cubic-bezier(0.16, 1, 0.3, 1),
+      filter 720ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform, filter;
+  }
+
+  .reveal[data-visible='false']:not(:focus-within) {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 0), 0) scale(0.96);
+  }
+}
+
+@media (forced-colors: active) {
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid Highlight;
+    box-shadow: none;
+  }
+}

@@ -1,7 +1,8 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from 'react';
-import { optimizedPublicMediaPath } from '@/lib/public-media';
+import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from '@/components/shared/useReducedMotion';
+import { MediaPlaybackControl } from './MediaPlaybackControl';
 
 export interface SlideData {
   title: string;
@@ -14,151 +15,74 @@ interface SubpageHeroProps {
   title?: string;
   subtitle?: string;
   imageSrc?: string;
+  videoSrc?: string;
   slides?: readonly SlideData[];
   rotationMs?: number;
   transitionMs?: number;
   pauseOnHover?: boolean;
 }
 
-export default function SubpageHero({
-  title,
-  subtitle,
-  imageSrc,
-  slides,
-  rotationMs = 5_000,
-  transitionMs = 1000,
-  pauseOnHover = true,
-}: SubpageHeroProps) {
-  const heroSlides = slides && slides.length > 0
-    ? slides
-    : [{ title: title || '', subtitle: subtitle || '', imageSrc }];
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [fade, setFade] = useState(true);
-  const [isHovered, setIsHovered] = useState(false);
+export default function SubpageHero({ videoSrc }: SubpageHeroProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updateMotionPreference = () => setPrefersReducedMotion(mediaQuery.matches);
-
-    updateMotionPreference();
-    mediaQuery.addEventListener('change', updateMotionPreference);
-
-    return () => mediaQuery.removeEventListener('change', updateMotionPreference);
-  }, []);
-
-  useEffect(() => {
+    if (!videoSrc) return;
     const updateVisibility = () => setIsDocumentVisible(document.visibilityState === 'visible');
-
     updateVisibility();
     document.addEventListener('visibilitychange', updateVisibility);
-
     return () => document.removeEventListener('visibilitychange', updateVisibility);
-  }, []);
+  }, [videoSrc]);
 
   useEffect(() => {
-    if (
-      heroSlides.length <= 1 ||
-      prefersReducedMotion ||
-      !isDocumentVisible ||
-      (pauseOnHover && isHovered)
-    ) {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    if (prefersReducedMotion || isPaused || !isDocumentVisible) {
+      video.pause();
       return;
     }
 
-    let transitionTimeout: ReturnType<typeof setTimeout> | undefined;
+    void video.play().catch(() => {});
+  }, [isDocumentVisible, isPaused, prefersReducedMotion, videoSrc]);
 
-    const interval = setInterval(() => {
-      setFade(false);
-
-      transitionTimeout = setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % heroSlides.length);
-        setFade(true);
-      }, transitionMs);
-
-    }, rotationMs);
-
-    return () => {
-      clearInterval(interval);
-      if (transitionTimeout) clearTimeout(transitionTimeout);
-      setFade(true);
-    };
-  }, [heroSlides.length, isDocumentVisible, isHovered, pauseOnHover, prefersReducedMotion, rotationMs, transitionMs]);
-
-  const currentSlide = heroSlides[currentIndex];
-
-  const selectSlide = (index: number) => {
-    setCurrentIndex(index);
-    setFade(true);
-  };
+  if (!videoSrc) {
+    return (
+      <section
+        aria-label="Page header"
+        className="relative z-0 flex min-h-20 w-full flex-col items-center justify-center overflow-hidden bg-transparent px-[var(--layout-gutter)]"
+      />
+    );
+  }
 
   return (
     <section
-      className="relative z-0 flex h-[clamp(32rem,65dvh,48rem)] min-h-[32rem] w-full flex-col items-center justify-center overflow-hidden bg-transparent px-[var(--layout-gutter)] text-center"
-      data-motion="decorative"
-      aria-label={`${currentSlide.title}. Slide ${currentIndex + 1} of ${heroSlides.length}.`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      aria-label="Featured venue header"
+      className="relative z-0 flex h-[clamp(32rem,68dvh,48rem)] min-h-[32rem] w-full flex-col items-center justify-center overflow-hidden bg-zion-dark px-[var(--layout-gutter)] text-center"
     >
-      {/* Background Images Container for Seamless Crossfade */}
-      {heroSlides.map((slide, index) => (
-        <div
-          key={`${slide.imageSrc ?? 'hero'}-${index}`}
-          aria-hidden="true"
-          className={`absolute inset-0 -z-10 h-full w-full bg-cover bg-center grayscale-[20%] transition-opacity duration-1000 ease-in-out ${
-            index === currentIndex ? 'opacity-100' : 'opacity-0'
-          }`}
-          style={{
-            backgroundImage: slide.imageSrc
-              ? `url("${optimizedPublicMediaPath(slide.imageSrc)}")`
-              : undefined,
-            transitionDuration: prefersReducedMotion ? '0ms' : `${transitionMs}ms`,
-          }}
-        />
-      ))}
+      <video
+        ref={videoRef}
+        src={videoSrc}
+        aria-hidden="true"
+        loop
+        muted
+        playsInline
+        preload="auto"
+        disablePictureInPicture
+        tabIndex={-1}
+        className="absolute inset-0 -z-10 h-full w-full object-cover"
+      />
 
-      {/* Light Black Overlay */}
-      <div className="absolute inset-0 -z-10 bg-black/50"></div>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-black/25" />
 
-      {/* Animated Text Content */}
-      <div
-        className={`relative z-10 flex w-full flex-col items-center pt-[max(8rem,env(safe-area-inset-top))] transition-opacity duration-1000 ease-in-out ${
-          fade ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ transitionDuration: prefersReducedMotion ? '0ms' : `${transitionMs}ms` }}
-      >
-        <h1 className="font-script text-shadow-lg mb-5 w-full max-w-[95vw] px-4 text-center text-[clamp(3rem,6.4vw,5.75rem)] font-normal leading-[0.9] text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
-          {currentSlide.title}
-        </h1>
-        <p className="font-serif text-shadow-lg mx-auto w-full max-w-[95vw] px-4 text-center text-[clamp(1.05rem,2.05vw,2rem)] font-semibold italic leading-[1.45] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
-          {currentSlide.subtitle}
-        </p>
-      </div>
-
-      {/* Elegant Progress Indicators */}
-      {heroSlides.length > 1 && (
-        <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 flex gap-0.5">
-          {heroSlides.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              aria-label={`Show slide ${idx + 1}`}
-              aria-current={idx === currentIndex ? 'true' : undefined}
-              onClick={() => selectSlide(idx)}
-              className="touch-target group flex items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FDEB9E]"
-            >
-              <span
-                aria-hidden="true"
-                className={`h-1.5 rounded-full transition-all duration-700 ease-out ${
-                  idx === currentIndex
-                    ? 'w-8 bg-[#FDEB9E] shadow-[0_0_8px_rgba(253,235,158,0.5)]'
-                    : 'w-2 bg-white/40 group-hover:bg-white/60'
-                }`}
-              />
-            </button>
-          ))}
+      {!prefersReducedMotion && (
+        <div className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] z-10">
+          <MediaPlaybackControl
+            onClick={() => setIsPaused((value) => !value)}
+            label={isPaused ? 'Play header video' : 'Pause header video'}
+          />
         </div>
       )}
     </section>

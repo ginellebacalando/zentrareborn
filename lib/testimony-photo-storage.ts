@@ -31,11 +31,13 @@ function storageConfig() {
 }
 
 function cleanSegment(value: string) {
-  return value
-    .trim()
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 100) || 'photo';
+  return (
+    value
+      .trim()
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 100) || 'photo'
+  );
 }
 
 function encodedObjectPath(path: string) {
@@ -77,16 +79,13 @@ async function validatePhoto(file: File) {
     throw new TestimonyPhotoError('Event photo must not exceed 4 MB.');
   }
 
-  const signature = new Uint8Array((await file.slice(0, 16).arrayBuffer()));
+  const signature = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   if (!hasValidSignature(signature, file.type)) {
     throw new TestimonyPhotoError('The selected event photo is not a valid image.');
   }
 }
 
-export async function uploadTestimonyPhoto(input: {
-  file: File;
-  testimonyId: string;
-}) {
+export async function uploadTestimonyPhoto(input: { file: File; testimonyId: string }) {
   await validatePhoto(input.file);
   const { url, serviceRoleKey, bucket } = storageConfig();
   const fileName = `${Date.now()}-${randomUUID()}-${cleanSegment(input.file.name)}`;

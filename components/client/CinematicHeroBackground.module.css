@@ -6,16 +6,23 @@
   isolation: isolate;
 }
 
+.playbackControl {
+  position: absolute;
+  z-index: 5;
+  bottom: var(--space-4);
+  right: var(--layout-gutter);
+}
+
 .stage::after {
   position: absolute;
   z-index: 2;
   inset: -15% -45%;
-  content: "";
+  content: '';
   pointer-events: none;
   background: linear-gradient(
     112deg,
     transparent 38%,
-    rgba(255, 243, 199, 0.08) 49%,
+    color-mix(in srgb, var(--palette-gold-soft) 8%, transparent) 49%,
     transparent 60%
   );
   transform: translateX(-42%);
@@ -44,19 +51,19 @@
   will-change: opacity, transform;
 }
 
-.video[data-scene="garden"] {
+.video[data-scene='garden'] {
   object-position: 50% 52%;
 }
 
-.video[data-scene="ballroom"] {
+.video[data-scene='ballroom'] {
   object-position: 50% 50%;
 }
 
-.video[data-scene="beach"] {
+.video[data-scene='beach'] {
   object-position: 50% 51%;
 }
 
-.video[data-scene="reception"] {
+.video[data-scene='reception'] {
   object-position: 52% 50%;
 }
 
@@ -89,24 +96,27 @@
 }
 
 @media (max-width: 47.999rem) {
-  .video[data-scene="garden"] {
+  .video[data-scene='garden'] {
     object-position: 48% center;
   }
 
-  .video[data-scene="ballroom"] {
+  .video[data-scene='ballroom'] {
     object-position: 50% center;
   }
 
-  .video[data-scene="beach"] {
+  .video[data-scene='beach'] {
     object-position: 51% center;
   }
 
-  .video[data-scene="reception"] {
+  .video[data-scene='reception'] {
     object-position: 53% center;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .playbackControl {
+    display: none;
+  }
   .stage::after {
     display: none;
   }

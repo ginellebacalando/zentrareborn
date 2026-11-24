@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 export default function PrivacyPage() {
   return (
-    <PublishedPolicyPage type={ContentType.PRIVACY} title="Privacy Policy" subtitle="How we protect your data." />
+    <PublishedPolicyPage
+      type={ContentType.PRIVACY}
+      title="Privacy Policy"
+      subtitle="How we protect your data."
+    />
   );
 }

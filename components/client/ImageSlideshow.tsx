@@ -1,34 +1,38 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 
 const IMAGES = [
-  "/zion-media/gender-reveal (3).webp",
-  "/zion-media/bday.webp",
-  "/zion-media/wedding.webp"
+  '/images/events/gender-reveals/gender-reveal-3.webp',
+  '/images/events/debuts-birthdays/birthday-2.webp',
+  '/images/events/weddings/wedding-2.webp',
 ];
 
 export default function ImageSlideshow() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % IMAGES.length);
-    }, 4000); // Change image every 4 seconds
-    return () => clearInterval(timer);
-  }, []);
-
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden">
+    <div
+      className="absolute inset-0 z-0 overflow-hidden"
+      role="group"
+      aria-label="Celebration photographs"
+    >
       {IMAGES.map((src, idx) => (
         <div
           key={src}
+          aria-hidden={idx !== currentIndex}
           className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${idx === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
         >
           <Image
             src={src}
-            alt={`Zion Moments Slide ${idx + 1}`}
+            alt={
+              [
+                'A gender reveal celebration at Zion',
+                'A birthday celebration at Zion',
+                'A wedding celebration at Zion',
+              ][idx]
+            }
             fill
             sizes="(max-width: 1024px) 100vw, 50vw"
             className="object-cover object-center"
@@ -41,14 +45,22 @@ export default function ImageSlideshow() {
         {IMAGES.map((_, idx) => (
           <button
             key={idx}
+            type="button"
+            aria-current={idx === currentIndex ? 'true' : undefined}
             onClick={() => setCurrentIndex(idx)}
-            className={`h-1.5 rounded-full transition-all duration-500 ease-out ${
-              idx === currentIndex ? 'w-8 bg-[#FDEB9E] shadow-[0_0_8px_rgba(253,235,158,0.5)]' : 'w-3 bg-white/50 hover:bg-white/80 hover:scale-110'
-            }`}
+            className="touch-target flex items-center justify-center rounded-full bg-black/60"
             aria-label={`Go to slide ${idx + 1}`}
-          />
+          >
+            <span
+              aria-hidden="true"
+              className={`h-1.5 rounded-full ${idx === currentIndex ? 'w-8 bg-zion-accent' : 'w-3 bg-surface'}`}
+            />
+          </button>
         ))}
       </div>
+      <span className="sr-only" aria-live="polite">
+        Photograph {currentIndex + 1} of {IMAGES.length}
+      </span>
     </div>
   );
 }

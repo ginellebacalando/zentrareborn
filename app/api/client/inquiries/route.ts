@@ -1,8 +1,5 @@
 import { after } from 'next/server';
-import {
-  inquiryErrorResponse,
-  submitInquiry,
-} from '@/lib/inquiry-service';
+import { inquiryErrorResponse, submitInquiry } from '@/lib/inquiry-service';
 import { requireClientFeature, settingsErrorResponse } from '@/lib/system-settings';
 import {
   deliverOperationalWebhook,
@@ -22,7 +19,7 @@ export async function POST(request: Request) {
       inquiryReference: result.inquiryReference,
       message: result.message,
     };
-    if (operationalWebhooksEnabled()) {
+    if (await operationalWebhooksEnabled()) {
       const workflow = await queueOperationalWebhook({
         event: 'inquiry.created',
         relatedRecordId: result.id,

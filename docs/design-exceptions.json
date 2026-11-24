@@ -1,0 +1,19 @@
+{
+  "description": "Reviewed literal-color consumers only: browser metadata requires concrete colors, and the standalone root-error boundary must render without root CSS. All other visual source uses approved palette tokens. Do not add consumer files or expand this inventory.",
+  "files": {
+    "app/global-error.tsx": {
+      "literal-color: #f4f0df": 1,
+      "literal-color: #1a1f18": 2,
+      "literal-color: #fff": 1,
+      "literal-color: #e5d8aa": 1,
+      "literal-color: rgba(26, 31, 24, 0.12)": 1,
+      "literal-color: #5f665c": 1,
+      "literal-color: #526255": 1,
+      "literal-color: #fdf5cc": 1
+    },
+    "app/layout.tsx": {
+      "literal-color: #eae6d1": 1,
+      "literal-color: #0c100b": 1
+    }
+  }
+}

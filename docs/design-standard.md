@@ -1,0 +1,69 @@
+# Design and engineering standard
+
+Effective 17 November 2026. Scope: the existing system and every subsequent change to public, administrator, and developer interfaces. The product retains its Zion identity while sharing one foundation. The standards below are acceptance criteria, not an ISO certification claim.
+
+## Research basis
+
+| Reference                                                                                                     | Application in this repository                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/)                                                                 | Accessibility target: AA. Check text contrast, reflow, semantics, keyboard operation, focus, labels, errors, and control sizing.                                                                                                        |
+| [W3C page structure tutorial](https://www.w3.org/WAI/tutorials/page-structure/)                               | Main landmarks, skip navigation, and headings that express content relationships.                                                                                                                                                       |
+| [W3C modal dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)                            | Contain keyboard focus, make background content inert, support Escape, and restore focus on close. Prefer native `dialog.showModal()`.                                                                                                  |
+| [W3C carousel tutorial](https://www.w3.org/WAI/tutorials/carousels/)                                          | Pause/resume, keyboard controls, restrained announcements, and stable focus during slide changes.                                                                                                                                       |
+| [W3C interaction animation guidance](https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions) | Respect reduced motion as an additional project requirement. This criterion is AAA; it is not mislabeled as AA.                                                                                                                         |
+| [Nielsen's usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/)                  | Consistency, understandable feedback, user control, clear language, error recovery, and reduced cognitive load. These are evaluation heuristics, not a conformance certificate.                                                         |
+| [ISO 9241-210:2019](https://www.iso.org/standard/77520.html)                                                  | Plan around users and their tasks, evaluate designs, and iterate. The public abstract describes a lifecycle framework; no purchased standard has been audited here.                                                                     |
+| [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html)                                                 | Use measurable product quality and acceptance criteria. Folder names, indentation, font sizes, and this project's code conventions are explicit local engineering decisions.                                                            |
+| Installed Next.js documentation                                                                               | Read `node_modules/next/dist/docs/01-app/01-getting-started/02-project-structure.md`, `11-css.md`, `13-fonts.md`, and the relevant guide before edits. Installed version guidance takes precedence over recalled framework conventions. |
+
+## Foundations and composition
+
+`styles/tokens.css` is the source of shared values. `app/globals.css` connects those values to Tailwind. `styles/primitives.css` holds cross-feature presentation patterns. Feature-specific CSS stays in colocated CSS Modules; route-local implementation belongs in private folders.
+
+| Concern           | Required convention                                                                                                                                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Text              | Inter for readable content and controls; Playfair Display for primary display headings. Alex Brush is reserved for short decorative brand accents. Fonts are locally hosted using `next/font/local`; SIL licenses are retained in `app/_fonts/`.                                            |
+| Scale             | Use the `--type-*` tokens. Body: 1rem, secondary: 0.875rem, metadata: 0.75rem. Form inputs remain 1rem. Do not put essential instructions in metadata styling.                                                                                                                              |
+| Color             | Use semantic surface/text/action tokens or the approved Zion Tailwind aliases. Gold decoration and dark gold text are separate roles. Never assume gold-on-white or white-on-gold passes contrast. Status uses text or icons as well as color.                                              |
+| Contrast          | Text pairs must meet 4.5:1, or 3:1 for qualifying large text. Relevant controls and focus indicators need sufficient contrast against adjacent surfaces. The token check validates selected opaque foundation pairs, not photographs, gradients, alpha blending, or every rendered element. |
+| Geometry          | Use the spacing tokens, shared responsive containers, and layout gutter. Keep one alignment axis within a section. Use an intentional spacing hierarchy and bounded reading widths.                                                                                                         |
+| Controls          | Default target: 44×44 CSS px. This is stricter than WCAG 2.2 AA's 24px target-size criterion, which has exceptions. Preserve native input behavior, touch access, and adequate separation.                                                                                                  |
+| Motion            | Use shared 120/180/320ms durations for new transitions, animate explicit properties, and avoid recurring decorative effects. Do not hide necessary content behind scrolling or motion. CSS and JavaScript both honor reduced motion.                                                        |
+| Responsive layout | Reflow at 320 CSS px and when zoomed. Use fluid widths; avoid clipped text and horizontal page scrolling. Data tables may use an explicitly labeled, keyboard-accessible scroll region.                                                                                                     |
+
+Different tasks may need different density or a fixed theme. The admin workspace retains its existing light/dark preference; the developer workspace retains its dark theme. Their typography, control sizes, and foundational colors share tokens. A page must not introduce an independent visual language merely because it is in another panel.
+
+## Interaction requirements
+
+- Start with the user task and a clear primary action. Use familiar labels and predictable navigation. Show the current destination with more than color alone.
+- Use one main content landmark and a meaningful page heading. Section headings follow their parent; short decorative overlines are paragraphs, not higher-level headings.
+- Interactive content uses buttons, links, native inputs, selects, or properly implemented patterns. Every icon-only control needs an accessible name. Nested interactive controls are prohibited.
+- Dialogs receive focus on open, contain Tab/Shift+Tab, close with Escape, and restore focus to their trigger. Background controls must be inert while a modal is active.
+- Forms have persistent visible labels. Mark required fields, associate help/errors with their control, preserve entered values on failure, and keep errors until correction or resubmission. Announce a useful outcome and provide a recovery action. Do not rely only on a transient toast or placeholder.
+- Automatic media includes a reachable pause/resume control. Stop background playback when the document is hidden; preserve an explicit user pause. Reduced motion starts with static content. Essential content is visible in the server-rendered page.
+- Verify loading, empty, disabled, failure, and success states for each affected interaction. A decorative hover response must not be the only way to discover an action.
+
+## Code structure and maintenance
+
+Use the existing layer map in [architecture.md](architecture.md). Components have one clear responsibility. Extract reusable UI into a feature directory or `components/shared/`; keep rendering separate from data access. Hooks follow `useName.ts`; components use `PascalCase.tsx`; CSS Modules are colocated. Avoid generic dumping-ground folders and speculative abstractions.
+
+Use strict TypeScript and narrow types at boundaries. Validate external inputs in the existing server/validation layer. Prefer explicit component props and normal control flow. Avoid duplicate implementations, unexplained constants, broad lint disables, and silent error swallowing. Keep comments about decisions and contracts. The formatter controls physical line layout; line length is a formatter preference, not a quality metric.
+
+Prettier and EditorConfig standardize source layout. ESLint treats accessibility findings and warnings as failures and prohibits shared UI/config importing route implementations. Existing client-boundary checks protect public/private separation. Generated previews, local exports, and tool scratch files are excluded from source tooling and must not be tracked; hygiene checks do not delete another collaborator's local artifacts.
+
+## Required change process
+
+1. Identify the users, task, routes, and constraints; read repository instructions and relevant installed framework guidance.
+2. Inspect the current implementation and existing local changes. Reuse shared patterns; notify the affected admin, client, receptionist, and developer work chats before shared-foundation or overlapping edits. Use the existing chat map in AGENTS.md and coordinate source ownership.
+3. Implement the smallest cohesive change across affected screens, including interaction states and responsive behavior. Migrate nearby legacy styling to semantic tokens where safe.
+4. Run `npm run format`, then `npm run verify`. Fix failures at their cause; do not weaken the gate. Inspect diffs for accidental behavior changes.
+5. Review affected screens at desktop and 320px width, 200% text scaling / 400% zoom, with keyboard navigation and reduced motion, and in supported themes. Automated checks cannot establish complete WCAG conformance or validate human understanding.
+6. Record evidence and outstanding limitations. After panel updates or enhancements, assess design impact, append material findings to [design-change-log.md](design-change-log.md), and send the authorized verified handoff to every affected admin, client, receptionist, or developer work chat. Notify all four for changes affecting their shared foundations. Include screens/files, visual and interaction changes, actual checks, useful screenshots, unresolved findings, and review limits. Preserve user-approved panel palettes and active feature scope. A release requiring external accessibility assurance needs an appropriate full evaluation, including assistive technologies and representative users.
+
+`npm run verify` includes formatting, design tokens and exception checks, architecture/public boundary checks, strict types, existing domain/integration tests, accessibility lint, and a production build. The GitHub workflow runs the same command for pull requests and main/master pushes. Repository owners must configure branch protection to make the workflow a merge requirement; a local workflow file alone cannot prevent an authorized user from bypassing it.
+
+## Approved runtime literals
+
+[design-exceptions.json](design-exceptions.json) is limited to two deliberate consumers: browser theme metadata requires concrete color strings, and the standalone root-error boundary must remain readable if the root layout and its CSS fail. Every other visual source file uses approved palette tokens. The checker rejects literal colors outside those two files, rejects new values/counts inside them, and rejects small pixel/rem text declarations. This inventory may not be expanded to silence a failure.
+
+The current scope is a shared-system migration and interaction remediation, not a complete manual certification of every authenticated workflow. Record remaining visual and assistive-technology review work in the change log. Do not report universal compliance based solely on a passing build or token test.

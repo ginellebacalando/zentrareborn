@@ -17,11 +17,7 @@ type SettingsRow = {
 };
 
 export type ClientFeature =
-  | 'inquirySubmissions'
-  | 'packages'
-  | 'faq'
-  | 'publicTestimonies'
-  | 'testimonySubmissions';
+  'inquirySubmissions' | 'packages' | 'faq' | 'publicTestimonies' | 'testimonySubmissions';
 
 const FEATURE_LABELS: Record<ClientFeature, string> = {
   inquirySubmissions: 'Client inquiries',
@@ -89,17 +85,34 @@ function normalizePublicSettings(input: unknown): PublicSystemSettings {
     },
     client: {
       maintenanceMode: booleanValue(client.maintenanceMode, defaults.client.maintenanceMode),
-      inquirySubmissionsEnabled: booleanValue(client.inquirySubmissionsEnabled, defaults.client.inquirySubmissionsEnabled),
+      inquirySubmissionsEnabled: booleanValue(
+        client.inquirySubmissionsEnabled,
+        defaults.client.inquirySubmissionsEnabled,
+      ),
       packagesVisible: booleanValue(client.packagesVisible, defaults.client.packagesVisible),
       faqVisible: booleanValue(client.faqVisible, defaults.client.faqVisible),
-      publicTestimoniesVisible: booleanValue(client.publicTestimoniesVisible, defaults.client.publicTestimoniesVisible),
-      testimonySubmissionsEnabled: booleanValue(client.testimonySubmissionsEnabled, defaults.client.testimonySubmissionsEnabled),
+      publicTestimoniesVisible: booleanValue(
+        client.publicTestimoniesVisible,
+        defaults.client.publicTestimoniesVisible,
+      ),
+      testimonySubmissionsEnabled: booleanValue(
+        client.testimonySubmissionsEnabled,
+        defaults.client.testimonySubmissionsEnabled,
+      ),
       disabledMessage: textValue(client.disabledMessage, defaults.client.disabledMessage),
     },
     localization: {
-      language: optionValue(localization.language, LANGUAGE_OPTIONS, defaults.localization.language),
+      language: optionValue(
+        localization.language,
+        LANGUAGE_OPTIONS,
+        defaults.localization.language,
+      ),
       timezone: timezoneValue(localization.timezone, defaults.localization.timezone),
-      dateFormat: optionValue(localization.dateFormat, DATE_FORMAT_OPTIONS, defaults.localization.dateFormat),
+      dateFormat: optionValue(
+        localization.dateFormat,
+        DATE_FORMAT_OPTIONS,
+        defaults.localization.dateFormat,
+      ),
     },
   };
 }
@@ -128,7 +141,9 @@ function isClientFeatureEnabled(settings: PublicSystemSettings, feature: ClientF
     case 'publicTestimonies':
       return settings.client.publicTestimoniesVisible;
     case 'testimonySubmissions':
-      return settings.client.testimonySubmissionsEnabled && settings.client.publicTestimoniesVisible;
+      return (
+        settings.client.testimonySubmissionsEnabled && settings.client.publicTestimoniesVisible
+      );
   }
 }
 
@@ -148,15 +163,22 @@ export async function requireClientFeature(feature: ClientFeature) {
   return availability.settings;
 }
 
-export function settingsErrorResponse(error: unknown, fallback = 'Unable to load system settings.') {
+export function settingsErrorResponse(
+  error: unknown,
+  fallback = 'Unable to load system settings.',
+) {
   if (error instanceof SystemSettingsError) {
     return Response.json({ error: error.message }, { status: error.status });
   }
 
-  return Response.json({
-    error: fallback,
-    details: process.env.NODE_ENV === 'development' && error instanceof Error
-      ? error.message
-      : undefined,
-  }, { status: 500 });
+  return Response.json(
+    {
+      error: fallback,
+      details:
+        process.env.NODE_ENV === 'development' && error instanceof Error
+          ? error.message
+          : undefined,
+    },
+    { status: 500 },
+  );
 }

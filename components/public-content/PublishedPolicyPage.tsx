@@ -19,20 +19,27 @@ export default async function PublishedPolicyPage({
       <SubpageHero
         title={title}
         subtitle={subtitle}
-        imageSrc="/zion-media/Spring Garden-inspired wedding of Carlo & Isabel - Khim Cruz _ Wedding and Event Designer + Florist + Stylist.webp"
+        imageSrc="/images/events/weddings/spring-garden-inspired-wedding-of-carlo-isabel-khim-cruz-wedding-and-event-designer-florist-stylist.webp"
       />
-      <section className="relative z-10 w-full bg-[#FBF4C4] px-6 py-16 md:py-24">
+      <section className="relative z-10 w-full bg-[var(--palette-gold-soft)] px-6 py-16 md:py-24">
         {items.length ? (
           <div className="mx-auto max-w-5xl space-y-14">
             {items.map((item) => (
-              <StructuredContentRenderer key={item.id} type={item.type} payload={item.version?.payload} />
+              <StructuredContentRenderer
+                key={item.id}
+                type={item.type}
+                payload={item.version?.payload}
+              />
             ))}
           </div>
         ) : (
-          <div className="mx-auto max-w-3xl rounded-3xl border border-[#D6B53B]/30 bg-white/60 p-8 text-center shadow-sm md:p-12">
-            <h1 className="font-sahitya text-3xl font-bold text-[#1a1f18]">Reviewed policy pending publication</h1>
-            <p className="mt-4 font-serif text-lg leading-8 text-neutral-600">
-              ZION will publish the legally reviewed version here when it has completed approval. Please contact the venue team for current verified guidance.
+          <div className="mx-auto max-w-3xl rounded-3xl border border-zion-accent/30 bg-surface/60 p-8 text-center shadow-sm md:p-12">
+            <h1 className="font-sahitya text-3xl font-bold text-ink">
+              Reviewed policy pending publication
+            </h1>
+            <p className="mt-4 font-serif text-lg leading-8 text-muted">
+              ZION will publish the legally reviewed version here when it has completed approval.
+              Please contact the venue team for current verified guidance.
             </p>
           </div>
         )}

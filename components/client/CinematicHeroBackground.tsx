@@ -1,29 +1,30 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { MediaPlaybackControl } from './MediaPlaybackControl';
 import styles from './CinematicHeroBackground.module.css';
 
 const VIDEO_CLIPS = [
   {
-    src: '/zion-media/jennybridal_pindown.io_1784860053.mp4',
+    src: '/videos/events/bridal-event.mp4',
     start: 0.15,
     end: 13.95,
     scene: 'bridal',
   },
   {
-    src: '/zion-media/ILESEVENTSITALY_pindown.io_1784857577.mp4',
+    src: '/videos/events/wedding-reception.mp4',
     start: 0.2,
     end: 8,
     scene: 'ballroom',
   },
   {
-    src: '/zion-media/HolaMinasan_pindown.io_1784857654.mp4',
+    src: '/videos/events/indoor-hall.mp4',
     start: 0.15,
     end: 8,
     scene: 'beach',
   },
   {
-    src: '/zion-media/genderrevealdubai_pindown.io_1784858148.mp4',
+    src: '/videos/events/gender-reveal.mp4',
     start: 0.15,
     end: 8.05,
     scene: 'reception',
@@ -41,6 +42,23 @@ export default function CinematicHeroBackground() {
   const activeLayerRef = useRef<VideoLayer>(0);
   const activeClipIndexRef = useRef(0);
   const [activeLayer, setActiveLayer] = useState<VideoLayer>(0);
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+
+  const togglePlayback = () => {
+    const nextPaused = !pausedRef.current;
+    pausedRef.current = nextPaused;
+    setPaused(nextPaused);
+    const videos = [firstVideoRef.current, secondVideoRef.current];
+    videos.forEach((video) => video?.pause());
+    if (
+      !nextPaused &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
+      !document.hidden
+    ) {
+      void videos[activeLayerRef.current]?.play().catch(() => {});
+    }
+  };
 
   useEffect(() => {
     const firstVideo = firstVideoRef.current;
@@ -80,7 +98,7 @@ export default function CinematicHeroBackground() {
 
         video.currentTime = clip.start;
 
-        if (!reducedMotionQuery.matches && !document.hidden) {
+        if (!pausedRef.current && !reducedMotionQuery.matches && !document.hidden) {
           void video.play().catch(() => {
             // The static poster remains visible if autoplay is unavailable.
           });
@@ -95,7 +113,7 @@ export default function CinematicHeroBackground() {
     };
 
     const transitionToNextClip = () => {
-      if (disposed || transitionInProgress || reducedMotionQuery.matches) {
+      if (disposed || pausedRef.current || transitionInProgress || reducedMotionQuery.matches) {
         return;
       }
 
@@ -164,7 +182,7 @@ export default function CinematicHeroBackground() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.hidden || reducedMotionQuery.matches) {
+      if (pausedRef.current || document.hidden || reducedMotionQuery.matches) {
         videos.forEach((video) => video.pause());
         return;
       }
@@ -208,27 +226,34 @@ export default function CinematicHeroBackground() {
   }, []);
 
   return (
-    <div className={styles.stage} aria-hidden="true">
+    <div className={styles.stage}>
       <video
         ref={firstVideoRef}
+        aria-hidden="true"
         className={`${styles.video} ${activeLayer === 0 ? styles.active : ''}`}
         muted
         playsInline
         preload="auto"
-        poster="/zion-media/%E2%9C%A8%20Elegant%20Lakefront%20Wedding%20Ceremony%20with%20White%20Floral%20Arch%20%26%20Luxury%20Aisle%20Inspiration.webp"
+        poster="/images/events/weddings/elegant-lakefront-wedding-ceremony-with-white-floral-arch-luxury-aisle-inspiration.webp"
         disablePictureInPicture
         tabIndex={-1}
       />
 
       <video
         ref={secondVideoRef}
+        aria-hidden="true"
         className={`${styles.video} ${activeLayer === 1 ? styles.active : ''}`}
         muted
         playsInline
         preload="auto"
-        poster="/zion-media/%E2%9C%A8%20Elegant%20Lakefront%20Wedding%20Ceremony%20with%20White%20Floral%20Arch%20%26%20Luxury%20Aisle%20Inspiration.webp"
+        poster="/images/events/weddings/elegant-lakefront-wedding-ceremony-with-white-floral-arch-luxury-aisle-inspiration.webp"
         disablePictureInPicture
         tabIndex={-1}
+      />
+      <MediaPlaybackControl
+        className={styles.playbackControl}
+        onClick={togglePlayback}
+        label={paused ? 'Play background video' : 'Pause background video'}
       />
     </div>
   );

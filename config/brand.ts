@@ -10,13 +10,10 @@ export const BRAND = {
   tagline: "Celebrate life's best moments with the view you'll always remember.",
   venueType: 'Event Place & Management',
   logo: {
-    src: '/zion-logo.png',
-    markSrc: '/zion-logo.png',
-    exportSrc: '/zion-logo.png',
+    src: '/images/brand/logo.png',
+    markSrc: '/images/brand/logo.png',
+    exportSrc: '/images/brand/logo.png',
     alt: 'Zion Events Place logo',
-  },
-  assets: {
-    publicFolder: '/zion-media',
   },
   contact: {
     email: 'zioneventsplace@gmail.com',
@@ -26,11 +23,14 @@ export const BRAND = {
   },
   address: {
     full: ADDRESS_QUERY,
-    lines: [
-      '82MH+QPG, United Bayanihan Proper Rd',
-      'United Bayanihan, San Pedro',
-      '4023 Laguna',
+    lines: ['82MH+QPG, United Bayanihan Proper Rd', 'United Bayanihan, San Pedro', '4023 Laguna'],
+  },
+  visits: {
+    hours: [
+      { days: 'Tuesdays to Saturdays', time: '10:00 AM to 6:00 PM' },
+      { days: 'Sundays', time: '2:00 PM to 6:00 PM' },
     ],
+    notice: 'All visits are strictly by appointment only',
   },
   maps: {
     embedUrl: `https://www.google.com/maps?q=${MAPS_QUERY}&output=embed`,
@@ -47,7 +47,3 @@ export const BRAND = {
     'From PUP San Pedro Campus or SM Supermarket, follow United Bayanihan Proper Road to the Zion Events Place entrance.',
   ],
 } as const;
-
-export function brandAsset(fileName: string) {
-  return `${BRAND.assets.publicFolder}/${encodeURIComponent(fileName)}`;
-}

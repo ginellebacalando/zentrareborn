@@ -1,7 +1,4 @@
-import {
-  getPublicEventCategories,
-  handleServicesError,
-} from '@/lib/services-packages';
+import { getPublicEventCategories, handleServicesError } from '@/lib/services-packages';
 import { requireClientFeature, settingsErrorResponse } from '@/lib/system-settings';
 
 export const dynamic = 'force-dynamic';

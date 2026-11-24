@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { ContentType } from '@prisma/client';
+import CinematicPageHero from '@/components/client/CinematicPageHero';
 import FacilitiesShowcase, {
   featuredFacilities,
   type FacilitySpace,
 } from '@/components/client/FacilitiesShowcase';
-import PublicSubpageShell from '@/components/client/PublicSubpageShell';
+import { publicPageHeroes } from '@/config/public-page-heroes';
 import { listPublishedContent } from '@/services/public-content/content.service';
 import FacilitiesFallback from './_components/FacilitiesFallback';
 
@@ -12,12 +13,13 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Facilities | Zion Events Place',
-  description: 'Explore the indoor and outdoor event spaces available at Zion Events Place in San Pedro, Laguna.',
+  description:
+    'Explore the indoor and outdoor event spaces available at Zion Events Place in San Pedro, Laguna.',
 };
 
 function recordValue(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : {};
 }
 
@@ -42,9 +44,23 @@ export default async function FacilitiesPage() {
     };
   });
 
+  const facilitiesHero = publicPageHeroes.facilities[0];
+
   return (
-    <PublicSubpageShell heroKey="facilities">
-      <FacilitiesShowcase spaces={spaces} />
-    </PublicSubpageShell>
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="public-page responsive-page relative flex min-h-screen flex-col bg-transparent"
+    >
+      <CinematicPageHero
+        title={facilitiesHero.title}
+        subtitle={facilitiesHero.subtitle}
+        slides={publicPageHeroes.facilities}
+        videoSrc="/videos/hero/facilities-hero.mp4"
+      />
+      <div className="relative z-10 w-full bg-transparent">
+        <FacilitiesShowcase spaces={spaces} />
+      </div>
+    </main>
   );
 }

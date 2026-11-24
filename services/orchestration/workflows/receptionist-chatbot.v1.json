@@ -1,0 +1,170 @@
+{
+  "name": "Zion Receptionist Chatbot v1 — DRAFT, INACTIVE",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Zion Receptionist — Workflow 1\n\nSingle client-facing voice for grounded questions, qualification, and conversion. This draft borrows only the reference pattern (webhook → receptionist coordinator → controlled capabilities → response). It does not copy dental prompts or tools. It is intentionally inactive and fails closed until the approved knowledge base, server state, model, W2 bridge, response signing, and acceptance tests are installed.",
+        "height": 330,
+        "width": 590,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-100, -420],
+      "id": "89156bc1-b042-44fa-bbd1-95532a076c5e",
+      "name": "Workflow 1 boundary"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "zion-receptionist-turn-v1",
+        "responseMode": "usingRespondToWebhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [20, 80],
+      "id": "8a0c61d8-0fcc-4f0b-9371-a302d8935651",
+      "name": "Receptionist chat turn",
+      "webhookId": "f6fd3657-2e77-4ff8-8f13-f7d69ac3fc09"
+    },
+    {
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "NOT_CONFIGURED: Zion Receptionist dependencies are not installed"
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [320, 80],
+      "id": "a2562751-eefa-4748-83f0-a479ffbe36cd",
+      "name": "Fail closed until W1 is installed"
+    },
+    {
+      "parameters": {
+        "content": "### Disabled production capability map\n\nThese nodes document the intended receptionist architecture and are not executable implementation.\n\n- Verify signed, correlated input before processing\n- Load bounded server-owned conversation state\n- Retrieve answers only from approved Zion sources\n- Read availability only through the server's minimized admin-calendar projection\n- Call the signed W2 bridge only for booking mutations\n- Escalate to staff when policy, identity, or system certainty is insufficient\n- Return one signed structured result to Zeni\n\nNo attachment, OCR result, or model statement can establish availability, a booking, or settled payment.",
+        "height": 430,
+        "width": 600,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [960, -300],
+      "id": "fbe6a70f-2f2f-49df-a352-33a2a91f4dd0",
+      "name": "Production capability map"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "throw new Error('NOT_CONFIGURED: signed input verification is not installed');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, -180],
+      "id": "03a26730-98ee-4afc-b51b-72b177471199",
+      "name": "Verify signed turn",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "throw new Error('NOT_CONFIGURED: grounded receptionist policy is not installed');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 80],
+      "id": "63c0399a-c8da-446c-9a7f-38fffa17f5bb",
+      "name": "Grounded receptionist policy",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "throw new Error('NOT_CONFIGURED: approved Zion knowledge retrieval is not installed');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 380],
+      "id": "66ae492d-f251-4172-b98d-5f3c94b5179a",
+      "name": "Approved knowledge retrieval",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "throw new Error('NOT_CONFIGURED: server conversation state is not installed');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 380],
+      "id": "cb5c447d-1c9b-40f0-b80c-77f1c92e7152",
+      "name": "Bounded conversation state",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "throw new Error('NOT_CONFIGURED: authoritative booking bridge is not installed');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 380],
+      "id": "4b6796f3-b971-4328-9685-285163af059b",
+      "name": "Signed W2 mutations",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "throw new Error('NOT_CONFIGURED: staff escalation is not installed');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 380],
+      "id": "a669fb9e-b2c1-4385-82f3-5a7bc1644942",
+      "name": "Human escalation",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "throw new Error('NOT_CONFIGURED: signed structured response is not installed');"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 80],
+      "id": "47da5c6e-40c4-4fd7-8a1e-e35342f9fcbc",
+      "name": "Signed structured response",
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receptionist chat turn": {
+      "main": [
+        [
+          {
+            "node": "Fail closed until W1 is installed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "a6429f3d-cd9c-4f49-a338-daa1d7ae1315",
+  "meta": {
+    "authoredOnly": true,
+    "deployed": false,
+    "executed": false,
+    "workflow": "zion.receptionist-chatbot.v1"
+  },
+  "tags": []
+}

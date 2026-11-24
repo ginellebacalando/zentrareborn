@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from '@/components/shared/useReducedMotion';
+import { MediaPlaybackControl } from './MediaPlaybackControl';
 
 type AutoplayVenueVideoProps = {
   poster: string;
@@ -9,6 +11,8 @@ type AutoplayVenueVideoProps = {
 
 export function AutoplayVenueVideo({ poster, src }: AutoplayVenueVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [paused, setPaused] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const video = videoRef.current;
@@ -18,6 +22,10 @@ export function AutoplayVenueVideo({ poster, src }: AutoplayVenueVideoProps) {
     }
 
     const startPlayback = () => {
+      if (paused || reducedMotion || document.hidden) {
+        video.pause();
+        return;
+      }
       video.muted = true;
       video.defaultMuted = true;
 
@@ -32,6 +40,8 @@ export function AutoplayVenueVideo({ poster, src }: AutoplayVenueVideoProps) {
     const resumeWhenVisible = () => {
       if (document.visibilityState === 'visible') {
         startPlayback();
+      } else {
+        video.pause();
       }
     };
 
@@ -41,25 +51,34 @@ export function AutoplayVenueVideo({ poster, src }: AutoplayVenueVideoProps) {
     document.addEventListener('visibilitychange', resumeWhenVisible);
 
     return () => {
+      video.pause();
       video.removeEventListener('canplay', startPlayback);
       window.removeEventListener('pageshow', startPlayback);
       document.removeEventListener('visibilitychange', resumeWhenVisible);
     };
-  }, [src]);
+  }, [src, paused, reducedMotion]);
 
   return (
-    <video
-      ref={videoRef}
-      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-      autoPlay
-      loop
-      muted
-      playsInline
-      preload="auto"
-      poster={poster}
-      aria-hidden="true"
-    >
-      <source src={src} type="video/mp4" />
-    </video>
+    <>
+      <video
+        ref={videoRef}
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        poster={poster}
+        aria-hidden="true"
+      >
+        <source src={src} type="video/mp4" />
+      </video>
+      {!reducedMotion && (
+        <MediaPlaybackControl
+          className="absolute bottom-4 right-4 z-30"
+          onClick={() => setPaused((value) => !value)}
+          label={paused ? 'Play venue video' : 'Pause venue video'}
+        />
+      )}
+    </>
   );
 }

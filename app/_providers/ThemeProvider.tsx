@@ -1,6 +1,13 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useSyncExternalStore } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useSyncExternalStore,
+} from 'react';
+import { MotionConfig } from 'framer-motion';
 
 type Theme = 'light' | 'dark';
 
@@ -79,7 +86,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     async function loadDefaultTheme() {
       try {
         const response = await fetch('/api/client/settings', { cache: 'no-store' });
-        const payload = await response.json() as {
+        const payload = (await response.json()) as {
           settings?: {
             appearance?: {
               defaultTheme?: Theme;
@@ -118,7 +125,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
     </ThemeContext.Provider>
   );
 }

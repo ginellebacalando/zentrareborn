@@ -20,14 +20,12 @@ export function requireServerEnv(name: ClientServerEnvKey) {
 }
 
 export function assertNoPublicSecrets() {
-  const unsafeKeys = Object.keys(process.env).filter((key) => (
-    key.startsWith('NEXT_PUBLIC_') && SECRET_LIKE_PUBLIC_KEY.test(key)
-  ));
+  const unsafeKeys = Object.keys(process.env).filter(
+    (key) => key.startsWith('NEXT_PUBLIC_') && SECRET_LIKE_PUBLIC_KEY.test(key),
+  );
 
   if (unsafeKeys.length > 0) {
-    throw new Error(
-      `Secret-like variables must not use NEXT_PUBLIC_: ${unsafeKeys.join(', ')}`,
-    );
+    throw new Error(`Secret-like variables must not use NEXT_PUBLIC_: ${unsafeKeys.join(', ')}`);
   }
 }
 
