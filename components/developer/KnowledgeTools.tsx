@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import {
-  ArrowUpRight,
   BookOpen,
   Check,
   Database,
@@ -79,44 +78,12 @@ export default function KnowledgeTools({
         </p>
       )}
       {tab === 'sources' && (
-        <>
-          <SourceEditor
-            kind="knowledge"
-            documents={data.documents.filter((d) => d.kind === 'knowledge')}
-            busy={busy}
-            mutate={mutate}
-          />
-          <section className={styles.card}>
-            <div className={styles.cardTop}>
-              <div>
-                <h2>Send published knowledge to n8n</h2>
-                <p>
-                  Push a signed snapshot to the approved ingestion workflow. Drafts and private
-                  operational data are excluded.
-                </p>
-              </div>
-              <button
-                disabled={busy || !data.security.syncConfigured}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      'Send the published knowledge snapshot to the configured n8n ingestion workflow?',
-                    )
-                  )
-                    run({ op: 'sync' });
-                }}
-              >
-                Sync published sources
-                <ArrowUpRight size={15} />
-              </button>
-            </div>
-            {!data.security.syncConfigured && (
-              <p className={styles.help}>
-                The ingestion URL and signing secret have not been configured on the server.
-              </p>
-            )}
-          </section>
-        </>
+        <SourceEditor
+          kind="knowledge"
+          documents={data.documents.filter((d) => d.kind === 'knowledge')}
+          busy={busy}
+          mutate={mutate}
+        />
       )}
       {tab === 'faqs' && <FaqEditor key={data.checkedAt} busy={busy} mutate={mutate} />}
       {tab === 'test' && (

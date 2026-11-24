@@ -27,6 +27,7 @@ const generated = execFileSync(
 await fixture.exec(generated.slice(generated.indexOf('-- CreateSchema')));
 const adminSql = readFileSync('prisma/admin.sql', 'utf8');
 await fixture.exec(adminSql.slice(adminSql.indexOf('-- Admin-only data')));
+await fixture.exec(readFileSync('prisma/automation.sql', 'utf8'));
 await fixture.exec(readFileSync('prisma/developer.sql', 'utf8'));
 const email = 'developer@example.test',
   id = randomUUID(),
@@ -103,15 +104,12 @@ const child = spawn(
       DEVELOPER_EMAIL_ALLOWLIST: email,
       DEVELOPER_ENCRYPTION_KEY: key.toString('hex'),
       DEVELOPER_KNOWLEDGE_TOKEN: feedToken,
-      DEVELOPER_OUTBOUND_HOSTS: '',
-      N8N_API_BASE_URL: '',
-      N8N_API_KEY: '',
-      N8N_WEBHOOK_ENABLED: 'false',
-      N8N_INQUIRY_WEBHOOK_URL: '',
-      N8N_KNOWLEDGE_SYNC_URL: '',
-      N8N_KNOWLEDGE_SYNC_SECRET: '',
-      ADMIN_RESEND_API_KEY: '',
-      ADMIN_MAIL_FROM: '',
+      // Blank values override .env.local, so the fixture can never send real email.
+      SMTP_USER: '',
+      SMTP_PASSWORD: '',
+      MAIL_FROM: '',
+      STAFF_NOTIFICATION_EMAIL: '',
+      CRON_SECRET: '',
       SUPABASE_SECRET_KEY: '',
       SUPABASE_SERVICE_ROLE_KEY: '',
     },

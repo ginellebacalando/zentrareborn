@@ -16,21 +16,21 @@ The window deadline is displayed in the panel. At that deadline, normal authenti
 
 The old application at `../Zentra/app/admin/(dashboard)/command-center` was inspected as the reference. Its four workspaces are represented here, with independent developer authorization:
 
-| Old Command Center                       | Developer workspace                                                                                                                                                              |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Overview / readiness                     | Overview and Connections, with actual database and authenticated n8n checks; configuration-only checks are labeled                                                               |
-| Task Templates                           | General/category checklists, step order, role, priority, required flag, due offset, draft versions, publication, archive and restore                                             |
-| Assistant Knowledge / FAQ control center | Reviewed knowledge sources, FAQ drafts/publication/hide/archive, FAQ categories, published-source tests, topic-gap review, and source coverage                                   |
-| Public Content                           | Gallery, facilities, rules, privacy, terms, about and contact; immutable draft revisions, review, approval, publication, archive and restoration                                 |
-| Additional developer operations          | Approved n8n workflow activation/pause and editor links, inquiry delivery limits/retries, signed knowledge ingestion, developer-session revocation, account disable, audit trail |
+| Old Command Center                       | Developer workspace                                                                                                                                   |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overview / readiness                     | Overview and Connections, with an actual database check; configuration-only checks (storage, email, scheduled automation, knowledge feed) are labeled |
+| Task Templates                           | General/category checklists, step order, role, priority, required flag, due offset, draft versions, publication, archive and restore                  |
+| Assistant Knowledge / FAQ control center | Reviewed knowledge sources, FAQ drafts/publication/hide/archive, FAQ categories, published-source tests, topic-gap review, and source coverage        |
+| Public Content                           | Gallery, facilities, rules, privacy, terms, about and contact; immutable draft revisions, review, approval, publication, archive and restoration      |
+| Additional developer operations          | Read-only email automation status, developer-session revocation, account disable, audit trail                                                         |
 
-Public booking, payment, and the previously removed Smart Assistant UI are not restored. The separately authorized [Ask Zion public chatbot](chatbot.md) uses visitor-safe website sources; developer documents and task templates are not included in that public assistant. Task templates are published in the private feed for an orchestration consumer; this does not create or migrate staff tasks. The source-test tool searches published evidence without calling a language model or persisting questions. It is labeled as a source-coverage test and does not claim a live chatbot response. A connected chatbot can report controlled missing-information topics; raw prompts and transcripts are rejected.
+Public booking, payment, and the previously removed Smart Assistant UI are not restored. The separately authorized [Ask Zion public chatbot](chatbot.md) uses visitor-safe website sources; developer documents and task templates are not included in that public assistant. Task templates are published in the private feed for an approved backend consumer; this does not create or migrate staff tasks. The source-test tool searches published evidence without calling a language model or persisting questions. It is labeled as a source-coverage test and does not claim a live chatbot response. A connected chatbot can report controlled missing-information topics; raw prompts and transcripts are rejected.
 
 ## Provisioning a developer
 
 Use a trusted interactive operator terminal. No web registration or administrator-role promotion exists.
 
-1. Configure the existing PostgreSQL connection. Inspect the target, then install the eight additive developer tables:
+1. Configure the existing PostgreSQL connection. Inspect the target, then install the seven additive developer tables:
 
    ```powershell
    npm.cmd run developer:setup
@@ -68,7 +68,7 @@ Production stays closed unless `DEVELOPER_ORIGIN` uses HTTPS, the encryption key
 
 Deploy the developer routes behind an identity-aware private gateway/VPN. Authenticate the developer group at that gateway, strip any client-supplied verification header, and inject the server-side secret only after successful gateway authorization. Block direct access to the origin with firewall/private-network rules. Keep the gateway secret out of browser JavaScript. A separate hostname can route only `/developer/*`, `/api/developer/*`, and necessary static assets to the same application. The application enforces the shared-secret header; deploying and configuring the gateway is an infrastructure step and has not been performed by this change.
 
-Internal panel API calls, page reads, and the scoped machine feed all require the gateway in production. The n8n machine identity must be authorized by the gateway too. Do not disable the guard to make ingestion work.
+Internal panel API calls, page reads, and the scoped machine feed all require the gateway in production. Any machine consumer of the feed must be authorized by the gateway too. Do not disable the guard to make ingestion work.
 
 ## Session and mutation boundaries
 
@@ -76,21 +76,19 @@ Internal panel API calls, page reads, and the scoped machine feed all require th
 - Absolute expiry is 30 minutes; inactivity expiry is 10 minutes. A new sign-in revokes the developer's previous sessions. Account disable, allowlist removal, expiry and session revocation are checked at the database on each request.
 - Every mutation enforces exact configured Origin, same-origin CSRF verification, authenticated developer access, bounded JSON and operation-specific validation. Every persisted change or external operation requires a fresh TOTP code. A TOTP time step is consumed atomically and cannot be replayed, including after sign-in.
 - Database-backed throttles apply across application instances. Failed sign-ins and MFA denials are audited without storing submitted credentials or questions. Server failures return generic errors.
-- All eight developer tables enable row-level security and revoke access from PUBLIC and Supabase's `anon`/`authenticated` roles where those roles exist. No browser-facing policies are installed. Use a privileged server-only connection; never use a Supabase anon/authenticated role for this control plane.
-- Draft/source and orchestration edits use optimistic revisions. Published source revisions remain stable while new drafts are edited. Public content follows draft → review → approved → published; restoration creates a new draft. Publication currently permits the same developer to review and approve; this is not a two-person approval system.
+- All seven developer tables enable row-level security and revoke access from PUBLIC and Supabase's `anon`/`authenticated` roles where those roles exist. No browser-facing policies are installed. Use a privileged server-only connection; never use a Supabase anon/authenticated role for this control plane.
+- Draft/source edits use optimistic revisions. Published source revisions remain stable while new drafts are edited. Public content follows draft → review → approved → published; restoration creates a new draft. Publication currently permits the same developer to review and approve; this is not a two-person approval system.
 - The developer audit table records actor ID, action, target, result and timestamp. Database owners can alter it: export to an external append-only audit sink if tamper resistance is required.
 
-## n8n and connected services
+## Automation status and connected services
 
-Set `N8N_API_BASE_URL` to the approved HTTPS API root, for example `https://automation.example.com/api/v1`, and put a scoped n8n key in `N8N_API_KEY`. List exact destination hostnames in `DEVELOPER_OUTBOUND_HOSTS`, and approved workflow IDs in `N8N_DEVELOPER_WORKFLOW_IDS` (up to 20). Only those workflows can be inspected or activated/paused. Node changes use the authenticated n8n editor, linked from the panel; the application does not proxy unrestricted n8n administration or expose workflow credentials. Use minimum scopes needed for reading and activating/deactivating approved workflows. See [n8n API authentication](https://docs.n8n.io/connect/n8n-api/authentication/).
+Email automation is built into the application (see [the automation guide](automation.md)). The **Automation** section is read-only: it shows whether Gmail SMTP and the scheduled-run secret (`CRON_SECRET`) are configured, the time of the last scheduled run, and outbox counts by status. It never shows recipients, message content or secrets. Staff review and retry failed emails on the admin Automation page (`/admin/automation`); the developer panel has no delivery controls.
 
-Developer integration calls reject HTTP, credentials/query strings in configured URLs, unapproved hosts, private/reserved destination addresses, and redirects. Restrict outbound traffic at the deployment network as well. n8n and storage/email provider versions and policies remain operator-managed.
+The developer panel makes no outbound integration calls. Connections labels distinguish verified requests from configuration presence: PostgreSQL has an active read-only check; storage, email, scheduled automation, admin authentication and assistant-feed checks only confirm that settings are present and do not claim end-to-end delivery. The control panel does not execute arbitrary shell commands, SQL, URLs, or user-provided code.
 
-Inquiry enablement, timeout, retry backoff and the attempt budget for new jobs are persisted in the developer configuration. The existing inquiry webhook service reads these settings. Pausing prevents delivery; jobs remain available. Manual retries use the existing idempotency key and atomic job claims, and cannot exceed the original attempt budget or replay a successful job. Retry timestamps are recorded; a separate scheduler is still needed to automatically execute due retries. The control panel does not execute arbitrary shell commands, SQL, URLs, or user-provided code.
+Installations created before the built-in automation may still contain an unused `zion_developer_configuration` table. Nothing reads it any more; a database owner may drop it after review.
 
-Connections labels distinguish verified requests from configuration presence. PostgreSQL and n8n have active read-only checks. Storage, mail, admin authentication, inquiry delivery and assistant-feed configuration checks do not claim end-to-end delivery. The panel shows real inquiry delivery metadata without exposing inquiry payloads or provider responses.
-
-The public `/api/health` endpoint returns only coarse readiness. Provider hosts, deployment information, schema/configuration details and internal environment-variable names are kept out of that public response.
+The public `/api/health` endpoint returns coarse readiness plus automation booleans and queue/failure counts. Provider hosts, deployment information, schema/configuration details, addresses and internal environment-variable values are kept out of that public response.
 
 ## Chatbot knowledge contract
 
@@ -115,14 +113,6 @@ Content-Type: application/json
 
 Topics: `packages`, `pricing`, `venue`, `availability`, `policies`, `contact`, `other`. Reports aggregate by topic and expire after 30 days. Unknown fields, including raw prompts or transcripts, are rejected. This intentionally minimizes the data stored compared with the old question-review queue.
 
-For explicit push ingestion, configure `N8N_KNOWLEDGE_SYNC_URL`, the approved host, and a separate random `N8N_KNOWLEDGE_SYNC_SECRET` (at least 43 characters). Sync sends a full snapshot with a unique ID and:
-
-- `x-zion-timestamp`: Unix time in seconds.
-- `x-zion-signature`: hex HMAC-SHA256 of `<timestamp>.<exact request body>`.
-- `x-zion-idempotency-key`: snapshot delivery ID.
-
-The receiver must validate the signature with a timing-safe comparison, reject stale timestamps (for example older than five minutes), deduplicate the delivery ID, replace/reconcile approved sources, and acknowledge with JSON `{"accepted":true}`. Acceptance confirms ingestion receipt, not completed embedding or successful chatbot answers. Failed/ambiguous delivery is audited and does not claim synchronization success. No live n8n or chatbot connection is created until these settings and the receiver are supplied.
-
 ## Verification
 
 The implementation updates Next.js and its ESLint configuration to 16.4.6, Zod to 4.6.7, Prisma packages to 7.10.1, and the Nodemailer override to 10.5.0 to address reported runtime/security advisories. The dependency audit still reports moderate issues in the existing ESLint/minimatch development-tool dependency chain; resolving those through npm's suggested forced downgrade is outside this change. Re-run audits as advisories evolve.
@@ -134,4 +124,4 @@ npm run developer:preview
 node scripts/check-developer-preview.mjs
 ```
 
-The preview binds only to loopback port 3012, uses an in-memory PostgreSQL fixture and random test-only credentials, disables real email/webhooks/provider credentials, and stores enrollment only in ignored `.next/developer-fixture.json`. Stopping it discards the fixture. It is not a real developer-account enrollment or production-access mechanism. Unit/integration tests cover fail-closed configuration and gateway checks, TOTP verification and replay rejection, independent accounts, allowlist/session revocation, draft/publication boundaries, content approval, scoped sources, stale revisions, private-destination rejection, throttling, and safe audit records. HTTP checks verify actual route denial for authenticated staff accounts, CSRF/origin enforcement, cookie flags, feed scope, and revocation.
+The preview binds only to loopback port 3012, uses an in-memory PostgreSQL fixture and random test-only credentials, blanks real email and provider credentials, and stores enrollment only in ignored `.next/developer-fixture.json`. Stopping it discards the fixture. It is not a real developer-account enrollment or production-access mechanism. Unit/integration tests cover fail-closed configuration and gateway checks, TOTP verification and replay rejection, independent accounts, allowlist/session revocation, draft/publication boundaries, content approval, scoped sources, stale revisions, throttling, and safe audit records. HTTP checks verify actual route denial for authenticated staff accounts, CSRF/origin enforcement, cookie flags, feed scope, and revocation.

@@ -9,7 +9,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
 
 test(
-  'isolated developer authentication, publication, orchestration, and audit boundaries',
+  'isolated developer authentication, publication, automation status, and audit boundaries',
   { timeout: 180000 },
   async () => {
     const fixture = new PGlite();
@@ -33,7 +33,7 @@ test(
     const protectedTables = await fixture.query<{ count: number }>(
       "SELECT count(*)::int AS count FROM pg_class WHERE relname LIKE 'zion_developer_%' AND relkind='r' AND relrowsecurity=true",
     );
-    assert.equal(protectedTables.rows[0].count, 8);
+    assert.equal(protectedTables.rows[0].count, 7);
     const anonymousAccess = await fixture.query<{ allowed: boolean }>(
       "SELECT has_table_privilege('anon','zion_developer_accounts','SELECT') AS allowed",
     );
@@ -49,9 +49,9 @@ test(
       DEVELOPER_ORIGIN: 'http://localhost:3012',
       DEVELOPER_EMAIL_ALLOWLIST: 'developer@example.test',
       DEVELOPER_ENCRYPTION_KEY: randomBytes(32).toString('hex'),
-      N8N_WEBHOOK_ENABLED: 'false',
-      N8N_API_BASE_URL: '',
-      N8N_API_KEY: '',
+      SMTP_USER: '',
+      SMTP_PASSWORD: '',
+      CRON_SECRET: '',
       DEVELOPER_LOCAL_ACCESS_ENABLED: 'false',
     });
     const { developerDb, rateLimit } = await import('./db');
@@ -79,11 +79,8 @@ test(
       readFaqs,
       saveFaqCategory,
     } = await import('../../services/developer/content');
-    const { mutateDeveloper, readOverview } = await import('../../services/developer/control');
-    const { readOrchestrationSettings } =
-      await import('../../services/orchestration/developer-settings');
-    const { allowedWorkflows, approvedIntegrationUrl } =
-      await import('../../services/developer/integrations');
+    const { mutateDeveloper, mutationSchema, readOverview } =
+      await import('../../services/developer/control');
     const id = randomUUID(),
       email = 'developer@example.test',
       password = 'Unique-isolated-developer-2026!',
@@ -299,36 +296,11 @@ test(
         ),
         /validation/,
       );
-      let settings = await readOrchestrationSettings();
-      assert.equal(settings.value.inquiryEnabled, false);
-      await mutateDeveloper(
-        {
-          op: 'settings',
-          revision: 0,
-          value: {
-            inquiryEnabled: false,
-            timeoutMs: 12000,
-            maxAttempts: 3,
-            retryBaseMs: 40000,
-          },
-          code: '',
-        },
-        actor,
-      );
-      settings = await readOrchestrationSettings();
-      assert.equal(settings.value.timeoutMs, 12000);
-      assert.equal(settings.revision, 1);
-      await assert.rejects(
-        mutateDeveloper({ op: 'settings', revision: 0, value: settings.value, code: '' }, actor),
-        /changed/,
-      );
-      process.env.DEVELOPER_OUTBOUND_HOSTS = 'localhost';
-      await assert.rejects(approvedIntegrationUrl('https://localhost'), /Private network/);
-      process.env.N8N_DEVELOPER_WORKFLOW_IDS = 'workflow-one,../../admin';
-      assert.deepEqual(allowedWorkflows(), ['workflow-one']);
-      await assert.rejects(
-        mutateDeveloper({ op: 'workflow', id: 'not-approved', active: true, code: '' }, actor),
-        /not approved/,
+      // Retired integration operations are rejected by validation rather than executed.
+      for (const op of ['settings', 'workflow', 'sync', 'delivery-retry'])
+        assert.equal(mutationSchema.safeParse({ op, id: 'x', code: '' }).success, false);
+      await developerDb.query(
+        "INSERT INTO zion_admin_outbox (id,event,recipient,subject,body,status) VALUES ('dev-status-1','DAILY_DIGEST','private-staff@example.test','Digest','Private body','REVIEW_REQUIRED')",
       );
       await reportKnowledgeGap('pricing');
       await reportKnowledgeGap('pricing');
@@ -337,6 +309,17 @@ test(
       assert.ok(overview.audit.length > 0);
       assert.ok(!JSON.stringify(overview).includes(secret));
       assert.ok(!JSON.stringify(overview).includes(password));
+      assert.equal(overview.automation.available, true);
+      assert.equal(overview.automation.emailConfigured, false);
+      assert.deepEqual(overview.automation.counts, [{ status: 'REVIEW_REQUIRED', count: 1 }]);
+      // The read-only status exposes counts only, never recipients or message content.
+      assert.ok(!JSON.stringify(overview).includes('private-staff@example.test'));
+      assert.ok(!JSON.stringify(overview).includes('Private body'));
+      assert.ok(overview.checks.some((check) => check.id === 'email' && check.state === 'missing'));
+      assert.deepEqual(
+        overview.checks.map((check) => check.id),
+        ['database', 'admin', 'storage', 'email', 'cron', 'knowledge'],
+      );
       await rateLimit('test-throttle', 1);
       await assert.rejects(rateLimit('test-throttle', 1), /Too many/);
       await mutateDeveloper({ op: 'session-revoke', id: actor.sessionId, code: '' }, actor);

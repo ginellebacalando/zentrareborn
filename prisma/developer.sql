@@ -57,13 +57,6 @@ CREATE TABLE IF NOT EXISTS zion_developer_document_revisions (
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (document_id, revision)
 );
-CREATE TABLE IF NOT EXISTS zion_developer_configuration (
-  id text PRIMARY KEY CHECK (id = 'orchestration'),
-  revision integer NOT NULL DEFAULT 1,
-  value jsonb NOT NULL,
-  updated_by text NOT NULL,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
 CREATE TABLE IF NOT EXISTS zion_developer_review (
   id text PRIMARY KEY,
   fingerprint text NOT NULL UNIQUE,
@@ -81,7 +74,7 @@ BEGIN
   FOREACH developer_table IN ARRAY ARRAY[
     'zion_developer_accounts','zion_developer_sessions','zion_developer_rate_limits',
     'zion_developer_audit','zion_developer_documents','zion_developer_document_revisions',
-    'zion_developer_configuration','zion_developer_review'
+    'zion_developer_review'
   ] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', developer_table);
     EXECUTE format('REVOKE ALL ON TABLE %I FROM PUBLIC', developer_table);

@@ -26,6 +26,7 @@ await db.exec(sql.slice(sql.indexOf('-- CreateSchema')));
 console.log('Isolated schema loaded. Starting test-only preview…');
 const adminSql = readFileSync('prisma/admin.sql', 'utf8');
 await db.exec(adminSql.slice(adminSql.indexOf('-- Admin-only data')));
+await db.exec(readFileSync('prisma/automation.sql', 'utf8'));
 const passwordHash = await bcrypt.hash('Isolated-preview-only-2026!', 12);
 await db.query(
   'INSERT INTO users (id,username,email,password_hash,full_name,role,status,"createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW())',
@@ -78,9 +79,12 @@ const child = spawn(
       AUTH_SECRET: randomBytes(48).toString('hex'),
       AUTH_URL: `http://localhost:${appPort}`,
       NEXT_PUBLIC_APP_URL: `http://localhost:${appPort}`,
-      ADMIN_RESEND_API_KEY: '',
-      ADMIN_MAIL_FROM: '',
-      N8N_WEBHOOK_ENABLED: 'false',
+      // Blank values override .env.local, so the preview can never send real email.
+      SMTP_USER: '',
+      SMTP_PASSWORD: '',
+      MAIL_FROM: '',
+      STAFF_NOTIFICATION_EMAIL: '',
+      CRON_SECRET: '',
     },
   },
 );

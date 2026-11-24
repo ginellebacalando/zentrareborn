@@ -1,8 +1,10 @@
-export type OrchestrationSettings = {
-  inquiryEnabled: boolean;
-  timeoutMs: number;
-  maxAttempts: number;
-  retryBaseMs: number;
+/** Read-only view of the built-in email automation; counts and booleans only. */
+export type AutomationStatusSummary = {
+  emailConfigured: boolean;
+  cronConfigured: boolean;
+  counts: { status: string; count: number }[];
+  lastRunAt: string | null;
+  available: boolean;
 };
 export type ConnectionCheck = {
   id: string;
@@ -85,12 +87,6 @@ export type AuditEntry = {
   result: string;
   created_at: string;
 };
-export type Workflow = {
-  id: string;
-  name: string;
-  active: boolean;
-  editorUrl: string;
-};
 export type DeveloperSession = {
   id: string;
   name: string;
@@ -103,26 +99,15 @@ export type DeveloperSession = {
 export type Overview = {
   checks: ConnectionCheck[];
   checkedAt: string;
-  settings: OrchestrationSettings;
-  settingsRevision: number;
   documents: DeveloperDocument[];
   publishedCount: number;
   templateCount: number;
   faqCount: number;
-  workflows: Workflow[];
-  workflowError: string | null;
-  delivery: { status: string; count: number }[];
-  recentDeliveries: {
-    id: string;
-    workflow_name: string;
-    status: string;
-    created_at: string;
-  }[];
+  automation: AutomationStatusSummary;
   security: {
     gateway: boolean;
     allowlistedDevelopers: number;
     knowledgeFeed: boolean;
-    syncConfigured: boolean;
   };
   sessions: DeveloperSession[];
   audit: AuditEntry[];

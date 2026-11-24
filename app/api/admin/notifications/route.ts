@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         userRole: actor.role,
         action: 'UPDATE',
         module: 'Notifications',
-        description: `Dispatched ${result.processed} queued notices; ${result.accepted} accepted by provider. Delivery is not assumed.`,
+        description: `Processed ${result.processed} queued notices; ${result.accepted} accepted by the mail server, ${result.retrying} scheduled for retry, ${result.failed} need review. Delivery to the inbox is not assumed.`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },

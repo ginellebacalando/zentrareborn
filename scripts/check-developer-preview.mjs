@@ -109,7 +109,7 @@ try {
       await request('/api/developer/control', {
         method: 'POST',
         headers: jsonHeaders,
-        body: JSON.stringify({ op: 'settings', code: code() }),
+        body: JSON.stringify({ op: 'review-resolve', id: 'missing-review', code: code() }),
       })
     ).status,
     403,
@@ -133,7 +133,7 @@ try {
       await request('/api/developer/control', {
         method: 'POST',
         headers: mutateHeaders,
-        body: JSON.stringify({ op: 'sync', code: code() }),
+        body: JSON.stringify({ op: 'review-resolve', id: 'missing-review', code: code() }),
       })
     ).status,
     403,

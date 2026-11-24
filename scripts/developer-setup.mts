@@ -178,10 +178,21 @@ try {
     );
   }
   if (!changes) {
+    // Explicit names: older installations may still hold the retired configuration table.
+    const tables = [
+      'zion_developer_accounts',
+      'zion_developer_sessions',
+      'zion_developer_rate_limits',
+      'zion_developer_audit',
+      'zion_developer_documents',
+      'zion_developer_document_revisions',
+      'zion_developer_review',
+    ];
     const r = await pool.query(
-      "SELECT count(*)::int AS count FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'zion_developer_%'",
+      "SELECT count(*)::int AS count FROM pg_tables WHERE schemaname='public' AND tablename=ANY($1::text[])",
+      [tables],
     );
-    console.log(`Developer schema: ${r.rows[0].count}/8 tables. Check only.`);
+    console.log(`Developer schema: ${r.rows[0].count}/${tables.length} tables. Check only.`);
   }
 } finally {
   await pool.end();

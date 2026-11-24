@@ -47,7 +47,7 @@ export default function SourceEditor({
         </div>
         <p className={styles.help}>
           {kind === 'template'
-            ? 'General fallback and category-specific checklists. Published versions are available to n8n through the private feed.'
+            ? 'General fallback and category-specific checklists. Published versions are available to approved consumers through the private feed.'
             : 'Approved information for the chatbot. Drafts never enter the published feed.'}
         </p>
         <div className={styles.sourceList}>
@@ -143,7 +143,7 @@ function SourceForm({
         <h2>{doc ? 'Edit source' : 'Create a new draft'}</h2>
         <p>
           {kind === 'template'
-            ? 'Publishing makes this checklist available to orchestration consumers. Existing staff tasks are unaffected.'
+            ? 'Publishing makes this checklist available to approved feed consumers. Existing staff tasks are unaffected.'
             : 'Record reviewed facts and their source. Publish after verifying the information.'}
         </p>
       </div>

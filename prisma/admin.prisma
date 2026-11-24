@@ -85,17 +85,27 @@ model AdminPolicy {
   updatedAt DateTime @updatedAt
   @@map("zion_admin_policy")
 }
+// The delivery columns and zion_automation_state were added after admin.sql was generated;
+// prisma/automation.sql applies them idempotently to existing installations.
 model AdminOutbox {
   id String @id @default(cuid())
-  bookingId String
+  bookingId String?
   event String @db.VarChar(40)
   recipient String @db.VarChar(255)
+  replyTo String? @db.VarChar(255)
   subject String
   body String @db.Text
+  html String? @db.Text
+  calendar String? @db.Text
+  calendarMethod String? @db.VarChar(10)
+  idempotencyKey String? @unique @db.VarChar(200)
   status String @default("QUEUED") @db.VarChar(20)
   attempts Int @default(0)
+  maxAttempts Int @default(5)
   lastError String?
   nextAttemptAt DateTime @default(now())
+  claimedAt DateTime?
+  expiresAt DateTime?
   sentAt DateTime?
   createdAt DateTime @default(now())
   @@index([status, nextAttemptAt])
@@ -106,4 +116,10 @@ model AdminRateLimit {
   attempts Int @default(1)
   windowAt DateTime @default(now())
   @@map("zion_admin_rate_limits")
+}
+model AutomationState {
+  key String @id @db.VarChar(60)
+  at DateTime @default(now())
+  detail Json?
+  @@map("zion_automation_state")
 }

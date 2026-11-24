@@ -794,22 +794,6 @@
 .accent {
   color: var(--palette-success-light);
 }
-.workflow {
-  padding: 17px 0;
-  border-top: 1px solid var(--palette-night-raised);
-}
-.workflow > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.workflow code {
-  display: block;
-  font-size: var(--type-caption);
-  color: var(--palette-sage);
-  margin: 6px 0 16px;
-}
 .actions {
   display: flex;
   flex-wrap: wrap;

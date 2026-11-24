@@ -8,19 +8,21 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
+  Clock3,
   FileText,
-  GitBranch,
   LayoutDashboard,
   ListChecks,
   LoaderCircle,
   LockKeyhole,
   LogOut,
+  MailCheck,
   Menu,
   Network,
   RefreshCw,
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
+import { AUTOMATION_STATUS_LABELS, isAutomationStatus } from '@/lib/automation/catalog';
 import type { Overview } from '@/lib/developer/types';
 import { developerApi } from './api';
 import SourceEditor from './SourceEditor';
@@ -31,7 +33,7 @@ import styles from './developer.module.css';
 type Section =
   | 'overview'
   | 'connections'
-  | 'orchestration'
+  | 'automation'
   | 'templates'
   | 'knowledge'
   | 'content'
@@ -49,7 +51,7 @@ type WorkspaceSession = {
 const sections = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'connections', label: 'Connections', icon: Network },
-  { id: 'orchestration', label: 'Orchestration', icon: GitBranch },
+  { id: 'automation', label: 'Automation', icon: MailCheck },
   { id: 'templates', label: 'Task templates', icon: ListChecks },
   { id: 'knowledge', label: 'Assistant knowledge', icon: BookOpen },
   { id: 'content', label: 'Public content', icon: FileText },
@@ -59,8 +61,8 @@ const sections = [
 const descriptions: Record<Section, string> = {
   overview: 'A clear view of the systems behind Zion.',
   connections: 'Inspect the services used by the client and admin panels.',
-  orchestration: 'Manage approved n8n workflows and inquiry delivery behavior.',
-  templates: 'Versioned checklists for general and event-specific orchestration.',
+  automation: 'Read-only status of the built-in email automation and its outbox.',
+  templates: 'Versioned checklists for general and event-specific operations.',
   knowledge: 'Maintain the verified information your assistant can use.',
   content: 'Draft, review, and publish information across the client website.',
   security: 'Control developer access and revoke active sessions.',
@@ -387,7 +389,7 @@ export default function DeveloperWorkspace({
                     </div>
                     <div
                       className={styles.heroDiagram}
-                      aria-label="Client and admin connect through orchestration"
+                      aria-label="Client and admin connect through built-in automation"
                     >
                       <div>
                         <Boxes size={20} />
@@ -395,8 +397,8 @@ export default function DeveloperWorkspace({
                       </div>
                       <i />
                       <div className={styles.diagramCenter}>
-                        <GitBranch size={25} />
-                        ORCHESTRATION<span>n8n · governed workflows</span>
+                        <MailCheck size={25} />
+                        AUTOMATION<span>Built-in email outbox</span>
                       </div>
                       <i />
                       <div>
@@ -421,7 +423,7 @@ export default function DeveloperWorkspace({
                     <Metric
                       label="TASK TEMPLATES"
                       value={String(data.templateCount).padStart(2, '0')}
-                      detail="Published orchestration checklists"
+                      detail="Published operations checklists"
                       icon={<ListChecks />}
                     />
                     <Metric
@@ -531,122 +533,82 @@ export default function DeveloperWorkspace({
                   </div>
                 </>
               )}
-              {section === 'orchestration' && (
+              {section === 'automation' && (
                 <>
-                  <div className={styles.twoColumns}>
-                    <OrchestrationForm
-                      key={data.settingsRevision}
-                      data={data}
-                      busy={busy}
-                      mutate={run}
-                    />
-                    <section className={styles.card}>
-                      <CardTitle
-                        title="Approved n8n workflows"
-                        detail="Only server-allowlisted workflows can be controlled here."
-                      />
-                      {data.workflowError && <p className={styles.error}>{data.workflowError}</p>}
-                      {!data.workflows.length && (
-                        <div className={styles.empty}>
-                          <GitBranch size={27} />
-                          <h3>No workflows connected</h3>
-                          <p>
-                            Configure the approved n8n API connection and workflow IDs on the
-                            server.
-                          </p>
-                        </div>
-                      )}
-                      {data.workflows.map((w) => (
-                        <div key={w.id} className={styles.workflow}>
-                          <div>
-                            <strong>{w.name}</strong>
-                            <Status value={w.active ? 'active' : 'paused'} />
-                          </div>
-                          <code>{w.id}</code>
-                          <div className={styles.actions}>
-                            <a
-                              className={styles.secondary}
-                              href={w.editorUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Edit in n8n
-                              <ArrowUpRight size={14} />
-                            </a>
-                            <button
-                              disabled={busy}
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `${w.active ? 'Pause' : 'Activate'} ${w.name} in n8n?`,
-                                  )
-                                )
-                                  run({
-                                    op: 'workflow',
-                                    id: w.id,
-                                    active: !w.active,
-                                  });
-                              }}
-                            >
-                              {w.active ? 'Pause workflow' : 'Activate workflow'}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </section>
+                  <div className={styles.connectionGrid}>
+                    <article className={styles.card}>
+                      <div className={styles.cardTop}>
+                        <span className={styles.largeIcon}>
+                          <MailCheck size={23} />
+                        </span>
+                        <Status
+                          value={data.automation.emailConfigured ? 'configured' : 'missing'}
+                        />
+                      </div>
+                      <h2>Email delivery</h2>
+                      <p className={styles.muted}>Gmail SMTP through Nodemailer</p>
+                      <p>
+                        {data.automation.emailConfigured
+                          ? 'Server settings are present. Queued emails are delivered from the outbox.'
+                          : 'Not configured. Emails stay queued in the outbox and are not sent.'}
+                      </p>
+                    </article>
+                    <article className={styles.card}>
+                      <div className={styles.cardTop}>
+                        <span className={styles.largeIcon}>
+                          <Clock3 size={23} />
+                        </span>
+                        <Status value={data.automation.cronConfigured ? 'configured' : 'missing'} />
+                      </div>
+                      <h2>Scheduled runs</h2>
+                      <p className={styles.muted}>Retries, reminders and the daily digest</p>
+                      <p>
+                        {data.automation.lastRunAt
+                          ? `Last run ${date(data.automation.lastRunAt)} PHT.`
+                          : 'No scheduled run has been recorded yet.'}
+                      </p>
+                    </article>
                   </div>
                   <section className={styles.card}>
                     <CardTitle
-                      title="Webhook delivery history"
-                      detail="Recent inquiry deliveries. Retrying respects the attempt limit and idempotency key."
+                      title="Outbox status"
+                      detail="Counts only. Recipients and message content stay in the admin panel."
                     />
-                    {!data.recentDeliveries.length ? (
-                      <p className={styles.muted}>No webhook deliveries have been recorded.</p>
+                    {!data.automation.available ? (
+                      <p className={styles.muted}>
+                        The outbox could not be read. Install the admin and automation schema.
+                      </p>
+                    ) : !data.automation.counts.length ? (
+                      <p className={styles.muted}>No emails have been queued yet.</p>
                     ) : (
                       <div className={styles.tableWrap}>
                         <table>
                           <thead>
                             <tr>
-                              <th>Workflow</th>
                               <th>Status</th>
-                              <th>Created</th>
-                              <th>Action</th>
+                              <th>Emails</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {data.recentDeliveries.map((d) => (
-                              <tr key={d.id}>
+                            {data.automation.counts.map((row) => (
+                              <tr key={row.status}>
                                 <td>
-                                  {d.workflow_name}
-                                  <small className={styles.mono}>{d.id}</small>
+                                  {isAutomationStatus(row.status)
+                                    ? AUTOMATION_STATUS_LABELS[row.status]
+                                    : row.status}
+                                  <small className={styles.mono}>{row.status}</small>
                                 </td>
-                                <td>
-                                  <Status value={d.status} />
-                                </td>
-                                <td>{date(d.created_at)}</td>
-                                <td>
-                                  {[
-                                    'RETRYING',
-                                    'FAILED',
-                                    'QUEUED',
-                                    'retrying',
-                                    'failed',
-                                    'queued',
-                                  ].includes(d.status) && (
-                                    <button
-                                      disabled={busy}
-                                      onClick={() => run({ op: 'delivery-retry', id: d.id })}
-                                    >
-                                      Retry delivery
-                                    </button>
-                                  )}
-                                </td>
+                                <td>{row.count}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
                     )}
+                    <div className={styles.subtleNote}>
+                      Staff review and retry failed emails on the Automation page of the admin
+                      panel.
+                    </div>
                   </section>
                 </>
               )}
@@ -867,82 +829,5 @@ function SecurityCard({ title, detail }: { title: string; detail: string }) {
       <h2>{title}</h2>
       <p>{detail}</p>
     </article>
-  );
-}
-function OrchestrationForm({
-  data,
-  busy,
-  mutate,
-}: {
-  data: Overview;
-  busy: boolean;
-  mutate: (input: Record<string, unknown>) => void;
-}) {
-  const [value, setValue] = useState(data.settings);
-  return (
-    <section className={styles.card}>
-      <CardTitle
-        title="Inquiry delivery controls"
-        detail="These settings apply to the existing client inquiry orchestration."
-      />
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          mutate({ op: 'settings', revision: data.settingsRevision, value });
-        }}
-      >
-        <label className={styles.checkbox}>
-          <input
-            type="checkbox"
-            checked={value.inquiryEnabled}
-            onChange={(e) => setValue({ ...value, inquiryEnabled: e.target.checked })}
-          />
-          Enable inquiry webhook delivery
-        </label>
-        <div className={styles.formGrid}>
-          {(
-            [
-              {
-                key: 'timeoutMs',
-                label: 'Timeout (milliseconds)',
-                min: 1000,
-                max: 30000,
-              },
-              {
-                key: 'maxAttempts',
-                label: 'Maximum attempts per new job',
-                min: 1,
-                max: 10,
-              },
-              {
-                key: 'retryBaseMs',
-                label: 'Retry backoff base (milliseconds)',
-                min: 1000,
-                max: 1800000,
-              },
-            ] as const
-          ).map((f) => (
-            <label key={f.key}>
-              {f.label}
-              <input
-                type="number"
-                required
-                min={f.min}
-                max={f.max}
-                value={value[f.key]}
-                onChange={(e) => setValue({ ...value, [f.key]: Number(e.target.value) })}
-              />
-            </label>
-          ))}
-        </div>
-        <p className={styles.help}>
-          Secrets and destination URLs are managed in server configuration. Existing jobs retain
-          their original attempt budget.
-        </p>
-        <button className={styles.primary} disabled={busy}>
-          Save orchestration settings
-        </button>
-      </form>
-    </section>
   );
 }

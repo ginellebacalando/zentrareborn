@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   Fingerprint,
-  GitBranch,
   LockKeyhole,
+  MailCheck,
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
@@ -32,7 +32,7 @@ export default function DeveloperLogin() {
           <br />
           Every connection.
         </h1>
-        <p>Orchestration, approved knowledge, and the infrastructure behind every experience.</p>
+        <p>Automation, approved knowledge, and the infrastructure behind every experience.</p>
         <div className={styles.network} aria-hidden="true">
           <span>
             <Terminal />
@@ -40,8 +40,8 @@ export default function DeveloperLogin() {
           </span>
           <i />
           <span>
-            <GitBranch />
-            Orchestration
+            <MailCheck />
+            Automation
           </span>
           <i />
           <span>

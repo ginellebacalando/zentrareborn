@@ -11,6 +11,7 @@ import {
 } from '@prisma/client';
 
 import { createAuditLog, errorMetadata, getRequestContext } from '@/lib/audit';
+import { enqueueInquiryReceived } from '@/lib/automation/inquiries';
 import { prisma } from '@/lib/prisma';
 
 const URGENT_PATTERN = /\b(asap|urgent|today|immediately|right away)\b/i;
@@ -86,7 +87,7 @@ export async function submitInquiry(request: Request) {
 
   const reference = inquiryReference();
   const priority = publicPriority(message);
-  const inquiry = await prisma.$transaction(
+  const { inquiry, notificationIds } = await prisma.$transaction(
     async (transaction) => {
       const created = await transaction.inquiry.create({
         data: {
@@ -122,7 +123,10 @@ export async function submitInquiry(request: Request) {
         },
       });
 
-      return created;
+      // Outbox rows commit atomically with the inquiry: no inquiry without its notifications.
+      const notificationIds = await enqueueInquiryReceived(transaction, created);
+
+      return { inquiry: created, notificationIds };
     },
     { maxWait: 10_000, timeout: 15_000 },
   );
@@ -152,14 +156,7 @@ export async function submitInquiry(request: Request) {
     id: inquiry.id,
     inquiryReference: reference,
     message: 'Your inquiry has been submitted successfully. Our team will contact you soon.',
-    orchestrationPayload: {
-      clientName: fullName,
-      clientEmail: email,
-      clientPhone: phoneNumber,
-      eventInterest,
-      packageInterest,
-      sourcePage,
-    },
+    notificationIds,
   };
 }
 
