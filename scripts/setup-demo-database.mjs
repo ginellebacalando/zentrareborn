@@ -1,6 +1,7 @@
 // Fills an EMPTY hosted test database (for example the zentra-staging project on Supabase) with
 // every table and the same clearly labeled demo content as the local preview, so a shared online
-// preview works end to end. It refuses to touch a database that already has tables or types.
+// preview works end to end. It refuses to touch a database that already has tables or enum types;
+// a lone Prisma migration-history table (left by another project's `migrate`) is ignored and kept.
 //
 //   npm run db:demo:setup                                   check only; changes nothing
 //   npm run db:demo:setup -- --apply --allow-remote         create tables and demo content
@@ -65,7 +66,8 @@ try {
   await client.query(`SET TIME ZONE 'UTC'`);
   const existing = (
     await client.query(
-      `SELECT (SELECT count(*) FROM pg_tables WHERE schemaname = 'public')::int AS tables,
+      `SELECT (SELECT count(*) FROM pg_tables
+                WHERE schemaname = 'public' AND tablename <> '_prisma_migrations')::int AS tables,
               (SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
                 WHERE n.nspname = 'public' AND t.typtype = 'e')::int AS enums`,
     )
