@@ -28,6 +28,29 @@ needs no secrets. The database rebuilds itself when the schema files change; add
 start over. The demo staff sign-in for `/admin` is generated on first run and saved in the ignored `.local/DEMO-ADMIN-SIGN-IN.txt`; it
 exists only in that local database. Email stays off in the local preview even when `.env.local` has Gmail settings; pass `-- --send-email` to test real sending.
 
+## Shared online preview (Vercel + Supabase staging)
+
+The team preview runs on Vercel's free Hobby plan against the `zentra-staging` Supabase project.
+Every push to `main` redeploys it.
+
+1. Put the staging connection strings in `.env.local`: `DATABASE_URL` (port 6543 with
+   `pgbouncer=true`) and `DIRECT_URL` (port 5432).
+2. `npm run db:demo:setup` checks the database. `npm run db:demo:setup -- --apply --allow-remote`
+   fills an **empty** database with every table and the local preview's demo content (labeled
+   "Demo"), enables row-level security on every table and removes the Supabase Data API roles'
+   access. It refuses any database that already has tables. The online staff sign-in is saved in
+   the ignored `.local/HOSTED-ADMIN-SIGN-IN.txt`.
+3. Import the repository in Vercel and add `DATABASE_URL`, `AUTH_SECRET`, `RECEPTIONIST_STATE_KEY`
+   and `CRON_SECRET`. Leave `AUTH_URL` unset on Vercel: Auth.js and the admin origin check then use
+   the address being visited, so staff sign-in works on every Vercel link. Add the production link
+   as `NEXT_PUBLIC_APP_URL` when you turn on email, so staff emails link back to the site. Gmail
+   (`SMTP_*`) and `GEMINI_API_KEY` are optional: without them email stays queued and Zeni uses its
+   built-in answers.
+
+`vercel.json` runs the functions in Singapore (`sin1`), next to the Supabase region, and schedules
+the daily automation run. Vercel's Hobby plan is for non-commercial use, so move to a paid plan
+before the site serves the business.
+
 ## Fonts
 
 The team plan uses **SFT Schrifted Sans** for all text and **Zenitha Classic** for the ZENTRA
@@ -46,7 +69,7 @@ Notifications (inquiry alerts and acknowledgements, booking decisions with calen
 - `npm run automation:run` performs one automation run from the command line.
 - `npm run test:automation` tests the outbox, delivery, scheduling, calendar invitations and cron authorization without contacting a mail server.
 
-The included Prisma schema reflects the existing shared database contract. This extraction does not include database migrations or seed scripts, so it cannot accidentally take ownership of administrator-side database evolution.
+The included Prisma schema reflects the existing shared database contract. This extraction does not include database migrations, so it cannot accidentally take ownership of administrator-side database evolution. The only seed, `npm run db:demo:setup`, fills an empty test database and refuses any database that already has tables.
 
 ## Verification
 

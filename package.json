@@ -18,6 +18,7 @@
     "test:admin": "node --conditions=react-server --import tsx --test lib/admin/domain.test.ts lib/admin/integration.test.ts lib/admin/local-access.test.ts lib/admin/dashboard.test.ts lib/admin/analytics.test.ts",
     "db:admin:check": "node scripts/install-admin-schema.mjs",
     "db:automation:check": "node scripts/install-automation-schema.mjs",
+    "db:demo:setup": "node scripts/setup-demo-database.mjs",
     "automation:run": "node --conditions=react-server --import tsx scripts/run-automation.ts",
     "test:automation": "node --conditions=react-server --import tsx --test lib/automation/ics.test.ts lib/automation/automation.test.ts",
     "typecheck": "tsc --noEmit",
