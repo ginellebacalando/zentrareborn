@@ -59,22 +59,22 @@ function accountValue(accounts: PaymentAccounts, group: 'gcash' | 'bank', key: s
 }
 
 const clientControls = [
-  ['maintenanceMode', 'Maintenance Mode', 'Temporarily pauses public client features.'],
+  ['maintenanceMode', 'Maintenance mode', 'Temporarily pauses public client features.'],
   [
     'inquirySubmissionsEnabled',
-    'Inquiry Submissions',
+    'Inquiry submissions',
     'Controls Contact Us and homepage inquiry forms.',
   ],
-  ['packagesVisible', 'Public Packages', 'Controls public packages and package information.'],
+  ['packagesVisible', 'Public packages', 'Controls public packages and package information.'],
   ['faqVisible', 'Client FAQ', 'Controls client FAQ pages, previews, and APIs.'],
   [
     'publicTestimoniesVisible',
-    'Public Testimonies',
+    'Public testimonies',
     'Controls public testimonies and featured stories.',
   ],
   [
     'testimonySubmissionsEnabled',
-    'Testimony Submissions',
+    'Testimony submissions',
     'Controls client testimony submissions.',
   ],
 ] as const;
@@ -349,7 +349,7 @@ function PreferencesEditor({
         {initial.canEdit ? (
           <button type="submit" className={styles.primary} disabled={busy}>
             <i className="fi fi-rr-disk" aria-hidden="true" />
-            {busy ? 'Saving…' : 'Save Changes'}
+            {busy ? 'Saving…' : 'Save changes'}
           </button>
         ) : (
           <span className={styles.help}>
@@ -371,7 +371,7 @@ function PreferencesEditor({
       <div className={styles.settingsColumns}>
         <div>
           <section className={styles.settingsCard}>
-            <SectionTitle icon="fi-rr-palette" title="Appearance & Theme" />
+            <SectionTitle icon="fi-rr-palette" title="Appearance and theme" />
             <div className={styles.settingsCardBody}>
               <div className={styles.themeChoices} role="group" aria-label="Default theme">
                 {(['light', 'dark'] as const).map((theme) => (
@@ -393,7 +393,7 @@ function PreferencesEditor({
                       className={`fi ${theme === 'light' ? 'fi-rr-brightness' : 'fi-rr-moon'}`}
                       aria-hidden="true"
                     />
-                    <strong>{theme === 'light' ? 'Light Mode' : 'Evening Gala'}</strong>
+                    <strong>{theme === 'light' ? 'Light mode' : 'Dark mode'}</strong>
                     <span>
                       {theme === 'light' ? 'Default bright interface.' : 'Rich, dark interface.'}
                     </span>
@@ -414,7 +414,7 @@ function PreferencesEditor({
                 <span>
                   <i className="fi fi-rr-shield-check" aria-hidden="true" />
                 </span>
-                Session & Advanced Security
+                Session and security
                 <ChevronDown size={18} aria-hidden="true" />
               </h2>
             </summary>
@@ -448,12 +448,12 @@ function PreferencesEditor({
                 preview access keep their current expiry.
               </p>
               <div className={styles.settingsUnavailable}>
-                <strong>Two-Factor Auth</strong>
+                <strong>Two-factor authentication</strong>
                 <span className={styles.badge}>Unavailable</span>
                 <p>Authenticator enrollment is not available in the old or current system.</p>
               </div>
               <div className={styles.settingsUnavailable}>
-                <strong>Access Policy</strong>
+                <strong>Access policy</strong>
                 <p>
                   Admin session lifetime is enforced on login. Destructive-action password prompts
                   are unavailable until those forms support password confirmation.
@@ -462,7 +462,7 @@ function PreferencesEditor({
             </div>
           </details>
           <section className={styles.settingsCard}>
-            <SectionTitle icon="fi-rr-globe" title="Client Panel Controls" />
+            <SectionTitle icon="fi-rr-globe" title="Client website controls" />
             <div className={styles.settingsCardBody}>
               {clientControls.map(([key, label, detail]) => (
                 <div key={key} className={styles.settingsToggleRow}>
@@ -478,7 +478,7 @@ function PreferencesEditor({
                   />
                 </div>
               ))}
-              {['Online Booking Requests', 'Smart Assistant'].map((label) => (
+              {['Online booking requests', 'Smart assistant'].map((label) => (
                 <div key={label} className={styles.settingsToggleRow}>
                   <div>
                     <strong>{label}</strong>
@@ -590,7 +590,7 @@ function PreferencesEditor({
                 <span>
                   <i className="fi fi-rr-calendar" aria-hidden="true" />
                 </span>
-                Booking Automation
+                Booking automation
                 <ChevronDown size={18} aria-hidden="true" />
               </h2>
             </summary>
@@ -694,7 +694,7 @@ function PreferencesEditor({
                 <span>
                   <i className="fi fi-rr-wallet" aria-hidden="true" />
                 </span>
-                Online Payments
+                Online payments
                 <ChevronDown size={18} aria-hidden="true" />
               </h2>
             </summary>
@@ -773,7 +773,7 @@ function PreferencesEditor({
                 <span>
                   <i className="fi fi-rr-settings-sliders" aria-hidden="true" />
                 </span>
-                Localization & Data
+                Localization and data
                 <ChevronDown size={18} aria-hidden="true" />
               </h2>
             </summary>
@@ -822,7 +822,7 @@ function PreferencesEditor({
               </p>
               <div className={styles.settingsExport}>
                 <div>
-                  <strong>Export Data</strong>
+                  <strong>Export data</strong>
                   <p>Download up to 10,000 activity logs.</p>
                 </div>
                 <a

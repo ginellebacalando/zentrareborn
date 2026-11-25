@@ -85,17 +85,20 @@
   --palette-success-dark: #162b20;
 
   /*
-   * Admin palette (ZENTRA admin frames in Figma): white surfaces, deep green actions, active states
-   * and headings, #D9D9D9 hairlines, teal KPI cards, the status hues above and a night palette for
-   * the dark theme. Admin roles alias the ZENTRA brand palette; the values below only add what the
-   * brand palette lacks (a dark hairline and dark-theme status chips). ivory, ink and muted keep
-   * their earlier warm values solely because the receptionist chat block aliases them; no admin
-   * role uses them any more.
+   * Admin palette (docs/admin-design.md): a calm workspace in the ZENTRA colours. A mist page,
+   * white cards and sidebar, soft hairlines, ink headings, and deep green kept for the wordmark,
+   * actions, the current page and focus; the status hues above and a night palette for the dark
+   * theme. Admin roles alias the ZENTRA brand palette; the values below only add what the brand
+   * palette lacks (a soft light hairline, a dark hairline and dark-theme status chips). ivory, ink
+   * and muted keep their earlier warm values solely because the receptionist chat block aliases
+   * them; no admin role uses them any more.
    */
+  --palette-admin-line: #e3e8e5;
   --palette-admin-ivory: #fffbe9;
   --palette-admin-ink: #211610;
   --palette-admin-muted: #6b5143;
   --palette-admin-night-line: #2a4a3e;
+  --palette-admin-night-control: #3d5f52;
   --palette-admin-night-request: #2b2608;
   --palette-admin-night-request-ink: #ffe27a;
   --palette-admin-night-pending: #2e1c08;
@@ -105,7 +108,7 @@
   --palette-admin-night-cancelled: #33161a;
   --palette-admin-night-cancelled-ink: #ffb3b6;
 
-  --admin-surface-page: var(--palette-white);
+  --admin-surface-page: var(--palette-zentra-mist);
   --admin-surface-sidebar: var(--palette-white);
   --admin-surface-card: var(--palette-white);
   --admin-surface-input: var(--palette-white);
@@ -114,13 +117,15 @@
   --admin-surface-selected: var(--palette-zentra-green-soft);
   --admin-ink: var(--palette-zentra-ink);
   --admin-muted: var(--palette-zentra-muted);
-  --admin-heading: var(--palette-zentra-green);
+  --admin-heading: var(--palette-zentra-ink);
   --admin-wordmark: var(--palette-zentra-green);
   --admin-action: var(--palette-zentra-green);
   --admin-action-hover: var(--palette-zentra-green-hover);
   --admin-on-action: var(--palette-white);
   --admin-border: var(--palette-zentra-line-strong);
-  --admin-divider: var(--palette-zentra-line);
+  /* Borders of secondary buttons and toggles, whose text labels identify them. */
+  --admin-control-line: var(--palette-zentra-line);
+  --admin-divider: var(--palette-admin-line);
   --admin-focus: var(--palette-zentra-green);
   --admin-focus-halo: var(--palette-white);
   --admin-accent: var(--palette-zentra-teal);
@@ -258,6 +263,8 @@
   --type-wordmark: clamp(2.25rem, 1.6rem + 2.4vw, 3.5rem);
   --type-wordmark-compact: 1.75rem;
   --type-workspace-title: clamp(1.75rem, 1.25rem + 1.5vw, 2.5rem);
+  /* Admin page titles: calmer than the workspace title, as in docs/admin-design.md. */
+  --type-panel-title: clamp(1.375rem, 1.25rem + 0.5vw, 1.75rem);
   --tracking-label: 0.16em;
   --tracking-display: 0.12em;
   --line-body: 1.6;
@@ -335,6 +342,7 @@
   --admin-action-hover: var(--palette-zentra-pearl);
   --admin-on-action: var(--palette-zentra-night);
   --admin-border: var(--palette-zentra-line-strong);
+  --admin-control-line: var(--palette-admin-night-control);
   --admin-divider: var(--palette-admin-night-line);
   --admin-focus: var(--palette-zentra-glow);
   --admin-focus-halo: var(--palette-zentra-night);

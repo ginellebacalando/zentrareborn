@@ -114,9 +114,7 @@ const isDisplayStatus = (tone: WebsiteActivityStatus['tone']): tone is DisplaySt
 function ActivityStatusTag({ status }: { status: WebsiteActivityStatus }) {
   if (isDisplayStatus(status.tone)) return <StatusChip status={status.tone} />;
   return (
-    <span
-      className={`${admin.badge} ${status.tone === 'attention' ? admin.bad : admin.neutral} ${styles.tag}`}
-    >
+    <span className={`${admin.badge} ${status.tone === 'attention' ? admin.bad : admin.neutral}`}>
       {status.label}
     </span>
   );

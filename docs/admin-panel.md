@@ -89,6 +89,21 @@ the full drawer, focus handling, and reduced-motion support still apply.
 
 The current public client design, navigation, contact flow, published terms, services, and removed public features are preserved. Only the root chrome bridge hides the public header/background/footer inside `/admin`. No public booking form, online payment gateway, assistant, or public admin link was restored. Prior image organization and branding edits were not repeated or overwritten.
 
+## Calm redesign — 26 November 2026
+
+The admin now follows [the admin design system](admin-design.md): the calm layout of the Metis
+template in the ZENTRA colours. This supersedes the look described in the 25 November section below
+(filled green current page, teal KPI cards, uppercase labels, dark "This month" list).
+
+- **Sidebar groups (routes unchanged):** Dashboard; Events: Bookings, Front desk, Calendar,
+  Contracts, Payments; Clients: Inquiries, Live chat, Zeni; Business: Packages, Reports, Team;
+  pinned footer: Automation, Activity log, Settings.
+- **Page headers:** every page shows its title; descriptions that restated the page were removed.
+- **Dashboard:** white KPI cards with icon tiles, one "Bookings this month" card with the four
+  display statuses, then trends.
+- **Bookings:** a highlighted banner with the requests that need a decision, status pills with
+  counts, simplified cards, and table rows that open the booking on click.
+
 ## ZENTRA redesign — 25 November 2026
 
 The admin follows the team's Figma frames (ADMIN / SUPERADMIN POV, BOOKING, CALENDAR, REPORT) inside the
@@ -356,14 +371,14 @@ seed, import, or modify records merely by opening the page. Existing bookings
 retain their agreed details. Image fields accept existing local paths or HTTPS
 URLs; no new upload provider or deletion feature was introduced.
 
-Settings includes Appearance & Theme, Session & Advanced Security, Client Panel
-Controls, Communications, and Localization & Data. Existing reservation/cash
+Settings includes Appearance and theme, Session and security, Client website
+controls, Communications, and Localization and data. Existing reservation/cash
 policy and delivery information remain below these sections. Changes require an
-explicit Save Changes action by a super administrator; viewing the page or
+explicit Save changes action by a super administrator; viewing the page or
 previewing a theme never writes preferences. Unrelated settings JSON is preserved,
 and concurrent stale saves are rejected.
 
-Light Mode and Evening Gala preview the admin theme. Saved defaults and client
+Light mode and Dark mode preview the admin theme. Saved defaults and client
 feature controls use the existing system_settings row and public settings reader.
 Session timeouts apply at the next regular login; existing sessions and temporary
 local preview access keep their expiry. Alert preferences filter attention items

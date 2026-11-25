@@ -26,6 +26,7 @@ import {
   type AutomationStatus,
   type StaffRecipientSource,
 } from '@/lib/automation/catalog';
+import { enumLabel } from './AdminBadge';
 import styles from './AutomationPanel.module.css';
 
 const ENDPOINT = '/api/admin/automation';
@@ -71,7 +72,7 @@ async function load(url: string): Promise<AutomationOverview> {
 /** Status is always conveyed by text and an icon, with color only as reinforcement. */
 function StatusBadge({ status }: { status: string }) {
   if (!isAutomationStatus(status))
-    return <span className={`${styles.badge} ${styles.toneNeutral}`}>{status}</span>;
+    return <span className={`${styles.badge} ${styles.toneNeutral}`}>{enumLabel(status)}</span>;
   const Icon = STATUS_ICONS[status];
   return (
     <span className={`${styles.badge} ${STATUS_TONES[status]}`}>
@@ -203,12 +204,6 @@ export default function AutomationPanel() {
       <header className={styles.header}>
         <div>
           <h1 id="automation-title">Automation</h1>
-          <p>
-            Emails the system sends on its own: inquiry alerts and acknowledgements, booking notices
-            with calendar invitations for the client and the staff, event reminders and the daily
-            staff digest. Every email is saved first, then delivered; nothing is shown as sent until
-            the mail server accepts it.
-          </p>
         </div>
         <div className={styles.headerActions}>
           <button

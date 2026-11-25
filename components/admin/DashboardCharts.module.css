@@ -48,16 +48,12 @@
   display: flex;
   flex-direction: column;
 }
-.section .card h3 {
-  font-size: var(--type-card-title);
-  color: var(--admin-heading);
-}
 .cardHeading {
   margin-bottom: var(--space-4);
 }
 .total {
   font-family: var(--font-zion-sans);
-  font-size: var(--type-section-title);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
   line-height: var(--line-heading);
@@ -175,9 +171,7 @@
   grid-template-columns: repeat(var(--month-count), minmax(0, 1fr));
   color: var(--admin-muted);
   font-size: var(--type-caption);
-  letter-spacing: 0.04em;
   text-align: center;
-  text-transform: uppercase;
 }
 .monthLabels abbr {
   text-decoration: none;
@@ -236,23 +230,25 @@
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
-/* "For the past 30 days" side card: teal, like Figma's KPI accents (white on teal ≥4.5:1). */
+.section .card h3,
+.recent h3 {
+  font-size: var(--type-body);
+}
+/* "For the past 30 days" side card: a white card like the others, figures right-aligned. */
 .recent {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--layout-card-padding);
+  border: 1px solid var(--admin-divider);
   border-radius: var(--radius-card);
-  background: var(--admin-teal);
-  color: var(--admin-on-teal);
+  background: var(--admin-surface-card);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--admin-shadow) 6%, transparent);
+  color: var(--admin-ink);
 }
 .recent h3 {
-  color: var(--admin-on-teal);
-  font-size: var(--type-caption);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  color: var(--admin-heading);
 }
 .recent dl {
   display: grid;
@@ -265,17 +261,16 @@
   align-items: baseline;
   gap: var(--space-3);
   padding-bottom: var(--space-3);
-  border-bottom: 1px solid color-mix(in srgb, var(--admin-on-teal) 30%, transparent);
+  border-bottom: 1px solid var(--admin-divider);
 }
 .recent dt {
-  color: var(--admin-on-teal);
+  color: var(--admin-muted);
   font-size: var(--type-small);
-  letter-spacing: normal;
-  text-transform: none;
 }
 .recent dd {
   margin: 0;
-  font-size: var(--type-card-title);
+  color: var(--admin-heading);
+  font-size: var(--type-lead);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -283,7 +278,7 @@
 }
 .section .recent p {
   margin: auto 0 0;
-  color: var(--admin-on-teal);
+  color: var(--admin-muted);
   font-size: var(--type-caption);
 }
 .donutScene {
@@ -328,8 +323,6 @@
   margin-top: var(--space-2);
   color: var(--admin-muted);
   font-size: var(--type-caption);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 .reservationLegend {
   padding: 0;
@@ -390,6 +383,6 @@
     width: 100%;
   }
   .total {
-    font-size: var(--type-workspace-title);
+    font-size: var(--type-panel-title);
   }
 }

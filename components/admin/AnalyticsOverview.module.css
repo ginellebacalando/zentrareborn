@@ -10,6 +10,7 @@
   background: var(--admin-surface-card);
   border: 1px solid var(--admin-divider);
   border-radius: var(--radius-card);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--admin-shadow) 6%, transparent);
   margin-bottom: var(--space-6);
 }
 .controls label {
@@ -52,7 +53,7 @@
   font-size: var(--type-card-title);
 }
 .report > .reportHeading h2 {
-  font-size: var(--type-workspace-title);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   line-height: var(--line-heading);
 }
@@ -79,22 +80,22 @@
   display: grid;
   gap: var(--space-6);
 }
-/* Business trend: a white card whose left edge uses the matching status hue. */
+/* Business trend: a white card; its label says the trend and its icon takes the matching hue. */
 .health {
   padding: var(--layout-card-padding);
   border: 1px solid var(--admin-divider);
-  border-left: var(--space-1) solid var(--admin-teal);
   border-radius: var(--radius-card);
   background: var(--admin-surface-card);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--admin-shadow) 6%, transparent);
 }
-.health.positive {
-  border-left-color: var(--admin-status-confirmed);
+.health.positive .healthMark {
+  color: var(--admin-status-confirmed-ink);
 }
-.health.attention {
-  border-left-color: var(--admin-status-cancelled);
+.health.attention .healthMark {
+  color: var(--admin-status-cancelled-ink);
 }
-.health.caution {
-  border-left-color: var(--admin-status-pending);
+.health.caution .healthMark {
+  color: var(--admin-status-pending-ink);
 }
 .healthTitle {
   display: flex;
@@ -106,8 +107,6 @@
   color: var(--admin-muted);
   font-size: var(--type-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 .health h2 {
   font-size: var(--type-card-title);
@@ -135,12 +134,10 @@
 .comparisons > div > strong {
   color: var(--admin-muted);
   font-size: var(--type-caption);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 .comparisons > div > span:not(.delta) {
   color: var(--admin-heading);
-  font-size: var(--type-workspace-title);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
   line-height: var(--line-heading);
@@ -165,7 +162,7 @@
 .delta svg {
   flex-shrink: 0;
 }
-/* Teal KPI cards (white on teal ≥4.5:1). */
+/* KPI cards: white, like the dashboard's (docs/admin-design.md). */
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -175,38 +172,38 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  border: 1px solid var(--admin-divider);
   border-radius: var(--radius-card);
   padding: var(--space-6);
-  background: var(--admin-teal);
-  color: var(--admin-on-teal);
+  background: var(--admin-surface-card);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--admin-shadow) 6%, transparent);
+  color: var(--admin-ink);
   min-width: 0;
 }
 .metric h3 {
-  color: inherit;
+  color: var(--admin-muted);
   font-family: var(--font-zion-sans);
-  font-size: var(--type-caption);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  font-size: var(--type-small);
+  font-weight: var(--weight-medium);
 }
 .metric > strong {
   display: block;
+  color: var(--admin-heading);
   font-family: var(--font-zion-sans);
-  font-size: clamp(1.75rem, 1.4rem + 1vw, 2.25rem);
+  font-size: clamp(1.5rem, 1.3rem + 0.6vw, 1.875rem);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
   line-height: var(--line-heading);
   overflow-wrap: anywhere;
 }
 .metricPeriod {
+  color: var(--admin-muted);
   font-size: var(--type-caption);
-  font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 .metricTrend {
   margin-top: auto;
   padding-top: var(--space-2);
+  color: var(--admin-chart-line);
 }
 .metricTrend svg {
   width: 100%;
@@ -216,7 +213,6 @@
 .warning {
   background: var(--admin-status-pending-soft);
   color: var(--admin-status-pending-ink);
-  border-left: var(--space-1) solid var(--admin-status-pending);
   padding: var(--space-4);
   border-radius: var(--radius-control);
 }
@@ -240,6 +236,7 @@
   background: var(--admin-surface-card);
   border: 1px solid var(--admin-divider);
   border-radius: var(--radius-card);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--admin-shadow) 6%, transparent);
 }
 .model {
   min-width: 0;
@@ -277,7 +274,7 @@
 .summaryTiles strong {
   color: var(--admin-heading);
   font-family: var(--font-zion-sans);
-  font-size: var(--type-workspace-title);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -290,8 +287,6 @@
   color: var(--admin-muted);
   font-family: var(--font-zion-sans);
   font-size: var(--type-caption);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 .breakdown {
   margin: 0;
@@ -322,8 +317,6 @@
 }
 .breakdown dt {
   font-size: var(--type-small);
-  text-transform: none;
-  letter-spacing: normal;
 }
 .breakdown dd {
   margin: 0;

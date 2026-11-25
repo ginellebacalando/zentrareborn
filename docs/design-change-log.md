@@ -1,5 +1,65 @@
 # Design change log
 
+## 26 November 2026 — Calm admin redesign (Metis vibe, ZENTRA colours)
+
+User task: a recorded video brief plus the Metis template link: make the admin feel like Metis in
+the colours of the whole ZENTRA system, aligned with the main website; group the crowded sidebar;
+remove coloured card stripes and outlines and redundant subtitles; put what needs a decision first
+on Bookings; stop cards repeating labels; make table rows clickable; keep everything working for
+non-technical staff. The design system is written up in [admin-design.md](admin-design.md).
+
+Interpretation: the ZENTRA palette stays (deep green actions, the status hues, the night dark theme);
+Metis contributes the calm layout: a mist page, white cards with soft hairlines and a faint shadow,
+ink headings, sentence case, white KPI cards with icon tiles, grouped navigation. Switching to Metis'
+blue is a token change only.
+
+Affected screens: every admin page (shared shell), with page-specific changes on Dashboard,
+Bookings, Payments and Contracts (shared register), Calendar, Front desk, Walk-in booking, Live chat,
+Zeni, Reports, Automation, Activity log, Packages, Settings and My profile.
+
+- Tokens (`styles/tokens.css`): page `--admin-surface-page` is mist; headings are ink; new
+  `--palette-admin-line` (`#E3E8E5`) for dividers, `--admin-control-line` (light `#D9D9D9`, dark
+  new `--palette-admin-night-control` `#3D5F52`) for secondary buttons, and `--type-panel-title` for
+  page titles.
+- Shell (`admin.module.css`, `AdminShell.tsx`, `navigation.ts`): sidebar groups Events, Clients and
+  Business with muted labels (same items and routes; Calendar now follows Front desk and Payments
+  closes the Events group); the current page is a soft green row instead of a filled one; no
+  uppercase or letter-spacing anywhere in admin styles; cards 8px radius with a faint shadow; white
+  secondary buttons with a neutral border; every page shows a visible title.
+- Removed text that restated the page: the dashboard sentence "Track revenue, bookings, upcoming
+  events, and pending inquiries in one place.", the "Performance overview" overline, the context
+  sentences of Contracts, Inquiries, Reports, Team, Payments, Packages, Activity log, My profile
+  and Settings, and the intro paragraphs of Front desk, Walk-in booking, Live chat, Zeni and
+  Automation. Calendar keeps "All times are Manila time."
+- Dashboard: KPI cards are white with icon tiles (no teal fill); the four outlined status cards are
+  one "Bookings this month" card that names the month once; the teal "For the past 30 days" panel is
+  a white card.
+- Bookings: a highlighted banner leads the page ("3 requests need your decision", other waiting work
+  in one line, a Review requests / Show all bookings button); status pills read "Under review 3";
+  cards show the status chip, client name, event and package, date and reference without repeated
+  labels, and the whole card opens the booking; table rows open on click with a hover highlight and
+  the "Open" column is gone; on phones the records are compact clickable cards.
+- Stripes and outlines removed: booking cards (2px status outline), booking details (status top
+  bar), dashboard status cards, notices, testimony hold items, Reports business trend and notices,
+  Front desk events and notes, Automation job errors, payment proof warnings and Zeni gaps. The
+  calendar's dark "This month" panel is a white card.
+- Stored values show in sentence case (`enumLabel`): badges, activity log roles and actions, package
+  and category statuses, payment rules and team status. Settings section names are sentence case
+  ("Appearance and theme", "Session and security", "Client website controls", "Dark mode").
+- On the Front desk, Schedule a visit stays the one primary button; Walk-in booking is secondary.
+
+Checked locally (demo database, signed in as the demo owner): every admin page above at 1440×900;
+Bookings and the drawer at 320px with no sideways scrolling; the dark theme on Dashboard and
+Bookings; keyboard focus on a booking card (one tab stop, ring around the card); a click anywhere on
+a table row opens that row's booking (checked with `elementFromPoint` on four rows); the banner
+filters to the three requests and its button keeps focus. `npm run verify` passed on 26 November
+2026 (design check; tests: chatbot 68, admin 38, automation 31, developer 6; lint with no warnings;
+production build).
+
+Not checked: 200% text and 400% zoom, a screen reader, the login page in the new look (it only
+inherits the tokens), and the remaining pages in the dark theme and at 320px. Design Checker has
+not reviewed this yet.
+
 ## 25 November 2026 — Ocular visit button on the home page
 
 User task: add a "Schedule an ocular visit" button to the home page, after asking what the

@@ -20,8 +20,9 @@ function serverGreeting() {
 }
 
 /**
- * The dashboard's visible header: greeting and date in the configured timezone (naming rule 3).
- * The page's h1 is the visually hidden module name rendered by AdminWorkspace.
+ * The dashboard's visible header: a greeting and today's date in the configured timezone. The
+ * page's h1 ("Dashboard") is visually hidden here only, because the greeting already says where
+ * staff are (AdminWorkspace).
  */
 export default function DashboardGreeting({ name }: { name: string }) {
   const { settings } = useAdminPreferences();
@@ -52,10 +53,7 @@ export default function DashboardGreeting({ name }: { name: string }) {
         {greeting}
         {name ? `, ${name}` : ''}
       </p>
-      <p className={styles.pageContext}>
-        {today && <span className={styles.greetingDate}>{today}</span>}
-        Track revenue, bookings, upcoming events, and pending inquiries in one place.
-      </p>
+      {today && <p className={styles.greetingDate}>{today}</p>}
     </>
   );
 }

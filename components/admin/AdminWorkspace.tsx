@@ -14,14 +14,14 @@ import {
 } from 'lucide-react';
 import { displayStatuses } from '@/lib/admin/dashboard-status';
 import BookingDetail from './BookingDetail';
-import { Badge } from './AdminBadge';
+import { Badge, enumLabel } from './AdminBadge';
 import AdminOverviewSections from './AdminOverviewSections';
 import AnalyticsOverview from './AnalyticsOverview';
 import SystemSettingsForm from './SystemSettingsForm';
 import ServicesPackages from './ServicesPackages';
 import DashboardGreeting from './DashboardGreeting';
 import DashboardOverview from './DashboardOverview';
-import BookingRegister, { bookingsContext, type StatusView } from './BookingRegister';
+import BookingRegister, { AttentionCallout, type StatusView } from './BookingRegister';
 import BookingCalendar from './BookingCalendar';
 import { useAdminDate } from './AdminPreferencesProvider';
 import { BookingForm, SettingsForm, ProfileForm } from './Forms';
@@ -30,22 +30,12 @@ import type { AdminData, Booking, Notice } from './types';
 import styles from './admin.module.css';
 
 /*
- * Naming rules (plan section 20.3): the sidebar label is the only prominent module name. Each page
- * keeps an h1 equal to that label, visually hidden while the sidebar shows it, and a visible
- * context sentence that never repeats the module name.
+ * Page headers (docs/admin-design.md): every page shows its title, equal to the sidebar label. A
+ * short line follows only when it adds a fact staff need on that page; descriptions that only
+ * restate the page's purpose were removed in the November 2026 redesign.
  */
 const contexts: Record<string, string> = {
-  contracts: 'Prepare an accurate agreement from a verified booking and reviewed venue terms.',
-  calendar:
-    'Confirmed reservations secure dates; requests stay tentative. All times are in Manila.',
-  inquiries: 'Website messages with event details, ready to review before preparing a request.',
-  analytics: 'Income, balances, inquiry conversion, and the direction of the business.',
-  team: 'Administrators who can sign in to the venue workspace.',
-  payments: 'Record money actually received. Approval never marks a booking paid.',
-  services: 'Event categories, prices, inclusions, and what clients can see.',
-  logs: 'Read-only history and the actual status of notification processing.',
-  profile: 'Manage your own details and password. Your role is controlled by the venue owner.',
-  settings: 'Manage appearance, security, client access, communications, and localization.',
+  calendar: 'All times are Manila time.',
 };
 const PAGE_SIZE = 50;
 
@@ -196,13 +186,14 @@ export default function AdminWorkspace({
   const advancedFilterCount = ['approval', 'reservation', 'from', 'to'].filter(
     (key) => filters[key],
   ).length;
-  const context =
-    section === 'bookings' ? bookingsContext(data?.bookings, data?.total) : contexts[section];
+  const context = contexts[section];
   return (
     <>
       <div className={styles.pageHeading}>
         <div className={styles.pageIntro}>
-          <h1 className={styles.pageTitle}>{adminPageLabel(section)}</h1>
+          <h1 className={section === 'dashboard' ? styles.srOnly : styles.pageTitle}>
+            {adminPageLabel(section)}
+          </h1>
           {section === 'dashboard' ? (
             <DashboardGreeting name={adminName} />
           ) : (
@@ -280,6 +271,14 @@ export default function AdminWorkspace({
             restoreDetailFocus.current = true;
             setSelected(null);
           }}
+        />
+      )}
+      {section === 'bookings' && data?.bookings && (
+        <AttentionCallout
+          bookings={data.bookings}
+          partial={(data.total ?? 0) > data.bookings.length}
+          statusView={statusView}
+          onStatusView={setStatusView}
         />
       )}
       {isList && (
@@ -551,11 +550,11 @@ export default function AdminWorkspace({
                       <td>{eventDate(log.timestamp)}</td>
                       <td>
                         {log.userName}
-                        <small>{log.userRole}</small>
+                        <small>{enumLabel(log.userRole)}</small>
                       </td>
                       <td>
                         {log.module}
-                        <small>{log.action}</small>
+                        <small>{enumLabel(log.action)}</small>
                       </td>
                       <td>{log.description}</td>
                       <td>

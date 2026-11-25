@@ -133,7 +133,7 @@ export default function VisitRulesSettings({
           <span>
             <i className="fi fi-rr-calendar-clock" aria-hidden="true" />
           </span>
-          Ocular Visits
+          Ocular visits
           <ChevronDown size={18} aria-hidden="true" />
         </h2>
       </summary>

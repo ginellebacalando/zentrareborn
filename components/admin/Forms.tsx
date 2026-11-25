@@ -7,6 +7,7 @@ import styles from './admin.module.css';
 import { LockKeyhole, Mail, Phone, Save, ShieldCheck, UserRound, ChevronDown } from 'lucide-react';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import AdminAvatar from './AdminAvatar';
+import { enumLabel } from './AdminBadge';
 const eventTypes = [
   'Wedding',
   'Birthday',
@@ -264,7 +265,7 @@ export function BookingForm({
             <div className={styles.notice}>
               Venue: Zion Events Place
               <br />
-              Policy: {policy.paymentRule.replaceAll('_', ' ')}
+              Policy: {enumLabel(policy.paymentRule)}
               <br />
               {policy.cashInstructions}
               <br />
@@ -375,7 +376,7 @@ export function SettingsForm({
               <select name="paymentRule" defaultValue={p.paymentRule}>
                 {paymentRules.map((v) => (
                   <option key={v} value={v}>
-                    {v.replaceAll('_', ' ')}
+                    {enumLabel(v)}
                   </option>
                 ))}
               </select>
@@ -433,7 +434,7 @@ export function SettingsForm({
           </p>
           <p className={styles.help}>
             Timezone: Asia/Manila · Currency: PHP · Payment method: Cash only. Active services are
-            operationally available; client-visible controls public display. Client Panel Controls
+            operationally available; client-visible controls public display. Client website controls
             manage public access separately from service availability.
           </p>
         </details>
@@ -496,7 +497,7 @@ export function ProfileForm({
                 <span
                   className={`${styles.badge} ${user.status === 'ACTIVE' ? styles.good : styles.neutral}`}
                 >
-                  {user.status.replaceAll('_', ' ')}
+                  {enumLabel(user.status)}
                 </span>
               </dd>
             </div>

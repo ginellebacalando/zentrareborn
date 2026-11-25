@@ -5,6 +5,7 @@ import { Pencil, Plus, Search } from 'lucide-react';
 import type { CatalogData } from '@/lib/admin/catalog-types';
 import { useAdminDate } from './AdminPreferencesProvider';
 import CatalogEditor, { type CatalogEditing } from './CatalogEditor';
+import { enumLabel } from './AdminBadge';
 import styles from './admin.module.css';
 
 function price(value: number, currency: string) {
@@ -194,7 +195,7 @@ export default function ServicesPackages() {
                   <span
                     className={`${styles.badge} ${data.category.status === 'ACTIVE' ? styles.good : styles.neutral}`}
                   >
-                    {data.category.status}
+                    {enumLabel(data.category.status)}
                   </span>
                   <span className={styles.help}>
                     {data.category.clientVisible
@@ -263,7 +264,7 @@ export default function ServicesPackages() {
                     <span
                       className={`${styles.badge} ${item.status === 'ACTIVE' ? styles.good : styles.neutral}`}
                     >
-                      {item.status}
+                      {enumLabel(item.status)}
                     </span>
                     <span className={styles.help}>
                       {item.clientVisible

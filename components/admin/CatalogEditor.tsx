@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Save, X } from 'lucide-react';
 import type { CatalogCategory, CatalogInclusion, CatalogPackage } from '@/lib/admin/catalog-types';
+import { enumLabel } from './AdminBadge';
 import styles from './admin.module.css';
 import { containDialogFocus } from '@/lib/dialog-focus';
 
@@ -210,7 +211,9 @@ export default function CatalogEditor({
                   ? ['ACTIVE', 'HIDDEN', 'ARCHIVED']
                   : ['ACTIVE', 'INACTIVE', 'HIDDEN', 'ARCHIVED']
                 ).map((status) => (
-                  <option key={status}>{status}</option>
+                  <option key={status} value={status}>
+                    {enumLabel(status)}
+                  </option>
                 ))}
               </select>
             </label>

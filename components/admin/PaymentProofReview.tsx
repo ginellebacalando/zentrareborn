@@ -320,7 +320,7 @@ export default function PaymentProofReview({
           No screenshot yet. Clients can send a GCash or bank transfer screenshot only after an
           account is set up in{' '}
           <Link href="/admin/settings" className={review.textLink}>
-            Settings → Online Payments
+            Settings → Online payments
           </Link>
           ; until then their payment page shows how to pay in cash.
         </p>

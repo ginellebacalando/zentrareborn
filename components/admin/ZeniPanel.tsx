@@ -156,10 +156,6 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
       <div className={styles.pageHeading}>
         <div>
           <h1>Zeni</h1>
-          <p>
-            Zion’s virtual concierge: its AI status, the published knowledge it answers from,
-            questions it could not answer and hand-offs to staff.
-          </p>
         </div>
         <button
           type="button"

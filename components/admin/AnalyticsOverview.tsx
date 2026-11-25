@@ -25,6 +25,7 @@ import {
 import { money } from '@/lib/admin/domain';
 import AnalyticsCharts from './AnalyticsCharts';
 import { ChartDataTable, Sparkline } from './ChartPrimitives';
+import { enumLabel } from './AdminBadge';
 import styles from './AnalyticsOverview.module.css';
 import admin from './admin.module.css';
 import type { AdminData } from './types';
@@ -448,7 +449,7 @@ export default function AnalyticsOverview({
                         } as CSSProperties
                       }
                     >
-                      <dt>{row.label.replaceAll('_', ' ')}</dt>
+                      <dt>{enumLabel(row.label)}</dt>
                       <dd>{count(row.count)}</dd>
                     </div>
                   ))}

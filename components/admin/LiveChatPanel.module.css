@@ -22,7 +22,7 @@
 .page .pageHeading h1 {
   margin: 0;
   color: var(--admin-heading);
-  font-size: var(--type-workspace-title);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   line-height: var(--line-heading);
 }
@@ -436,6 +436,7 @@
   border: 1px solid var(--admin-action);
   border-radius: var(--radius-control);
   font: inherit;
+  font-size: var(--type-small);
   font-weight: var(--weight-semibold);
   cursor: pointer;
 }
@@ -450,11 +451,13 @@
 }
 
 .secondary {
+  border-color: var(--admin-control-line);
   background: var(--admin-surface-card);
-  color: var(--admin-action);
+  color: var(--admin-ink);
 }
 
 .secondary:hover:not(:disabled) {
+  border-color: var(--admin-border);
   background: var(--admin-surface-subtle);
 }
 

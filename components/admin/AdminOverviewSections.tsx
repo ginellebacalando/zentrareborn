@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import type { AdminData } from './types';
 import styles from './admin.module.css';
-import { Badge } from './AdminBadge';
+import { Badge, enumLabel } from './AdminBadge';
 import { useAdminDate } from './AdminPreferencesProvider';
 
 export default function AdminOverviewSections({
@@ -47,7 +47,7 @@ export default function AdminOverviewSections({
                   </small>
                 </span>
                 <span className={`${styles.badge} ${styles.neutral}`}>
-                  {inquiry.status?.replaceAll('_', ' ')}
+                  {inquiry.status ? enumLabel(inquiry.status) : ''}
                 </span>
               </summary>
               <dl>

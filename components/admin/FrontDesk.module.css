@@ -22,18 +22,16 @@
 .header {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
 }
-/* ZENTRA admin look: the module name is a small overline; the sentence is the visible header. */
+/* The page title, as on every admin page (docs/admin-design.md). */
 .header h1 {
   color: var(--admin-heading);
-  font-size: var(--type-small);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   line-height: var(--line-heading);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 .header p {
   max-width: 70ch;
@@ -76,12 +74,13 @@
   background: var(--admin-action-hover);
 }
 .secondary {
-  border: 1px solid var(--admin-action);
-  background: transparent;
-  color: var(--admin-action);
+  border: 1px solid var(--admin-control-line);
+  background: var(--admin-surface-card);
+  color: var(--admin-ink);
 }
 .secondary:not(:disabled):hover {
-  background: var(--admin-accent-soft);
+  background: var(--admin-surface-subtle);
+  border-color: var(--admin-border);
 }
 .danger {
   border: 1px solid var(--admin-danger);
@@ -104,7 +103,7 @@
   font-size: inherit;
 }
 .panel a.secondary {
-  color: var(--admin-action);
+  color: var(--admin-ink);
   font-size: inherit;
 }
 .panel a:focus-visible,
@@ -213,7 +212,6 @@
 }
 .event {
   padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--admin-accent);
   border-radius: var(--radius-control);
   background: var(--admin-surface-subtle);
   font-size: var(--type-small);
@@ -225,8 +223,6 @@
   color: var(--admin-muted);
   font-size: var(--type-small);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 .facts {
   display: grid;
@@ -279,7 +275,7 @@
 }
 .note {
   padding: var(--space-2) var(--space-3);
-  border-left: 3px solid var(--admin-border);
+  border-radius: var(--radius-control);
   background: var(--admin-surface-subtle);
   font-size: var(--type-small);
   line-height: var(--line-body);

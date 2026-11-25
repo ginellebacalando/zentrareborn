@@ -19,7 +19,7 @@
 .pageHeading h1 {
   margin: 0;
   color: var(--admin-heading, var(--admin-ink));
-  font-size: var(--type-workspace-title);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   line-height: var(--line-heading);
 }
@@ -162,8 +162,6 @@
   color: var(--admin-muted);
   font-size: var(--type-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .stats dd {
@@ -233,7 +231,6 @@
   gap: var(--space-2);
   padding: var(--space-4);
   border: 1px solid var(--admin-divider);
-  border-left: 4px solid var(--admin-status-pending, var(--palette-status-pending));
   border-radius: var(--radius-control);
   background: var(--admin-surface-card);
 }
@@ -329,12 +326,14 @@
 }
 
 .secondary {
+  border-color: var(--admin-control-line);
   background: var(--admin-surface-card);
-  color: var(--admin-action);
+  color: var(--admin-ink);
 }
 
 .secondary:hover:not(:disabled) {
-  background: var(--admin-accent-soft);
+  border-color: var(--admin-border);
+  background: var(--admin-surface-subtle);
 }
 
 .primary:disabled,

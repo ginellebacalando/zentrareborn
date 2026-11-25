@@ -825,10 +825,6 @@ export default function FrontDesk() {
       <header className={styles.header}>
         <div>
           <h1 id="front-desk-title">Front desk</h1>
-          <p>
-            Today&apos;s ocular visits and events, the next two weeks of visits, and a quick client
-            lookup. Visitors schedule themselves on the website visit page.
-          </p>
         </div>
         <div className={styles.headerActions}>
           <button
@@ -852,7 +848,7 @@ export default function FrontDesk() {
             <CalendarPlus size={16} aria-hidden="true" />
             Schedule a visit
           </button>
-          <Link className={styles.primary} href={WALK_IN_PATH}>
+          <Link className={styles.secondary} href={WALK_IN_PATH}>
             <UserPlus size={16} aria-hidden="true" />
             Walk-in booking
           </Link>

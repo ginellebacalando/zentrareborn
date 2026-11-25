@@ -42,13 +42,11 @@ export default function DashboardOverview({
   return (
     <>
       <section className={styles.overview} aria-labelledby="performance-title">
-        <div className={styles.sectionHeading}>
-          <h2 id="performance-title" className={styles.overline}>
-            Performance overview
-          </h2>
-        </div>
-        {insights && <DashboardStatusCards month={insights.thisMonth} />}
+        <h2 id="performance-title" className={styles.srOnly}>
+          Overview
+        </h2>
         <DashboardKpis summary={data.dashboardKpis} months={insights?.months} />
+        {insights && <DashboardStatusCards month={insights.thisMonth} />}
       </section>
       {insights && <DashboardCharts insights={insights} />}
       <WebsiteActivity />

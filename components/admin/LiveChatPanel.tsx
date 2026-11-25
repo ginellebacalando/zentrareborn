@@ -278,10 +278,6 @@ export default function LiveChatPanel({
       <div className={styles.pageHeading}>
         <div>
           <h1>Live chat</h1>
-          <p>
-            When a visitor asks Zeni for a person, the chat waits here. Take it, reply in the
-            visitor&apos;s Zeni window, then hand them back to Zeni once everything is settled.
-          </p>
         </div>
         <div className={styles.headingActions}>
           <button

@@ -58,7 +58,6 @@
   margin: 0;
   padding: var(--space-3) var(--space-4);
   list-style: none;
-  border-left: var(--space-1) solid var(--admin-danger);
   border-radius: var(--radius-control);
   background: var(--admin-danger-soft);
   color: var(--admin-danger);

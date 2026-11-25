@@ -22,70 +22,47 @@ export default function MobileBookingRegister({
         const paid = paidTotal(booking.payments);
         const contract = booking.contracts[0];
         return (
-          <li key={booking.id}>
-            <h3>{booking.clientName}</h3>
+          <li key={booking.id} className={styles.clickableCard}>
+            <h3>
+              {/* The record's one control; its ::after makes the whole card clickable. */}
+              <button
+                type="button"
+                className={styles.rowLink}
+                onClick={() => onOpen(booking)}
+                aria-label={`${booking.clientName}, ${booking.reference}: open details`}
+              >
+                {booking.clientName}
+              </button>
+            </h3>
             <p>
-              {booking.reference} · {booking.eventType}
+              {booking.eventType} · {booking.packageName}
             </p>
-            <dl>
-              <dt>Event schedule</dt>
-              <dd>
-                {date(booking.startsAt)}
-                <small>{booking.packageName}</small>
-              </dd>
+            <p>
+              {date(booking.startsAt)} · {booking.reference}
+            </p>
+            <div className={styles.mobileRecordTags}>
               {section === 'contracts' ? (
-                <>
-                  <dt>Latest agreement</dt>
-                  <dd>
-                    {contract ? (
-                      <>
-                        <span>Version {contract.version} </span>
-                        <Badge value={contract.status} />
-                      </>
-                    ) : (
-                      'Not prepared'
-                    )}
-                  </dd>
-                </>
+                contract ? (
+                  <>
+                    <span>Agreement version {contract.version}</span>
+                    <Badge value={contract.status} />
+                  </>
+                ) : (
+                  <span>Agreement not prepared</span>
+                )
               ) : (
                 <>
-                  {section === 'bookings' && (
-                    <>
-                      <dt>Status</dt>
-                      <dd>
-                        <StatusChip status={displayStatus(booking)} />
-                      </dd>
-                    </>
+                  <StatusChip status={displayStatus(booking)} />
+                  <Badge value={paymentStatus(booking.totalCents, paid)} />
+                  <small>
+                    {money(paid)} / {money(booking.totalCents)}
+                  </small>
+                  {!!booking.proofsToVerify && (
+                    <small className={styles.proofWaiting}>Screenshot to verify</small>
                   )}
-                  <dt>Approval</dt>
-                  <dd>
-                    <Badge value={booking.approval} />
-                  </dd>
-                  <dt>Reservation</dt>
-                  <dd>
-                    <Badge value={booking.reservation} />
-                  </dd>
-                  <dt>Payment</dt>
-                  <dd>
-                    <Badge value={paymentStatus(booking.totalCents, paid)} />
-                    <small>
-                      {money(paid)} / {money(booking.totalCents)}
-                    </small>
-                    {!!booking.proofsToVerify && (
-                      <small className={styles.proofWaiting}>Screenshot to verify</small>
-                    )}
-                  </dd>
                 </>
               )}
-            </dl>
-            <button
-              type="button"
-              className={styles.viewDetails}
-              onClick={() => onOpen(booking)}
-              aria-label={`View details for ${booking.reference}, ${booking.clientName}`}
-            >
-              View details
-            </button>
+            </div>
           </li>
         );
       })}

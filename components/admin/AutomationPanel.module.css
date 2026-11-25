@@ -18,18 +18,16 @@
 .header {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
 }
-/* ZENTRA admin look: the module name is a small overline; the sentence is the visible header. */
+/* The page title, as on every admin page (docs/admin-design.md). */
 .header h1 {
   color: var(--admin-heading);
-  font-size: var(--type-small);
-  line-height: var(--line-heading);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  line-height: var(--line-heading);
 }
 .header p {
   margin-top: var(--space-2);
@@ -56,9 +54,7 @@
   font: inherit;
   font-size: var(--type-small);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.08em;
   line-height: var(--line-heading);
-  text-transform: uppercase;
   cursor: pointer;
   transition: background var(--motion-fast) var(--motion-ease);
 }
@@ -71,12 +67,13 @@
   background: var(--admin-action-hover);
 }
 .secondary {
-  background: transparent;
-  color: var(--admin-action);
-  border: 1px solid var(--admin-action);
+  background: var(--admin-surface-card);
+  color: var(--admin-ink);
+  border: 1px solid var(--admin-control-line);
 }
 .secondary:not(:disabled):hover {
-  background: var(--admin-accent-soft);
+  background: var(--admin-surface-subtle);
+  border-color: var(--admin-border);
 }
 .primary:disabled,
 .secondary:disabled {
@@ -286,7 +283,7 @@
 }
 .jobError {
   padding: var(--space-2) var(--space-3);
-  border-left: 3px solid var(--admin-danger);
+  border-radius: var(--radius-control);
   background: var(--admin-danger-soft);
   color: var(--admin-danger);
   font-size: var(--type-small);

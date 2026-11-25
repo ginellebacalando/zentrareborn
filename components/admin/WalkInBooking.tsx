@@ -1090,10 +1090,6 @@ export default function WalkInBooking({
       <header className={desk.header}>
         <div>
           <h1 id="walk-in-title">Walk-in booking</h1>
-          <p>
-            Book for a client at the desk with the website&apos;s packages, prices and rules, record
-            their consent, and take cash now or leave the payment for later.
-          </p>
         </div>
         <div className={desk.headerActions}>
           <Link className={desk.secondary} href="/admin/front-desk">

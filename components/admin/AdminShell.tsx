@@ -7,7 +7,7 @@ import AdminNavIcon from './AdminNavIcon';
 import { useAdminPreferences } from './AdminPreferencesProvider';
 import {
   adminFooterModules,
-  adminModules,
+  adminModuleGroups,
   isActiveModule,
   type AdminModuleKey,
 } from './navigation';
@@ -215,7 +215,21 @@ export default function AdminShell({
         inert={isMobile && !mobileOpen}
       >
         <nav aria-label="Workspace" className={styles.sidebarNav}>
-          <ul className={styles.navList}>{adminModules.map(navLink)}</ul>
+          {adminModuleGroups.map((group) => {
+            const labelId = group.label ? `admin-nav-${group.label.toLowerCase()}` : undefined;
+            return (
+              <div key={group.label || 'overview'} className={styles.navGroup}>
+                {group.label && (
+                  <p id={labelId} className={styles.navGroupLabel}>
+                    {group.label}
+                  </p>
+                )}
+                <ul className={styles.navList} aria-labelledby={labelId}>
+                  {group.modules.map(navLink)}
+                </ul>
+              </div>
+            );
+          })}
         </nav>
         <nav aria-label="System" className={styles.sidebarBottom}>
           <ul className={styles.navList}>{adminFooterModules.map(navLink)}</ul>

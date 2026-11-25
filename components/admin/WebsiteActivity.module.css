@@ -77,11 +77,6 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* Matches the uppercase booking status chip shown in the same column. */
-.tag {
-  text-transform: uppercase;
-  letter-spacing: var(--label-tracking);
-}
 .panel .footnote {
   margin: var(--space-4) 0 0;
 }

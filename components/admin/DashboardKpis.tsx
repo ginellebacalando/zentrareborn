@@ -1,6 +1,14 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
-import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  CalendarCheck,
+  CalendarClock,
+  Inbox,
+  Minus,
+  Wallet,
+} from 'lucide-react';
 import type { DashboardKpi, DashboardKpis as Summary } from '@/lib/admin/dashboard-kpi-types';
 import type { DashboardMonth } from '@/lib/admin/dashboard-types';
 import { changePercent } from '@/lib/admin/analytics-math';
@@ -75,7 +83,7 @@ function ChangeBadge({ metric, complete }: { metric: DashboardKpi; complete: boo
 }
 
 /**
- * Teal KPI cards with small trend lines (Figma). Values and comparisons are the existing KPI
+ * White KPI cards with an icon tile and a small trend line. Values and comparisons are the existing KPI
  * contract (docs/dashboard-kpi-contract.md). Trend lines use the closest real monthly series and
  * name it, because a monthly series is not always the same measure as the card's total.
  */
@@ -102,6 +110,7 @@ export default function DashboardKpis({
   const cards = [
     {
       key: 'sales',
+      icon: Wallet,
       label: 'Total revenue',
       metric: summary.sales,
       cash: true,
@@ -117,6 +126,7 @@ export default function DashboardKpis({
     },
     {
       key: 'bookings',
+      icon: CalendarCheck,
       label: 'Total bookings',
       metric: summary.bookings,
       cash: false,
@@ -132,6 +142,7 @@ export default function DashboardKpis({
     },
     {
       key: 'upcoming',
+      icon: CalendarClock,
       label: 'Upcoming events',
       metric: summary.upcoming,
       cash: false,
@@ -144,6 +155,7 @@ export default function DashboardKpis({
     },
     {
       key: 'pending',
+      icon: Inbox,
       label: 'Pending inquiries',
       metric: summary.pending,
       cash: false,
@@ -179,7 +191,12 @@ export default function DashboardKpis({
               className={styles.kpi}
               aria-label={`${card.label}: ${unavailable ? `annual total unavailable; known dated value ${money(card.metric.value)}` : `${upperBound ? 'up to ' : ''}${number(card.metric.value, card.cash)}`}. ${card.scope}. ${card.activity}. ${changeDescription(card.metric, card.cash, card.complete, card.key === 'pending')}.${trendText}`}
             >
-              <span className={styles.label}>{card.label}</span>
+              <span className={styles.kpiTop}>
+                <span className={styles.icon}>
+                  <card.icon size={18} strokeWidth={1.75} aria-hidden="true" />
+                </span>
+                <span className={styles.label}>{card.label}</span>
+              </span>
               <span className={styles.value}>
                 {upperBound && <span className={styles.qualifier}>Up to</span>}
                 <strong>{unavailable ? '—' : compactNumber(card.metric.value, card.cash)}</strong>

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useSyncExternalStore } from 'react';
-import { ArrowUpRight, ImageIcon, LayoutGrid, Rows3, ShieldAlert } from 'lucide-react';
+import { CalendarDays, CircleAlert, ImageIcon, LayoutGrid, Rows3, ShieldAlert } from 'lucide-react';
 import { money, paidTotal, paymentStatus } from '@/lib/admin/domain';
 import {
   countDisplayStatuses,
@@ -47,20 +47,56 @@ function writeView(view: View) {
   viewListeners.forEach((listener) => listener());
 }
 
-/** Visible page sentence for Bookings: status context, never the module name (naming rule 3). */
-export function bookingsContext(bookings: Booking[] | undefined, total: number | undefined) {
-  if (!bookings) return 'Review requests, verify contacts, then confirm a schedule.';
+/**
+ * The Bookings page leads with what needs staff first (docs/admin-design.md): requests waiting for a
+ * decision, highlighted, with one action that shows only them. Other waiting work follows as a
+ * short line. Counts cover the bookings loaded on this page.
+ */
+export function AttentionCallout({
+  bookings,
+  partial,
+  statusView,
+  onStatusView,
+}: {
+  bookings: Booking[];
+  partial: boolean;
+  statusView: StatusView;
+  onStatusView: (view: StatusView) => void;
+}) {
   const counts = countDisplayStatuses(bookings);
-  const partial = (total ?? 0) > bookings.length ? ' on this page' : '';
-  const parts = [
-    counts.request
-      ? `${counts.request} ${counts.request === 1 ? 'request needs' : 'requests need'} a decision`
+  if (!counts.request) return null;
+  const screenshots = bookings.filter((booking) => booking.proofsToVerify).length;
+  const others = [
+    counts.pending ? `${counts.pending} waiting for payment` : '',
+    screenshots
+      ? `${screenshots} payment ${screenshots === 1 ? 'screenshot' : 'screenshots'} to verify`
       : '',
-    counts.pending ? `${counts.pending} awaiting confirmation` : '',
   ].filter(Boolean);
-  return parts.length
-    ? `${parts.join(' · ')}${partial}`
-    : `No requests waiting for a decision${partial}.`;
+  return (
+    <section className={styles.attention} aria-labelledby="bookings-attention">
+      <CircleAlert
+        size={22}
+        strokeWidth={1.75}
+        className={styles.attentionIcon}
+        aria-hidden="true"
+      />
+      <p className={styles.attentionText}>
+        <strong id="bookings-attention">
+          {counts.request} {counts.request === 1 ? 'request needs' : 'requests need'} your decision
+          {partial ? ' on this page' : ''}
+        </strong>
+        {others.length > 0 && <span>Also: {others.join(' · ')}.</span>}
+      </p>
+      {/* One button that stays in place, so keyboard focus is kept when the view changes. */}
+      <button
+        type="button"
+        className={statusView === 'request' ? styles.secondary : styles.primary}
+        onClick={() => onStatusView(statusView === 'request' ? 'all' : 'request')}
+      >
+        {statusView === 'request' ? 'Show all bookings' : 'Review requests'}
+      </button>
+    </section>
+  );
 }
 
 export default function BookingRegister({
@@ -117,7 +153,7 @@ export default function BookingRegister({
               aria-pressed={statusView === 'all'}
               onClick={() => onStatusView('all')}
             >
-              <span className={styles.statusCount}>({bookings.length})</span> All
+              All <span className={styles.statusCount}>{bookings.length}</span>
             </button>
             {displayStatuses.map((status) => (
               <button
@@ -129,8 +165,8 @@ export default function BookingRegister({
                 onClick={() => onStatusView(status)}
               >
                 <StatusDot status={status} />
-                <span className={styles.statusCount}>({counts[status]})</span>{' '}
-                {displayStatusLabels[status]}
+                {displayStatusLabels[status]}{' '}
+                <span className={styles.statusCount}>{counts[status]}</span>
               </button>
             ))}
           </div>
@@ -170,12 +206,9 @@ export default function BookingRegister({
           {shown.map((booking) => {
             const status = displayStatus(booking);
             return (
-              <li key={booking.id} className={`${styles.bookingCard} ${statusTone[status]}`}>
+              <li key={booking.id} className={`${styles.bookingCard} ${styles.clickableCard}`}>
                 <div className={styles.bookingCardHeader}>
-                  <span className={styles.bookingCardStatus}>
-                    <StatusDot status={status} />
-                    {displayStatusLabels[status]}
-                  </span>
+                  <StatusChip status={status} />
                   {booking.verification === 'FLAGGED' && (
                     <span className={styles.flagged}>
                       <ShieldAlert size={14} strokeWidth={1.5} aria-hidden="true" />
@@ -189,32 +222,27 @@ export default function BookingRegister({
                     </span>
                   )}
                 </div>
-                <h3>{booking.clientName}</h3>
-                <dl>
-                  <div>
-                    <dt>ID</dt>
-                    <dd>{booking.reference}</dd>
-                  </div>
-                  <div>
-                    <dt>Event</dt>
-                    <dd>
-                      {booking.eventType}
-                      <small>{booking.packageName}</small>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Date</dt>
-                    <dd>{date(booking.startsAt)}</dd>
-                  </div>
-                </dl>
-                <button
-                  type="button"
-                  className={styles.viewDetails}
-                  onClick={() => onOpen(booking)}
-                  aria-label={`View details for ${booking.reference}, ${booking.clientName}`}
-                >
-                  View details
-                </button>
+                <h3>
+                  {/* The card's one control; its ::after makes the whole card clickable. */}
+                  <button
+                    type="button"
+                    className={styles.rowLink}
+                    onClick={() => onOpen(booking)}
+                    aria-label={`${booking.clientName}, ${booking.reference}: open details`}
+                  >
+                    {booking.clientName}
+                  </button>
+                </h3>
+                <p>
+                  {booking.eventType} · {booking.packageName}
+                </p>
+                <div className={styles.bookingCardFooter}>
+                  <span className={styles.bookingCardDate}>
+                    <CalendarDays size={16} strokeWidth={1.75} aria-hidden="true" />
+                    {date(booking.startsAt)}
+                  </span>
+                  <span className={styles.bookingCardRef}>{booking.reference}</span>
+                </div>
               </li>
             );
           })}
@@ -245,9 +273,6 @@ export default function BookingRegister({
                       <th scope="col">Payment</th>
                     </>
                   )}
-                  <th scope="col">
-                    <span className={styles.srOnly}>Open record</span>
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -255,9 +280,19 @@ export default function BookingRegister({
                   const paid = paidTotal(booking.payments),
                     contract = booking.contracts[0];
                   return (
-                    <tr key={booking.id}>
+                    <tr key={booking.id} className={styles.clickableRow}>
                       <td>
-                        <strong>{booking.clientName}</strong>
+                        {/* The row's one control; its ::after makes the whole row clickable. */}
+                        <strong>
+                          <button
+                            type="button"
+                            className={styles.rowLink}
+                            onClick={() => onOpen(booking)}
+                            aria-label={`${booking.clientName}, ${booking.reference}: open details`}
+                          >
+                            {booking.clientName}
+                          </button>
+                        </strong>
                         <small>
                           {booking.reference} · {booking.eventType}
                         </small>
@@ -295,17 +330,6 @@ export default function BookingRegister({
                           </td>
                         </>
                       )}
-                      <td>
-                        <button
-                          type="button"
-                          className={`${styles.linkButton} ${styles.rowAction}`}
-                          onClick={() => onOpen(booking)}
-                          aria-label={`Open ${booking.reference}`}
-                        >
-                          Open
-                          <ArrowUpRight size={15} aria-hidden="true" />
-                        </button>
-                      </td>
                     </tr>
                   );
                 })}
