@@ -42,10 +42,26 @@ Every push to `main` redeploys it.
    the ignored `.local/HOSTED-ADMIN-SIGN-IN.txt`.
 3. Import the repository in Vercel and add `DATABASE_URL`, `AUTH_SECRET`, `RECEPTIONIST_STATE_KEY`
    and `CRON_SECRET`. Leave `AUTH_URL` unset on Vercel: Auth.js and the admin origin check then use
-   the address being visited, so staff sign-in works on every Vercel link. Add the production link
-   as `NEXT_PUBLIC_APP_URL` when you turn on email, so staff emails link back to the site. Gmail
-   (`SMTP_*`) and `GEMINI_API_KEY` are optional: without them email stays queued and Zeni uses its
-   built-in answers.
+   the address being visited, so staff sign-in works on every Vercel link. Links in emails use
+   Vercel's production domain on their own; set `NEXT_PUBLIC_APP_URL` only for a custom domain.
+   Gmail (`SMTP_*`) and `GEMINI_API_KEY` are optional: without them email stays queued and Zeni
+   uses its built-in answers. See the checklist below to turn them on.
+
+### Turning on email, calendar invitations and Zeni's AI
+
+Each value goes in Vercel: open the project, then Settings, Environment Variables (Production),
+save, and redeploy. Never put them in Git or in chat.
+
+1. **Email (Gmail):** turn on 2-Step Verification for the venue's Gmail account, create an App
+   Password (Google Account, Security, App passwords), then add `SMTP_USER` (the Gmail address)
+   and `SMTP_PASSWORD` (the 16-character App Password). `MAIL_FROM` is optional. Admin, Automation
+   then shows Configured, and waiting emails go out on the next run.
+2. **Owner and staff calendars:** in Admin, Settings, Communications, enter up to five addresses
+   under "Staff notification emails". Each confirmed booking sends them a calendar invitation, and
+   a cancellation removes it. In Google Calendar, Settings, Event settings, "Add invitations to my
+   calendar" decides whether an invitation appears on its own.
+3. **Zeni's AI phrasing:** create a key in Google AI Studio and add it as `GEMINI_API_KEY`
+   (`GEMINI_MODEL` is optional). Admin, Zeni then shows the key as Configured.
 
 When a feature adds tables to an already-filled database, install them before pushing the code
 that uses them. Live chat, for example: `npm run db:live-chat:check` checks, and

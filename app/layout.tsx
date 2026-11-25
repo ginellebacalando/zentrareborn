@@ -46,6 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${archivo.variable} ${archivoExtended.variable} ${cinzelDecorative.variable} antialiased`}
     >
       <head>

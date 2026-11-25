@@ -8,113 +8,76 @@
   color: var(--text-primary);
 }
 
+/* Phones: the wordmark, the site links and the social links stack. Wider screens put the
+   wordmark and the social links on one row, and wide desktops add the links between them. */
 .inner {
   display: grid;
-  gap: var(--space-8);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'brand'
+    'nav'
+    'social';
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
   width: min(100%, var(--layout-max-width));
   margin-inline: auto;
-  padding: var(--space-12) var(--layout-gutter) var(--space-8);
+  padding: var(--space-8) var(--layout-gutter) var(--space-6);
 }
 
 .brand {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-.brandLink {
+  grid-area: brand;
+  justify-self: start;
   border-radius: var(--radius-control);
   text-decoration: none;
 }
 
-.brandLink :global(.zentra-wordmark) {
+.brand :global(.zentra-wordmark) {
   align-items: flex-start;
 }
 
-.tagline {
-  max-width: 22rem;
-  color: var(--text-muted);
-  font-size: var(--type-small);
-}
-
-.book {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--layout-touch-target);
-  padding: var(--space-3) var(--space-6);
-  border: 1px solid var(--action-primary);
-  color: var(--text-accent);
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-decoration: none;
-  text-transform: uppercase;
-  transition:
-    background-color var(--motion-normal) var(--motion-ease),
-    color var(--motion-normal) var(--motion-ease);
-}
-
-.book:hover {
-  background: var(--action-primary);
-  color: var(--text-on-action);
-}
-
-.column {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.label {
-  color: var(--text-accent);
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-}
-
-.followLabel {
-  margin-top: var(--space-4);
+.nav {
+  grid-area: nav;
 }
 
 .links {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, max-content));
-  gap: var(--space-1) var(--space-8);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-6);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .links a,
-.text a,
 .legalLinks a {
   display: inline-flex;
   align-items: center;
   min-height: var(--layout-touch-target);
   color: inherit;
-  text-decoration: none;
+  text-decoration-line: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.4em;
   transition: color var(--motion-fast) var(--motion-ease);
 }
 
+.links a {
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
 .links a:hover,
-.text a:hover,
 .legalLinks a:hover {
-  color: var(--text-accent);
-  text-decoration: underline;
-  text-underline-offset: 0.3em;
+  color: var(--action-primary);
+  text-decoration-line: underline;
 }
 
-.text {
-  display: grid;
-  font-style: normal;
-}
-
-.note {
-  color: var(--text-muted);
-  font-size: var(--type-small);
+/* The links' own spacing comes from SocialLinks; the module rule outranks its utility class. */
+.social {
+  grid-area: social;
+  justify-self: start;
+  gap: var(--space-3);
 }
 
 .legal {
@@ -122,13 +85,19 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2) var(--space-6);
+  gap: 0 var(--space-6);
   width: min(100%, var(--layout-max-width));
   margin-inline: auto;
-  padding: var(--space-4) var(--layout-gutter) calc(var(--space-4) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--layout-gutter) calc(var(--space-2) + env(safe-area-inset-bottom));
+  /* Keeps the legal links clear of Zeni's floating button at the bottom right. */
+  padding-inline-end: max(var(--layout-gutter), var(--layout-floating-control-clearance));
   border-top: 1px solid var(--line-hairline);
   color: var(--text-muted);
   font-size: var(--type-small);
+}
+
+.legal p {
+  padding-block: var(--space-3);
 }
 
 .legalLinks {
@@ -140,8 +109,35 @@
   list-style: none;
 }
 
-@media (min-width: 48rem) {
+@media (min-width: 30rem) {
   .inner {
-    grid-template-columns: 1.3fr 1.4fr 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand social'
+      'nav nav';
+  }
+
+  .social {
+    justify-self: end;
+  }
+}
+
+/* Wide desktops: one band with the links centered between the wordmark and the social links. */
+@media (min-width: 75rem) {
+  .inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'brand nav social';
+    padding-block: var(--space-6);
+  }
+
+  .links {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .links a,
+  .legalLinks a {
+    transition: none;
   }
 }

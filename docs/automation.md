@@ -94,8 +94,9 @@ The staff inboxes get their own copy of the same event (`STAFF_CALENDAR_REQUEST`
 `STAFF_CALENDAR_CANCEL`): the same `UID`, `SEQUENCE` and `ORGANIZER`, with each staff address as an
 `ATTENDEE` instead of the client. Its summary names the client and the reference (for example
 "Wedding: Maria Santos (ZION-2026-…)") and its description lists the client's contact details,
-package and guests. `Reply-To` is the client. The email links to Bookings when
-`NEXT_PUBLIC_APP_URL` is set. The client's invitation is unchanged.
+package and guests. `Reply-To` is the client. The email links to Bookings when the site's public
+address is known (`NEXT_PUBLIC_APP_URL`, `AUTH_URL`, or on Vercel the production domain). The
+client's invitation is unchanged.
 
 Because the attendees are written into the invitation, a staff invitation keeps the inboxes it was
 created with, and its cancellation goes to those same inboxes (the calendars that hold the event),
@@ -125,7 +126,7 @@ or check the result in that calendar.
    | `MAIL_FROM`                | `Zion Events Place <the same address>`; defaults to `SMTP_USER`                                                                                                         |
    | `STAFF_NOTIFICATION_EMAIL` | Fallback staff inboxes while Settings has none (comma-separated, up to five, 255 characters in total); defaults to `SMTP_USER`. See [Staff addresses](#staff-addresses) |
    | `CRON_SECRET`              | At least 32 random characters, for example `openssl rand -hex 32`                                                                                                       |
-   | `NEXT_PUBLIC_APP_URL`      | Public origin, used for "Open the admin panel" links in staff emails (optional)                                                                                         |
+   | `NEXT_PUBLIC_APP_URL`      | Public origin for links in emails (optional; on Vercel the production domain is used when unset, so set it only for a custom domain)                                    |
 
 3. **Database.** Install the admin schema first if needed (`npm run db:admin:check -- --apply`),
    then the automation schema:

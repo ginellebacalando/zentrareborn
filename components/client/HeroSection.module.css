@@ -216,6 +216,36 @@
   height: 1.1rem;
 }
 
+/* Desktops: the hero fills the first screen below the header. */
+@media (min-width: 64rem) {
+  .hero {
+    min-height: clamp(32rem, calc(100svh - var(--layout-header-offset)), 56rem);
+  }
+}
+
+/* The active slide's text rises in after the photo changes: title, then subtitle, then links.
+   Under reduced motion the text is simply there. */
+@keyframes heroRise {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-6);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .slide[data-active='true'] .content > * {
+    animation: heroRise var(--motion-reveal) var(--motion-ease) both;
+  }
+
+  .slide[data-active='true'] .subtitle {
+    animation-delay: calc(var(--motion-stagger) * 1.5);
+  }
+
+  .slide[data-active='true'] .actions {
+    animation-delay: calc(var(--motion-stagger) * 3);
+  }
+}
+
 @media (max-width: 39.999rem) {
   .content {
     padding-inline: var(--layout-gutter);

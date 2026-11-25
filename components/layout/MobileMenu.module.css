@@ -1,0 +1,215 @@
+/* The menu and close buttons: a 44px icon target in the header's ink color. */
+.iconButton {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: var(--layout-touch-target);
+  height: var(--layout-touch-target);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+
+.iconButton:hover {
+  background: var(--surface-subtle);
+  color: var(--action-primary);
+}
+
+.iconButton svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* The icon's own whitespace would indent it from the gutter, so the button shifts left by it. */
+.trigger {
+  margin-inline-start: calc(-1 * var(--space-2));
+}
+
+/* The drawer: a modal dialog along the left edge. The strip of backdrop beside it closes it. */
+.drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(20rem, calc(100vw - 3.5rem));
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-inline-end: 1px solid var(--line-hairline);
+  background: var(--surface-page);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-card);
+}
+
+.drawer::backdrop {
+  background: color-mix(in srgb, var(--palette-zentra-night) 45%, transparent);
+}
+
+/* Fills the drawer, so a click on the dialog element itself is always on the backdrop. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--layout-header-height);
+  padding-inline: var(--layout-gutter) var(--space-2);
+  border-bottom: 1px solid var(--line-hairline);
+}
+
+.links {
+  margin: 0;
+  padding: var(--space-2) 0;
+  list-style: none;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: calc(var(--layout-touch-target) + var(--space-1));
+  padding: var(--space-1) var(--layout-gutter);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-small);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-align: start;
+  text-decoration-line: none;
+  text-decoration-thickness: 1px;
+  text-transform: uppercase;
+  text-underline-offset: 0.5em;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+
+.link:hover {
+  background: var(--surface-subtle);
+  color: var(--action-primary);
+}
+
+/* The current page is underlined as well as colored, never marked by color alone. */
+.link[aria-current='page'],
+.link[data-current] {
+  color: var(--action-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration-line: underline;
+}
+
+/* Keeps the focus ring inside the drawer instead of clipped at its edges. */
+.link:focus-visible,
+.subLink:focus-visible {
+  outline-offset: -3px;
+  box-shadow: none;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: var(--space-4);
+  height: var(--space-4);
+  transition: rotate var(--motion-normal) var(--motion-ease);
+}
+
+.link[aria-expanded='true'] .chevron {
+  rotate: 180deg;
+}
+
+/* The event pages under Packages, indented along a hairline. */
+.subLinks {
+  margin: 0 var(--layout-gutter) var(--space-2);
+  padding: 0 0 0 var(--space-3);
+  border-inline-start: 1px solid var(--line-hairline);
+  list-style: none;
+}
+
+.subLink {
+  display: flex;
+  align-items: center;
+  min-height: var(--layout-touch-target);
+  padding-inline: var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--type-small);
+  letter-spacing: 0.04em;
+  text-decoration-line: none;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.4em;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+.subLink:hover,
+.subLink[aria-current='page'] {
+  color: var(--action-primary);
+  text-decoration-line: underline;
+}
+
+.subLink[aria-current='page'] {
+  font-weight: var(--weight-semibold);
+}
+
+/* The drawer slides in from the left and the backdrop fades; both reverse on close. */
+@media (prefers-reduced-motion: no-preference) {
+  .drawer,
+  .drawer::backdrop {
+    transition-property: translate, opacity, overlay, display;
+    transition-duration: var(--motion-slow);
+    transition-timing-function: var(--motion-ease);
+    transition-behavior: allow-discrete;
+  }
+
+  .drawer:not([open]) {
+    translate: -100% 0;
+  }
+
+  .drawer:not([open])::backdrop {
+    opacity: 0;
+  }
+
+  @starting-style {
+    .drawer[open] {
+      translate: -100% 0;
+    }
+
+    .drawer[open]::backdrop {
+      opacity: 0;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iconButton,
+  .link,
+  .subLink,
+  .chevron {
+    transition: none;
+  }
+}
+
+/* Desktop shows the Figma menu row; the menu button and its drawer are never shown there. */
+@media (min-width: 64rem) {
+  .trigger {
+    display: none;
+  }
+}

@@ -89,12 +89,13 @@ export default function HeroSection() {
               <div className={styles.content}>
                 <p className={styles.title}>{slide.title}</p>
                 <p className={styles.subtitle}>{slide.subtitle}</p>
+                {/* Book Now stays in the header on every page, so the hero offers the next steps. */}
                 <div className={styles.actions}>
-                  <Link href="/booking" className={styles.primary}>
-                    Book now
-                  </Link>
-                  <Link href="#event-packages" className={styles.secondary}>
+                  <Link href="#event-packages" className={styles.primary}>
                     See packages
+                  </Link>
+                  <Link href="#available-dates" className={styles.secondary}>
+                    Check a date
                   </Link>
                 </div>
               </div>

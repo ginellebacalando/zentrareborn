@@ -25,7 +25,7 @@ const BOOKING_STEPS = [
 /** "Available dates" from Figma, with the plan's "How booking works" steps. */
 export default function AvailabilitySection() {
   return (
-    <section className={styles.section} aria-labelledby="home-dates-title">
+    <section id="available-dates" className={styles.section} aria-labelledby="home-dates-title">
       <div className={styles.container}>
         <SectionHeading
           id="home-dates-title"
@@ -50,7 +50,7 @@ export default function AvailabilitySection() {
               </Link>
             </div>
           </div>
-          <ol className={styles.steps} aria-label="How booking works">
+          <ol className={`${styles.steps} ${styles.stagger}`} aria-label="How booking works">
             {BOOKING_STEPS.map((step) => (
               <li key={step.title} className={styles.step}>
                 <div>

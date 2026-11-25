@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
-import { serverStaffRecipients } from './config';
+import { applicationUrl, serverStaffRecipients } from './config';
 import { classifyDeliveryError, type MailTransport, type OutgoingMail } from './transport';
 import { maskEmail, maskRecipients, sanitizeErrorMessage } from './privacy';
 import { addDays, daysBetween, manilaDay, manilaDayStart, manilaHour } from './time';
@@ -20,6 +20,7 @@ const MAIL_ENV = [
   'CRON_SECRET',
   'NEXT_PUBLIC_APP_URL',
   'AUTH_URL',
+  'VERCEL_PROJECT_PRODUCTION_URL',
 ];
 function clearMail() {
   for (const key of MAIL_ENV) delete process.env[key];
@@ -99,6 +100,21 @@ test('pure helpers: masking, error classification, Manila days', () => {
   assert.equal(manilaDayStart('2027-01-01').toISOString(), '2026-12-31T16:00:00.000Z');
   assert.equal(addDays('2026-12-31', 1), '2027-01-01');
   assert.equal(daysBetween('2026-12-28', '2027-01-04'), 7);
+});
+
+test('email links use the configured address, else the Vercel production domain', () => {
+  clearMail();
+  try {
+    assert.equal(applicationUrl(), null);
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = 'zentrareborn.vercel.app';
+    assert.equal(applicationUrl(), 'https://zentrareborn.vercel.app');
+    process.env.NEXT_PUBLIC_APP_URL = 'https://events.example.test/booking';
+    assert.equal(applicationUrl(), 'https://events.example.test', 'the configured address wins');
+    process.env.NEXT_PUBLIC_APP_URL = 'javascript:alert(1)';
+    assert.equal(applicationUrl(), null, 'only http and https addresses are used');
+  } finally {
+    clearMail();
+  }
 });
 
 test('the server default staff inboxes come from STAFF_NOTIFICATION_EMAIL, else SMTP_USER', () => {

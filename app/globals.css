@@ -86,6 +86,12 @@ body {
   overflow-wrap: anywhere;
 }
 
+/* A word longer than its line breaks instead of running past the screen edge (320px, 400% zoom).
+   Unlike "anywhere", this leaves the heading's preferred width, and so the layout, unchanged. */
+:where(h1, h2, h3, h4, h5, h6) {
+  overflow-wrap: break-word;
+}
+
 :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
@@ -234,6 +240,14 @@ html[data-public-menu-open='true'] .public-smart-guide {
 
   [data-touch-surface]:hover {
     transform: none !important;
+  }
+}
+
+/* In-page links glide to their section; data-scroll-behavior on <html> keeps route changes
+   instant (Next.js 16). */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 

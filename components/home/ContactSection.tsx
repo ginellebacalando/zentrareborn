@@ -13,7 +13,7 @@ export default function ContactSection() {
           title="Contact"
           subtitle="Visit by appointment, or send us a message anytime"
         />
-        <div className={styles.contactGrid}>
+        <div className={`${styles.contactGrid} ${styles.stagger}`}>
           <div>
             <h3 className={styles.contactLabel}>Visit us</h3>
             <address className={styles.contactText}>

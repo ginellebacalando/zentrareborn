@@ -239,6 +239,13 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
                 booking references are removed before any AI request. The API key is configured in
                 the server environment (see docs/chatbot.md) and is never shown here.
               </p>
+              {!ai.keyConfigured && (
+                <p className={styles.help}>
+                  To turn on AI phrasing: create a key in Google AI Studio, then in Vercel open this
+                  project, go to Settings, Environment Variables, add <code>GEMINI_API_KEY</code>{' '}
+                  with the key as its value, save, and redeploy. This page then shows Configured.
+                </p>
+              )}
             </section>
 
             <section className={styles.card} aria-labelledby="zeni-handoffs-title">

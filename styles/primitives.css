@@ -187,21 +187,28 @@
   transform: none;
 }
 
-/* Only the observer enhances this attribute. SSR/no-script content stays readable. */
+/* Only the observer enhances this attribute. SSR/no-script content stays readable. A hidden
+   block fades and rises into place; nothing is blurred or scaled, so the motion stays subtle. */
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
     transition:
-      opacity 720ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 720ms cubic-bezier(0.16, 1, 0.3, 1),
-      filter 720ms cubic-bezier(0.16, 1, 0.3, 1);
+      opacity var(--motion-reveal) var(--motion-ease),
+      transform var(--motion-reveal) var(--motion-ease);
     transition-delay: var(--reveal-delay, 0ms);
-    will-change: opacity, transform, filter;
   }
 
   .reveal[data-visible='false']:not(:focus-within) {
     opacity: 0;
-    filter: blur(4px);
-    transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 0), 0) scale(0.96);
+    transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 0), 0);
+    will-change: opacity, transform;
+  }
+}
+
+/* A printed page shows every section, including ones never scrolled into view. */
+@media print {
+  .reveal[data-visible='false']:not(:focus-within) {
+    opacity: 1;
+    transform: none;
   }
 }
 

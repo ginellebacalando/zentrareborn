@@ -276,7 +276,7 @@ export default function AutomationPanel() {
                   <p>
                     {data.emailConfigured
                       ? 'Queued emails are delivered through the configured mail account.'
-                      : 'Emails are saved and wait in the queue. Add SMTP_USER and SMTP_PASSWORD (a Gmail App Password) on the server to start sending.'}
+                      : 'Emails are saved and wait in the queue. To start sending, add SMTP_USER (the Gmail address) and SMTP_PASSWORD (a Gmail App Password, not the account password) in Vercel under Settings, Environment Variables, then redeploy. Waiting emails then go out on the next run.'}
                   </p>
                 </div>
               </li>
@@ -301,7 +301,7 @@ export default function AutomationPanel() {
                   <ConfigBadge configured={data.staffRecipients.masked.length > 0} />
                   <p>
                     {data.staffRecipients.masked.length
-                      ? `Staff alerts, the daily digest and calendar invitations for confirmed bookings go to ${data.staffRecipients.masked.join(', ')}.`
+                      ? `Staff alerts, the daily digest and calendar invitations for confirmed bookings go to ${data.staffRecipients.masked.join(', ')}. In Google Calendar, the "Add invitations to my calendar" setting decides whether an invitation appears on its own.`
                       : 'No valid staff address: staff alerts and the daily digest wait, and confirmed bookings send no staff calendar invitation.'}{' '}
                     {STAFF_SOURCE_NOTES[data.staffRecipients.source]}
                   </p>

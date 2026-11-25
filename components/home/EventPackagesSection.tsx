@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { homeEventCards } from '@/config/home';
 import SectionHeading from './SectionHeading';
 import styles from './HomeSections.module.css';
@@ -18,7 +19,7 @@ export default function EventPackagesSection() {
           title="Events & Packages"
           subtitle="Choose your celebration to see what each package includes"
         />
-        <ul className={styles.cards}>
+        <ul className={`${styles.cards} ${styles.stagger}`}>
           {homeEventCards.map((card) => (
             <li key={card.href}>
               <Link href={card.href} className={styles.card}>
@@ -32,7 +33,10 @@ export default function EventPackagesSection() {
                 </span>
                 <span className={styles.cardLabel}>{card.label}</span>
                 <span className={styles.cardTitle}>{card.title}</span>
-                <span className={styles.cardMore}>View packages</span>
+                <span className={styles.cardMore}>
+                  View packages
+                  <ArrowRight aria-hidden="true" className={styles.cardArrow} strokeWidth={1.75} />
+                </span>
               </Link>
             </li>
           ))}

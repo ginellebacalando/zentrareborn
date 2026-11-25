@@ -21,7 +21,9 @@ export default function Home() {
       <FadeIn direction="up" once>
         <AvailabilitySection />
       </FadeIn>
-      <ReviewsSection />
+      <FadeIn direction="up" once>
+        <ReviewsSection />
+      </FadeIn>
       <FadeIn direction="up" once>
         <FaqSection />
       </FadeIn>

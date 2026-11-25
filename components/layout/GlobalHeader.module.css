@@ -21,15 +21,13 @@
   box-shadow: var(--shadow-card);
 }
 
-/* Figma layout on every screen: the centered wordmark with Book Now at the right, then the menu
-   in a row between two hairlines. */
+/* Phones and tablets: one row with the menu button at the left, the wordmark and Book Now.
+   Desktop adds the Figma menu row between two hairlines (see the 64rem query). */
 .inner {
   display: grid;
-  grid-template-rows: var(--layout-header-height) var(--layout-header-links-height);
-  grid-template-columns: 1fr auto 1fr;
-  grid-template-areas:
-    '. brand book'
-    'nav nav nav';
+  grid-template-rows: var(--layout-header-height);
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'menu brand book';
   align-items: center;
   column-gap: var(--space-2);
   width: min(100%, var(--layout-max-width));
@@ -37,10 +35,17 @@
   padding-inline: var(--layout-gutter);
 }
 
+.menuButton {
+  grid-area: menu;
+  justify-self: start;
+}
+
+/* Phones: the wordmark sits beside the menu button, because a centered one would be pushed
+   off-center by the full Book Now label. Tablets and up center it. */
 .brand {
   display: inline-flex;
   grid-area: brand;
-  justify-self: center;
+  justify-self: start;
   align-items: center;
   min-height: var(--layout-touch-target);
   padding-inline: var(--space-2);
@@ -48,9 +53,23 @@
   text-decoration: none;
 }
 
+/* The wordmark keeps its standard size (2.25rem) from tablets up and turns compact in the slim
+   desktop row. Phones use smaller sizes so the menu button, the wordmark and Book Now share one
+   row down to 320px. */
 .brand :global(.zentra-wordmark__name) {
-  font-size: var(--type-wordmark-compact);
   transition: font-size var(--motion-normal) var(--motion-ease);
+}
+
+@media (max-width: 47.99rem) {
+  .header .brand :global(.zentra-wordmark__name) {
+    font-size: var(--type-wordmark-compact);
+  }
+}
+
+@media (max-width: 23.99rem) {
+  .header .brand :global(.zentra-wordmark__name) {
+    font-size: 1.5rem;
+  }
 }
 
 .book {
@@ -80,9 +99,10 @@
   color: var(--text-on-action);
 }
 
-/* The nav is the positioning box for the Packages list, so the list is never clipped by the
-   sideways-scrolling row on small screens. */
+/* The desktop menu row; phones and tablets use the menu button's drawer instead. The nav is the
+   positioning box for the Packages list. */
 .nav {
+  display: none;
   position: relative;
   grid-area: nav;
   align-self: stretch;
@@ -213,53 +233,23 @@
   font-weight: var(--weight-semibold);
 }
 
-/* Phones: the wordmark sits at the left, because a centered one would be pushed off-center by
-   the full Book Now label. */
-@media (max-width: 47.99rem) {
-  .inner {
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-      'brand book'
-      'nav nav';
-  }
-
-  .brand {
-    justify-self: start;
-  }
-}
-
-/* Phones and tablets: the menu row scrolls sideways, and the header slides away while scrolling
-   down (back on any scroll up, on keyboard focus, or while Packages is open). */
+/* Phones and tablets: the header slides away while scrolling down (back on any scroll up, on
+   keyboard focus, or while the menu is open). */
 @media (max-width: 63.99rem) {
-  .links {
-    margin-inline: calc(-1 * var(--layout-gutter));
-    padding: var(--space-1) var(--layout-gutter);
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-  }
-
-  /* Keeps the focus ring inside the scrolling row instead of clipped at its edges. */
-  .links .link:focus-visible {
-    outline-offset: -3px;
-    box-shadow: none;
-  }
-
   .header[data-hidden]:not(:focus-within, :has([aria-expanded='true'])) {
     transform: translateY(-100%);
   }
-
-  .panelLinks {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    justify-items: start;
-  }
 }
 
-/* Tablets and up have room for wider spacing around the wordmark and the button. */
+/* Tablets and up: the wordmark is centered, with wider spacing around it and the button. */
 @media (min-width: 48rem) {
   .inner {
+    grid-template-columns: 1fr auto 1fr;
     column-gap: var(--space-4);
+  }
+
+  .brand {
+    justify-self: center;
   }
 
   .book {
@@ -267,16 +257,19 @@
   }
 }
 
-/* Desktop before scrolling: the full Figma header with the large wordmark. */
+/* Desktop before scrolling: the full Figma header with the wordmark row and the menu row. */
 @media (min-width: 64rem) {
   .inner {
     grid-template-rows:
       calc(var(--layout-header-expanded-height) - var(--layout-header-links-height))
       var(--layout-header-links-height);
+    grid-template-areas:
+      '. brand book'
+      'nav nav nav';
   }
 
-  .brand :global(.zentra-wordmark__name) {
-    font-size: var(--type-wordmark);
+  .nav {
+    display: block;
   }
 }
 

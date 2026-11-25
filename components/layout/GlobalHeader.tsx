@@ -8,6 +8,7 @@ import { BRAND } from '@/config/brand';
 import { BOOK_LINK, MAIN_NAV, type NavGroup } from '@/config/navigation';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import { isGroupCurrent, isNavGroup } from '@/lib/navigation';
+import MobileMenu from './MobileMenu';
 import styles from './GlobalHeader.module.css';
 
 /** Scroll offsets (px) for condensing the header; the gap keeps it from flickering at the edge. */
@@ -132,9 +133,10 @@ function NavGroupItem({ group, pathname }: { group: NavGroup; pathname: string }
 
 /**
  * Figma header with the team's original menu items. Desktop: the centered ZENTRA wordmark with
- * BOOK NOW at the right and the menu in a row between hairlines; wide screens condense it into
- * one slim row after scrolling. Phones and tablets keep the same two rows (the menu row scrolls
- * sideways) and slide the header away while scrolling down. There is no menu button.
+ * BOOK NOW at the right and the menu in a row between hairlines, with no menu button; wide
+ * screens condense it into one slim row after scrolling. Phones and tablets: one row with the
+ * menu button at the left (it opens the same items in a drawer), the wordmark and BOOK NOW; the
+ * header slides away while scrolling down.
  *
  * The bar is fixed and a spacer reserves its full height, so it never moves the page content.
  */
@@ -151,6 +153,7 @@ export default function GlobalHeader() {
         data-hidden={hiddenOn === pathname ? '' : undefined}
       >
         <div className={styles.inner}>
+          <MobileMenu pathname={pathname} className={styles.menuButton} />
           <Link href="/" className={styles.brand} aria-label={`${BRAND.wordmark} home`}>
             <ZentraWordmark />
           </Link>

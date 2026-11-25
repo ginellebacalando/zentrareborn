@@ -126,9 +126,15 @@ export function isCronConfigured() {
   return readCronSecret() !== null;
 }
 
-/** Public origin used for links in staff emails; omitted when not configured. */
+/**
+ * Public origin used for links in emails: NEXT_PUBLIC_APP_URL or AUTH_URL when set, else the
+ * production domain Vercel provides to every deployment (VERCEL_PROJECT_PRODUCTION_URL, a host
+ * name without a scheme). Links are left out of emails when none resolves.
+ */
 export function applicationUrl() {
-  const raw = env('NEXT_PUBLIC_APP_URL') || env('AUTH_URL');
+  const vercelHost = env('VERCEL_PROJECT_PRODUCTION_URL');
+  const raw =
+    env('NEXT_PUBLIC_APP_URL') || env('AUTH_URL') || (vercelHost ? `https://${vercelHost}` : '');
   if (!raw) return null;
   try {
     const url = new URL(raw);

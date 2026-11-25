@@ -280,23 +280,30 @@
   --motion-normal: 180ms;
   --motion-slow: 320ms;
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  /* Scroll reveals, the hero text entrance and slow photo zooms; each stays off under reduced
+     motion. The stagger is the gap between items revealed together, such as a row of cards. */
+  --motion-reveal: 640ms;
+  --motion-stagger: 80ms;
 
   --layout-min-width: 20rem;
   --layout-max-width: 80rem;
+  /* Home page sections on wide screens: more room for photography than the standard width. */
+  --layout-wide-width: 96rem;
   --layout-reading-width: 48rem;
   --layout-gutter: clamp(1rem, 0.72rem + 1.4vw, 2.5rem);
   --layout-section-space: clamp(3rem, 2.15rem + 4.25vw, 6rem);
   --layout-card-padding: clamp(1rem, 0.82rem + 0.9vw, 1.75rem);
   --layout-touch-target: 2.75rem;
-  /* Public header: the wordmark row (phones, tablets, and the slim row on wide desktops after
-     scrolling), the menu row under it, and the full desktop header with the large wordmark. The
-     offset is the space the fixed header covers at the top of the page. */
+  /* Public header: the single row on phones and tablets (menu button, wordmark, Book Now) and
+     the slim row on wide desktops after scrolling, the desktop menu row, and the full desktop
+     header with the large wordmark. The offset is the space the fixed header covers at the top of
+     the page. */
   --layout-header-height: 4rem;
   --layout-header-links-height: 3.25rem;
   --layout-header-expanded-height: calc(
     var(--layout-header-height) + var(--space-6) + var(--layout-header-links-height)
   );
-  --layout-header-offset: calc(var(--layout-header-height) + var(--layout-header-links-height));
+  --layout-header-offset: var(--layout-header-height);
   --layout-radius: var(--radius-card);
   --layout-floating-control-size: 3rem;
   --layout-floating-control-inset: max(0.75rem, env(safe-area-inset-bottom));

@@ -12,25 +12,22 @@ const LEGAL_LINKS = [
   { label: 'Privacy', href: '/privacy' },
 ] as const;
 
-/** Figma footer: wordmark and venue line, site links, visit and contact details, social links. */
+/**
+ * Compact footer: the wordmark, the site links and the social links in one band, then the
+ * copyright and the legal links. The address, phone and email live in the home Contact section
+ * and on the Contact page, and Book Now stays in the header, so neither is repeated here.
+ */
 export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
-        <div className={styles.brand}>
-          <Link href="/" className={styles.brandLink} aria-label={`${BRAND.wordmark} home`}>
-            <ZentraWordmark size="sm" subtitle={BRAND.legalName} />
-          </Link>
-          <p className={styles.tagline}>{BRAND.tagline}</p>
-          <Link href="/booking" className={styles.book}>
-            Book now
-          </Link>
-        </div>
+        <Link href="/" className={styles.brand} aria-label={`${BRAND.wordmark} home`}>
+          <ZentraWordmark size="sm" subtitle={BRAND.legalName} />
+        </Link>
 
-        <nav aria-label="Footer" className={styles.column}>
-          <h2 className={styles.label}>Explore</h2>
+        <nav aria-label="Footer" className={styles.nav}>
           <ul className={styles.links}>
             {FOOTER_LINKS.map((link) => (
               <li key={link.href}>
@@ -40,25 +37,7 @@ export default function Footer() {
           </ul>
         </nav>
 
-        <div className={styles.column}>
-          <h2 className={styles.label}>Visit us</h2>
-          <address className={styles.text}>
-            {BRAND.address.lines.map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-          </address>
-          <p className={styles.note}>{BRAND.visits.notice}</p>
-        </div>
-
-        <div className={styles.column}>
-          <h2 className={styles.label}>Contact us</h2>
-          <div className={styles.text}>
-            <a href={BRAND.contact.phoneHref}>Tel: {BRAND.contact.phone}</a>
-            <a href={BRAND.contact.emailHref}>{BRAND.contact.email}</a>
-          </div>
-          <h2 className={`${styles.label} ${styles.followLabel}`}>Follow us</h2>
-          <SocialLinks variant="footer" />
-        </div>
+        <SocialLinks variant="footer" className={styles.social} />
       </div>
 
       <div className={styles.legal}>

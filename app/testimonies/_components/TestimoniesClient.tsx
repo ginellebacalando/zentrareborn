@@ -147,7 +147,7 @@ function formatDate(value: string) {
 function RatingDetail({ label, value }: { label: string; value: number | null }) {
   if (!value) return null;
   return (
-    <div className="flex items-center justify-between gap-4 py-1.5 first:pt-0 last:pb-0">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-1.5 first:pt-0 last:pb-0">
       <span className="font-sans text-xs font-bold uppercase tracking-[0.12em] text-muted">
         {label}
       </span>
@@ -171,7 +171,7 @@ function TestimonyCard({ testimony }: { testimony: PublicTestimony }) {
         </div>
       )}
       <div className="p-6 md:p-7">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <div>
             <p className="font-sahitya text-2xl font-bold text-ink">{testimony.clientName}</p>
             <p className="mt-1 flex flex-wrap items-center gap-2.5 text-sm text-muted">

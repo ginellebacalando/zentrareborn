@@ -10,8 +10,8 @@ type SocialPlatform = {
 
 const socialIcons: Record<string, React.ReactNode> = {
   Facebook: (
-    <div className="relative overflow-hidden w-full h-full border-2 border-[var(--palette-forest)] group-hover/icon:border-white text-[var(--palette-forest)] group-hover/icon:text-white rounded-full flex items-center justify-center shadow-sm transition-colors duration-300">
-      <div className="absolute bottom-0 left-0 w-full h-0 bg-[var(--palette-forest)] transition-all duration-300 ease-out group-hover/icon:h-full" />
+    <div className="relative overflow-hidden w-full h-full border-2 border-[var(--action-primary)] text-[var(--action-primary)] group-hover/icon:text-[var(--text-on-action)] rounded-full flex items-center justify-center shadow-sm transition-colors duration-300">
+      <div className="absolute bottom-0 left-0 w-full h-0 bg-[var(--action-primary)] transition-all duration-300 ease-out group-hover/icon:h-full" />
       <svg
         className="w-6 h-6 relative z-10"
         fill="currentColor"
@@ -23,8 +23,8 @@ const socialIcons: Record<string, React.ReactNode> = {
     </div>
   ),
   Instagram: (
-    <div className="relative overflow-hidden w-full h-full border-2 border-[var(--palette-forest)] group-hover/icon:border-white text-[var(--palette-forest)] group-hover/icon:text-white rounded-full flex items-center justify-center shadow-sm transition-colors duration-300">
-      <div className="absolute bottom-0 left-0 w-full h-0 bg-[var(--palette-forest)] transition-all duration-300 ease-out group-hover/icon:h-full" />
+    <div className="relative overflow-hidden w-full h-full border-2 border-[var(--action-primary)] text-[var(--action-primary)] group-hover/icon:text-[var(--text-on-action)] rounded-full flex items-center justify-center shadow-sm transition-colors duration-300">
+      <div className="absolute bottom-0 left-0 w-full h-0 bg-[var(--action-primary)] transition-all duration-300 ease-out group-hover/icon:h-full" />
       <svg
         className="w-6 h-6 relative z-10"
         fill="currentColor"
@@ -36,8 +36,8 @@ const socialIcons: Record<string, React.ReactNode> = {
     </div>
   ),
   TikTok: (
-    <div className="relative overflow-hidden w-full h-full border-2 border-[var(--palette-forest)] group-hover/icon:border-white text-[var(--palette-forest)] group-hover/icon:text-white rounded-full flex items-center justify-center shadow-sm transition-colors duration-300">
-      <div className="absolute bottom-0 left-0 w-full h-0 bg-[var(--palette-forest)] transition-all duration-300 ease-out group-hover/icon:h-full" />
+    <div className="relative overflow-hidden w-full h-full border-2 border-[var(--action-primary)] text-[var(--action-primary)] group-hover/icon:text-[var(--text-on-action)] rounded-full flex items-center justify-center shadow-sm transition-colors duration-300">
+      <div className="absolute bottom-0 left-0 w-full h-0 bg-[var(--action-primary)] transition-all duration-300 ease-out group-hover/icon:h-full" />
       <svg
         className="w-6 h-6 relative z-10"
         fill="currentColor"
@@ -71,7 +71,7 @@ export default function SocialLinks({ variant = 'footer', className = '' }: Soci
           href={platform.href}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`Visit ${BRAND.name} on ${platform.label}`}
+          aria-label={`Visit ${BRAND.name} on ${platform.label} (opens in a new tab)`}
           title={platform.label}
           className={`group/icon block ${sizeClass} transition-all duration-300`}
         >

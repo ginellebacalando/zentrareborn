@@ -1,5 +1,62 @@
 # Design change log
 
+## 25 November 2026 — Mobile menu, compact footer, wider home page with subtle motion
+
+User task: full mobile responsiveness with a menu button strictly at the left of the header on
+phones and tablets only (never on desktop); remove duplicate booking buttons and contact details
+repeated in the footer; a compact, professional footer; a wider home page with subtle transitions,
+hover states and scroll reveals; settings ready for the Gemini key, email and calendar.
+
+Affected screens and files:
+
+- Header on every public page: `components/layout/MobileMenu.tsx` and `.module.css` (new),
+  `GlobalHeader.tsx` and `.module.css`, `styles/tokens.css` (`--layout-header-offset` is one row
+  below 64rem). Phones and tablets show one row: the menu button at the left (44px, `aria-expanded`,
+  `aria-controls`), ZENTRA, then Book Now. The button opens a modal drawer from the left with the
+  original items; Packages is a disclosure, open on package pages, and the current page is
+  underlined. Escape, the close button, the backdrop, choosing a page or widening the window to
+  desktop closes it, and focus returns to the button. The desktop header is unchanged and has no
+  menu button. The header wordmark is 28px on phones (24px under 384px) and stays 36px from tablets
+  up, as before.
+- Footer (`components/layout/Footer.tsx` and `.module.css`): one band with the wordmark, the site
+  links and the social links, then the legal row, about 156px tall at 1440px. The address, phone,
+  email and Book now button are gone; they live in the home Contact section, the Contact page and
+  the header. The legal links keep clear of Zeni's floating button. `SocialLinks.tsx` now uses the
+  theme's action color (the icons were dark green on the dark theme) and says "opens in a new tab".
+- Home: the hero's "Book now" became "See packages" and "Check a date" (scrolls to Available
+  Dates), since Book Now is in the header. Sections use the new `--layout-wide-width` (96rem); the
+  Archive photos run almost edge to edge on desktops; package cards are one, two or three columns;
+  the booking steps form a 2×2 grid; the hero fills the first screen on desktops. Photos zoom
+  slowly, card titles change color and the card arrow nudges on hover; FAQ questions and steps have
+  hover states.
+- Motion: `FadeIn` hides blocks that start below the fold and reveals them once (with `once` it
+  previously never animated); the shared `.reveal` no longer blurs or scales; card grids follow in
+  a short cascade; the hero text rises in for each slide; in-page links scroll smoothly while
+  `data-scroll-behavior="smooth"` keeps route changes instant. New tokens: `--motion-reveal`,
+  `--motion-stagger`. All of it is off under reduced motion, and content stays visible without
+  script and when printed.
+- Phone fixes: the package page titles ("THE … EXPERIENCE") and the Gallery title wrap instead of
+  being cut off at 320px; Terms and Policies cards use less padding on phones; testimony ratings
+  wrap below the name; headings break words longer than their line (`app/globals.css`).
+- Setup: Admin → Zeni shows the steps to add `GEMINI_API_KEY` while it is missing; Admin →
+  Automation gives the Vercel steps for Gmail; links in emails fall back to Vercel's production
+  domain; the README has a go-live checklist.
+
+Verification: local preview at 320, 768, 1024, 1280 and 1440px. An overflow scan of all 18 public
+pages at 320px found no sideways scrolling or cut-off text after the fixes, except the Gallery note
+below. The menu was operated by mouse and keyboard (Tab stays inside, Shift+Tab wraps; Escape, the
+backdrop, a link and widening the window close it; focus returns to the button). Checked the dark
+theme for the drawer and footer, footer links against Zeni's button, the scroll reveals and
+cascade, the hero entrance and the smooth "Check a date" scroll. The full `npm run verify` result
+is in the commit that adds this entry.
+
+Limitations: reduced motion was not emulated; it was checked in the code (every new animation is
+inside `prefers-reduced-motion: no-preference`, and `FadeIn` does not hide anything then). No
+screen-reader pass; 200% text and 400% zoom were only approximated by the 320px checks. On phones
+the Gallery's legacy swipe cards widen the layout by 7px while they animate in on load (the
+component is unchanged). The softer shared reveal also applies on About, Gallery, Terms and
+Policies. The AGENTS.md hand-off to the team chats could not be sent from this machine.
+
 ## 25 November 2026 — Staff notification emails in Settings, staff calendar invitations
 
 User task: the owner wants booking calendar notifications in their own Gmail, with an admin setting

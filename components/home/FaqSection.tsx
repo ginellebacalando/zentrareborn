@@ -11,7 +11,7 @@ export default function FaqSection() {
     <section className={styles.section} aria-labelledby="home-faq-title">
       <div className={styles.container}>
         <SectionHeading id="home-faq-title" title="FAQ" subtitle="Quick answers before you book" />
-        <div className={styles.faqList}>
+        <div className={`${styles.faqList} ${styles.stagger}`}>
           {publicFaqs.slice(0, HOME_FAQ_COUNT).map((faq) => (
             <details key={faq.id} className={styles.faqItem}>
               <summary className={styles.faqQuestion}>{faq.question}</summary>

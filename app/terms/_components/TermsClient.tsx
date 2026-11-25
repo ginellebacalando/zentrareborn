@@ -103,7 +103,7 @@ export default function TermsClient() {
                         type="button"
                         aria-expanded={isOpen}
                         onClick={() => setOpenId(isOpen ? null : term.id)}
-                        className="flex w-full items-center justify-between gap-6 p-7 text-left md:p-9 lg:p-10"
+                        className="flex w-full items-center justify-between gap-4 p-5 text-left sm:gap-6 sm:p-7 md:p-9 lg:p-10"
                       >
                         <div>
                           <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-accent-ink transition-transform duration-300 group-hover:translate-x-0.5">
@@ -136,7 +136,7 @@ export default function TermsClient() {
                         }`}
                       >
                         <div className="overflow-hidden">
-                          <div className="border-t border-zion-accent/15 p-7 pt-4 md:p-9 md:pt-5 lg:p-10 lg:pt-6">
+                          <div className="border-t border-zion-accent/15 p-5 pt-4 sm:p-7 sm:pt-4 md:p-9 md:pt-5 lg:p-10 lg:pt-6">
                             <div
                               className={`space-y-4 font-serif text-lg leading-relaxed text-ink/80 transition-transform duration-500 ease-out motion-reduce:transition-none ${
                                 isOpen ? 'translate-y-0' : '-translate-y-2'

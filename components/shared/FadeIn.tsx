@@ -11,6 +11,11 @@ interface FadeInProps {
   once?: boolean;
 }
 
+/**
+ * Scroll reveal. Content renders visible (server, no script, reduced motion); once the observer
+ * runs, a block that starts below the fold is hidden until it scrolls into view. With `once` it
+ * stays revealed after that; without it, it hides again when it leaves the viewport.
+ */
 export default function FadeIn({
   children,
   delay = 0,
@@ -30,9 +35,12 @@ export default function FadeIn({
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setIsVisible(true);
-            if (once && domRef.current) observer.unobserve(domRef.current);
+            if (once) observer.unobserve(entry.target);
           } else if (!once) {
             setExitEdge(entry.boundingClientRect.top < 0 ? 'top' : 'bottom');
+            setIsVisible(false);
+          } else if (entry.boundingClientRect.top >= window.innerHeight) {
+            // Still entirely below the fold: hide it now, out of sight, so it can rise in later.
             setIsVisible(false);
           }
         });
@@ -48,11 +56,7 @@ export default function FadeIn({
   }, [once, reducedMotion]);
 
   const verticalOffset =
-    direction === 'up' || direction === 'down'
-      ? exitEdge === 'top'
-        ? '-2.25rem'
-        : '2.25rem'
-      : '0';
+    direction === 'up' || direction === 'down' ? (exitEdge === 'top' ? '-1.5rem' : '1.5rem') : '0';
 
   return (
     <div

@@ -79,7 +79,7 @@ export default function ReviewsSection() {
             Loading reviews…
           </p>
         ) : (
-          <div className={styles.reviews}>
+          <div className={`${styles.reviews} ${styles.stagger}`}>
             {reviews.map((review) => (
               <figure key={review.id} className={styles.review}>
                 <Stars value={review.overallRating} />
