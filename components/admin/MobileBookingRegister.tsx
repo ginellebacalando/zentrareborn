@@ -65,12 +65,15 @@ export default function MobileBookingRegister({
                   <dd>
                     <Badge value={booking.reservation} />
                   </dd>
-                  <dt>Cash payment</dt>
+                  <dt>Payment</dt>
                   <dd>
                     <Badge value={paymentStatus(booking.totalCents, paid)} />
                     <small>
                       {money(paid)} / {money(booking.totalCents)}
                     </small>
+                    {!!booking.proofsToVerify && (
+                      <small className={styles.proofWaiting}>Screenshot to verify</small>
+                    )}
                   </dd>
                 </>
               )}

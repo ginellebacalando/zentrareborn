@@ -1,0 +1,97 @@
+/* Payment screenshot review in the booking detail (booking automation phase 2). Colors, type and
+   spacing come from the admin tokens; the shared admin classes provide forms, buttons and the
+   stacked label/value lists. */
+
+.waiting {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/* Side by side only when the booking detail itself has room for both columns, whatever the
+   window width (the sidebar takes part of it). */
+.layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.figure {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: 0;
+}
+
+.figure a:focus-visible {
+  outline: 2px solid var(--admin-accent-ink);
+  outline-offset: 2px;
+}
+
+.image {
+  display: block;
+  inline-size: 100%;
+  max-block-size: 28rem;
+  object-fit: contain;
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-subtle);
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.facts dd {
+  overflow-wrap: anywhere;
+}
+
+.lead {
+  margin: 0;
+}
+
+.warnings {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  list-style: none;
+  border-left: var(--space-1) solid var(--admin-danger);
+  border-radius: var(--radius-control);
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  font-size: var(--type-small);
+}
+
+.warnings li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.warnings svg {
+  flex-shrink: 0;
+  margin-top: var(--space-1);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--admin-divider);
+}
+
+.form h4 {
+  margin: 0;
+  color: var(--admin-heading);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}
+
+/* A date and time needs more room than the other fields to show both parts. */
+.form .wideField {
+  min-width: 13rem;
+  flex: 2;
+}

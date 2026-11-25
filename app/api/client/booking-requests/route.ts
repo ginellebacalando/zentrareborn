@@ -1,4 +1,5 @@
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
+import { paymentPagePath } from '@/lib/payment-link';
 import { requireClientFeature, settingsErrorResponse } from '@/lib/system-settings';
 import { bookingRequestErrorResponse, submitBookingRequest } from '@/services/booking-requests';
 
@@ -22,6 +23,8 @@ export async function POST(request: Request) {
         reference: result.reference,
         holdExpiresAt: result.holdExpiresAt?.toISOString() ?? null,
         amountDueCents: result.holdExpiresAt ? result.amountDueCents : null,
+        // The client's private payment page, so they can pay before the email arrives.
+        paymentPath: result.holdExpiresAt ? paymentPagePath(result.id) : null,
       },
       { status: 201 },
     );

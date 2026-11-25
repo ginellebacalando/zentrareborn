@@ -1,6 +1,6 @@
 'use client';
 import { useState, useSyncExternalStore } from 'react';
-import { ArrowUpRight, LayoutGrid, Rows3, ShieldAlert } from 'lucide-react';
+import { ArrowUpRight, ImageIcon, LayoutGrid, Rows3, ShieldAlert } from 'lucide-react';
 import { money, paidTotal, paymentStatus } from '@/lib/admin/domain';
 import {
   countDisplayStatuses,
@@ -182,6 +182,12 @@ export default function BookingRegister({
                       Flagged
                     </span>
                   )}
+                  {!!booking.proofsToVerify && (
+                    <span className={styles.proofWaiting}>
+                      <ImageIcon size={14} strokeWidth={1.5} aria-hidden="true" />
+                      Screenshot to verify
+                    </span>
+                  )}
                 </div>
                 <h3>{booking.clientName}</h3>
                 <dl>
@@ -283,6 +289,9 @@ export default function BookingRegister({
                             <small>
                               {money(paid)} / {money(booking.totalCents)}
                             </small>
+                            {!!booking.proofsToVerify && (
+                              <small className={styles.proofWaiting}>Screenshot to verify</small>
+                            )}
                           </td>
                         </>
                       )}

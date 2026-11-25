@@ -1,5 +1,66 @@
 # Design change log
 
+## 25 November 2026 — Booking automation phase 2: GCash and bank transfer screenshots
+
+User task: let clients pay the reservation fee by GCash or bank transfer and send the screenshot
+online, with staff checking each one against Zion's own records before it counts (phase 2 of the
+team plan; started with "okay start").
+
+Affected screens and files:
+
+- New client payment page (`app/booking/pay/[token]/`, `services/payment-proofs.ts`,
+  `lib/payment-link.ts`): a private, signed link from the booking emails and the booking page.
+  It shows the booking, the amount and deadline (labels stacked above values on phones), Zion's
+  GCash and bank accounts, the booking reference for the transfer note, and the upload form:
+  method (radio buttons), reference number, amount, date paid and the file, each with a
+  persistent label and hint. A missing or wrong value gets an inline message (`role="alert"`,
+  `aria-invalid`, `aria-describedby`) and focus moves to the field. After sending, a status
+  message takes focus and "Send a different screenshot" replaces a wrong file. The page states
+  each stage: checking, not accepted (with the reason), confirmed, or no longer on hold. It is not
+  indexed and sends no referrer.
+- Public booking page (`app/booking/_components/BookingRequestForm.tsx`): "Your date is on hold"
+  adds a "See how to pay" button to the payment page and says GCash or bank screenshots are sent
+  there.
+- Admin → Bookings (`components/admin/PaymentProofReview.tsx`, `BookingDetail.tsx`,
+  `BookingRegister.tsx`, `MobileBookingRegister.tsx`): a "Payment screenshots" section with the
+  image (or a PDF download), the client's entries, warnings for a reused reference or image, a
+  Verify payment form (amount, reference, time, note and a required "I found this payment in our
+  records" checkbox) and a Reject screenshot form (reason and note to the client); earlier
+  decisions are listed below. "Cash receipts" became "Payments received" with each payment's
+  method, and list rows and cards show "Screenshot to verify". The waiting notice explains the
+  screenshot step.
+- Admin → Settings (`components/admin/SystemSettingsForm.tsx`): an Online Payments card (GCash
+  account name and number; bank name, account name and number) following the Booking Automation
+  card pattern, with the error shown under the field to fix.
+- Emails: "Payment screenshot received" to the client and "Payment screenshot to verify" to staff;
+  "Payment verified" and "Payment screenshot not accepted" to the client; payment page links in
+  the hold, reminder, extension and rejection emails, also in their plain-text versions; a digest
+  line and a bell notice for screenshots to verify.
+- Server and data: `prisma/payment-proofs.sql` and its installer (private table with row security,
+  payment method column), `lib/payment-proof-file.ts` (type from the file's bytes, photo metadata
+  removed), `lib/admin/payment-proofs.ts`, verify and reject operations in `lib/admin/service.ts`,
+  the admin screenshot route (signed-in staff only, private, never cached, sandboxed), and
+  `next.config.ts` headers for both new routes.
+
+Tokens and existing components only; no new colors, type sizes or motion. Two small CSS modules
+lay out the payment page and the review section with spacing, radius, feedback and admin tokens.
+
+Verification: the new test file covers file recognition and metadata removal, account rules, the
+signed link, refused uploads (cross-site, honeypot, unavailable method, future date, amount above
+the balance, wrong file type, forged link), the hold staying while a screenshot waits, reject with
+the extended deadline and email, replacement, verify confirming the booking with a `GCASH-`
+receipt, the same transfer refused for a second booking, and the upload limit. On the local
+preview (demo database, no email sent): Settings refused a 5-digit GCash number with the message
+under the field, then saved a valid one; a website booking showed "Your date is on hold" and "See
+how to pay"; the payment page showed the account, refused an empty reference with focus on it,
+and accepted a screenshot; Admin showed "Screenshot to verify", the image, Reject (the client page
+then showed the reason in red) and, after a second screenshot, Verify payment, which confirmed the
+booking and recorded `GCASH-12345678901`. At 320 px the payment page and the review section fit
+with no sideways scrolling; the review was also checked in the admin dark theme. The screenshot
+route returned 401 without sign-in and served the sandbox header. Not checked: 200% text and 400%
+zoom, a real phone camera photo above 3.5 MB (scaled in the browser), PDF uploads in the browser,
+screen reader output, and real email delivery (the preview sends none).
+
 ## 25 November 2026 — Booking automation phase 1: the system approves, staff record payments
 
 User task: follow the team plan, where the system checks a booking's details and staff only check

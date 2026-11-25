@@ -14,6 +14,12 @@ import {
   type BookingRules,
 } from './booking-rules';
 import {
+  EMPTY_PAYMENT_ACCOUNTS,
+  normalizePaymentAccounts,
+  paymentAccountsProblem,
+  type PaymentAccounts,
+} from './payment-accounts';
+import {
   DEFAULT_ADMIN_PREFERENCES,
   SESSION_TIMEOUT_OPTIONS,
   notificationLabels,
@@ -95,6 +101,27 @@ export const preferencesSchema = z
           })
           .strict()
           .optional(),
+        // Optional like bookingRules: an older Settings page leaves saved accounts unchanged.
+        paymentAccounts: z
+          .object({
+            gcash: z
+              .object({ accountName: z.string().max(100), number: z.string().max(20) })
+              .strict(),
+            bank: z
+              .object({
+                bankName: z.string().max(100),
+                accountName: z.string().max(100),
+                accountNumber: z.string().max(40),
+              })
+              .strict(),
+          })
+          .strict()
+          .transform(normalizePaymentAccounts)
+          .superRefine((accounts, context) => {
+            const issue = paymentAccountsProblem(accounts);
+            if (issue) context.addIssue({ code: 'custom', message: issue.problem });
+          })
+          .optional(),
       })
       .strict(),
     client: z
@@ -155,6 +182,30 @@ function storedBookingRules(settings: unknown): BookingRules {
     ),
   };
 }
+/** Lenient reader for the saved payment accounts: an incomplete or invalid set is ignored. */
+function storedPaymentAccounts(settings: unknown): PaymentAccounts {
+  const stored = record(record(record(settings).admin).paymentAccounts);
+  const text = (value: unknown) => (typeof value === 'string' ? value : '');
+  const gcash = record(stored.gcash),
+    bank = record(stored.bank);
+  const accounts = normalizePaymentAccounts({
+    gcash: { accountName: text(gcash.accountName), number: text(gcash.number) },
+    bank: {
+      bankName: text(bank.bankName),
+      accountName: text(bank.accountName),
+      accountNumber: text(bank.accountNumber),
+    },
+  });
+  return paymentAccountsProblem(accounts) ? structuredClone(EMPTY_PAYMENT_ACCOUNTS) : accounts;
+}
+/** The saved payment accounts; inside a transaction pass its client. */
+export async function readPaymentAccounts(db: Prisma.TransactionClient = prisma) {
+  const row = await db.systemSetting.findUnique({
+    where: { id: 'singleton' },
+    select: { settings: true },
+  });
+  return storedPaymentAccounts(row?.settings);
+}
 /** The saved booking rules; inside a transaction pass its client (see readStaffNotificationEmails). */
 export async function readBookingRules(db: Prisma.TransactionClient = prisma) {
   const row = await db.systemSetting.findUnique({
@@ -213,6 +264,7 @@ export function normalizeAdminPreferences(input: unknown) {
       },
       staffNotifications: { emails: storedStaffNotificationEmails(root) },
       bookingRules: storedBookingRules(root),
+      paymentAccounts: storedPaymentAccounts(root),
     },
     client: {
       maintenanceMode: bool(client.maintenanceMode, defaults.client.maintenanceMode),
@@ -275,6 +327,9 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         localization: settings.admin.localization,
         staffNotifications: settings.admin.staffNotifications,
         ...(settings.admin.bookingRules ? { bookingRules: settings.admin.bookingRules } : {}),
+        ...(settings.admin.paymentAccounts
+          ? { paymentAccounts: settings.admin.paymentAccounts }
+          : {}),
       },
     };
     // The audit trail records that the staff inboxes changed and how many there are, never which.
@@ -293,6 +348,13 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         rules.reviewGuestLimit !== previousRules.reviewGuestLimit)
         ? ` Booking rules changed: ${rules.paymentDeadlineDays} day${rules.paymentDeadlineDays === 1 ? '' : 's'} to pay, ${rules.reviewGuestLimit === null ? 'no guest limit' : `review above ${rules.reviewGuestLimit} guests`}.`
         : '';
+    // Like the staff inboxes, the audit trail notes a change, never the account details.
+    const accountsChange =
+      settings.admin.paymentAccounts &&
+      JSON.stringify(settings.admin.paymentAccounts) !==
+        JSON.stringify(storedPaymentAccounts(previous?.settings))
+        ? ' Payment accounts changed.'
+        : '';
     const row = await tx.systemSetting.upsert({
       where: { id: 'singleton' },
       create: {
@@ -309,7 +371,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         userRole: actor.role,
         action: 'SETTINGS_CHANGE',
         module: 'Settings',
-        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}`,
+        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${accountsChange}`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },

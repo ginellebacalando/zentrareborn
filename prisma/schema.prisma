@@ -46,6 +46,7 @@ model AdminBooking {
   updatedAt DateTime @updatedAt
   payments AdminCashPayment[]
   contracts AdminContract[]
+  paymentProofs AdminPaymentProof[]
   @@index([startsAt, reservation])
   @@index([approval, createdAt])
   @@index([email])
@@ -61,12 +62,40 @@ model AdminCashPayment {
   receivedAt DateTime
   recordedBy String
   note String @default("") @db.Text
+  // How the money arrived: CASH at the venue, or GCASH / BANK_TRANSFER verified from a payment
+  // screenshot (booking automation phase 2, prisma/payment-proofs.sql).
+  method String @default("CASH") @db.VarChar(20)
   voidedAt DateTime?
   voidedBy String?
   voidReason String?
   createdAt DateTime @default(now())
   @@index([bookingId, receivedAt])
   @@map("zion_admin_cash_payments")
+}
+// A client's GCash or bank transfer screenshot, kept privately until staff verify or reject it
+// (phase 2 of the admin payment automation, prisma/payment-proofs.sql). Never served publicly.
+model AdminPaymentProof {
+  id String @id @default(cuid())
+  bookingId String
+  booking AdminBooking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  method String @db.VarChar(20)
+  referenceNumber String @db.VarChar(80)
+  amountCents Int
+  paidOn DateTime @db.Date
+  fileName String @db.VarChar(200)
+  contentType String @db.VarChar(60)
+  sizeBytes Int
+  sha256 String @db.VarChar(64)
+  data Bytes
+  status String @default("SUBMITTED") @db.VarChar(20)
+  reviewReason String @default("") @db.Text
+  reviewedBy String?
+  reviewedAt DateTime?
+  paymentId String?
+  createdAt DateTime @default(now())
+  @@index([bookingId, status])
+  @@index([referenceNumber])
+  @@map("zion_payment_proofs")
 }
 model AdminContract {
   id String @id @default(cuid())

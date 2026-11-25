@@ -125,6 +125,7 @@ export async function scheduleDailyDigest(now = new Date()) {
     awaitingApproval,
     waitingForPayment,
     deadlinesToday,
+    paymentScreenshots,
     failedEmails,
     staff,
   ] = await Promise.all([
@@ -156,6 +157,7 @@ export async function scheduleDailyDigest(now = new Date()) {
         holdExpiresAt: { gte: todayStart, lt: tomorrowStart },
       },
     }),
+    prisma.adminPaymentProof.count({ where: { status: 'SUBMITTED' } }),
     prisma.adminOutbox.count({ where: { status: 'REVIEW_REQUIRED' } }),
     resolveStaffRecipients(),
   ]);
@@ -173,6 +175,7 @@ export async function scheduleDailyDigest(now = new Date()) {
     awaitingApproval,
     waitingForPayment,
     deadlinesToday,
+    paymentScreenshots,
     failedEmails,
     adminUrl: appUrl ? `${appUrl}/admin/dashboard` : null,
   });

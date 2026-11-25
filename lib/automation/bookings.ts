@@ -4,6 +4,7 @@ import { BRAND } from '@/config/brand';
 import { bookingEmail } from '@/lib/admin/domain';
 import { isEmailAddress } from '@/lib/email-address';
 import { automationJobLabel, STAFF_RECIPIENT_LIMITS } from './catalog';
+import { paymentPageUrl } from '@/lib/payment-link';
 import { applicationUrl } from './config';
 import { buildCalendarInvite, type CalendarInvite, type CalendarMethod } from './ics';
 import { enqueueJobs, type NewAutomationJob, type OutboxDb } from './outbox';
@@ -70,6 +71,9 @@ const CALENDAR_NOTES: Record<CalendarMethod, string> = {
   CANCEL:
     'The calendar invitation for this event is cancelled. Your calendar app can remove it using the attached update.',
 };
+
+/** Notices that ask the client to pay, so they link to the private payment page. */
+const PAYMENT_LINK_EVENTS = new Set(['REQUEST_APPROVED', 'HOLD_EXTENDED', 'PAYMENT_REJECTED']);
 
 const STAFF_CALENDAR_EVENTS = {
   PENDING: 'STAFF_CALENDAR_PENDING',
@@ -352,6 +356,8 @@ export async function enqueueBookingNotice(
     calendar?: CalendarMethod;
     /** The staff calendar change; by default it follows the client's calendar update. */
     staffCalendar?: StaffCalendarChange;
+    /** Event-specific detail for the client, such as why a payment screenshot was not accepted. */
+    note?: string;
     now?: Date;
   },
 ) {
@@ -373,12 +379,18 @@ export async function enqueueBookingNotice(
         lastError: 'Not sent: the reservation was cancelled before this message went out.',
       },
     });
-  const notice = bookingEmail(booking, input.paid, input.instructions, event);
+  const notice = bookingEmail(booking, input.paid, input.instructions, event, input.note);
+  const waitingForPayment = booking.reservation === 'REQUESTED' && booking.approval === 'APPROVED';
+  const paymentUrl =
+    waitingForPayment && PAYMENT_LINK_EVENTS.has(event) ? paymentPageUrl(booking.id) : null;
   const rendered = renderPlainNotice({
     subject: notice.subject,
     heading: automationJobLabel(event),
     body: notice.body,
     extra: calendar ? [CALENDAR_NOTES[calendar]] : [],
+    action: paymentUrl
+      ? { label: 'See how to pay or upload your payment', href: paymentUrl }
+      : undefined,
   });
   const clientNotice: NewAutomationJob = {
     idempotencyKey: `booking:${booking.id}:${event}:r${booking.revision}`,

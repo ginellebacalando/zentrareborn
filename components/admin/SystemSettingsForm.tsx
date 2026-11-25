@@ -21,8 +21,39 @@ import {
   REVIEW_GUEST_LIMIT,
   parseBookingRules,
 } from '@/lib/admin/booking-rules';
+import {
+  normalizePaymentAccounts,
+  paymentAccountsProblem,
+  type PaymentAccountField,
+  type PaymentAccounts,
+} from '@/lib/admin/payment-accounts';
 import { useAdminPreferences } from './AdminPreferencesProvider';
 import styles from './admin.module.css';
+
+/** The Online Payments fields, in the order a problem is reported. */
+const paymentAccountFields: {
+  field: PaymentAccountField;
+  label: string;
+  group: 'gcash' | 'bank';
+  key: string;
+  hint?: string;
+}[] = [
+  { field: 'gcashName', label: 'GCash account name', group: 'gcash', key: 'accountName' },
+  {
+    field: 'gcashNumber',
+    label: 'GCash number',
+    group: 'gcash',
+    key: 'number',
+    hint: 'For example 09171234567.',
+  },
+  { field: 'bankName', label: 'Bank name', group: 'bank', key: 'bankName' },
+  { field: 'bankAccountName', label: 'Bank account name', group: 'bank', key: 'accountName' },
+  { field: 'bankAccountNumber', label: 'Bank account number', group: 'bank', key: 'accountNumber' },
+];
+
+function accountValue(accounts: PaymentAccounts, group: 'gcash' | 'bank', key: string) {
+  return (accounts[group] as Record<string, string>)[key] ?? '';
+}
 
 const clientControls = [
   ['maintenanceMode', 'Maintenance Mode', 'Temporarily pauses public client features.'],
@@ -165,6 +196,15 @@ function PreferencesEditor({
   const paymentDaysRef = useRef<HTMLInputElement>(null);
   const guestLimitRef = useRef<HTMLInputElement>(null);
   const rulesId = useId();
+  // Online payment accounts are checked when saving, like the rules above.
+  const [accountsError, setAccountsError] = useState<{
+    field: PaymentAccountField;
+    message: string;
+    attempt: number;
+  } | null>(null);
+  const paymentsRef = useRef<HTMLDetailsElement>(null);
+  const accountInputs = useRef<Partial<Record<PaymentAccountField, HTMLInputElement | null>>>({});
+  const accountsId = useId();
   const { previewTheme, clearPersonalTheme } = useAdminPreferences();
   const disabled = !initial.canEdit || busy;
   useEffect(() => () => previewTheme(null), [previewTheme]);
@@ -183,6 +223,17 @@ function PreferencesEditor({
     }));
   const setClient = (key: keyof AdminPreferences['client'], value: boolean | string) =>
     setSettings((current) => ({ ...current, client: { ...current.client, [key]: value } }));
+  const setAccount = (group: 'gcash' | 'bank', key: string, value: string) =>
+    setSettings((current) => ({
+      ...current,
+      admin: {
+        ...current.admin,
+        paymentAccounts: {
+          ...current.admin.paymentAccounts,
+          [group]: { ...current.admin.paymentAccounts[group], [key]: value },
+        },
+      },
+    }));
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -210,6 +261,19 @@ function PreferencesEditor({
       return;
     }
     setRulesError(null);
+    const paymentAccounts = normalizePaymentAccounts(settings.admin.paymentAccounts);
+    const accountsIssue = paymentAccountsProblem(paymentAccounts);
+    if (accountsIssue) {
+      setAccountsError((current) => ({
+        field: accountsIssue.field,
+        message: accountsIssue.problem,
+        attempt: (current?.attempt ?? 0) + 1,
+      }));
+      if (paymentsRef.current) paymentsRef.current.open = true;
+      accountInputs.current[accountsIssue.field]?.focus();
+      return;
+    }
+    setAccountsError(null);
     setBusy(true);
     try {
       const response = await fetch('/api/admin/preferences', {
@@ -223,6 +287,7 @@ function PreferencesEditor({
               ...settings.admin,
               staffNotifications: { emails: staffList.emails },
               bookingRules: bookingRules.rules,
+              paymentAccounts,
             },
           },
           updatedAt: initial.updatedAt,
@@ -572,6 +637,83 @@ function PreferencesEditor({
                   {rulesError.message}
                 </p>
               )}
+            </div>
+          </details>
+          <details
+            ref={paymentsRef}
+            className={`${styles.settingsCard} ${styles.settingsDisclosure}`}
+          >
+            <summary>
+              <h2 className={styles.settingsSectionTitle}>
+                <span>
+                  <i className="fi fi-rr-wallet" aria-hidden="true" />
+                </span>
+                Online Payments
+                <ChevronDown size={18} aria-hidden="true" />
+              </h2>
+            </summary>
+            <div className={styles.settingsCardBody}>
+              <p id={`${accountsId}-help`} className={styles.help}>
+                Clients see these accounts only on their private payment page, once their date is
+                held. They send a screenshot of the transfer, and staff check it against these
+                accounts before it counts as paid. Leave a method empty to not offer it; paying cash
+                at the venue is always possible.
+              </p>
+              {paymentAccountFields.map(({ field, label, group, key, hint }) => (
+                <div key={field} className={styles.settingsEmails}>
+                  {(field === 'gcashName' || field === 'bankName') && (
+                    <p className={styles.settingsCaption}>
+                      {group === 'gcash' ? 'GCash' : 'Bank transfer'}
+                    </p>
+                  )}
+                  <label>
+                    {label}
+                    <input
+                      ref={(input) => {
+                        accountInputs.current[field] = input;
+                      }}
+                      type="text"
+                      inputMode={field === 'gcashNumber' ? 'tel' : undefined}
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={
+                        field === 'gcashNumber' ? 20 : field === 'bankAccountNumber' ? 40 : 100
+                      }
+                      disabled={disabled}
+                      value={accountValue(settings.admin.paymentAccounts, group, key)}
+                      aria-invalid={accountsError?.field === field ? true : undefined}
+                      aria-describedby={
+                        [
+                          hint ? `${accountsId}-${field}-hint` : null,
+                          accountsError?.field === field ? `${accountsId}-error` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
+                      onChange={(event) => {
+                        setAccount(group, key, event.target.value);
+                        if (accountsError?.field === field) setAccountsError(null);
+                      }}
+                    />
+                  </label>
+                  {hint && (
+                    <p id={`${accountsId}-${field}-hint`} className={styles.help}>
+                      {hint}
+                    </p>
+                  )}
+                  {/* Shown under the field to fix, so it is next to where focus moves. */}
+                  {accountsError?.field === field && (
+                    <p
+                      key={accountsError.attempt}
+                      id={`${accountsId}-error`}
+                      className={styles.error}
+                      role="alert"
+                    >
+                      {accountsError.message}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </details>
           <details className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>

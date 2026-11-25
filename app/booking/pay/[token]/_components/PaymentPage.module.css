@@ -1,0 +1,131 @@
+/* The private payment page (booking automation phase 2). The shared booking-page styles
+   (BookingRequest.module.css) provide the card, type, fields and buttons; these rules only lay
+   out what is specific to paying. */
+
+.card {
+  display: grid;
+  gap: var(--space-6);
+}
+
+/* Each label sits above its value on phones and beside it where there is room. */
+.details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+}
+
+.details dt {
+  color: var(--text-muted);
+}
+
+.details dd {
+  margin: 0 0 var(--space-3);
+  min-width: 0;
+  font-weight: var(--weight-semibold);
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 30rem) {
+  .details {
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+    gap: var(--space-2) var(--space-6);
+  }
+
+  .details dd {
+    margin: 0;
+  }
+}
+
+.status {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+}
+
+.status:focus {
+  outline: none;
+}
+
+.statusSuccess {
+  background: var(--feedback-success-surface);
+  color: var(--feedback-success-ink);
+}
+
+.statusProblem {
+  background: var(--feedback-error-surface);
+  color: var(--feedback-error-ink);
+}
+
+.accounts {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@media (min-width: 40rem) {
+  .accounts {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+}
+
+.account {
+  display: grid;
+  /* Cards in a row share a height; the lines stay together at the top. */
+  align-content: start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+}
+
+.account h3 {
+  margin: 0;
+  font-size: var(--type-card-title);
+}
+
+.account p {
+  margin: 0;
+}
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.formRow {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 40rem) {
+  .formRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+}
+
+.method {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--layout-touch-target);
+  font-size: var(--type-body);
+  cursor: pointer;
+}
+
+.method input {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--action-primary);
+}

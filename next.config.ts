@@ -66,6 +66,22 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
         ],
       })),
+      // A client's private payment page: its signed link is never indexed or sent on as a referrer.
+      {
+        source: '/booking/pay/:token',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+        ],
+      },
+      // Payment screenshots come from the public, so even opened directly they stay an inert,
+      // sandboxed document. Listed after the site-wide rule, which it replaces for this header.
+      {
+        source: '/api/admin/payment-proofs/:id',
+        headers: [
+          { key: 'Content-Security-Policy', value: "default-src 'none'; img-src 'self'; sandbox" },
+        ],
+      },
     ];
   },
 };

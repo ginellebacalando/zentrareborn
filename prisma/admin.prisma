@@ -54,6 +54,9 @@ model AdminCashPayment {
   receivedAt DateTime
   recordedBy String
   note String @default("") @db.Text
+  // How the money arrived: CASH at the venue, or GCASH / BANK_TRANSFER verified from a payment
+  // screenshot (booking automation phase 2, prisma/payment-proofs.sql).
+  method String @default("CASH") @db.VarChar(20)
   voidedAt DateTime?
   voidedBy String?
   voidReason String?

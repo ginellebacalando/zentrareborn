@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { Prisma } from '@prisma/client';
+import { paymentPageUrl } from '@/lib/payment-link';
 import { prisma } from '@/lib/prisma';
 import { enqueueBookingNotice } from '@/lib/automation/bookings';
 import { AUTOMATION_POLICY, applicationUrl } from '@/lib/automation/config';
@@ -50,7 +51,8 @@ async function auditAutomation(db: Prisma.TransactionClient, description: string
 /**
  * Releases held dates whose payment deadline passed without any payment: the request is
  * cancelled, the client and the staff calendars are told, and the date opens for other clients.
- * A booking with a partial payment is left to staff, who can extend its deadline or cancel it.
+ * A booking with a partial payment, or with a payment screenshot waiting for staff, is left to
+ * staff, who can verify it, extend the deadline or cancel the booking.
  */
 export async function expireUnpaidHolds(now = new Date()) {
   const due = await prisma.adminBooking.findMany({
@@ -59,6 +61,7 @@ export async function expireUnpaidHolds(now = new Date()) {
       approval: 'APPROVED',
       holdExpiresAt: { lte: now },
       payments: { none: { voidedAt: null } },
+      paymentProofs: { none: { status: 'SUBMITTED' } },
     },
     orderBy: { holdExpiresAt: 'asc' },
     take: BATCH,
@@ -72,8 +75,12 @@ export async function expireUnpaidHolds(now = new Date()) {
         where: { id },
         include: bookingWithPayments,
       });
+      const waitingProofs = await tx.adminPaymentProof.count({
+        where: { bookingId: id, status: 'SUBMITTED' },
+      });
       // Rechecked under the lock: a payment, a new deadline or a decision may have just landed.
       if (
+        waitingProofs > 0 ||
         b.reservation !== 'REQUESTED' ||
         b.approval !== 'APPROVED' ||
         !b.holdExpiresAt ||
@@ -122,6 +129,8 @@ export async function scheduleHoldReminders(now = new Date()) {
       reservation: 'REQUESTED',
       approval: 'APPROVED',
       holdExpiresAt: { gt: now, lte: new Date(now.getTime() + REMINDER_LEAD_MS) },
+      // A client who sent a payment screenshot is waiting for staff, not for a reminder.
+      paymentProofs: { none: { status: 'SUBMITTED' } },
     },
     orderBy: { holdExpiresAt: 'asc' },
     take: 100,
@@ -169,6 +178,7 @@ export async function scheduleHoldReminders(now = new Date()) {
         holdExpiresAt: b.holdExpiresAt,
         amountDueCents: due,
         instructions: cashInstructions,
+        paymentUrl: paymentPageUrl(b.id),
       }),
       expiresAt: b.holdExpiresAt,
     });

@@ -9,8 +9,28 @@ export type Receipt = {
   receivedAt: string;
   recordedBy: string;
   note: string;
+  /** CASH at the venue, or GCASH / BANK_TRANSFER verified from a payment screenshot. */
+  method: string;
   voidedAt: string | null;
   voidReason: string | null;
+};
+/** A client's payment screenshot as staff see it; the file itself loads from its own route. */
+export type PaymentProof = {
+  id: string;
+  method: 'GCASH' | 'BANK_TRANSFER';
+  referenceNumber: string;
+  amountCents: number;
+  /** The date the client says they paid, YYYY-MM-DD. */
+  paidOn: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  status: 'SUBMITTED' | 'VERIFIED' | 'REJECTED';
+  reviewReason: string;
+  reviewedAt: string | null;
+  createdAt: string;
+  /** Signs the payment may not be new, for staff to check against their records. */
+  warnings: string[];
 };
 export type Contract = {
   id: string;
@@ -48,6 +68,10 @@ export type Booking = {
   holdExpiresAt: string | null;
   payments: Receipt[];
   contracts: Contract[];
+  /** Loaded with a single booking (booking automation phase 2). */
+  paymentProofs?: PaymentProof[];
+  /** Screenshots waiting for review; set on booking lists. */
+  proofsToVerify?: number;
 };
 export type Policy = {
   version: number;

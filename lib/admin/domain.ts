@@ -109,8 +109,20 @@ export function eventDate(value: Date | string) {
     timeStyle: 'short',
   }).format(new Date(value));
 }
-/** The opening paragraph of a booking notice whose event changes the payment deadline. */
-function deadlineLead(event: string, amount: string, due: string | null) {
+/** Subject names for the payment notices, where the event name would read harshly to a client. */
+const NOTICE_SUBJECTS: Record<string, string> = {
+  PAYMENT_VERIFIED: 'Payment verified',
+  PAYMENT_REJECTED: 'Payment screenshot not accepted',
+};
+/** The opening paragraph of a booking notice about the payment deadline or a payment. */
+function noticeLead(event: string, amount: string, due: string | null, note?: string) {
+  if (event === 'PAYMENT_VERIFIED')
+    return 'We verified your payment with our records. Thank you! It is now recorded with your booking.';
+  if (event === 'PAYMENT_REJECTED')
+    return `We could not verify the payment screenshot you sent. ${note ?? ''} Please upload a clearer or the correct screenshot on your payment page${due ? ` by ${due} (Manila time)` : ''}, or contact us.`.replace(
+      /\s+/g,
+      ' ',
+    );
   if (event === 'REQUEST_APPROVED' && due)
     return `Your request is approved and your date is on hold for you. Please pay ${amount} by ${due} (Manila time) to confirm it. If we do not receive it by then, the hold ends and the date opens to other clients.`;
   if (event === 'HOLD_EXTENDED' && due)
@@ -135,12 +147,13 @@ export function bookingEmail(
   paid: number,
   instructions: string,
   event: string,
+  note?: string,
 ) {
   const amount =
     b.paymentRule === 'FULL_PAYMENT_REQUIRED'
       ? `the full amount of ${money(b.totalCents - paid)}`
       : `the reservation fee of ${money(Math.max(0, b.depositCents - paid))}`;
-  const lead = deadlineLead(event, amount, b.holdExpiresAt ? eventDate(b.holdExpiresAt) : null);
+  const lead = noticeLead(event, amount, b.holdExpiresAt ? eventDate(b.holdExpiresAt) : null, note);
   const requirement =
     b.paymentRule === 'NO_PAYMENT_REQUIRED'
       ? 'No payment is required to secure this reservation.'
@@ -148,7 +161,7 @@ export function bookingEmail(
         ? `Full cash payment of ${money(b.totalCents)} is required before confirmation.`
         : `A cash reservation fee of ${money(b.depositCents)} is required before confirmation.`;
   return {
-    subject: `Zion Events Place | ${event.replaceAll('_', ' ')} | ${b.reference}`,
+    subject: `Zion Events Place | ${NOTICE_SUBJECTS[event] ?? event.replaceAll('_', ' ')} | ${b.reference}`,
     body: `Hello ${b.clientName},\n\n${lead ? `${lead}\n\n` : ''}Booking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${paymentStatus(b.totalCents, paid)} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${requirement}\n${instructions}\n\nApproval alone does not confirm a reservation or indicate payment. Only a CONFIRMED reservation secures the event schedule.\n\nZion Events Place`,
   };
 }

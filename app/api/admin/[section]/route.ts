@@ -61,7 +61,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
     const allowed: Record<string, string[]> = {
       dashboard: ['testimony-action'],
       bookings: ['create-booking', 'booking-action', 'edit-booking'],
-      payments: ['cash-receipt', 'void-receipt'],
+      payments: ['cash-receipt', 'void-receipt', 'verify-proof', 'reject-proof'],
       contracts: ['create-contract', 'contract-action'],
       profile: ['profile'],
       settings: ['settings'],

@@ -243,9 +243,11 @@ export default function BookingRequestForm({
   const [submitError, setSubmitError] = useState('');
   const [reference, setReference] = useState('');
   // Set when the booking automation approved the request and holds the date until a deadline.
-  const [hold, setHold] = useState<{ expiresAt: string; amountDueCents: number | null } | null>(
-    null,
-  );
+  const [hold, setHold] = useState<{
+    expiresAt: string;
+    amountDueCents: number | null;
+    paymentPath: string | null;
+  } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLHeadingElement>(null);
@@ -339,12 +341,20 @@ export default function BookingRequestForm({
         reference?: string;
         holdExpiresAt?: string | null;
         amountDueCents?: number | null;
+        paymentPath?: string | null;
         error?: string;
       } | null;
       if (response.ok && payload?.reference) {
         setHold(
           payload.holdExpiresAt
-            ? { expiresAt: payload.holdExpiresAt, amountDueCents: payload.amountDueCents ?? null }
+            ? {
+                expiresAt: payload.holdExpiresAt,
+                amountDueCents: payload.amountDueCents ?? null,
+                // Only this site's payment page is ever linked from here.
+                paymentPath: payload.paymentPath?.startsWith('/booking/pay/')
+                  ? payload.paymentPath
+                  : null,
+              }
             : null,
         );
         setReference(payload.reference);
@@ -439,10 +449,15 @@ export default function BookingRequestForm({
                 {hold.amountDueCents
                   ? `the ${peso.format(hold.amountDueCents / 100)} reservation fee`
                   : 'the reservation fee'}{' '}
-                by {deadlineLabel(hold.expiresAt)}. How to pay is in the email we sent to{' '}
-                {form.email.trim()}.
+                by {deadlineLabel(hold.expiresAt)}.{' '}
+                {hold.paymentPath
+                  ? `See how to pay on your payment page below; the link is also in the email we sent to ${form.email.trim()}.`
+                  : `How to pay is in the email we sent to ${form.email.trim()}.`}
               </li>
-              <li>We record your payment and confirm your date right away.</li>
+              <li>
+                We check your payment with our records and confirm your date. For GCash or bank
+                transfers, send the screenshot on your payment page.
+              </li>
               <li>You receive a confirmation email with a calendar invitation.</li>
             </ol>
           ) : (
@@ -464,9 +479,15 @@ export default function BookingRequestForm({
             <Link href="/" className={styles.secondaryButton}>
               Back to home
             </Link>
-            <Link href="/contact" className={styles.primaryButton}>
-              Contact us
-            </Link>
+            {hold?.paymentPath ? (
+              <Link href={hold.paymentPath} className={styles.primaryButton}>
+                See how to pay
+              </Link>
+            ) : (
+              <Link href="/contact" className={styles.primaryButton}>
+                Contact us
+              </Link>
+            )}
           </div>
         </section>
       </div>

@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { X, Download, ShieldCheck, ChevronDown, Package, Pencil } from 'lucide-react';
 import { money, paidTotal, paymentStatus, confirmationError } from '@/lib/admin/domain';
 import { displayStatus, displayStatusLabels } from '@/lib/admin/dashboard-status';
+import { PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
 import { Badge } from './AdminBadge';
 import { StatusDot, statusTone } from './BookingStatus';
 import { BookingForm } from './Forms';
+import PaymentProofReview from './PaymentProofReview';
 import { manilaInput } from './datetime';
 import type { Booking, Mutate, Policy } from './types';
 import styles from './admin.module.css';
@@ -153,6 +155,8 @@ export default function BookingDetail({
   const holding = b.reservation === 'REQUESTED' && b.approval === 'APPROVED';
   const deadline = holding && b.holdExpiresAt ? new Date(b.holdExpiresAt) : null;
   const deadlinePassed = deadline !== null && hasPassed(deadline);
+  // While a payment screenshot waits for review, the hold is never released automatically.
+  const screenshotWaiting = (b.paymentProofs ?? []).some((proof) => proof.status === 'SUBMITTED');
   async function submitReceipt(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
@@ -254,7 +258,7 @@ export default function BookingDetail({
           <Badge value={b.reservation} />
         </div>
         <div>
-          <small>Cash payment</small>
+          <small>Payment</small>
           <Badge value={paymentStatus(b.totalCents, paid)} />
         </div>
         <div>
@@ -341,14 +345,19 @@ export default function BookingDetail({
       </div>
       {deadline && (
         <p className={styles.notice} role="status">
-          {deadlinePassed
-            ? paid > 0
-              ? `The payment deadline (${eventDate(deadline)}) passed with a partial payment. Extend the deadline or cancel the booking.`
-              : `The payment deadline (${eventDate(deadline)}) passed. The date is released automatically within a few minutes unless you extend the deadline.`
-            : `Waiting for payment until ${eventDate(deadline)}. Record the payment in Cash receipts: the booking confirms itself. If no payment arrives by then, the date is released automatically.`}
+          {screenshotWaiting
+            ? `The client sent a payment screenshot. Check it against your records below, then verify or reject it. The date stays held until you decide${deadlinePassed ? ', even though the deadline has passed' : ''}.`
+            : deadlinePassed
+              ? paid > 0
+                ? `The payment deadline (${eventDate(deadline)}) passed with a partial payment. Extend the deadline or cancel the booking.`
+                : `The payment deadline (${eventDate(deadline)}) passed. The date is released automatically within a few minutes unless you extend the deadline.`
+              : `Waiting for payment until ${eventDate(deadline)}. A GCash or bank screenshot from the client appears here to verify; record cash in Payments received. The booking confirms itself once the payment is recorded. If no payment arrives by then, the date is released automatically.`}
         </p>
       )}
       {b.notes && <div className={styles.notice}>Staff notes: {b.notes}</div>}
+      {(focus === 'payments' || focus === 'bookings') && (
+        <PaymentProofReview booking={b} busy={busy} mutate={mutate} />
+      )}
       {editing && canEdit && policy && (
         <BookingForm
           key={`edit-${b.id}-${b.revision}`}
@@ -439,7 +448,7 @@ export default function BookingDetail({
         <details className={styles.sectionDisclosure} open={focus === 'payments'}>
           <summary>
             <span>
-              Cash receipts
+              Payments received
               <small>
                 {b.payments.length} recorded · {money(paid)} received
               </small>
@@ -447,8 +456,10 @@ export default function BookingDetail({
             <ChevronDown size={18} aria-hidden="true" />
           </summary>
           <p>
-            Only cash actually received is recorded here. When the payments reach the confirmation
-            rule (the reservation fee or the full amount), the booking is confirmed automatically.
+            Only money actually received is recorded here: cash at the venue, and GCash or bank
+            transfers verified from the client&apos;s screenshot. When the payments reach the
+            confirmation rule (the reservation fee or the full amount), the booking is confirmed
+            automatically.
           </p>
           <ul className={styles.receiptList}>
             {b.payments.map((p) => (
@@ -456,7 +467,11 @@ export default function BookingDetail({
                 <div className={styles.receiptHeading}>
                   <div>
                     <strong>{p.receiptNumber}</strong>
-                    <small>{eventDate(p.receivedAt)}</small>
+                    <small>
+                      {eventDate(p.receivedAt)} ·{' '}
+                      {PAYMENT_METHOD_LABELS[p.method as keyof typeof PAYMENT_METHOD_LABELS] ??
+                        p.method}
+                    </small>
                   </div>
                   <div>
                     <strong>{money(p.amountCents)}</strong>
@@ -513,7 +528,7 @@ export default function BookingDetail({
               </li>
             ))}
           </ul>
-          {!b.payments.length && <p>No cash received.</p>}
+          {!b.payments.length && <p>No payment received.</p>}
           {b.approval === 'APPROVED' && !closed && paid < b.totalCents && (
             <form className={styles.inlineForm} onSubmit={submitReceipt}>
               <label>

@@ -158,6 +158,8 @@ export function renderPlainNotice(input: {
   heading: string;
   body: string;
   extra?: string[];
+  /** A button, for example to the client's private payment page. */
+  action?: { label: string; href: string };
 }): RenderedEmail {
   const paragraphs = [...input.body.split(/\r?\n\s*\r?\n/), ...(input.extra ?? [])]
     .map((part) => part.trim())
@@ -167,9 +169,15 @@ export function renderPlainNotice(input: {
     preheader: input.heading,
     heading: input.heading,
     sections: [{ paragraphs }],
+    action: input.action,
   });
-  // The stored body stays the established notice text, followed by any extra paragraphs.
-  return { ...rendered, text: [input.body.trimEnd(), ...(input.extra ?? [])].join('\n\n') };
+  // The stored body stays the established notice text, followed by any extra paragraphs and the
+  // action's link, so plain-text mail readers see the link too.
+  const link = input.action ? [`${input.action.label}: ${input.action.href}`] : [];
+  return {
+    ...rendered,
+    text: [input.body.trimEnd(), ...(input.extra ?? []), ...link].join('\n\n'),
+  };
 }
 
 export function inquiryStaffAlert(input: {
@@ -287,6 +295,8 @@ export type BookingRequestOutcome = {
   amountDueCents: number;
   paymentInstructions: string;
   reviewReasons: string[];
+  /** The client's private payment page (phase 2), when the site's address is known. */
+  paymentUrl?: string | null;
 };
 
 export function bookingRequestStaffAlert(
@@ -363,6 +373,9 @@ function heldBookingAcknowledgement(
         ],
       },
     ],
+    action: outcome.paymentUrl
+      ? { label: 'See how to pay or upload your payment', href: outcome.paymentUrl }
+      : undefined,
   });
 }
 
@@ -553,7 +566,12 @@ export function eventReminder(booking: ReminderBooking, lead: 'week' | 'day'): R
 
 /** Reminds a client whose date is held that the payment deadline is near (booking automation). */
 export function holdReminder(
-  booking: ReminderBooking & { holdExpiresAt: Date; amountDueCents: number; instructions: string },
+  booking: ReminderBooking & {
+    holdExpiresAt: Date;
+    amountDueCents: number;
+    instructions: string;
+    paymentUrl?: string | null;
+  },
 ): RenderedEmail {
   const name = greetingName(booking.clientName);
   const deadline = manilaDateTime(booking.holdExpiresAt);
@@ -583,6 +601,9 @@ export function holdReminder(
         ],
       },
     ],
+    action: booking.paymentUrl
+      ? { label: 'See how to pay or upload your payment', href: booking.paymentUrl }
+      : undefined,
   });
 }
 
@@ -622,6 +643,78 @@ export function balanceAfterEventAlert(input: {
   });
 }
 
+/** A payment screenshot as the client entered it (booking automation phase 2). */
+export type PaymentProofEmailSource = {
+  reference: string;
+  clientName: string;
+  email: string;
+  phone: string;
+  eventType: string;
+  startsAt: Date;
+  methodLabel: string;
+  amountCents: number;
+  referenceNumber: string;
+  paidOn: string;
+  deadline: Date | null;
+};
+
+function paymentProofDetails(input: PaymentProofEmailSource): EmailDetail[] {
+  return [
+    ['Booking reference', input.reference],
+    ['Event', `${singleLine(input.eventType)}, ${manilaDate(input.startsAt)}`],
+    ['Paid by', input.methodLabel],
+    ['Amount', pesos(input.amountCents)],
+    ['Transfer reference', input.referenceNumber],
+    ['Date paid', input.paidOn],
+  ];
+}
+
+/** Tells the client their screenshot arrived and that the date stays held while staff check it. */
+export function paymentProofReceived(input: PaymentProofEmailSource): RenderedEmail {
+  const name = greetingName(input.clientName);
+  return renderEmail({
+    subject: `${BRAND.legalName} | Payment screenshot received | ${input.reference}`,
+    preheader: 'We received your payment screenshot and will verify it with our records.',
+    heading: 'We received your payment screenshot',
+    sections: [
+      {
+        paragraphs: [
+          name ? `Hello ${name},` : 'Hello,',
+          'Thank you. We will check your payment against our GCash or bank records, usually within one business day. Your date stays on hold while we check, and we will email you either way.',
+          EMAIL_SPAM_NOTICE,
+        ],
+        details: paymentProofDetails(input),
+      },
+    ],
+  });
+}
+
+/** Asks staff to verify a screenshot against Zion's actual GCash or bank records. */
+export function paymentProofStaffAlert(
+  input: PaymentProofEmailSource & { bookingsUrl: string | null },
+): RenderedEmail {
+  return renderEmail({
+    subject: `Payment screenshot to verify ${input.reference} | ${singleLine(input.clientName, 80)}`,
+    preheader: `${input.methodLabel} payment of ${pesos(input.amountCents)} to check against your records.`,
+    heading: 'Payment screenshot to verify',
+    sections: [
+      {
+        paragraphs: [
+          `A client uploaded a ${input.methodLabel} payment screenshot. Open the booking, compare it with your actual ${input.methodLabel} records, then press Verify payment (the booking confirms itself once the rule is met) or Reject with a reason. A screenshot alone is not proof: it can be edited.`,
+          'The date stays held while the screenshot waits for your decision. Reply to this email to contact the client.',
+        ],
+        details: [
+          ['Client', singleLine(input.clientName)],
+          ['Email', input.email],
+          ['Phone', input.phone],
+          ...paymentProofDetails(input),
+        ],
+      },
+    ],
+    action: input.bookingsUrl ? { label: 'Open bookings', href: input.bookingsUrl } : undefined,
+  });
+}
+
 export type DigestEvent = {
   reference: string;
   clientName: string;
@@ -653,6 +746,8 @@ export function dailyDigest(input: {
   /** Requests the system approved that hold their date until the client pays. */
   waitingForPayment: number;
   deadlinesToday: number;
+  /** GCash or bank screenshots waiting for staff to check against Zion's records (phase 2). */
+  paymentScreenshots: number;
   failedEmails: number;
   adminUrl: string | null;
 }): RenderedEmail {
@@ -673,6 +768,7 @@ export function dailyDigest(input: {
           ['Requests under review', String(input.awaitingApproval)],
           ['Waiting for payment', String(input.waitingForPayment)],
           ['Payment deadlines today', String(input.deadlinesToday)],
+          ['Payment screenshots to verify', String(input.paymentScreenshots)],
           ['Emails that failed delivery', String(input.failedEmails)],
         ],
       },

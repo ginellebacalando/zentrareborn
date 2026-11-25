@@ -1,4 +1,5 @@
 import { DEFAULT_BOOKING_RULES, type BookingRules } from '@/lib/admin/booking-rules';
+import { EMPTY_PAYMENT_ACCOUNTS, type PaymentAccounts } from '@/lib/admin/payment-accounts';
 import { STAFF_RECIPIENT_LIMITS } from '@/lib/automation/catalog';
 import { isEmailAddress } from '@/lib/email-address';
 import {
@@ -33,6 +34,8 @@ export type AdminPreferences = {
     staffNotifications: { emails: string[] };
     /** Payment deadline and review limit of the booking automation (docs/booking-automation.md). */
     bookingRules: BookingRules;
+    /** GCash and bank accounts for each client's private payment page (phase 2). */
+    paymentAccounts: PaymentAccounts;
   };
 };
 export type PreferencesResponse = {
@@ -51,6 +54,7 @@ export const DEFAULT_ADMIN_PREFERENCES: AdminPreferences = {
     localization: { ...DEFAULT_PUBLIC_SYSTEM_SETTINGS.localization },
     staffNotifications: { emails: [] },
     bookingRules: { ...DEFAULT_BOOKING_RULES },
+    paymentAccounts: structuredClone(EMPTY_PAYMENT_ACCOUNTS),
   },
 };
 

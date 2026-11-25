@@ -12,6 +12,13 @@ import { AdminError } from './errors';
 import { getAdminPreferences, readBookingRules, saveAdminPreferences } from './preferences';
 import { paymentDeadline, requiresPayment } from './booking-rules';
 import { readCatalog, saveCatalog } from './catalog';
+import {
+  normalizeTransferReference,
+  PAYMENT_METHOD_LABELS,
+  transferReceiptNumber,
+  type OnlinePaymentMethod,
+} from './payment-accounts';
+import { readBookingProofs } from './payment-proofs';
 import { readDashboardInsights } from './dashboard';
 import { readDashboardKpis } from './dashboard-kpis';
 import { readAnalyticsReport } from './analytics';
@@ -26,6 +33,7 @@ import { isMailConfigured } from '@/lib/automation/config';
 import type { CalendarMethod } from '@/lib/automation/ics';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
+import { PAYMENT_REJECTION_REASONS, type PaymentRejectionReason } from '@/lib/payment-page-types';
 import {
   bookingInput,
   confirmationError,
@@ -156,12 +164,17 @@ async function occupyingConflict(tx: Tx, b: Awaited<ReturnType<typeof findBookin
     select: { reference: true },
   });
 }
+/** What a booking notice carries besides its event: invitations and a note for the client. */
+type NoticeOptions = {
+  calendar?: CalendarMethod;
+  staffCalendar?: StaffCalendarChange;
+  note?: string;
+};
 async function queue(
   tx: Tx,
   b: Awaited<ReturnType<typeof findBooking>>,
   event: string,
-  calendar?: CalendarMethod,
-  staffCalendar?: StaffCalendarChange,
+  { calendar, staffCalendar, note }: NoticeOptions = {},
 ) {
   const p = await policy(tx);
   // The client notice, plus the staff calendar email when the change affects staff calendars.
@@ -172,6 +185,7 @@ async function queue(
     instructions: p.cashInstructions,
     calendar,
     staffCalendar,
+    note,
   });
   // `after()` runs once the response is sent, i.e. after this transaction commits or rolls back;
   // delivery only claims committed rows, so a rollback leaves nothing to send.
@@ -223,6 +237,60 @@ const receiptSchema = z
     note: z.string().trim().max(1000),
   })
   .strict();
+const verifyProofSchema = z
+  .object({
+    op: z.literal('verify-proof'),
+    id: identifier,
+    revision: z.number().int(),
+    proofId: identifier,
+    amountCents: z.number().int().positive().max(2000000000),
+    referenceNumber: z
+      .string()
+      .trim()
+      .min(4)
+      .max(40)
+      .regex(/^[A-Za-z0-9 -]+$/, 'Use only letters, numbers, spaces and dashes.'),
+    receivedAt: z.iso.datetime(),
+    note: z.string().trim().max(1000),
+    // Staff confirm they found the money in Zion's own GCash or bank records.
+    checkedRecords: z.literal(true),
+  })
+  .strict();
+const rejectionReasons = Object.keys(PAYMENT_REJECTION_REASONS) as [
+  PaymentRejectionReason,
+  ...PaymentRejectionReason[],
+];
+const rejectProofSchema = z
+  .object({
+    op: z.literal('reject-proof'),
+    id: identifier,
+    revision: z.number().int(),
+    proofId: identifier,
+    reason: z.enum(rejectionReasons),
+    note: z.string().trim().max(500),
+  })
+  .strict()
+  .refine((input) => input.reason !== 'OTHER' || input.note.length >= 5, {
+    message: 'Explain the reason in the note to the client.',
+    path: ['note'],
+  });
+const HOUR_MS = 60 * 60 * 1000;
+/** The screenshot staff are deciding on; it must still be the client's latest, unreviewed one. */
+async function submittedProof(tx: Tx, bookingId: string, proofId: string) {
+  const proof = await tx.adminPaymentProof.findFirst({
+    where: { id: proofId, bookingId },
+    select: { id: true, method: true, status: true, amountCents: true },
+  });
+  if (!proof) throw new AdminError('Payment screenshot not found.', 404);
+  if (proof.status === 'REPLACED')
+    throw new AdminError(
+      'The client sent a newer screenshot. Reload the booking and review that one.',
+      409,
+    );
+  if (proof.status !== 'SUBMITTED')
+    throw new AdminError('This screenshot was already reviewed.', 409);
+  return { ...proof, method: proof.method as OnlinePaymentMethod };
+}
 
 export async function adminRead(section: string, params: URLSearchParams, actor: AdminActor) {
   if (section === 'services') return readCatalog(params, actor);
@@ -231,13 +299,14 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
   // Polled by the dashboard's Website activity panel; read-only, so it has no POST operations.
   if (section === 'website-activity') return readWebsiteActivity();
   if (section === 'notifications') {
-    const [pending, flagged, inquiries, deliveryIssues, p] = await Promise.all([
+    const [pending, flagged, inquiries, deliveryIssues, screenshots, p] = await Promise.all([
       prisma.adminBooking.count({
         where: { approval: 'PENDING', reservation: 'REQUESTED', verification: { not: 'FLAGGED' } },
       }),
       prisma.adminBooking.count({ where: { verification: 'FLAGGED', reservation: 'REQUESTED' } }),
       prisma.inquiry.count({ where: { status: { in: ['NEW', 'PENDING_RESPONSE'] } } }),
       prisma.adminOutbox.count({ where: { status: 'REVIEW_REQUIRED' } }),
+      prisma.adminPaymentProof.count({ where: { status: 'SUBMITTED' } }),
       policy(),
     ]);
     const { settings } = await getAdminPreferences();
@@ -249,7 +318,15 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
         _count: { _all: true },
         where: {
           createdAt: { gte: since },
-          event: { in: ['RESERVATION_CONFIRMED', 'CANCEL', 'CASH_RECEIPT', 'RECEIPT_VOIDED'] },
+          event: {
+            in: [
+              'RESERVATION_CONFIRMED',
+              'CANCEL',
+              'CASH_RECEIPT',
+              'PAYMENT_VERIFIED',
+              'RECEIPT_VOIDED',
+            ],
+          },
         },
       }),
       preferences.contractUpdates
@@ -264,7 +341,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
         .reduce((sum, row) => sum + row._count._all, 0);
     const confirmations = countEvents('RESERVATION_CONFIRMED'),
       cancellations = countEvents('CANCEL');
-    const paymentUpdates = countEvents('CASH_RECEIPT', 'RECEIPT_VOIDED');
+    const paymentUpdates = countEvents('CASH_RECEIPT', 'PAYMENT_VERIFIED', 'RECEIPT_VOIDED');
     const enabled: Record<string, boolean> = {
       'pending-bookings': preferences.newBookingRequests,
       'new-inquiries': preferences.customerInquiries,
@@ -273,6 +350,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       'policy-review': preferences.systemAlerts,
       'booking-confirmations': preferences.bookingConfirmations,
       'booking-cancellations': preferences.bookingCancellations,
+      'payment-screenshots': preferences.paymentUpdates,
       'payment-updates': preferences.paymentUpdates,
       'contract-updates': preferences.contractUpdates,
     };
@@ -286,6 +364,18 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
                 title: `${pending} booking ${pending === 1 ? 'request awaits' : 'requests await'} review`,
                 message: 'Verify the contact and review the event details.',
                 href: '/admin/bookings',
+              },
+            ]
+          : []),
+        ...(screenshots
+          ? [
+              {
+                id: 'payment-screenshots',
+                kind: 'payment' as const,
+                title: `${screenshots} payment ${screenshots === 1 ? 'screenshot' : 'screenshots'} to verify`,
+                message:
+                  'Check each one against your GCash or bank records, then verify or reject it.',
+                href: '/admin/bookings?status=pending',
               },
             ]
           : []),
@@ -361,7 +451,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
                 id: 'payment-updates',
                 kind: 'payment' as const,
                 title: `${paymentUpdates} payment ${paymentUpdates === 1 ? 'update' : 'updates'}`,
-                message: 'Cash receipts and corrections recorded in the last 24 hours.',
+                message: 'Payments and corrections recorded in the last 24 hours.',
                 href: '/admin/payments',
               },
             ]
@@ -623,7 +713,12 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
     return { logs, total, page, outbox, workflows };
   }
   if (['bookings', 'calendar', 'payments', 'contracts'].includes(section)) {
-    if (params.get('id')) return { booking: await findBooking(prisma, params.get('id')!) };
+    if (params.get('id')) {
+      const booking = await findBooking(prisma, params.get('id')!);
+      return {
+        booking: { ...booking, paymentProofs: await readBookingProofs(prisma, booking.id) },
+      };
+    }
     if (params.get('inquiry')) {
       const inquiry = await prisma.inquiry.findUnique({
         where: { id: params.get('inquiry')! },
@@ -668,12 +763,13 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       ];
     }
     const page = Math.max(1, Math.min(10000, Number(params.get('page')) || 1));
-    const [bookings, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       prisma.adminBooking.findMany({
         where,
         include: {
           payments: true,
           contracts: { orderBy: { version: 'desc' } },
+          _count: { select: { paymentProofs: { where: { status: 'SUBMITTED' } } } },
         },
         orderBy: section === 'calendar' ? { startsAt: 'asc' } : { createdAt: 'desc' },
         take: 50,
@@ -681,6 +777,11 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       }),
       prisma.adminBooking.count({ where }),
     ]);
+    // The list only says whether a payment screenshot waits for review; details load on open.
+    const bookings = rows.map(({ _count, ...booking }) => ({
+      ...booking,
+      proofsToVerify: _count.paymentProofs,
+    }));
     return { bookings, total, page, policy: await policy() };
   }
   throw new AdminError('Unknown admin module.', 404);
@@ -737,7 +838,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         { bookingId: b.id, sourceInquiryId: sourceInquiry?.id ?? null },
       );
       // Like a website request, it appears in the staff calendars as a pending event.
-      await queue(tx, b, 'REQUEST_RECEIVED', undefined, 'PENDING');
+      await queue(tx, b, 'REQUEST_RECEIVED', { staffCalendar: 'PENDING' });
       return { id: b.id };
     });
   }
@@ -942,18 +1043,16 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
             : 'UPDATE',
       );
       if (!['VERIFY', 'FLAG'].includes(input.action))
-        await queue(
-          tx,
-          updated,
-          DECISION_NOTICES[input.action] ?? input.action,
+        await queue(tx, updated, DECISION_NOTICES[input.action] ?? input.action, {
           // Calendar invite on confirmation; a cancel update only if an invite was ever sent.
-          input.action === 'CONFIRM'
-            ? 'REQUEST'
-            : input.action === 'CANCEL' && b.reservation === 'CONFIRMED'
-              ? 'CANCEL'
-              : undefined,
-          staffCalendarChange(input.action, b),
-        );
+          calendar:
+            input.action === 'CONFIRM'
+              ? 'REQUEST'
+              : input.action === 'CANCEL' && b.reservation === 'CONFIRMED'
+                ? 'CANCEL'
+                : undefined,
+          staffCalendar: staffCalendarChange(input.action, b),
+        });
       return { id: b.id };
     });
   }
@@ -1006,7 +1105,10 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
           'Bookings',
           `Confirmed ${b.reference} automatically: the required payment was received.`,
         );
-        await queue(tx, updated, 'RESERVATION_CONFIRMED', 'REQUEST', 'CONFIRMED');
+        await queue(tx, updated, 'RESERVATION_CONFIRMED', {
+          calendar: 'REQUEST',
+          staffCalendar: 'CONFIRMED',
+        });
       }
       return { id: b.id, confirmed: confirmsNow };
     });
@@ -1057,6 +1159,135 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         `Voided receipt ${payment.receiptNumber} for ${b.reference}: ${input.reason}. History retained.`,
       );
       await queue(tx, updated, 'RECEIPT_VOIDED');
+      return { id: b.id };
+    });
+  }
+  if (op === 'verify-proof') {
+    // Booking automation phase 2: staff found the transfer in Zion's own records. It is recorded
+    // like a cash receipt and, when it meets the confirmation rule, confirms the booking.
+    const input = verifyProofSchema.parse(raw);
+    if (Date.parse(input.receivedAt) > Date.now())
+      throw new AdminError('The payment time cannot be in the future.');
+    return prisma.$transaction(async (tx) => {
+      const b = await lockBooking(tx, input.id, input.revision);
+      const proof = await submittedProof(tx, b.id, input.proofId);
+      if (b.approval !== 'APPROVED' || ['CANCELLED', 'COMPLETED'].includes(b.reservation))
+        throw new AdminError(
+          'A payment can only be verified for an approved, open booking. Reject the screenshot instead.',
+        );
+      const paid = paidTotal(b.payments) + input.amountCents;
+      if (paid > b.totalCents)
+        throw new AdminError('The amount exceeds the outstanding contract balance.');
+      const reference = normalizeTransferReference(input.referenceNumber);
+      const receiptNumber = transferReceiptNumber(proof.method, reference);
+      const recorded = await tx.adminCashPayment.findUnique({
+        where: { receiptNumber },
+        select: { booking: { select: { reference: true } } },
+      });
+      if (recorded)
+        throw new AdminError(
+          `This transfer is already recorded for ${recorded.booking.reference}. Do not record it twice.`,
+          409,
+        );
+      const payment = await tx.adminCashPayment.create({
+        data: {
+          bookingId: b.id,
+          amountCents: input.amountCents,
+          receiptNumber,
+          receivedAt: new Date(input.receivedAt),
+          recordedBy: actor.id,
+          note: input.note,
+          method: proof.method,
+        },
+        select: { id: true },
+      });
+      await tx.adminPaymentProof.update({
+        where: { id: proof.id },
+        data: {
+          status: 'VERIFIED',
+          reviewedBy: actor.id,
+          reviewedAt: new Date(),
+          paymentId: payment.id,
+        },
+      });
+      const confirmsNow = b.reservation === 'REQUESTED' && !(await confirmationBlock(tx, b, paid));
+      const updated = await tx.adminBooking.update({
+        where: { id: b.id },
+        data: {
+          revision: { increment: 1 },
+          updatedBy: actor.id,
+          ...(confirmsNow ? { reservation: 'CONFIRMED', holdExpiresAt: null } : {}),
+        },
+        include: { payments: true, contracts: true },
+      });
+      await audit(
+        tx,
+        actor,
+        'Payments',
+        `Verified ${PAYMENT_METHOD_LABELS[proof.method]} ${money(input.amountCents)} for ${b.reference} against our records; reference ${reference}.`,
+        'APPROVAL',
+        { proofId: proof.id, paymentId: payment.id },
+      );
+      await queue(tx, updated, 'PAYMENT_VERIFIED');
+      if (confirmsNow) {
+        await audit(
+          tx,
+          actor,
+          'Bookings',
+          `Confirmed ${b.reference} automatically: the required payment was verified.`,
+        );
+        await queue(tx, updated, 'RESERVATION_CONFIRMED', {
+          calendar: 'REQUEST',
+          staffCalendar: 'CONFIRMED',
+        });
+      }
+      return { id: b.id, confirmed: confirmsNow };
+    });
+  }
+  if (op === 'reject-proof') {
+    const input = rejectProofSchema.parse(raw);
+    return prisma.$transaction(async (tx) => {
+      const b = await lockBooking(tx, input.id, input.revision);
+      const proof = await submittedProof(tx, b.id, input.proofId);
+      const now = new Date();
+      // The client reads this on their payment page and in the email.
+      const clientReason = [PAYMENT_REJECTION_REASONS[input.reason], input.note]
+        .filter(Boolean)
+        .join(' ');
+      await tx.adminPaymentProof.update({
+        where: { id: proof.id },
+        data: {
+          status: 'REJECTED',
+          reviewReason: clientReason,
+          reviewedBy: actor.id,
+          reviewedAt: now,
+        },
+      });
+      const waiting = b.reservation === 'REQUESTED' && b.approval === 'APPROVED';
+      // The hold could not expire while staff checked the screenshot, so the client gets at least
+      // a day to send another one, never past the start of the event.
+      const retryUntil = new Date(Math.min(now.getTime() + 24 * HOUR_MS, b.startsAt.getTime()));
+      const holdExpiresAt =
+        waiting && b.holdExpiresAt && b.holdExpiresAt < retryUntil ? retryUntil : undefined;
+      const updated = await tx.adminBooking.update({
+        where: { id: b.id },
+        data: {
+          revision: { increment: 1 },
+          updatedBy: actor.id,
+          ...(holdExpiresAt ? { holdExpiresAt } : {}),
+        },
+        include: { payments: true, contracts: true },
+      });
+      await audit(
+        tx,
+        actor,
+        'Payments',
+        `Rejected the payment screenshot for ${b.reference}: ${clientReason}${holdExpiresAt ? ` Payment deadline moved to ${eventDate(holdExpiresAt)}.` : ''}`,
+        'REJECTION',
+        { proofId: proof.id },
+      );
+      // A closed or confirmed booking needs no new screenshot, so its client is not asked for one.
+      if (waiting) await queue(tx, updated, 'PAYMENT_REJECTED', { note: clientReason });
       return { id: b.id };
     });
   }
