@@ -301,8 +301,8 @@ export default function AutomationPanel() {
                   <ConfigBadge configured={data.staffRecipients.masked.length > 0} />
                   <p>
                     {data.staffRecipients.masked.length
-                      ? `Staff alerts, the daily digest and calendar invitations for confirmed bookings go to ${data.staffRecipients.masked.join(', ')}. In Google Calendar, the "Add invitations to my calendar" setting decides whether an invitation appears on its own.`
-                      : 'No valid staff address: staff alerts and the daily digest wait, and confirmed bookings send no staff calendar invitation.'}{' '}
+                      ? `Staff alerts, the daily digest and calendar events go to ${data.staffRecipients.masked.join(', ')}. Each booking request appears as a [Pending] event that becomes the reservation when confirmed and is removed if declined or cancelled. In Google Calendar, the "Add invitations to my calendar" setting decides whether an event appears on its own.`
+                      : 'No valid staff address: staff alerts and the daily digest wait, and bookings send no staff calendar events.'}{' '}
                     {STAFF_SOURCE_NOTES[data.staffRecipients.source]}
                   </p>
                 </div>

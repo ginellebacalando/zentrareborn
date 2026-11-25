@@ -6,6 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
 import { applicationUrl, serverStaffRecipients } from './config';
+import { formatCalendarDate } from './ics';
 import { classifyDeliveryError, type MailTransport, type OutgoingMail } from './transport';
 import { maskEmail, maskRecipients, sanitizeErrorMessage } from './privacy';
 import { addDays, daysBetween, manilaDay, manilaDayStart, manilaHour } from './time';
@@ -868,6 +869,195 @@ test(
               }),
               0,
             );
+          } finally {
+            await prisma.systemSetting.deleteMany();
+            await prisma.adminOutbox.deleteMany({
+              where: { idempotencyKey: { startsWith: 'test:' } },
+            });
+            clearMail();
+          }
+        },
+      );
+
+      await t.test(
+        'booking requests appear in staff calendars as pending events until decided',
+        async () => {
+          configureMail();
+          const { enqueueWebsiteBookingRequest } = await import('./booking-requests');
+          const uid = (calendar: string | null) => calendarUid(unfold(calendar));
+          const sequence = (calendar: string | null) =>
+            Number(unfold(calendar).match(/\r\nSEQUENCE:(\d+)\r\n/)?.[1]);
+          const staffRows = (bookingId: string, event: string) =>
+            prisma.adminOutbox.findMany({ where: { bookingId, event } });
+          const deliver = (id: string) =>
+            processDueJobs({ ids: [id], transport: fakeTransport(() => {}).transport });
+          try {
+            // A website request reaches the staff calendars at once as a pending, free-time event.
+            const startsAt = new Date(Date.now() + 60 * 86_400_000);
+            const web = await prisma.adminBooking.create({
+              data: {
+                reference: 'ZION-WEB-PENDING',
+                clientName: 'Web Client',
+                email: 'web-client@example.test',
+                phone: '09123456789',
+                eventType: 'Birthdays',
+                packageName: 'Milestone Birthday',
+                venue: 'Zion Events Place',
+                startsAt,
+                endsAt: new Date(startsAt.getTime() + 3_600_000),
+                guests: 150,
+                totalCents: 11_650_000,
+                depositCents: 500_000,
+                paymentRule: 'NO_PAYMENT_REQUIRED',
+                policyVersion: 1,
+                createdBy: 'website',
+                updatedBy: 'website',
+              },
+            });
+            await enqueueWebsiteBookingRequest(prisma, web);
+            await enqueueWebsiteBookingRequest(prisma, web);
+            const pendingRows = await staffRows(web.id, 'STAFF_CALENDAR_PENDING');
+            assert.equal(pendingRows.length, 1, 'a repeated call adds no second event');
+            const [pending] = pendingRows;
+            assert.equal(pending.status, 'QUEUED', 'a repeated call keeps the pending event');
+            assert.equal(pending.recipient, 'staff@example.test');
+            assert.equal(pending.replyTo, 'web-client@example.test');
+            assert.equal(pending.calendarMethod, 'REQUEST');
+            assert.equal(
+              pending.idempotencyKey,
+              `booking:${web.id}:STAFF_CALENDAR_PENDING:r${web.revision}`,
+            );
+            assert.match(pending.subject, /^Pending request: Birthdays for Web Client, /);
+            assert.match(pending.body, /\[Pending\]/);
+            const pendingEvent = unfold(pending.calendar);
+            assert.match(
+              pendingEvent,
+              /\r\nSUMMARY:\[Pending\] Birthdays: Web Client \(ZION-WEB-PENDING\)\r\n/,
+            );
+            assert.match(pendingEvent, /\r\nSTATUS:TENTATIVE\r\n/);
+            assert.match(pendingEvent, /\r\nTRANSP:TRANSPARENT\r\n/);
+            assert.match(pendingEvent, /\r\nATTENDEE;[^\r\n]*:mailto:staff@example\.test\r\n/);
+            assert.equal(uid(pending.calendar), `booking-${web.id}@zion-events-place`);
+            const acknowledgement = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: web.id, event: 'REQUEST_RECEIVED' },
+            });
+            assert.equal(acknowledgement.calendar, null, 'the client gets no event for a request');
+            const sentPending = fakeTransport(() => {});
+            await processDueJobs({ ids: [pending.id], transport: sentPending.transport });
+            assert.equal(sentPending.sent[0]?.to, 'staff@example.test');
+            assert.equal(sentPending.sent[0]?.calendar?.method, 'REQUEST');
+
+            // Declining removes the pending event from the calendars that received it.
+            const declined = await decide(web.id, 'REJECT');
+            const [removal] = await staffRows(web.id, 'STAFF_CALENDAR_CANCEL');
+            assert.equal(removal.recipient, 'staff@example.test');
+            assert.match(removal.subject, /^Request declined: Birthdays for Web Client, /);
+            assert.match(unfold(removal.calendar), /\r\nMETHOD:CANCEL\r\n/);
+            assert.equal(uid(removal.calendar), uid(pending.calendar));
+            assert.ok(declined.revision > web.revision);
+            assert.equal(sequence(removal.calendar), declined.revision);
+            const rejection = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: web.id, event: 'REJECT' },
+            });
+            assert.equal(rejection.calendar, null, 'the client had no event to remove');
+
+            // A pending event retried after the decision is skipped.
+            const stale = await addJob('test:stale-pending', new Date(), {
+              event: 'STAFF_CALENDAR_PENDING',
+              recipient: 'staff@example.test',
+              bookingId: web.id,
+            });
+            const staleMail = fakeTransport(() => {});
+            const late = await processDueJobs({ ids: [stale], transport: staleMail.transport });
+            assert.equal(late.skipped, 1);
+            assert.equal(staleMail.calls(), 0);
+            assert.match((await row(stale)).lastError ?? '', /no longer pending/);
+
+            // Reviewing the declined request again shows it as pending again.
+            await decide(web.id, 'VERIFY');
+            const reviewed = await decide(web.id, 'REVIEW_POLICY');
+            const pendingAgain = await prisma.adminOutbox.findUniqueOrThrow({
+              where: {
+                idempotencyKey: `booking:${web.id}:STAFF_CALENDAR_PENDING:r${reviewed.revision}`,
+              },
+            });
+            assert.equal(pendingAgain.recipient, 'staff@example.test');
+            assert.equal(sequence(pendingAgain.calendar), reviewed.revision);
+
+            // A staff-entered request: an edit moves its pending event, and confirming turns the
+            // same event into the reservation for the current inboxes and those holding it.
+            const id = await createBooking('pending-flow@example.test', 70);
+            const [first] = await staffRows(id, 'STAFF_CALENDAR_PENDING');
+            assert.equal(first.recipient, 'staff@example.test');
+            await deliver(first.id);
+            const before = await prisma.adminBooking.findUniqueOrThrow({ where: { id } });
+            await adminMutate(
+              {
+                op: 'edit-booking',
+                id,
+                revision: before.revision,
+                booking: bookingRequest('pending-flow@example.test', 75).booking,
+                reason: 'The client moved the date.',
+              },
+              owner,
+            );
+            const edited = await prisma.adminBooking.findUniqueOrThrow({ where: { id } });
+            const moved = await prisma.adminOutbox.findUniqueOrThrow({
+              where: { idempotencyKey: `booking:${id}:STAFF_CALENDAR_PENDING:r${edited.revision}` },
+            });
+            assert.equal(moved.recipient, 'staff@example.test');
+            assert.equal(uid(moved.calendar), uid(first.calendar));
+            assert.ok(sequence(moved.calendar) > sequence(first.calendar));
+            assert.match(
+              unfold(moved.calendar),
+              new RegExp(`\\r\\nDTSTART:${formatCalendarDate(edited.startsAt)}\\r\\n`),
+            );
+            await deliver(moved.id);
+
+            await prisma.systemSetting.create({
+              data: {
+                id: 'singleton',
+                settings: { admin: { staffNotifications: { emails: ['owner@example.test'] } } },
+              },
+            });
+            await decide(id, 'VERIFY');
+            await decide(id, 'APPROVE');
+            const confirmed = await decide(id, 'CONFIRM');
+            const invitation = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: id, event: 'STAFF_CALENDAR_REQUEST' },
+            });
+            assert.equal(invitation.recipient, 'owner@example.test, staff@example.test');
+            const confirmedEvent = unfold(invitation.calendar);
+            assert.match(confirmedEvent, /\r\nSTATUS:CONFIRMED\r\n/);
+            assert.match(confirmedEvent, /\r\nSUMMARY:Wedding: Calendar Client \(ZION-/);
+            assert.doesNotMatch(confirmedEvent, /\[Pending\]/);
+            assert.equal(uid(invitation.calendar), uid(first.calendar));
+            assert.equal(sequence(invitation.calendar), confirmed.revision);
+            for (const inbox of ['owner', 'staff'])
+              assert.match(
+                confirmedEvent,
+                new RegExp(`\\r\\nATTENDEE;[^\\r\\n]*:mailto:${inbox}@example\\.test\\r\\n`),
+              );
+            await deliver(invitation.id);
+            await decide(id, 'CANCEL');
+            const cancellation = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: id, event: 'STAFF_CALENDAR_CANCEL' },
+            });
+            assert.equal(cancellation.recipient, 'owner@example.test, staff@example.test');
+            assert.match(cancellation.subject, /^Cancelled: Wedding for Calendar Client, /);
+
+            // A pending event that never went out is skipped once the request is confirmed.
+            const quick = await createBooking('quick-confirm@example.test', 80);
+            const [unsent] = await staffRows(quick, 'STAFF_CALENDAR_PENDING');
+            assert.equal(unsent.recipient, 'owner@example.test');
+            await decide(quick, 'VERIFY');
+            await decide(quick, 'APPROVE');
+            await decide(quick, 'CONFIRM');
+            const skipped = await row(unsent.id);
+            assert.equal(skipped.status, 'EXPIRED');
+            assert.match(skipped.lastError ?? '', /confirmed before its pending calendar event/);
+            const [quickInvite] = await staffRows(quick, 'STAFF_CALENDAR_REQUEST');
+            assert.equal(quickInvite.recipient, 'owner@example.test');
           } finally {
             await prisma.systemSetting.deleteMany();
             await prisma.adminOutbox.deleteMany({

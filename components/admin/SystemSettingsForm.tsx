@@ -435,9 +435,9 @@ function PreferencesEditor({
                   />
                 </label>
                 <p id={`${staffEmailsId}-help`} className={styles.help}>
-                  Staff alerts, the daily digest and booking calendar invitations go to these
-                  addresses. Separate up to 5 with commas. Leave empty to use the server default;
-                  Automation shows the addresses in use.
+                  Staff alerts, the daily digest and calendar events for booking requests and
+                  confirmed reservations go to these addresses. Separate up to 5 with commas. Leave
+                  empty to use the server default; Automation shows the addresses in use.
                 </p>
                 {staffEmailsError && (
                   <p

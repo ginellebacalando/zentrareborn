@@ -354,10 +354,11 @@ Public settings responses never expose private admin/security preferences.
 
 Communications also holds **Staff notification emails**: up to five addresses, separated by
 commas, that receive staff alerts (new inquiries and website booking requests), the daily digest
-and a calendar invitation for every confirmed booking, with a matching cancellation when a
-confirmed booking is cancelled. Leaving the field empty uses the server default
-(`STAFF_NOTIFICATION_EMAIL`, else the sending account `SMTP_USER`). A changed list applies to the
-next email; an invitation already sent is cancelled at the inboxes that received it. The field has
+and calendar events: every booking request appears at once as a "[Pending]" event, confirming it
+turns that event into the reservation, and declining or cancelling removes it. Leaving the field
+empty uses the server default (`STAFF_NOTIFICATION_EMAIL`, else the sending account `SMTP_USER`).
+A changed list applies to the next email; an event already sent is updated or cancelled at the
+inboxes that received it. The field has
 a persistent label and help text; an invalid list keeps the typed text, opens Communications,
 moves focus to the field and shows a persistent message (`role="alert"`, linked with
 `aria-describedby`) until the list is corrected or saved again. The server applies the same rules
@@ -453,7 +454,7 @@ visiting the plain `/admin` URL enables automatic entry again while configured.
 - Email is delivered by the built-in automation through Gmail SMTP (Nodemailer and a Google App Password). Set server-only `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` and, optionally, `STAFF_NOTIFICATION_EMAIL` (the fallback while Settings → Communications has no staff notification emails), install `prisma/automation.sql` with `npm run db:automation:check -- --apply`, and schedule `/api/cron/automation` with `CRON_SECRET`. See [the automation guide](automation.md). No mail account was provisioned and no live emails were sent by this change.
 - Notices are generated transactionally and remain QUEUED without mail configuration. Delivery is attempted right after each decision, by the scheduled run, by `npm run automation:run`, from Automation ("Run due jobs now") and, for a SUPERADMIN, from "Process queued notices" in Logs.
 - Each notice is claimed atomically, so concurrent runs never send it twice. ACCEPTED means the mail server accepted it, not that the recipient read it, and it is never sent again. Temporary failures retry with exponential backoff; permanent rejections and exhausted attempts become REVIEW_REQUIRED, and a send interrupted mid-way is held as REVIEW_REQUIRED rather than resent automatically. Staff can retry failed notices from Automation after checking the error.
-- Confirming a reservation attaches a calendar invitation (`invite.ics`); cancelling a confirmed reservation sends a cancellation update for the same calendar event. The staff notification addresses receive their own copy of the same event (`STAFF_CALENDAR_REQUEST`) and, after a cancellation, its update (`STAFF_CALENDAR_CANCEL`); the client's notice and the booking history read by analytics are unchanged. Confirmed clients also receive reminders a week and a day before the event, and staff receive a daily digest.
+- Confirming a reservation attaches a calendar invitation (`invite.ics`); cancelling a confirmed reservation sends a cancellation update for the same calendar event. The staff notification addresses receive their own copy of the same event: a pending event as soon as a request arrives (`STAFF_CALENDAR_PENDING`), the confirmed event that replaces it (`STAFF_CALENDAR_REQUEST`) and, after a decline or cancellation, its removal (`STAFF_CALENDAR_CANCEL`); the client's notice and the booking history read by analytics are unchanged. Confirmed clients also receive reminders a week and a day before the event, and staff receive a daily digest.
 
 ## Verification and limitations
 

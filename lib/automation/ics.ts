@@ -23,6 +23,11 @@ export type CalendarInvite = {
   location: string;
   organizer: CalendarPerson;
   attendees: CalendarPerson[];
+  /**
+   * For REQUEST only. TENTATIVE marks a booking request whose date is not reserved yet, so the
+   * event does not show the time as busy; CONFIRMED (the default) is a reserved event.
+   */
+  status?: 'CONFIRMED' | 'TENTATIVE';
 };
 
 const PRODUCT_ID = '-//Zion Events Place//ZENTRA Automation//EN';
@@ -88,6 +93,7 @@ export function buildCalendarInvite(invite: CalendarInvite) {
   if (invite.end <= invite.start) throw new Error('Calendar events must end after they start.');
   if (!invite.attendees.length) throw new Error('Calendar invitations need an attendee.');
   const cancelled = invite.method === 'CANCEL';
+  const tentative = !cancelled && invite.status === 'TENTATIVE';
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -108,8 +114,8 @@ export function buildCalendarInvite(invite: CalendarInvite) {
       (attendee) =>
         `ATTENDEE;CN=${quotedParameter(attendee.name)};ROLE=REQ-PARTICIPANT;RSVP=FALSE:${mailto(attendee.email)}`,
     ),
-    `STATUS:${cancelled ? 'CANCELLED' : 'CONFIRMED'}`,
-    ...(cancelled ? [] : ['TRANSP:OPAQUE']),
+    `STATUS:${cancelled ? 'CANCELLED' : tentative ? 'TENTATIVE' : 'CONFIRMED'}`,
+    ...(cancelled ? [] : [`TRANSP:${tentative ? 'TRANSPARENT' : 'OPAQUE'}`]),
     'END:VEVENT',
     'END:VCALENDAR',
   ];

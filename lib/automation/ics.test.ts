@@ -101,6 +101,23 @@ test('a cancellation reuses the UID with a higher SEQUENCE and METHOD:CANCEL', (
   assert.doesNotMatch(cancel, /TRANSP:OPAQUE/);
 });
 
+test('a pending request is TENTATIVE and free time; its confirmation reuses the UID', () => {
+  const pending = unfold(buildCalendarInvite({ ...invite, status: 'TENTATIVE', sequence: 1 }));
+  assert.match(pending, /\r\nMETHOD:REQUEST\r\n/);
+  assert.match(pending, /\r\nSTATUS:TENTATIVE\r\n/);
+  assert.match(pending, /\r\nTRANSP:TRANSPARENT\r\n/);
+  assert.doesNotMatch(pending, /STATUS:CONFIRMED|TRANSP:OPAQUE/);
+  const confirmed = unfold(buildCalendarInvite({ ...invite, status: 'CONFIRMED' }));
+  assert.match(confirmed, /\r\nSTATUS:CONFIRMED\r\n/);
+  assert.match(confirmed, /\r\nTRANSP:OPAQUE\r\n/);
+  const uid = (value: string) => value.match(/\r\nUID:([^\r]+)/)?.[1];
+  assert.equal(uid(confirmed), uid(pending));
+  // A cancellation is always CANCELLED, whatever status the invitation had.
+  const cancel = unfold(buildCalendarInvite({ ...invite, method: 'CANCEL', status: 'TENTATIVE' }));
+  assert.match(cancel, /\r\nSTATUS:CANCELLED\r\n/);
+  assert.doesNotMatch(cancel, /TRANSP:/);
+});
+
 test('invalid invitations are rejected instead of producing a broken calendar', () => {
   assert.throws(() => buildCalendarInvite({ ...invite, uid: ' ' }), /UID/);
   assert.throws(() => buildCalendarInvite({ ...invite, sequence: -1 }), /SEQUENCE/);

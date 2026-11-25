@@ -57,9 +57,10 @@ save, and redeploy. Never put them in Git or in chat.
    and `SMTP_PASSWORD` (the 16-character App Password). `MAIL_FROM` is optional. Admin, Automation
    then shows Configured, and waiting emails go out on the next run.
 2. **Owner and staff calendars:** in Admin, Settings, Communications, enter up to five addresses
-   under "Staff notification emails". Each confirmed booking sends them a calendar invitation, and
-   a cancellation removes it. In Google Calendar, Settings, Event settings, "Add invitations to my
-   calendar" decides whether an invitation appears on its own.
+   under "Staff notification emails". Each booking request appears in their calendars at once as
+   a "[Pending]" event; confirming it turns the event into the reservation, and declining or
+   cancelling removes it. In Google Calendar, Settings, Event settings, "Add invitations to my
+   calendar" decides whether an event appears on its own ("From everyone" adds them all).
 3. **Zeni's AI phrasing:** create a key in Google AI Studio and add it as `GEMINI_API_KEY`
    (`GEMINI_MODEL` is optional). Admin, Zeni then shows the key as Configured.
 

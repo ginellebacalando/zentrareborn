@@ -16,7 +16,11 @@ import { readDashboardKpis } from './dashboard-kpis';
 import { readAnalyticsReport } from './analytics';
 import { readWebsiteActivity } from './website-activity';
 import { AUTOMATION_ONLY_EVENTS, automationJobLabel } from '@/lib/automation/catalog';
-import { enqueueBookingNotice } from '@/lib/automation/bookings';
+import {
+  enqueueBookingNotice,
+  enqueueStaffCalendarUpdate,
+  type StaffCalendarChange,
+} from '@/lib/automation/bookings';
 import { isMailConfigured } from '@/lib/automation/config';
 import type { CalendarMethod } from '@/lib/automation/ics';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
@@ -80,20 +84,37 @@ async function audit(
     },
   });
 }
+/**
+ * How a booking decision changes its event in the staff calendars: pending from the request,
+ * confirmed with the reservation, removed when declined or cancelled, and pending again when a
+ * declined request is reviewed again.
+ */
+function staffCalendarChange(
+  action: string,
+  before: { approval: string },
+): StaffCalendarChange | undefined {
+  if (action === 'CONFIRM') return 'CONFIRMED';
+  if (action === 'REJECT') return 'DECLINED';
+  if (action === 'CANCEL') return 'CANCELLED';
+  if (action === 'REVIEW_POLICY' && before.approval === 'REJECTED') return 'PENDING';
+  return undefined;
+}
 async function queue(
   tx: Tx,
   b: Awaited<ReturnType<typeof findBooking>>,
   event: string,
   calendar?: CalendarMethod,
+  staffCalendar?: StaffCalendarChange,
 ) {
   const p = await policy(tx);
-  // The client notice, plus the staff calendar copy when the decision changes the calendar.
+  // The client notice, plus the staff calendar email when the change affects staff calendars.
   const ids = await enqueueBookingNotice(tx, {
     booking: b,
     event,
     paid: paidTotal(b.payments),
     instructions: p.cashInstructions,
     calendar,
+    staffCalendar,
   });
   // `after()` runs once the response is sent, i.e. after this transaction commits or rolls back;
   // delivery only claims committed rows, so a rollback leaves nothing to send.
@@ -657,7 +678,8 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         'CREATE',
         { bookingId: b.id, sourceInquiryId: sourceInquiry?.id ?? null },
       );
-      await queue(tx, b, 'REQUEST_RECEIVED');
+      // Like a website request, it appears in the staff calendars as a pending event.
+      await queue(tx, b, 'REQUEST_RECEIVED', undefined, 'PENDING');
       return { id: b.id };
     });
   }
@@ -725,11 +747,23 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         });
       if (termsChanged && b.approval === 'APPROVED')
         Object.assign(data, { approval: 'PENDING', decisionReason: input.reason });
-      await tx.adminBooking.update({ where: { id: b.id }, data });
+      const edited = await tx.adminBooking.update({ where: { id: b.id }, data });
       await audit(tx, actor, 'Bookings', `Edited ${b.reference}: ${input.reason}`, 'UPDATE', {
         bookingId: b.id,
       });
-      // Edits never queue client email; any later decision sends its own standard notice.
+      // Edits never queue client email; any later decision sends its own standard notice. The
+      // pending event in the staff calendars follows a changed date or detail it shows, unless
+      // the request was declined.
+      const calendarChanged =
+        contactChanged ||
+        next.clientName !== b.clientName ||
+        next.startsAt.getTime() !== b.startsAt.getTime() ||
+        next.endsAt.getTime() !== b.endsAt.getTime() ||
+        next.eventType !== b.eventType ||
+        next.packageName !== b.packageName ||
+        next.guests !== b.guests;
+      if (calendarChanged && b.approval !== 'REJECTED')
+        scheduleAutomationDelivery(await enqueueStaffCalendarUpdate(tx, edited, 'PENDING'));
       return { id: b.id };
     });
   }
@@ -846,6 +880,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
             : input.action === 'CANCEL' && b.reservation === 'CONFIRMED'
               ? 'CANCEL'
               : undefined,
+          staffCalendarChange(input.action, b),
         );
       return { id: b.id };
     });

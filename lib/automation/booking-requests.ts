@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { staffCalendarUpdate } from './bookings';
 import { AUTOMATION_POLICY, applicationUrl } from './config';
 import { enqueueJobs, type OutboxDb } from './outbox';
 import { resolveStaffRecipients } from './recipients';
@@ -12,11 +13,12 @@ import {
 const ONE_DAY_MS = 24 * 60 * 60_000;
 
 /**
- * Enqueues the staff alert and the client acknowledgement for a booking request sent from the
- * public booking page. Call it inside the transaction that creates the booking, so no request is
- * saved without its notifications; repeated calls are harmless (idempotency keys). The client
- * row uses the REQUEST_RECEIVED event that staff-entered requests also use, so analytics and
- * the Activity log treat both alike. Returns the ids of jobs ready for immediate delivery.
+ * Enqueues the staff alert, the client acknowledgement and the pending event for the staff
+ * calendars for a booking request sent from the public booking page. Call it inside the
+ * transaction that creates the booking, so no request is saved without its notifications;
+ * repeated calls are harmless (idempotency keys). The client row uses the REQUEST_RECEIVED event
+ * that staff-entered requests also use, so analytics and the Activity log treat both alike.
+ * Returns the ids of jobs ready for immediate delivery.
  */
 export async function enqueueWebsiteBookingRequest(
   db: OutboxDb,
@@ -44,6 +46,8 @@ export async function enqueueWebsiteBookingRequest(
     resolveStaffRecipients(db),
   ]);
   const appUrl = applicationUrl();
+  const alertLimitReached = alertsToday >= AUTOMATION_POLICY.staffAlertsPerDay;
+  const pendingEvent = await staffCalendarUpdate(db, booking, 'PENDING', now);
   return enqueueJobs(
     db,
     [
@@ -57,10 +61,9 @@ export async function enqueueWebsiteBookingRequest(
           ...booking,
           bookingsUrl: appUrl ? `${appUrl}/admin/bookings` : null,
         }),
-        skipReason:
-          alertsToday >= AUTOMATION_POLICY.staffAlertsPerDay
-            ? 'Not sent individually: the daily limit for booking request alerts was reached. The request is in Bookings and the daily digest.'
-            : undefined,
+        skipReason: alertLimitReached
+          ? 'Not sent individually: the daily limit for booking request alerts was reached. The request is in Bookings and the daily digest.'
+          : undefined,
       },
       {
         idempotencyKey: `booking:${booking.id}:REQUEST_RECEIVED:r${booking.revision}`,
@@ -74,6 +77,17 @@ export async function enqueueWebsiteBookingRequest(
             ? 'Not sent: this address already received the maximum number of acknowledgements today.'
             : undefined,
       },
+      // The pending calendar event follows the daily limit of the alert it accompanies.
+      ...(pendingEvent
+        ? [
+            {
+              ...pendingEvent,
+              skipReason: alertLimitReached
+                ? 'Not sent: the daily limit for booking request alerts was reached. The request appears in staff calendars once it is confirmed.'
+                : undefined,
+            },
+          ]
+        : []),
     ],
     now,
   );

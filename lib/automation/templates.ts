@@ -3,7 +3,6 @@ import 'server-only';
 import { BRAND } from '@/config/brand';
 import { EMAIL_SPAM_NOTICE } from '@/lib/email-delivery';
 import { EMAIL_THEME } from './email-theme';
-import type { CalendarMethod } from './ics';
 
 /** A rendered message: HTML for capable clients and a complete plain-text alternative. */
 export type RenderedEmail = { subject: string; text: string; html: string };
@@ -335,7 +334,7 @@ export function bookingRequestAcknowledgement(input: BookingRequestEmailSource):
   });
 }
 
-/** A confirmed booking as the staff calendar email describes it. */
+/** A booking as the staff calendar email describes it. */
 export type StaffCalendarBooking = {
   reference: string;
   clientName: string;
@@ -348,30 +347,74 @@ export type StaffCalendarBooking = {
   endsAt: Date;
 };
 
-/** Carries the staff copy of a booking's calendar invitation, or its cancellation. */
+/**
+ * Which staff calendar email to write: a booking request shown as pending, a confirmed
+ * reservation, or the removal of either from the staff calendars.
+ */
+export type StaffCalendarNoticeKind =
+  'PENDING' | 'CONFIRMED' | 'CONFIRMED_CANCELLED' | 'REQUEST_DECLINED' | 'REQUEST_CANCELLED';
+
+const STAFF_CALENDAR_COPY: Record<
+  StaffCalendarNoticeKind,
+  { subject: string; heading: string; preheader: string; paragraph: string }
+> = {
+  PENDING: {
+    subject: 'Pending request',
+    heading: 'Booking request added to your calendar',
+    preheader:
+      'is waiting for review; the attached invitation shows it in your calendar as pending.',
+    paragraph:
+      'A booking request is waiting for review. The attached invitation (invite.ics) shows it in your calendar as a pending event, marked [Pending], so you can see the requested date. The date is not reserved yet: the same event becomes the confirmed reservation when staff confirm it, and is removed if the request is declined or cancelled.',
+  },
+  CONFIRMED: {
+    subject: 'Confirmed',
+    heading: 'Reservation confirmed',
+    preheader: 'is confirmed; the attached invitation adds it to your calendar.',
+    paragraph:
+      'This reservation is confirmed. A calendar invitation (invite.ics) is attached so the event appears in your calendar.',
+  },
+  CONFIRMED_CANCELLED: {
+    subject: 'Cancelled',
+    heading: 'Confirmed reservation cancelled',
+    preheader: 'was cancelled; the attached update removes it from your calendar.',
+    paragraph:
+      'This confirmed reservation was cancelled. The calendar update (cancel.ics) removes the event from calendars that received its invitation.',
+  },
+  REQUEST_DECLINED: {
+    subject: 'Request declined',
+    heading: 'Booking request declined',
+    preheader: 'was declined; the attached update removes its pending event from your calendar.',
+    paragraph:
+      'This booking request was declined. The calendar update (cancel.ics) removes its pending event from calendars that received it.',
+  },
+  REQUEST_CANCELLED: {
+    subject: 'Request cancelled',
+    heading: 'Booking request cancelled',
+    preheader: 'was cancelled; the attached update removes its pending event from your calendar.',
+    paragraph:
+      'This booking request was cancelled before it was confirmed. The calendar update (cancel.ics) removes its pending event from calendars that received it.',
+  },
+};
+
+/** Carries the staff copy of a booking's calendar event: pending, confirmed, or removed. */
 export function staffCalendarNotice(
   booking: StaffCalendarBooking,
-  method: CalendarMethod,
+  kind: StaffCalendarNoticeKind,
   bookingsUrl: string | null,
 ): RenderedEmail {
-  const cancelled = method === 'CANCEL';
+  const copy = STAFF_CALENDAR_COPY[kind];
+  const reserved = kind === 'CONFIRMED' || kind === 'CONFIRMED_CANCELLED';
+  const label = reserved ? 'Reservation' : 'Booking request';
   const date = manilaDate(booking.startsAt);
   return renderEmail({
-    subject: `${cancelled ? 'Cancelled' : 'Confirmed'}: ${singleLine(booking.eventType, 60)} for ${singleLine(booking.clientName, 80)}, ${date}`,
-    preheader: cancelled
-      ? `Reservation ${booking.reference} was cancelled; the attached update removes it from your calendar.`
-      : `Reservation ${booking.reference} is confirmed; the attached invitation adds it to your calendar.`,
-    heading: cancelled ? 'Confirmed reservation cancelled' : 'Reservation confirmed',
+    subject: `${copy.subject}: ${singleLine(booking.eventType, 60)} for ${singleLine(booking.clientName, 80)}, ${date}`,
+    preheader: `${label} ${booking.reference} ${copy.preheader}`,
+    heading: copy.heading,
     sections: [
       {
-        paragraphs: [
-          cancelled
-            ? 'This confirmed reservation was cancelled. The calendar update (cancel.ics) removes the event from calendars that received its invitation.'
-            : 'This reservation is confirmed. A calendar invitation (invite.ics) is attached so the event appears in your calendar.',
-          'Reply to this email to contact the client.',
-        ],
+        paragraphs: [copy.paragraph, 'Reply to this email to contact the client.'],
         details: [
-          ['Reservation', booking.reference],
+          [label, booking.reference],
           ['Client', singleLine(booking.clientName)],
           ['Email', booking.email],
           ['Phone', booking.phone],

@@ -1,5 +1,40 @@
 # Design change log
 
+## 25 November 2026 — Booking requests appear in the owner's calendar as pending events
+
+User task: as the owner, see every booking that comes in on their own Google Calendar right away,
+not only after the reservation is confirmed.
+
+Affected screens and files:
+
+- Staff calendar emails (`lib/automation/bookings.ts`, `templates.ts`, `ics.ts`,
+  `booking-requests.ts`, `processor.ts`, `catalog.ts`; `lib/admin/service.ts`). Every booking
+  request, from the website or entered by staff, sends the Staff notification emails a calendar
+  event titled "[Pending] Birthdays: Client (ZION-…)", marked tentative and shown as free time,
+  in an email "Pending request: Birthdays for Client, date". Editing the request's date or details
+  moves the event; confirming turns the same event into the reservation (title without
+  "[Pending]"); declining or cancelling removes it ("Request declined" or "Request cancelled"
+  emails). Clients still get a calendar invitation only when their reservation is confirmed.
+- Admin → Automation (Staff notifications item) and Admin → Settings → Communications (help text
+  under Staff notification emails) now describe the pending events. Text only: tokens, type,
+  layout and motion are unchanged.
+
+Verification: `npm run test:automation` passed 30 tests, including new ones for the pending event
+on a website request, a repeated enqueue, delivery, removal on decline, a stale pending event
+skipped, a declined request reviewed again, an edit that moves the event, confirmation to the
+current and the holding inboxes, cancellation, an unsent pending event skipped at confirmation, and
+the TENTATIVE calendar format. `npm run verify` passed (chatbot 68, admin 23, automation 30,
+developer 6, lint, build). Local preview: the Settings help text and the Automation item at
+desktop width and 320 px, wrapping with no sideways scrolling.
+
+Limitations: not yet tried with a real Google Calendar, because the live site cannot send email
+until the Gmail App Password is added. Google Calendar's display of tentative, free-time events
+and in-place updates relies on its standard invitation handling. The Automation text for a
+configured staff address was not seen on screen (the local data has none). No screen-reader pass.
+Each website request now sends staff two emails (the alert and the calendar event). Requests made
+before this change get a pending event only when edited. The AGENTS.md hand-off to the team chats
+could not be sent from this machine.
+
 ## 25 November 2026 — Mobile menu, compact footer, wider home page with subtle motion
 
 User task: full mobile responsiveness with a menu button strictly at the left of the header on

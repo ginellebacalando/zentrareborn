@@ -49,26 +49,28 @@ Code: `lib/automation/` (server-only), `app/api/cron/automation/route.ts`,
 
 ## What is sent
 
-| Job (`event`)                                                                                                                                      | To                                              | Created                                                                                                                                                                                 | Idempotency key                                   |
-| -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `INQUIRY_STAFF_ALERT`                                                                                                                              | Staff (see [Staff addresses](#staff-addresses)) | With the inquiry (contact form and booking page, via `lib/inquiry-service.ts`). Inquiries created elsewhere (the Zeni hand-off) are picked up by the next scheduled run.                | `inquiry:<inquiryId>:staff`                       |
-| `INQUIRY_ACKNOWLEDGEMENT`                                                                                                                          | The client                                      | Same as above. Expires three days after the inquiry.                                                                                                                                    | `inquiry:<inquiryId>:client`                      |
-| `BOOKING_REQUEST_STAFF_ALERT`                                                                                                                      | Staff                                           | With a booking request from the public booking page (`services/booking-requests.ts`).                                                                                                   | `booking:<id>:BOOKING_REQUEST_STAFF_ALERT`        |
-| `REQUEST_RECEIVED`, `REQUEST_APPROVED`, `REJECT`, `REVIEW_POLICY`, `RESERVATION_CONFIRMED`, `CANCEL`, `COMPLETE`, `CASH_RECEIPT`, `RECEIPT_VOIDED` | The client                                      | With the admin booking decision (`lib/admin/service.ts`). `RESERVATION_CONFIRMED` attaches `invite.ics`; cancelling a confirmed booking attaches a cancellation `cancel.ics`.           | `booking:<id>:<event>:r<revision>`                |
-| `EVENT_REMINDER_7D`                                                                                                                                | The client                                      | Scheduled run, five to seven days before a `CONFIRMED` event (not if it was confirmed in the last two days). Expires two days before the event.                                         | `reminder:7d:<bookingId>`                         |
-| `EVENT_REMINDER_1D`                                                                                                                                | The client                                      | Scheduled run on the day before the event (Manila calendar). Expires when the event starts.                                                                                             | `reminder:1d:<bookingId>`                         |
-| `DAILY_DIGEST`                                                                                                                                     | Staff                                           | First scheduled run after 07:00 Manila time. Today's and tomorrow's confirmed events, inquiries from the last 24 hours, requests awaiting approval, failed email count.                 | `digest:<YYYY-MM-DD>`                             |
-| `STAFF_CALENDAR_REQUEST`                                                                                                                           | Staff, fixed when created                       | With a reservation confirmation, when a staff address resolves. Attaches the staff copy of the event (`invite.ics`). Skipped if the reservation is no longer confirmed when it is sent. | `booking:<id>:STAFF_CALENDAR_REQUEST:r<revision>` |
-| `STAFF_CALENDAR_CANCEL`                                                                                                                            | The inboxes of the staff invitation             | With the cancellation of a confirmed reservation, when its staff invitation was not superseded. Attaches `cancel.ics`.                                                                  | `booking:<id>:STAFF_CALENDAR_CANCEL:r<revision>`  |
+| Job (`event`)                                                                                                                                      | To                                                          | Created                                                                                                                                                                                                                                                                                                                            | Idempotency key                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `INQUIRY_STAFF_ALERT`                                                                                                                              | Staff (see [Staff addresses](#staff-addresses))             | With the inquiry (contact form and booking page, via `lib/inquiry-service.ts`). Inquiries created elsewhere (the Zeni hand-off) are picked up by the next scheduled run.                                                                                                                                                           | `inquiry:<inquiryId>:staff`                       |
+| `INQUIRY_ACKNOWLEDGEMENT`                                                                                                                          | The client                                                  | Same as above. Expires three days after the inquiry.                                                                                                                                                                                                                                                                               | `inquiry:<inquiryId>:client`                      |
+| `BOOKING_REQUEST_STAFF_ALERT`                                                                                                                      | Staff                                                       | With a booking request from the public booking page (`services/booking-requests.ts`).                                                                                                                                                                                                                                              | `booking:<id>:BOOKING_REQUEST_STAFF_ALERT`        |
+| `REQUEST_RECEIVED`, `REQUEST_APPROVED`, `REJECT`, `REVIEW_POLICY`, `RESERVATION_CONFIRMED`, `CANCEL`, `COMPLETE`, `CASH_RECEIPT`, `RECEIPT_VOIDED` | The client                                                  | With the admin booking decision (`lib/admin/service.ts`). `RESERVATION_CONFIRMED` attaches `invite.ics`; cancelling a confirmed booking attaches a cancellation `cancel.ics`.                                                                                                                                                      | `booking:<id>:<event>:r<revision>`                |
+| `EVENT_REMINDER_7D`                                                                                                                                | The client                                                  | Scheduled run, five to seven days before a `CONFIRMED` event (not if it was confirmed in the last two days). Expires two days before the event.                                                                                                                                                                                    | `reminder:7d:<bookingId>`                         |
+| `EVENT_REMINDER_1D`                                                                                                                                | The client                                                  | Scheduled run on the day before the event (Manila calendar). Expires when the event starts.                                                                                                                                                                                                                                        | `reminder:1d:<bookingId>`                         |
+| `DAILY_DIGEST`                                                                                                                                     | Staff                                                       | First scheduled run after 07:00 Manila time. Today's and tomorrow's confirmed events, inquiries from the last 24 hours, requests awaiting approval, failed email count.                                                                                                                                                            | `digest:<YYYY-MM-DD>`                             |
+| `STAFF_CALENDAR_PENDING`                                                                                                                           | Staff and the inboxes holding the event, fixed when created | With every booking request (website or staff-entered), with an edit that changes a date or detail the event shows, and when a declined request is reviewed again, when a staff address resolves. Attaches the pending staff event (`invite.ics`, `STATUS:TENTATIVE`). Skipped if the request is no longer pending when it is sent. | `booking:<id>:STAFF_CALENDAR_PENDING:r<revision>` |
+| `STAFF_CALENDAR_REQUEST`                                                                                                                           | Staff and the inboxes holding the event, fixed when created | With a reservation confirmation, when a staff address resolves. Attaches the staff copy of the confirmed event (`invite.ics`), which replaces the pending event. Skipped if the reservation is no longer confirmed when it is sent.                                                                                                | `booking:<id>:STAFF_CALENDAR_REQUEST:r<revision>` |
+| `STAFF_CALENDAR_CANCEL`                                                                                                                            | The inboxes holding the event                               | With a declined request, a cancelled request or a cancelled reservation, when a staff calendar holds its pending or confirmed event. Attaches `cancel.ics`.                                                                                                                                                                        | `booking:<id>:STAFF_CALENDAR_CANCEL:r<revision>`  |
 
 Reminders are prepared from 07:00 Manila time and are re-checked when sent: a reminder for a
 booking that was cancelled meanwhile is skipped. Cancelling a confirmed booking also skips any
-unsent confirmation, reminder or staff calendar invitation for it.
+unsent confirmation, reminder or staff calendar email for it; confirming, declining or cancelling
+a request skips its unsent pending event.
 
-The staff calendar jobs use their own event names, so the `RESERVATION_CONFIRMED` and `CANCEL`
-rows that analytics, the dashboard and the notification bell count stay one per decision. The
-Activity log lists them with the other automation jobs (`AUTOMATION_ONLY_EVENTS`), not with the
-booking notices.
+The staff calendar jobs use their own event names, so the `REQUEST_RECEIVED`,
+`RESERVATION_CONFIRMED` and `CANCEL` rows that analytics, the dashboard and the notification bell
+count stay one per decision. The Activity log lists them with the other automation jobs
+(`AUTOMATION_ONLY_EVENTS`), not with the booking notices.
 
 Abuse guards for the public form: at most three acknowledgements per address per day, and at most
 40 individual staff alerts per day (further inquiries still appear in the admin inbox and the daily
@@ -90,19 +92,42 @@ staff action, so a cancellation (`METHOD:CANCEL`, same `UID`, higher `SEQUENCE`)
 confirmed event (`METHOD:REQUEST`). Nodemailer attaches it as `icalEvent`, which Gmail shows as an
 invitation that can be added to the calendar.
 
-The staff inboxes get their own copy of the same event (`STAFF_CALENDAR_REQUEST` and
-`STAFF_CALENDAR_CANCEL`): the same `UID`, `SEQUENCE` and `ORGANIZER`, with each staff address as an
-`ATTENDEE` instead of the client. Its summary names the client and the reference (for example
-"Wedding: Maria Santos (ZION-2026-…)") and its description lists the client's contact details,
-package and guests. `Reply-To` is the client. The email links to Bookings when the site's public
-address is known (`NEXT_PUBLIC_APP_URL`, `AUTH_URL`, or on Vercel the production domain). The
-client's invitation is unchanged.
+The staff inboxes get their own copy of the same event (`STAFF_CALENDAR_PENDING`,
+`STAFF_CALENDAR_REQUEST` and `STAFF_CALENDAR_CANCEL`): the same `UID`, `SEQUENCE` and `ORGANIZER`,
+with each staff address as an `ATTENDEE` instead of the client. Its summary names the client and
+the reference (for example "Wedding: Maria Santos (ZION-2026-…)") and its description lists the
+client's contact details, package and guests. `Reply-To` is the client. The email links to the
+matching Bookings view when the site's public address is known (`NEXT_PUBLIC_APP_URL`, `AUTH_URL`,
+or on Vercel the production domain). The client's invitation is unchanged: clients get a calendar
+invitation only when the reservation is confirmed.
 
-Because the attendees are written into the invitation, a staff invitation keeps the inboxes it was
-created with, and its cancellation goes to those same inboxes (the calendars that hold the event),
-even if the staff list changed in between. If the invitation was cancelled before it went out, no
-staff cancellation is sent. A staff invitation retried after the reservation was cancelled is
-skipped instead of putting the event back.
+Staff calendars see every booking request as soon as it arrives, so the owner sees requested
+dates before deciding:
+
+1. **Request.** The staff copy is a pending event: summary "[Pending] Wedding: Maria Santos
+   (ZION-2026-…)", `STATUS:TENTATIVE` and `TRANSP:TRANSPARENT` (the time is not shown as busy). An
+   edit that changes the date, time, client, contact, event, package or guests sends an update with
+   the new revision, so the event moves in place.
+2. **Confirmation.** The confirmed staff invitation reuses the `UID` with a higher `SEQUENCE`, so
+   calendars replace the pending event with the reservation (`STATUS:CONFIRMED`,
+   `TRANSP:OPAQUE`, no "[Pending]").
+3. **Decline or cancellation.** A `METHOD:CANCEL` update removes the pending or confirmed event.
+   Reviewing a declined request again sends a new pending event.
+
+Because the attendees are written into the invitation, each staff invitation keeps the inboxes it
+was created with. An update goes to the staff inboxes of that moment plus every inbox whose
+calendar holds the event (`STAFF_RECIPIENT_LIMITS` still caps the list at 255 characters), and a
+cancellation goes only to the inboxes holding the event, even if the staff list changed in
+between. The holders come from the latest staff calendar email that was not skipped. An unsent
+pending event or invitation that a newer change replaces is skipped, so it is neither sent late nor
+counted as held; if nothing was ever sent, no staff cancellation follows. At delivery, a pending
+event is skipped once its request is no longer pending, and a staff invitation is skipped once the
+reservation is no longer confirmed, so neither puts a stale event back. A pending event for a
+website request follows the daily limit of the staff alert it accompanies; over the limit, the
+request appears in staff calendars when it is confirmed.
+
+Requests created before this behaviour existed have no pending event; they appear when edited or
+confirmed.
 
 Calendar limits: Google Calendar adds an invitation by itself only for an address listed as an
 `ATTENDEE`, and only as that account's "Add invitations to my calendar" setting allows; otherwise

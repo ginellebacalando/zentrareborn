@@ -42,6 +42,7 @@ const NO_STAFF_ADDRESS_MESSAGE =
   'No staff address is set (staff notification emails in Settings, STAFF_NOTIFICATION_EMAIL or SMTP_USER). This message is waiting.';
 const REMINDER_EVENTS = new Set(['EVENT_REMINDER_7D', 'EVENT_REMINDER_1D']);
 const STAFF_CALENDAR_REQUEST = 'STAFF_CALENDAR_REQUEST';
+const STAFF_CALENDAR_PENDING = 'STAFF_CALENDAR_PENDING';
 
 function emptyResult(mailConfigured: boolean): DeliveryRunResult {
   return {
@@ -128,21 +129,27 @@ async function finish(job: AdminOutbox, status: 'REVIEW_REQUIRED' | 'EXPIRED', l
 
 /**
  * Reminders are only sent while the reservation is still confirmed and upcoming. A staff calendar
- * invitation retried after a cancellation would put a cancelled event back into staff calendars.
+ * invitation retried after a cancellation would put a cancelled event back into staff calendars,
+ * and a pending event sent after its request was decided would show a stale request.
  */
 async function irrelevanceReason(job: AdminOutbox, now: Date) {
   const reminder = REMINDER_EVENTS.has(job.event);
-  if (!reminder && job.event !== STAFF_CALENDAR_REQUEST) return null;
+  if (!reminder && job.event !== STAFF_CALENDAR_REQUEST && job.event !== STAFF_CALENDAR_PENDING)
+    return null;
   const booking = job.bookingId
     ? await prisma.adminBooking.findUnique({
         where: { id: job.bookingId },
-        select: { reservation: true, startsAt: true },
+        select: { reservation: true, approval: true, startsAt: true },
       })
     : null;
   if (reminder)
     return booking?.reservation === 'CONFIRMED' && booking.startsAt > now
       ? null
       : 'Not sent: the reservation is no longer confirmed or the event has already started.';
+  if (job.event === STAFF_CALENDAR_PENDING)
+    return booking?.reservation === 'REQUESTED' && booking.approval !== 'REJECTED'
+      ? null
+      : 'Not sent: the request is no longer pending, so its pending calendar event is not needed.';
   return booking?.reservation === 'CONFIRMED'
     ? null
     : 'Not sent: the reservation is no longer confirmed, so the calendar invitation is not needed.';

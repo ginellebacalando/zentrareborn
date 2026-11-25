@@ -31,8 +31,9 @@ export const AUTOMATION_STATUS_DESCRIPTIONS: Record<AutomationStatus, string> = 
 
 /**
  * Job types created only by the automation module, not the booking decision notices. The staff
- * calendar jobs accompany a decision but stay out of the RESERVATION_CONFIRMED and CANCEL rows
- * that analytics, the dashboard and the notification bell count.
+ * calendar jobs accompany a request or decision but stay out of the REQUEST_RECEIVED,
+ * RESERVATION_CONFIRMED and CANCEL rows that analytics, the dashboard and the notification bell
+ * count.
  */
 export const AUTOMATION_ONLY_EVENTS = [
   'INQUIRY_STAFF_ALERT',
@@ -41,6 +42,7 @@ export const AUTOMATION_ONLY_EVENTS = [
   'EVENT_REMINDER_7D',
   'EVENT_REMINDER_1D',
   'DAILY_DIGEST',
+  'STAFF_CALENDAR_PENDING',
   'STAFF_CALENDAR_REQUEST',
   'STAFF_CALENDAR_CANCEL',
 ] as const;
@@ -70,6 +72,7 @@ export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   EVENT_REMINDER_7D: 'Event reminder, one week',
   EVENT_REMINDER_1D: 'Event reminder, one day',
   DAILY_DIGEST: 'Daily staff digest',
+  STAFF_CALENDAR_PENDING: 'Calendar event, pending request (staff)',
   STAFF_CALENDAR_REQUEST: 'Calendar invitation (staff)',
   STAFF_CALENDAR_CANCEL: 'Calendar cancellation (staff)',
   REQUEST_RECEIVED: 'Booking request received',
