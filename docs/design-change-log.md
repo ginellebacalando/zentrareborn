@@ -54,11 +54,12 @@ Bookings; keyboard focus on a booking card (one tab stop, ring around the card);
 a table row opens that row's booking (checked with `elementFromPoint` on four rows); the banner
 filters to the three requests and its button keeps focus. `npm run verify` passed on 26 November
 2026 (design check; tests: chatbot 68, admin 38, automation 31, developer 6; lint with no warnings;
-production build).
+production build). Also checked: 200% text on the login page and Bookings (no sideways
+scrolling; the search row now wraps rather than squeezing its field) and a 1280×700 screen, where
+the sidebar scrolls as one column down to Settings.
 
-Not checked: 200% text and 400% zoom, a screen reader, the login page in the new look (it only
-inherits the tokens), and the remaining pages in the dark theme and at 320px. Design Checker has
-not reviewed this yet.
+Not checked: 400% zoom (the 320px layout stands in for it), a screen reader, and the remaining
+pages in the dark theme, at 320px and at 200% text. Design Checker has not reviewed this yet.
 
 ## 25 November 2026 — Ocular visit button on the home page
 
