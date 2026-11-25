@@ -52,6 +52,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // The receipt PDF reads the ZENTRA wordmark image from disk (lib/payment-receipts.ts), so both
+  // receipt routes carry the file when deployed.
+  outputFileTracingIncludes: {
+    '/api/admin/receipts/*': ['./public/images/brand/zentra-wordmark.png'],
+    '/booking/pay/*/receipts/*': ['./public/images/brand/zentra-wordmark.png'],
+  },
   async headers() {
     return [
       {

@@ -17,6 +17,8 @@ export const EMAIL_THEME = {
   brandSoft: '#E7F1EC',
   /** --palette-danger: a voided payment on its receipt. */
   danger: '#A32F35',
+  /** --palette-danger-soft: the panel behind a voided payment's note. */
+  dangerSoft: '#FFF0F0',
   wordmarkFont: "Georgia, 'Times New Roman', serif",
   bodyFont: 'Arial, Helvetica, sans-serif',
 } as const;

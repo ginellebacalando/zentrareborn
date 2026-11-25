@@ -1,7 +1,17 @@
 import 'server-only';
 
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { Prisma } from '@prisma/client';
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import {
+  PDFDocument,
+  StandardFonts,
+  degrees,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+  type RGB,
+} from 'pdf-lib';
 import { BRAND } from '@/config/brand';
 import { PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
 import { EMAIL_THEME } from '@/lib/automation/email-theme';
@@ -128,7 +138,43 @@ export type ReceiptDocument = {
   issuedAt: Date;
 };
 
-/** Draws the one-page receipt (A4) with the ZENTRA palette from lib/automation/email-theme.ts. */
+/**
+ * The ZENTRA wordmark exactly as the website shows it (Cinzel Decorative, open font licence, in
+ * ZENTRA green), as an image because the standard PDF fonts cannot draw it. next.config.ts bundles
+ * the file into the receipt routes.
+ */
+const RECEIPT_LOGO_PATH = path.join(
+  process.cwd(),
+  'public',
+  'images',
+  'brand',
+  'zentra-wordmark.png',
+);
+let receiptLogo: Promise<Uint8Array | null> | undefined;
+
+/** The wordmark's bytes, read once; without the file the receipt writes the name instead. */
+function loadReceiptLogo() {
+  receiptLogo ??= readFile(RECEIPT_LOGO_PATH).then(
+    (bytes) => new Uint8Array(bytes),
+    () => null,
+  );
+  return receiptLogo;
+}
+
+type TextOptions = {
+  size?: number;
+  font?: PDFFont;
+  tint?: RGB;
+  align?: 'left' | 'right';
+  /** Extra space between letters, for small capital labels. */
+  tracking?: number;
+};
+
+/**
+ * Draws the one-page receipt (A4) in the ZENTRA palette from lib/automation/email-theme.ts: the
+ * venue logo and the receipt number, who paid and how much, the payment details, what the booking
+ * stands at after it, and the note that it is not an official receipt.
+ */
 export async function acknowledgmentReceiptPdf(receipt: ReceiptDocument) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(`Acknowledgment receipt ${receipt.acknowledgmentNumber}`);
@@ -139,142 +185,277 @@ export async function acknowledgmentReceiptPdf(receipt: ReceiptDocument) {
   const page: PDFPage = pdf.addPage([595.28, 841.89]);
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const ink = color(EMAIL_THEME.text);
-  const muted = color(EMAIL_THEME.muted);
-  const brand = color(EMAIL_THEME.brand);
-  const line = color(EMAIL_THEME.line);
-  const margin = 56;
-  const right = page.getWidth() - margin;
-  const width = right - margin;
-  let y = page.getHeight() - margin;
-
-  const text = (
-    value: string,
-    x: number,
-    at: number,
-    options: { size?: number; font?: PDFFont; tint?: typeof ink; align?: 'left' | 'right' } = {},
-  ) => {
-    const font = options.font ?? regular;
-    const size = options.size ?? 10;
-    const shown = printable(font, value);
-    const left = options.align === 'right' ? x - font.widthOfTextAtSize(shown, size) : x;
-    page.drawText(shown, { x: left, y: at, size, font, color: options.tint ?? ink });
+  const italic = await pdf.embedFont(StandardFonts.HelveticaOblique);
+  const palette = {
+    brand: color(EMAIL_THEME.brand),
+    brandSoft: color(EMAIL_THEME.brandSoft),
+    surface: color(EMAIL_THEME.surface),
+    ink: color(EMAIL_THEME.text),
+    muted: color(EMAIL_THEME.muted),
+    line: color(EMAIL_THEME.line),
+    danger: color(EMAIL_THEME.danger),
+    dangerSoft: color(EMAIL_THEME.dangerSoft),
   };
-  const rule = (at: number, tint = line) =>
+  const { width: pageWidth, height: pageHeight } = page.getSize();
+  const margin = 48;
+  const left = margin;
+  const right = pageWidth - margin;
+  const contentWidth = right - left;
+  // Positions below are distances from the top of the page, so the layout reads top to bottom.
+  const fromTop = (distance: number) => pageHeight - distance;
+
+  const measure = (value: string, font: PDFFont, size: number, tracking = 0) =>
+    font.widthOfTextAtSize(value, size) + tracking * Math.max(0, value.length - 1);
+  const write = (value: string, x: number, top: number, options: TextOptions = {}) => {
+    const { size = 10, font = regular, tint = palette.ink, align = 'left', tracking = 0 } = options;
+    const shown = printable(font, value);
+    let at = align === 'right' ? x - measure(shown, font, size, tracking) : x;
+    if (!tracking) {
+      page.drawText(shown, { x: at, y: fromTop(top), size, font, color: tint });
+      return;
+    }
+    for (const character of shown) {
+      page.drawText(character, { x: at, y: fromTop(top), size, font, color: tint });
+      at += font.widthOfTextAtSize(character, size) + tracking;
+    }
+  };
+  const label = (value: string, x: number, top: number, align: 'left' | 'right' = 'left') =>
+    write(value.toUpperCase(), x, top, {
+      size: 7.5,
+      font: bold,
+      tint: palette.muted,
+      align,
+      tracking: 1,
+    });
+  const rule = (top: number, tint: RGB = palette.line, thickness = 0.75) =>
     page.drawLine({
-      start: { x: margin, y: at },
-      end: { x: right, y: at },
-      thickness: 0.75,
+      start: { x: left, y: fromTop(top) },
+      end: { x: right, y: fromTop(top) },
+      thickness,
       color: tint,
     });
+  /** A filled panel with rounded corners; `top` is the distance of its upper edge from the top. */
+  const panel = (x: number, top: number, width: number, height: number, fill: RGB, radius = 8) => {
+    const r = Math.min(radius, height / 2, width / 2);
+    page.drawSvgPath(
+      `M ${r} 0 H ${width - r} A ${r} ${r} 0 0 1 ${width} ${r} V ${height - r} A ${r} ${r} 0 0 1 ${width - r} ${height} H ${r} A ${r} ${r} 0 0 1 0 ${height - r} V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`,
+      { x, y: fromTop(top), color: fill },
+    );
+  };
 
-  // Header: the venue on the left, the document and its number on the right.
-  text(BRAND.nameUpper, margin, y - 4, { size: 16, font: bold, tint: brand });
-  text('ACKNOWLEDGMENT RECEIPT', right, y - 2, { size: 10, font: bold, align: 'right' });
-  text(`No. ${receipt.acknowledgmentNumber}`, right, y - 18, {
-    size: 12,
-    font: bold,
-    tint: brand,
-    align: 'right',
-  });
-  y -= 22;
-  for (const addressLine of BRAND.address.lines) {
-    text(addressLine, margin, y, { size: 9, tint: muted });
-    y -= 12;
-  }
-  text(`${BRAND.contact.phone}  ·  ${BRAND.contact.email}`, margin, y, { size: 9, tint: muted });
-  text(`Issued ${manilaDate.format(receipt.issuedAt)}`, right, y, {
-    size: 9,
-    tint: muted,
-    align: 'right',
-  });
-  y -= 18;
-  rule(y, brand);
-  y -= 30;
+  const balanceCents = Math.max(0, receipt.contractCents - receipt.receivedSoFarCents);
+  const status = receipt.voided
+    ? { text: 'VOIDED', fill: palette.dangerSoft, tint: palette.danger }
+    : balanceCents === 0
+      ? { text: 'PAID IN FULL', fill: palette.brandSoft, tint: palette.brand }
+      : { text: 'PARTIAL PAYMENT', fill: palette.surface, tint: palette.ink };
 
-  // Who paid and how much, the two facts a client looks for first.
-  text('RECEIVED FROM', margin, y, { size: 8, font: bold, tint: muted });
-  y -= 18;
-  text(receipt.clientName, margin, y, { size: 15, font: bold });
-  y -= 22;
-  const panelHeight = 58;
+  // A voided receipt stays readable for the record but cannot pass for a live one.
+  if (receipt.voided)
+    page.drawText('VOIDED', {
+      x: 118,
+      y: 250,
+      size: 120,
+      font: bold,
+      color: palette.danger,
+      opacity: 0.07,
+      rotate: degrees(32),
+    });
+
+  // The brand band and the header: the venue on the left, the document on the right.
   page.drawRectangle({
-    x: margin,
-    y: y - panelHeight,
-    width,
-    height: panelHeight,
-    color: color(EMAIL_THEME.brandSoft),
+    x: 0,
+    y: pageHeight - 6,
+    width: pageWidth,
+    height: 6,
+    color: palette.brand,
   });
-  text('AMOUNT RECEIVED', margin + 16, y - 20, { size: 8, font: bold, tint: muted });
-  text(money(receipt.amountCents), margin + 16, y - 44, { size: 22, font: bold, tint: brand });
-  text(receipt.purpose, right - 16, y - 40, { size: 11, font: bold, align: 'right' });
-  y -= panelHeight + 30;
+  const headerTop = 46;
+  // The website's wordmark with the venue's name under it, as in the site footer.
+  const logoBytes = await loadReceiptLogo();
+  let logoHeight = 30;
+  if (logoBytes) {
+    const logo = await pdf.embedPng(logoBytes);
+    const size = logo.scaleToFit(160, 38);
+    logoHeight = size.height;
+    page.drawImage(logo, {
+      x: left,
+      y: fromTop(headerTop + size.height),
+      width: size.width,
+      height: size.height,
+    });
+  } else
+    write(EMAIL_THEME.wordmark, left, headerTop + 26, {
+      size: 26,
+      font: bold,
+      tint: palette.brand,
+      tracking: 1,
+    });
+  write(BRAND.nameUpper, left + 1, headerTop + logoHeight + 15, {
+    size: 7.5,
+    font: bold,
+    tint: palette.muted,
+    tracking: 2.2,
+  });
+  label('Acknowledgment receipt', right, headerTop + 8, 'right');
+  write(receipt.acknowledgmentNumber, right, headerTop + 31, {
+    size: 18,
+    font: bold,
+    align: 'right',
+  });
+  write(`Issued ${manilaDate.format(receipt.issuedAt)}`, right, headerTop + 47, {
+    size: 9,
+    tint: palette.muted,
+    align: 'right',
+  });
+  const pillWidth = measure(status.text, bold, 7.5, 1) + 20;
+  panel(right - pillWidth, headerTop + 57, pillWidth, 19, status.fill, 9.5);
+  write(status.text, right - 10, headerTop + 70, {
+    size: 7.5,
+    font: bold,
+    tint: status.tint,
+    align: 'right',
+    tracking: 1,
+  });
+  let top = headerTop + logoHeight + 34;
+  for (const line of [
+    ...BRAND.address.lines,
+    `${BRAND.contact.phone}  ·  ${BRAND.contact.email}`,
+  ]) {
+    write(line, left, top, { size: 8.5, tint: palette.muted });
+    top += 12;
+  }
+  top += 10;
+  rule(top);
 
-  // The details, label above value in two columns.
+  // Who paid and how much: the two facts a client looks for first.
+  top += 32;
+  label('Received with thanks from', left, top);
+  label('Amount received', right, top, 'right');
+  const nameLines = wrap(bold, receipt.clientName, 18, contentWidth - 230);
+  nameLines.forEach((line, index) =>
+    write(line, left, top + 24 + index * 22, { size: 18, font: bold }),
+  );
+  write(money(receipt.amountCents), right, top + 30, {
+    size: 26,
+    font: bold,
+    tint: palette.brand,
+    align: 'right',
+  });
+  top += Math.max(42, 24 + nameLines.length * 22) + 16;
+
+  // How the money arrived, in one light panel.
   const details: [string, string][] = [
-    ['Booking reference', receipt.bookingReference],
-    ['Event', receipt.event],
-    ['Event date', manilaDate.format(receipt.eventDate)],
+    ['Date received', manilaDateTime.format(receipt.receivedAt)],
     ['Payment method', receipt.method],
-    ['Reference or receipt number', receipt.referenceNumber],
-    ['Received on', `${manilaDateTime.format(receipt.receivedAt)} (Manila time)`],
+    ['Reference no.', receipt.referenceNumber],
     [
       receipt.method === PAYMENT_METHOD_LABELS.CASH ? 'Received by' : 'Verified by',
       receipt.recordedBy,
     ],
   ];
-  const column = width / 2;
-  for (let index = 0; index < details.length; index += 2) {
-    let rowHeight = 0;
-    for (const [offset, detail] of details.slice(index, index + 2).entries()) {
-      const x = margin + offset * column;
-      text(detail[0].toUpperCase(), x, y, { size: 8, font: bold, tint: muted });
-      const lines = wrap(regular, detail[1], 11, column - 16);
-      lines.forEach((value, lineIndex) => text(value, x, y - 16 - lineIndex * 14, { size: 11 }));
-      rowHeight = Math.max(rowHeight, 16 + lines.length * 14);
-    }
-    y -= rowHeight + 14;
+  const inset = 16;
+  const columnWidth = (contentWidth - inset * 2) / details.length;
+  const detailLines = details.map(([, value]) =>
+    wrap(regular, value, 10, columnWidth - 12).slice(0, 2),
+  );
+  const panelHeight = 44 + Math.max(...detailLines.map((lines) => lines.length)) * 13;
+  panel(left, top, contentWidth, panelHeight, palette.surface);
+  details.forEach(([name], index) => {
+    const x = left + inset + index * columnWidth;
+    label(name, x, top + 22);
+    detailLines[index].forEach((line, lineIndex) =>
+      write(line, x, top + 38 + lineIndex * 13, { size: 10 }),
+    );
+  });
+  top += panelHeight + 34;
+
+  // The payment as an invoice line.
+  label('Description', left, top);
+  label('Amount', right, top, 'right');
+  rule(top + 9, palette.ink, 1);
+  top += 31;
+  write(receipt.purpose, left, top, { size: 11.5, font: bold });
+  write(money(receipt.amountCents), right, top, { size: 11.5, font: bold, align: 'right' });
+  for (const line of [
+    `Booking ${receipt.bookingReference}`,
+    ...wrap(regular, receipt.event, 9.5, contentWidth - 160),
+    `Event date: ${manilaDate.format(receipt.eventDate)}`,
+  ]) {
+    top += 15;
+    write(line, left, top, { size: 9.5, tint: palette.muted });
   }
-  rule(y + 4);
-  y -= 22;
+  top += 16;
+  rule(top);
 
   // Where the booking stands after this payment.
-  const balanceCents = Math.max(0, receipt.contractCents - receipt.receivedSoFarCents);
-  const summary: [string, string][] = [
+  const summaryLeft = right - 250;
+  top += 26;
+  for (const [name, value] of [
     ['Contract price', money(receipt.contractCents)],
-    ['Received so far, including this payment', money(receipt.receivedSoFarCents)],
-    ['Remaining balance', money(balanceCents)],
-  ];
-  for (const [label, value] of summary) {
-    text(label, margin, y, { size: 10, tint: muted });
-    text(value, right, y, { size: 10, font: bold, align: 'right' });
-    y -= 18;
+    ['Received to date', money(receipt.receivedSoFarCents)],
+  ]) {
+    write(name, summaryLeft, top, { size: 9.5, tint: palette.muted });
+    write(value, right, top, { size: 9.5, align: 'right' });
+    top += 18;
   }
+  page.drawLine({
+    start: { x: summaryLeft, y: fromTop(top - 6) },
+    end: { x: right, y: fromTop(top - 6) },
+    thickness: 0.75,
+    color: palette.line,
+  });
+  top += 12;
+  write('Remaining balance', summaryLeft, top, { size: 11, font: bold });
+  write(money(balanceCents), right, top, {
+    size: 11,
+    font: bold,
+    tint: balanceCents ? palette.brand : palette.ink,
+    align: 'right',
+  });
 
   if (receipt.voided) {
-    const danger = color(EMAIL_THEME.danger);
-    y -= 16;
-    text('VOIDED', margin, y, { size: 18, font: bold, tint: danger });
-    y -= 18;
-    const reason = `This payment was voided on ${manilaDateTime.format(receipt.voided.at)}: ${receipt.voided.reason}`;
-    for (const value of wrap(regular, reason, 10, width)) {
-      text(value, margin, y, { size: 10, tint: danger });
-      y -= 14;
-    }
+    top += 30;
+    const lines = wrap(
+      regular,
+      `This payment was voided on ${manilaDateTime.format(receipt.voided.at)}: ${receipt.voided.reason}`,
+      9.5,
+      contentWidth - inset * 2,
+    );
+    panel(left, top, contentWidth, 22 + lines.length * 13, palette.dangerSoft);
+    lines.forEach((line, index) =>
+      write(line, left + inset, top + 18 + index * 13, { size: 9.5, tint: palette.danger }),
+    );
   }
 
-  // The footer every acknowledgment receipt carries.
-  rule(margin + 40);
-  text('This is an acknowledgment of payment and not an official receipt.', margin, margin + 22, {
-    size: 9,
-    font: bold,
-  });
-  text(
-    `${BRAND.legalName} keeps this record with booking ${receipt.bookingReference}.`,
-    margin,
-    margin + 8,
-    { size: 8, tint: muted },
+  // The note every acknowledgment receipt carries, and the venue's details.
+  const footerTop = pageHeight - 124;
+  panel(left, footerTop, contentWidth, 50, palette.brandSoft);
+  write(
+    'This is an acknowledgment of payment and not an official receipt.',
+    left + inset,
+    footerTop + 21,
+    { size: 9.5, font: bold, tint: palette.brand },
   );
+  write(
+    `Please keep it with your booking reference ${receipt.bookingReference}.`,
+    left + inset,
+    footerTop + 36,
+    { size: 8.5, tint: palette.muted },
+  );
+  rule(pageHeight - 54);
+  write(
+    `${BRAND.legalName}  ·  ${BRAND.contact.phone}  ·  ${BRAND.contact.email}`,
+    left,
+    pageHeight - 38,
+    { size: 8, tint: palette.muted },
+  );
+  write('Thank you for celebrating with us.', right, pageHeight - 38, {
+    size: 8,
+    font: italic,
+    tint: palette.muted,
+    align: 'right',
+  });
   return pdf.save();
 }
 

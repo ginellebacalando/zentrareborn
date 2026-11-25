@@ -1,5 +1,32 @@
 # Design change log
 
+## 25 November 2026 — Acknowledgment receipt redesign with the ZENTRA wordmark
+
+User task: make the receipt PDF more modern and professional, with the logo used on the current
+website (the ZENTRA wordmark, not the Zion Events Place logo).
+
+Affected: `lib/payment-receipts.ts`, `public/images/brand/zentra-wordmark.png` (new),
+`lib/automation/email-theme.ts` (adds the danger-soft value of `--palette-danger-soft`) and
+`next.config.ts` (bundles the image into the two receipt routes).
+
+- The wordmark is the website's own: Cinzel Decorative (open font licence, already in the repo)
+  at 0.04em letter spacing in ZENTRA green, rendered once to a 770 by 179 image (7.7 KB). The
+  personal-use Zenitha Classic is not used. "ZION EVENTS PLACE" sits under it as in the site
+  footer, then the address and contacts.
+- New layout: a ZENTRA green band at the top; the receipt number large on the right with the issue
+  date and a status pill (Partial payment, Paid in full or Voided); "Received with thanks from"
+  with the client's name and the amount large in ZENTRA green; a light panel with the date,
+  method, reference and who received or verified it; an invoice-style line with the booking and
+  event; a summary of contract price, received to date and remaining balance; the "not an official
+  receipt" note in a soft green panel; and a footer with the venue's contacts and a thank-you
+  line. A voided receipt adds a faint diagonal VOIDED mark and a red note.
+- Type stays the standard Helvetica family, so receipts open the same everywhere; a receipt is
+  about 24 KB.
+
+Checked: partial, paid-in-full and voided samples rendered with PDF.js and reviewed; the payment
+tests generate and download receipts through the client route. Not checked: printing on paper, the
+PDF in Adobe Reader or on a phone.
+
 ## 25 November 2026 — Booking automation phase 3: balance payments and acknowledgment receipts
 
 User task: after the plan comparison, build balance payments and receipts next (the user chose
