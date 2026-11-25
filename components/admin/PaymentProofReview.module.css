@@ -95,3 +95,12 @@
   min-width: 13rem;
   flex: 2;
 }
+
+/* A link inside a sentence is underlined so it never relies on color alone (two classes outrank
+   the admin's plain link reset). */
+.note .textLink {
+  color: var(--admin-action);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}

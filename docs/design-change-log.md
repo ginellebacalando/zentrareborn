@@ -1,5 +1,24 @@
 # Design change log
 
+## 25 November 2026 — Waiting bookings always show where payment screenshots arrive
+
+User task: the owner opened a booking waiting for payment and could not find how to verify the
+payment; the Payment screenshots section stayed hidden until a client sent one.
+
+Affected: Admin → Bookings detail (`components/admin/PaymentProofReview.tsx`,
+`PaymentProofReview.module.css`, `BookingDetail.tsx`).
+
+- A booking waiting for payment always shows **Payment screenshots**. Without a screenshot it says
+  "No screenshot yet": with a GCash or bank account set up, that one will appear there with
+  Verify payment; without one, clients cannot send screenshots until an account is saved in
+  Settings → Online Payments (an underlined link to Settings).
+- The waiting-for-payment notice mentions screenshots only while an online account is set up;
+  otherwise it points to recording cash in Payments received.
+
+Tokens only: the inline link uses the admin action color, semibold, underlined (it does not rely
+on color). Checked on the local preview in both states (with and without a GCash account) and in
+the light theme; the link's computed style was confirmed underlined.
+
 ## 25 November 2026 — Payment emails match what the payment page offers
 
 User task: the owner noticed that a "Payment deadline extended" email offered "See how to pay or

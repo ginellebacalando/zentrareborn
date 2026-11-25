@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { X, Download, ShieldCheck, ChevronDown, Package, Pencil } from 'lucide-react';
 import { money, paidTotal, paymentStatus, confirmationError } from '@/lib/admin/domain';
 import { displayStatus, displayStatusLabels } from '@/lib/admin/dashboard-status';
-import { PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
+import { onlinePaymentMethods, PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
 import { Badge } from './AdminBadge';
 import { StatusDot, statusTone } from './BookingStatus';
 import { BookingForm } from './Forms';
@@ -12,7 +12,7 @@ import PaymentProofReview from './PaymentProofReview';
 import { manilaInput } from './datetime';
 import type { Booking, Mutate, Policy } from './types';
 import styles from './admin.module.css';
-import { useAdminDate } from './AdminPreferencesProvider';
+import { useAdminDate, useAdminPreferences } from './AdminPreferencesProvider';
 
 type BookingAction =
   | 'VERIFY'
@@ -119,6 +119,7 @@ export default function BookingDetail({
   onClose: () => void;
 }) {
   const eventDate = useAdminDate();
+  const { settings } = useAdminPreferences();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailRef = useRef<HTMLElement>(null);
   const noteId = useId();
@@ -157,6 +158,8 @@ export default function BookingDetail({
   const deadlinePassed = deadline !== null && hasPassed(deadline);
   // While a payment screenshot waits for review, the hold is never released automatically.
   const screenshotWaiting = (b.paymentProofs ?? []).some((proof) => proof.status === 'SUBMITTED');
+  // Clients can send screenshots only while a GCash or bank account is set up in Settings.
+  const onlinePayment = onlinePaymentMethods(settings.admin.paymentAccounts).length > 0;
   async function submitReceipt(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
@@ -351,7 +354,7 @@ export default function BookingDetail({
               ? paid > 0
                 ? `The payment deadline (${eventDate(deadline)}) passed with a partial payment. Extend the deadline or cancel the booking.`
                 : `The payment deadline (${eventDate(deadline)}) passed. The date is released automatically within a few minutes unless you extend the deadline.`
-              : `Waiting for payment until ${eventDate(deadline)}. A GCash or bank screenshot from the client appears here to verify; record cash in Payments received. The booking confirms itself once the payment is recorded. If no payment arrives by then, the date is released automatically.`}
+              : `Waiting for payment until ${eventDate(deadline)}. ${onlinePayment ? 'A GCash or bank screenshot from the client appears below to verify; record cash in Payments received.' : 'Record cash in Payments received.'} The booking confirms itself once the payment is recorded. If no payment arrives by then, the date is released automatically.`}
         </p>
       )}
       {b.notes && <div className={styles.notice}>Staff notes: {b.notes}</div>}

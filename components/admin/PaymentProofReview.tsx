@@ -1,12 +1,13 @@
 'use client';
 import { useId, useState } from 'react';
+import Link from 'next/link';
 import { Download, ImageIcon, TriangleAlert } from 'lucide-react';
 import { money, paidTotal } from '@/lib/admin/domain';
-import { PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
+import { onlinePaymentMethods, PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
 import type { PaymentRejectionReason } from '@/lib/payment-page-types';
 import { Badge } from './AdminBadge';
 import { manilaInput } from './datetime';
-import { useAdminDate } from './AdminPreferencesProvider';
+import { useAdminDate, useAdminPreferences } from './AdminPreferencesProvider';
 import type { Booking, Mutate, PaymentProof } from './types';
 import styles from './admin.module.css';
 import review from './PaymentProofReview.module.css';
@@ -277,9 +278,13 @@ export default function PaymentProofReview({
   mutate: Mutate;
 }) {
   const eventDate = useAdminDate();
+  const { settings } = useAdminPreferences();
   const id = useId();
   const proofs = b.paymentProofs ?? [];
-  if (!proofs.length) return null;
+  const waitingForPayment = b.reservation === 'REQUESTED' && b.approval === 'APPROVED';
+  // Shown on every booking waiting for payment, so staff always know where a screenshot arrives.
+  if (!proofs.length && !waitingForPayment) return null;
+  const online = onlinePaymentMethods(settings.admin.paymentAccounts).length > 0;
   const waiting = proofs.find((proof) => proof.status === 'SUBMITTED');
   const reviewed = proofs.filter((proof) => proof.status !== 'SUBMITTED');
   return (
@@ -290,8 +295,22 @@ export default function PaymentProofReview({
       </h3>
       {waiting ? (
         <WaitingProof booking={b} proof={waiting} busy={busy} mutate={mutate} />
-      ) : (
+      ) : !waitingForPayment ? (
         <p>No screenshot is waiting for review.</p>
+      ) : online ? (
+        <p>
+          No screenshot yet. When the client sends a GCash or bank transfer screenshot from their
+          payment page, it appears here with Verify payment.
+        </p>
+      ) : (
+        <p className={review.note}>
+          No screenshot yet. Clients can send a GCash or bank transfer screenshot only after an
+          account is set up in{' '}
+          <Link href="/admin/settings" className={review.textLink}>
+            Settings → Online Payments
+          </Link>
+          ; until then their payment page shows how to pay in cash.
+        </p>
       )}
       {reviewed.length > 0 && (
         <ul className={styles.receiptList} aria-label="Reviewed screenshots">
