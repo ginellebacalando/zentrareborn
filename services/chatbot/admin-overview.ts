@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@/lib/prisma';
 import { publicFacilities } from '@/config/public-facilities';
 import { websiteChatSources } from '@/config/chatbot';
+import { officialFaqSources } from '@/lib/chatbot/faq-sources';
 import type { ZeniAdminOverview, ZeniKnowledgeSummary } from '@/lib/chatbot/admin-types';
 import { publishedVisitorFaqs } from './sources';
 import { sharedZeniLlmGuard, zeniLlmSettings } from './gemini';
@@ -44,14 +45,18 @@ async function faqKnowledge(): Promise<ZeniKnowledgeSummary> {
       select: { publishedAt: true },
     }),
   ]);
+  // Zeni also answers from Zion's official FAQ documents (the /faq page and its follow-ups),
+  // except where a managed or built-in answer has the same question (services/chatbot/sources.ts).
+  const seen = new Set(faqs.map((faq) => faq.question.trim().toLowerCase()));
+  const official = officialFaqSources(seen).length;
   return {
     id: 'faqs',
     label: 'FAQs',
-    count: faqs.length,
+    count: faqs.length + official,
     updatedAt: managed ? iso(latest?.publishedAt) : null,
     note: managed
-      ? 'Only published, visible and current FAQ versions are used.'
-      : 'No managed FAQs exist yet, so Zeni uses the FAQ page’s built-in answers.',
+      ? `Published, visible and current FAQ versions come first, plus ${official} answers from Zion’s official FAQ documents.`
+      : `No managed FAQs exist yet, so Zeni uses ${official} answers from Zion’s official FAQ documents and ${faqs.length} built-in answers.`,
     edit: { label: 'Published from the Developer workspace (FAQ control center)' },
   };
 }

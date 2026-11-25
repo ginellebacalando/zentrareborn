@@ -1,8 +1,9 @@
 import { assertDateKey, venueDateKey } from '@/lib/calendar-time';
 import { zeniCopyFor } from '@/config/chatbot-receptionist';
+import { zeniTopics, type ZeniHelpTopic } from '@/config/zeni-topics';
 import { isAppreciation, receptionistIntent } from './intent';
 import { captureSlots, type SlotChanges } from './slots';
-import { rankSources, sourceEvidence } from './retrieval';
+import { rankSources, sourceEvidence, titleCoversQuestion, titleMatchRatio } from './retrieval';
 import { redactPersonalData } from './redaction';
 import { detectLanguage } from './language';
 import { detectTopic, type ZeniTopic } from './topics';
@@ -85,6 +86,96 @@ const contactLink = (copy: Copy): ZeniLink => ({
   label: copy.labels.contactPage,
   href: '/contact#message-us',
 });
+const faqLink = (copy: Copy): ZeniLink => ({
+  kind: 'page',
+  label: copy.labels.faqPage,
+  href: '/faq',
+});
+
+/** Each help topic's keywords as whole-word (or whole-phrase) patterns. */
+const TOPIC_PATTERNS = zeniTopics.map((topic) => ({
+  topic,
+  patterns: topic.keywords.map(
+    (keyword) =>
+      new RegExp(
+        `(?:^|[^\\p{L}\\p{N}])${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}\\p{N}])`,
+        'iu',
+      ),
+  ),
+}));
+
+/** A tapped topic chip ("Payments & booking"). */
+function topicFromLabel(text: string) {
+  const label = text
+    .trim()
+    .replace(/[!.?\s]+$/, '')
+    .toLowerCase();
+  return zeniTopics.find((topic) => topic.label.toLowerCase() === label) ?? null;
+}
+
+/** The help topic whose keywords appear most often in the message, if any. */
+function topicFromKeywords(text: string) {
+  let best: { topic: ZeniHelpTopic; hits: number } | null = null;
+  for (const { topic, patterns } of TOPIC_PATTERNS) {
+    const hits = patterns.filter((pattern) => pattern.test(text)).length;
+    if (hits && (!best || hits > best.hits)) best = { topic, hits };
+  }
+  return best?.topic ?? null;
+}
+
+/** "Can we reschedule?" asks about the rule; "please move my booking" asks staff to act. */
+const QUESTION =
+  /\?|^\s*(?:can|could|may|might|what|how|is|are|do|does|will|when|why|pwede|puwede|paano|ano|kailan|magkano|gaano|bakit)\b/i;
+
+/** Which payment methods are accepted: the published lists disagree, so staff confirm them. */
+const PAYMENT_METHODS =
+  /\b(?:modes?|methods?)\s+of\s+payment|\bpayment\s+(?:modes?|methods?|options?)\b|\bpay\s+(?:by|with|via|using|through)\b|\b(?:accepts?|accepting|tumatanggap)\b.{0,30}\b(?:cards?|credit|debit|gcash|maya|cash|checks?|cheques?|bank)\b|\bhow\s+(?:do|can|should)\s+(?:i|we)\s+pay\b|\bpaano\s+(?:mag-?)?(?:bayad|magbayad)\b|\b(?:gcash|paymaya|maya|credit cards?|debit cards?|bank transfer|cheques?)\b/i;
+
+/** The older FAQ listing card and check payments, which other published information contradicts. */
+const unverifiedPaymentMethods = (source: ChatSource) =>
+  source.kind === 'faq' &&
+  /payment/i.test(source.title) &&
+  /\b(card|check|cheque)\b/i.test(source.text);
+
+/** Payments and booking changes always keep a way to reach a person. */
+const needsStaffOption = (topic?: ZeniHelpTopic | null) =>
+  topic?.id === 'payments' || topic?.id === 'changes';
+
+/** Chips for related questions in the same topic, without any that would repeat this answer. */
+function topicFollowUps(topic: ZeniHelpTopic, answered: ChatSource, sources: ChatSource[]) {
+  return topic.followUps.filter((question) => {
+    const leadsTo = preferTitled(
+      question,
+      rankSources(question, sources).map((match) => match.source),
+    )[0];
+    return leadsTo?.id !== answered.id;
+  });
+}
+
+/**
+ * Breaks ties within the best-scoring group: a source whose own title covers the question first,
+ * then a direct FAQ answer before a long policy section, then the most specific title.
+ */
+function preferTitled(question: string, sources: ChatSource[]) {
+  const rank = (source: ChatSource) => [
+    Number(titleCoversQuestion(question, source)),
+    Number(source.kind === 'faq'),
+    titleMatchRatio(question, source),
+  ];
+  return [...sources].sort((a, b) => {
+    const [x, y] = [rank(a), rank(b)];
+    return y[0] - x[0] || y[1] - x[1] || y[2] - x[2];
+  });
+}
+
+/** A message that is only a topic's umbrella word ("payment", "food", "corkage"). */
+function topicFromSummaryWord(text: string) {
+  const word = text
+    .trim()
+    .replace(/[!.?\s]+$/, '')
+    .toLowerCase();
+  return zeniTopics.find((topic) => topic.summaryWords.includes(word)) ?? null;
+}
 
 export function sourceReference(source: ChatSource) {
   return `${source.id}@${source.revision ?? 'public'}`;
@@ -209,6 +300,34 @@ function offerStaff(
       suggestions: copy.suggestions.afterAnswer.filter((item) => !/staff/i.test(item)),
     }),
     gap ? { gap } : {},
+  );
+}
+
+/**
+ * One help topic's official summary, for a tapped topic chip or a short message that only names
+ * the topic ("payment", "corkage"). `note` replaces the closing contact line.
+ */
+function topicPlan(
+  context: PlanContext,
+  topic: ZeniHelpTopic,
+  options: { note?: string; gap?: ZeniGap } = {},
+): ReceptionistPlan {
+  const { state, copy } = context;
+  state.lastAnswerTurn = state.turn;
+  state.stage = state.stage === 'S7' ? 'S7' : 'S2';
+  const message = [
+    topic.intro,
+    ...topic.points.map((point) => `• ${point}`),
+    options.note ?? topic.contact,
+  ].join('\n');
+  return plan(
+    context,
+    reply('answer', message, {
+      links: [faqLink(copy)],
+      suggestions: [...topic.followUps],
+      actions: needsStaffOption(topic) ? [staff(copy)] : [],
+    }),
+    options.gap ? { gap: options.gap } : {},
   );
 }
 
@@ -385,16 +504,15 @@ function reconciliationPlan(context: PlanContext): ReceptionistPlan | null {
     context.state.flags.needsHuman = true;
     return offerStaff(context, copy.paymentReview, 'payment_policy_conflict', conflict);
   }
-  if (
-    /\b(payment|pay|card|cheque|checks?|cash|gcash|bank transfer|bayad)\b/i.test(question) &&
-    sources.some(
-      (source) =>
-        source.kind === 'faq' &&
-        /payment/i.test(source.title) &&
-        /\b(card|check|cheque)\b/i.test(source.text),
-    )
-  )
-    return offerStaff(context, copy.paymentReview, 'payment_methods_review', conflict);
+  if (PAYMENT_METHODS.test(question) && sources.some(unverifiedPaymentMethods)) {
+    // The published lists of payment methods disagree, so Zeni gives the official payment
+    // schedule and leaves the accepted methods to Sir Tim or staff (and logs the question).
+    const payments = zeniTopics.find((item) => item.id === 'payments');
+    context.state.flags.reason = 'payment_methods_review';
+    return payments
+      ? topicPlan(context, payments, { note: copy.paymentMethods, gap: conflict })
+      : offerStaff(context, copy.paymentReview, 'payment_methods_review', conflict);
+  }
   if (/\b(capacity|accommodate|maximum guests|max pax|kasya)\b/i.test(question)) {
     const faq = sources.find((source) => source.kind === 'faq' && /capacity/i.test(source.title));
     const policy = sources.find(
@@ -413,19 +531,30 @@ function reconciliationPlan(context: PlanContext): ReceptionistPlan | null {
 }
 
 function groundedAnswer(context: PlanContext): ReceptionistPlan {
-  const { state, copy, sources, redacted, topic } = context;
+  const { state, copy, sources, redacted, topic, text } = context;
   const reconciliation = reconciliationPlan(context);
   if (reconciliation) return reconciliation;
   // Names, emails or references in the question are not search terms.
   const searchText = redacted.replace(PLACEHOLDER, ' ');
   const previous = state.lastKnowledgeQuestion.replace(PLACEHOLDER, ' ');
-  const selected = rankSources(searchText, sources, previous).map((match) => match.source);
-  if (!selected.length)
-    return offerStaff(context, copy.knowledgeGap, 'knowledge_gap', {
-      reason: 'no_source',
-      question: redacted,
-      topic,
-    });
+  const selected = preferTitled(
+    searchText,
+    rankSources(searchText, sources, previous)
+      .map((match) => match.source)
+      // The published payment-methods list disagrees with other information; staff confirm it.
+      .filter((source) => !unverifiedPaymentMethods(source)),
+  );
+  const helpTopic = topicFromKeywords(text);
+  const bare = text.split(/\s+/).length <= 3;
+  if (!selected.length) {
+    const gap: ZeniGap = { reason: 'no_source', question: redacted, topic };
+    // A message that only names a topic ("lechon?", "corkage") gets that topic's official
+    // summary. A specific question nothing covers is logged and never guessed.
+    if (helpTopic && bare) return topicPlan(context, helpTopic, { gap });
+    const result = offerStaff(context, copy.knowledgeGap, 'knowledge_gap', gap);
+    result.reply.suggestions = copy.suggestions.welcome;
+    return result;
+  }
   const faqGroups = new Map<string, Set<string>>();
   for (const source of selected.filter((item) => item.kind === 'faq')) {
     const key = source.title.toLowerCase().replace(/\W/g, '');
@@ -441,18 +570,41 @@ function groundedAnswer(context: PlanContext): ReceptionistPlan {
       topic,
     });
   }
+  // A bare word several official answers share ("payment", "corkage") gets the topic summary.
+  // A staff-managed answer ranked first is always given as it is.
+  if (
+    helpTopic &&
+    bare &&
+    selected[0].topic &&
+    selected.filter((source) => source.topic && titleCoversQuestion(searchText, source)).length > 1
+  )
+    return topicPlan(context, helpTopic);
+  return answerFromSources(context, selected);
+}
+
+/** The reply for ranked sources; the first one is the answer. */
+function answerFromSources(context: PlanContext, selected: ChatSource[]): ReceptionistPlan {
+  const { state, copy, redacted, topic } = context;
+  const primary = selected[0];
+  const reference = sourceReference(primary);
+  // The same answer asked for again is acknowledged rather than pasted as if new.
+  const repeated = state.answeredRefs.includes(reference);
+  state.answeredRefs = [
+    ...state.answeredRefs.filter((item) => item !== reference),
+    reference,
+  ].slice(-12);
   rememberSources(state, selected);
   state.lastKnowledgeQuestion = redacted;
   state.lastAnswerTurn = state.turn;
   state.stage = state.stage === 'S7' ? 'S7' : 'S2';
-  const primary = selected[0];
   // Visiting hours are one short fact set; the appointment condition qualifies every day.
   const paragraph =
     primary.id === 'visits'
       ? primary.text.replaceAll('\n', '; ')
       : (primary.text.split('\n').find((line) => line.trim()) ?? '');
+  // Official FAQ answers are short reviewed paragraphs, so they are never cut.
   const excerpt =
-    primary.id === 'visits' || paragraph.length <= 420
+    primary.id === 'visits' || primary.kind === 'faq' || paragraph.length <= 420
       ? paragraph
       : paragraph.match(/^.{1,420}[.!?](?:\s|$)/)?.[0];
   if (excerpt && excerpt.trim().length <= 300)
@@ -468,16 +620,20 @@ function groundedAnswer(context: PlanContext): ReceptionistPlan {
     : cards.some((card) => card.kind === 'facility')
       ? [visitLink(state, copy, true)]
       : [];
-  const message = excerpt
-    ? `${excerpt.trim()} ${copy.answerFollowUp}`
-    : `${primary.title}. ${copy.answerFollowUp}`;
+  const helpTopic = primary.topic ? zeniTopics.find((item) => item.id === primary.topic) : null;
+  const followUp = copy.answerFollowUps[state.turn % copy.answerFollowUps.length];
+  const body = excerpt ? excerpt.trim() : `${primary.title}.`;
+  const message = `${repeated ? `${copy.repeatPrefix} ` : ''}${body} ${followUp}`;
   return plan(
     context,
     reply('answer', message, {
       sources: selected.map(sourceEvidence),
       cards,
       links,
-      suggestions: copy.suggestions.afterAnswer,
+      suggestions: helpTopic
+        ? topicFollowUps(helpTopic, primary, context.sources)
+        : copy.suggestions.afterAnswer,
+      actions: needsStaffOption(helpTopic) ? [staff(copy)] : [],
     }),
     { compose: { mode: 'answer', question: redacted, sources: selected } },
   );
@@ -623,6 +779,9 @@ export function planReceptionistTurn(
   if (!type) {
     const safety = safetyPlan(context);
     if (safety) return safety;
+    // A tapped topic chip, or a message that is only a topic's umbrella word ("payment").
+    const chip = topicFromLabel(text) ?? topicFromSummaryWord(text);
+    if (chip) return topicPlan(context, chip);
   }
 
   if (type === 'decline' || (!type && no(text))) {
@@ -653,6 +812,12 @@ export function planReceptionistTurn(
   const providedContact =
     before !== [state.client.name, state.client.email, state.client.phone].join('\n');
 
+  // "Can we reschedule?" is a question about the rule, answered from the official FAQ with a
+  // staff option; "please move my booking" asks staff to act and starts the hand-off.
+  if (!type && (intent === 'reschedule' || intent === 'cancel') && QUESTION.test(text)) {
+    applyChanges(state, changes, sources);
+    return groundedAnswer(context);
+  }
   if (type === 'request_human' || ['human', 'complaint', 'reschedule', 'cancel'].includes(intent)) {
     applyChanges(state, changes, sources);
     return handoffPlan(context, type === 'request_human' || intent === 'human');
@@ -738,6 +903,15 @@ export function planReceptionistTurn(
     return recommendPublishedOption(context);
   if (intent === 'comparison') return plan(context, reply('discovery', copy.comparison));
   if (intent === 'unclear' && text.split(/\s+/).length < 5) {
+    // Short questions such as "lechon" or "do kids eat free?" are answered when the official
+    // information covers them; otherwise Zeni asks what the guest is looking for.
+    const searchText = context.redacted.replace(PLACEHOLDER, ' ');
+    if (
+      rankSources(searchText, sources).some((match) => !unverifiedPaymentMethods(match.source)) ||
+      topicFromKeywords(text) ||
+      PAYMENT_METHODS.test(text)
+    )
+      return groundedAnswer(context);
     state.stage = 'S1';
     return plan(
       context,

@@ -10,8 +10,9 @@ import {
   type AutomationStatus,
 } from './catalog';
 import { AUTOMATION_POLICY, isCronConfigured, isMailConfigured } from './config';
-import { maskRecipients, sanitizeErrorMessage } from './privacy';
+import { maskEmail, maskRecipients, sanitizeErrorMessage } from './privacy';
 import { processDueJobs } from './processor';
+import { resolveStaffRecipients } from './recipients';
 import { LAST_RUN_STATE_KEY } from './run';
 import type { MailTransport } from './transport';
 
@@ -45,7 +46,7 @@ export async function readAutomationOverview(
   filter: AutomationStatus | null,
   now = new Date(),
 ): Promise<AutomationOverview> {
-  const [counts, dueNow, lastRun, jobs] = await Promise.all([
+  const [counts, dueNow, lastRun, jobs, staff] = await Promise.all([
     statusCounts(),
     prisma.adminOutbox.count({ where: { status: 'QUEUED', nextAttemptAt: { lte: now } } }),
     prisma.automationState.findUnique({ where: { key: LAST_RUN_STATE_KEY } }),
@@ -67,10 +68,12 @@ export async function readAutomationOverview(
         calendarMethod: true,
       },
     }),
+    resolveStaffRecipients(),
   ]);
   return {
     emailConfigured: isMailConfigured(),
     cronConfigured: isCronConfigured(),
+    staffRecipients: { source: staff.source, masked: staff.emails.map(maskEmail) },
     counts,
     dueNow,
     lastRun: lastRunView(lastRun),

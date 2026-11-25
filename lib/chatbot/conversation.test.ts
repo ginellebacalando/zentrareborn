@@ -7,6 +7,8 @@ import { captureSlots } from './slots';
 import { receptionistIntent } from './intent';
 import { websiteChatSources } from '@/config/chatbot';
 import { publicFaqs } from '@/config/public-faqs';
+import { zeniTopics } from '@/config/zeni-topics';
+import { faqChatSource, officialFaqSources } from './faq-sources';
 import type { ChatSource, ReceptionistAction } from './types';
 
 const NOW = new Date('2099-01-01T00:00:00Z');
@@ -31,7 +33,14 @@ const sources: ChatSource[] = [
   },
 ];
 
-function scenario() {
+/** Website sources plus Zion's official FAQ, in the order the live loader uses. */
+const officialSources: ChatSource[] = [
+  ...sources,
+  ...officialFaqSources(),
+  ...publicFaqs.map((faq) => faqChatSource(faq)),
+];
+
+function scenario(knowledge: ChatSource[] = sources) {
   const state = createConversation(randomUUID(), NOW);
   const say = (question: string, type?: ReceptionistAction['type'], value?: string) => {
     state.turn += 1;
@@ -39,7 +48,7 @@ function scenario() {
     return planReceptionistTurn(
       state,
       { question, turnId: randomUUID(), ...(type ? { action: { type, value } } : {}) },
-      sources,
+      knowledge,
       NOW,
     );
   };
@@ -355,10 +364,108 @@ test('ambiguous deposits and unreconciled payment methods are never quoted as on
       { question, turnId: randomUUID() },
       paymentSources,
     );
-    assert.equal(plan.reply.kind, 'handoff');
+    // The official payment schedule is given with a staff option; the older methods list that
+    // other information contradicts ("Cash, Check, Card…") is never quoted.
+    assert.equal(plan.reply.kind, 'answer', question);
     assert.deepEqual(plan.reply.sources, []);
-    assert.equal(plan.gap?.reason, 'conflict');
+    assert.match(plan.reply.message, /14 days before the event/);
+    assert.doesNotMatch(plan.reply.message, /We accept|\bcards?\b/i);
+    assert.match(plan.reply.message, /Sir Tim Soriano/);
+    assert.ok(plan.reply.actions?.some((item) => item.type === 'request_human'));
   }
+  // Asking which methods are accepted is logged so staff can publish one reconciled answer.
+  const methods = planReceptionistTurn(
+    createConversation(randomUUID()),
+    { question: 'What methods of payment do you accept?', turnId: randomUUID() },
+    paymentSources,
+  );
+  assert.equal(methods.gap?.reason, 'conflict');
+  assert.match(methods.reply.message, /which payment methods apply to your booking/);
+});
+
+test('Zeni answers Zion’s official FAQ, including short and Taglish questions', () => {
+  const title = (id: string) => officialSources.find((source) => source.id === id)?.title;
+  const cases: Array<[question: string, expected: string]> = [
+    ['how do I pay?', 'topic:payments'],
+    ['payment', 'topic:payments'],
+    ['is the reservation fee refundable?', 'faq-payments-3'],
+    ['when are payments due?', 'faq-payments-1'],
+    ['can we reschedule our wedding?', 'faq-payments-5|faq-changes-4'],
+    ['what if we cancel?', 'faq-payments-6'],
+    ['do you allow outside food?', 'faq-food-1'],
+    ['lechon', 'faq-food-1'],
+    ['may parking ba?', 'faq-venue-3'],
+    ['what if it rains?', 'faq-venue-2'],
+    ['corkage for alcohol?', 'faq-venue-6'],
+    ['do kids eat free?', 'faq-food-6'],
+    ['can we bring our own suppliers?', 'faq-suppliers-3'],
+    ['who do I contact about my SOA?', 'faq-changes-5'],
+    ['what motifs do you have?', 'zeni-extra-motifs'],
+    ['how many hours can we use the venue?', 'faq-venue-1'],
+    ['pwede ba mag-advance payment?', 'faq-payments-2'],
+    ['Food & catering', 'topic:food'],
+  ];
+  for (const [question, expected] of cases) {
+    const plan = planReceptionistTurn(
+      createConversation(randomUUID(), NOW),
+      { question, turnId: randomUUID() },
+      officialSources,
+      NOW,
+    );
+    assert.equal(plan.reply.kind, 'answer', question);
+    if (expected.startsWith('topic:')) {
+      const topic = zeniTopics.find((item) => `topic:${item.id}` === expected);
+      assert.ok(topic && plan.reply.message.startsWith(topic.intro), question);
+    } else
+      assert.ok(
+        expected.split('|').some((id) => plan.reply.sources[0]?.title === title(id)),
+        `${question} → ${plan.reply.sources[0]?.title}`,
+      );
+  }
+});
+
+test('topics give an official summary with follow-ups and keep a staff option for payments', () => {
+  const { say } = scenario(officialSources);
+  const payments = say('Payments & booking');
+  assert.equal(payments.reply.kind, 'answer');
+  assert.match(payments.reply.message, /Reservation fee: non-refundable/);
+  assert.match(payments.reply.message, /Sir Tim Soriano/);
+  assert.deepEqual(payments.reply.suggestions, [...zeniTopics[0].followUps]);
+  assert.ok(payments.reply.actions?.some((item) => item.type === 'request_human'));
+  const food = say('Food & catering');
+  assert.equal(food.reply.actions?.length, 0);
+  // Answering one question offers the topic's other questions, not the one just answered.
+  const kids = say('do kids eat free?');
+  assert.ok(!kids.reply.suggestions.includes('Do kids eat for free?'));
+  assert.ok(kids.reply.suggestions.length > 0);
+});
+
+test('a repeated question is acknowledged and closing lines vary', () => {
+  const { say } = scenario(officialSources);
+  const first = say('is there parking?');
+  const second = say('is there parking for guests?');
+  assert.match(first.reply.message, /^Yes, we have on-site parking/);
+  assert.match(second.reply.message, /^Same as before: Yes, we have on-site parking/);
+  const closing = (message: string) => message.slice(message.lastIndexOf('.') + 1).trim();
+  assert.notEqual(closing(first.reply.message), closing(second.reply.message));
+});
+
+test('questions about rescheduling are answered while change requests still go to staff', () => {
+  const { say } = scenario(officialSources);
+  const question = say('Can we reschedule our wedding?');
+  assert.equal(question.reply.kind, 'answer');
+  assert.match(question.reply.message, /₱20,000 rescheduling fee/);
+  assert.ok(question.reply.actions?.some((item) => item.type === 'request_human'));
+  const request = scenario(officialSources).say('I need to reschedule my booking to next month');
+  assert.equal(request.reply.kind, 'escalation');
+});
+
+test('a specific question the official information does not cover is never guessed', () => {
+  const { say } = scenario(officialSources);
+  const plan = say('Can we fly drones over the garden during the ceremony?');
+  assert.equal(plan.reply.kind, 'handoff');
+  assert.equal(plan.gap?.reason, 'no_source');
+  assert.ok(plan.reply.suggestions.includes('Payments & booking'));
 });
 
 test('availability snapshots expire after five minutes without changing the saved date', () => {

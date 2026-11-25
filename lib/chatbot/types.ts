@@ -7,6 +7,8 @@ export type ChatSource = {
   href: string;
   keywords: string[];
   kind: 'faq' | 'package' | 'policy' | 'venue' | 'contact';
+  /** The help topic of an official FAQ answer, used for related follow-up chips. */
+  topic?: ZeniTopicId;
   revision?: string;
   /** Present only for a package version currently published to visitors. */
   offering?: {
@@ -111,4 +113,16 @@ export type ChatReply = {
   live?: { status: 'WAITING' };
 };
 
-export type PublicFaq = { id: string; question: string; answer: string; tags?: string[] };
+/** The six help topics of Zion's official chatbot knowledge base (config/zeni-topics.ts). */
+export type ZeniTopicId = 'payments' | 'food' | 'venue' | 'planning' | 'suppliers' | 'changes';
+
+export type PublicFaq = {
+  id: string;
+  question: string;
+  /** The official wording, shown on the /faq page. */
+  answer: string;
+  tags?: string[];
+  /** The same facts in the casual wording Zion approved for the chatbot; Zeni prefers it. */
+  chatAnswer?: string;
+  topic?: ZeniTopicId;
+};

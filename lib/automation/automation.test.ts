@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
+import { serverStaffRecipients } from './config';
 import { classifyDeliveryError, type MailTransport, type OutgoingMail } from './transport';
 import { maskEmail, maskRecipients, sanitizeErrorMessage } from './privacy';
 import { addDays, daysBetween, manilaDay, manilaDayStart, manilaHour } from './time';
@@ -100,6 +101,39 @@ test('pure helpers: masking, error classification, Manila days', () => {
   assert.equal(daysBetween('2026-12-28', '2027-01-04'), 7);
 });
 
+test('the server default staff inboxes come from STAFF_NOTIFICATION_EMAIL, else SMTP_USER', () => {
+  clearMail();
+  try {
+    assert.deepEqual(serverStaffRecipients(), { emails: [], source: 'none' });
+    process.env.SMTP_USER = 'Venue@Example.test';
+    assert.deepEqual(serverStaffRecipients(), {
+      emails: ['venue@example.test'],
+      source: 'sending-account',
+    });
+    process.env.STAFF_NOTIFICATION_EMAIL = 'one@example.test, Two@example.test';
+    assert.deepEqual(serverStaffRecipients(), {
+      emails: ['one@example.test', 'two@example.test'],
+      source: 'environment',
+    });
+    process.env.STAFF_NOTIFICATION_EMAIL = 'not-an-address';
+    assert.deepEqual(
+      serverStaffRecipients(),
+      { emails: [], source: 'none' },
+      'an invalid list does not fall back to the sending account',
+    );
+    process.env.STAFF_NOTIFICATION_EMAIL = [1, 2, 3, 4, 5]
+      .map((index) => `${'x'.repeat(50)}${index}@example.test`)
+      .join(',');
+    assert.deepEqual(
+      serverStaffRecipients(),
+      { emails: [], source: 'none' },
+      'the joined list must fit the 255-character recipient column',
+    );
+  } finally {
+    clearMail();
+  }
+});
+
 test(
   'automation outbox, delivery, scheduling, admin recovery and cron in an isolated database',
   { timeout: 240000 },
@@ -169,6 +203,60 @@ test(
     };
     const row = (id: string) => prisma.adminOutbox.findUniqueOrThrow({ where: { id } });
     const t0 = new Date('2031-01-06T02:00:00Z');
+    const { adminMutate } = await import('../admin/service');
+    const owner = {
+      id: 'automation-owner',
+      email: 'owner@example.test',
+      username: 'owner',
+      fullName: 'Automation Owner',
+      profileImage: null,
+      contactNumber: null,
+      role: 'SUPERADMIN' as const,
+      status: 'ACTIVE' as const,
+      mustChangePassword: false,
+      lastPasswordChangedAt: null,
+    };
+    /** A staff-entered request `daysAhead` days out; separate dates keep confirmations apart. */
+    const bookingRequest = (email: string, daysAhead: number) => {
+      const startsAt = new Date(Date.now() + daysAhead * 86_400_000);
+      return {
+        op: 'create-booking',
+        booking: {
+          clientName: 'Calendar Client',
+          email,
+          phone: '09123456789',
+          eventType: 'Wedding',
+          packageName: 'Classic',
+          venue: 'Zion Events Place',
+          startsAt: startsAt.toISOString(),
+          endsAt: new Date(startsAt.getTime() + 5 * 3_600_000).toISOString(),
+          guests: 80,
+          totalCents: 10_000_000,
+          depositCents: 0,
+          paymentRule: 'NO_PAYMENT_REQUIRED',
+          notes: '',
+        },
+      };
+    };
+    const createBooking = async (email: string, daysAhead: number) =>
+      ((await adminMutate(bookingRequest(email, daysAhead), owner)) as { id: string }).id;
+    const decide = async (id: string, action: string) => {
+      const current = await prisma.adminBooking.findUniqueOrThrow({ where: { id } });
+      await adminMutate(
+        {
+          op: 'booking-action',
+          id,
+          revision: current.revision,
+          action,
+          reason: 'Verified by phone call.',
+        },
+        owner,
+      );
+      return prisma.adminBooking.findUniqueOrThrow({ where: { id } });
+    };
+    // Calendar lines longer than 75 octets are folded; match on the unfolded text.
+    const unfold = (calendar: string | null) => (calendar ?? '').replace(/\r\n /g, '');
+    const calendarUid = (calendar: string | null) => calendar?.match(/\r\nUID:([^\r]+)/)?.[1];
 
     try {
       await t.test(
@@ -570,19 +658,6 @@ test(
         'confirmation sends REQUEST; cancelling sends CANCEL with a higher SEQUENCE',
         async () => {
           clearMail();
-          const { adminMutate } = await import('../admin/service');
-          const owner = {
-            id: 'automation-owner',
-            email: 'owner@example.test',
-            username: 'owner',
-            fullName: 'Automation Owner',
-            profileImage: null,
-            contactNumber: null,
-            role: 'SUPERADMIN' as const,
-            status: 'ACTIVE' as const,
-            mustChangePassword: false,
-            lastPasswordChangedAt: null,
-          };
           await adminMutate(
             {
               op: 'settings',
@@ -594,45 +669,10 @@ test(
             },
             owner,
           );
-          const startsAt = new Date(Date.now() + 20 * 86_400_000);
-          const booking = (bookingEmail: string) => ({
-            op: 'create-booking',
-            booking: {
-              clientName: 'Calendar Client',
-              email: bookingEmail,
-              phone: '09123456789',
-              eventType: 'Wedding',
-              packageName: 'Classic',
-              venue: 'Zion Events Place',
-              startsAt: startsAt.toISOString(),
-              endsAt: new Date(startsAt.getTime() + 5 * 3_600_000).toISOString(),
-              guests: 80,
-              totalCents: 10_000_000,
-              depositCents: 0,
-              paymentRule: 'NO_PAYMENT_REQUIRED',
-              notes: '',
-            },
-          });
-          const act = async (id: string, action: string) => {
-            const current = await prisma.adminBooking.findUniqueOrThrow({ where: { id } });
-            await adminMutate(
-              {
-                op: 'booking-action',
-                id,
-                revision: current.revision,
-                action,
-                reason: 'Verified by phone call.',
-              },
-              owner,
-            );
-            return prisma.adminBooking.findUniqueOrThrow({ where: { id } });
-          };
-          const { id } = (await adminMutate(booking('calendar@example.test'), owner)) as {
-            id: string;
-          };
-          await act(id, 'VERIFY');
-          await act(id, 'APPROVE');
-          const confirmed = await act(id, 'CONFIRM');
+          const id = await createBooking('calendar@example.test', 20);
+          await decide(id, 'VERIFY');
+          await decide(id, 'APPROVE');
+          const confirmed = await decide(id, 'CONFIRM');
           const request = await prisma.adminOutbox.findFirstOrThrow({
             where: { bookingId: id, event: 'RESERVATION_CONFIRMED' },
           });
@@ -642,14 +682,13 @@ test(
             new RegExp(`\\r\\nSEQUENCE:${confirmed.revision}\\r\\n`),
           );
           assert.match(request.body, /calendar invitation \(invite\.ics\) is attached/);
-          const cancelled = await act(id, 'CANCEL');
+          const cancelled = await decide(id, 'CANCEL');
           assert.ok(cancelled.revision > confirmed.revision);
           const cancel = await prisma.adminOutbox.findFirstOrThrow({
             where: { bookingId: id, event: 'CANCEL' },
           });
-          const uid = (calendar: string | null) => calendar?.match(/\r\nUID:([^\r]+)/)?.[1];
           assert.equal(cancel.calendarMethod, 'CANCEL');
-          assert.equal(uid(cancel.calendar), uid(request.calendar));
+          assert.equal(calendarUid(cancel.calendar), calendarUid(request.calendar));
           assert.match(cancel.calendar ?? '', /\r\nMETHOD:CANCEL\r\n/);
           assert.match(
             cancel.calendar ?? '',
@@ -661,16 +700,165 @@ test(
             'EXPIRED',
             'an unsent confirmation is not sent after cancellation',
           );
+          assert.equal(
+            await prisma.adminOutbox.count({
+              where: { bookingId: id, event: { startsWith: 'STAFF_CALENDAR' } },
+            }),
+            0,
+            'no staff inbox is configured, so no staff calendar copy is prepared',
+          );
 
-          const { id: unconfirmed } = (await adminMutate(
-            booking('requested@example.test'),
-            owner,
-          )) as { id: string };
-          await act(unconfirmed, 'CANCEL');
+          const unconfirmed = await createBooking('requested@example.test', 20);
+          await decide(unconfirmed, 'CANCEL');
           const plainCancel = await prisma.adminOutbox.findFirstOrThrow({
             where: { bookingId: unconfirmed, event: 'CANCEL' },
           });
           assert.equal(plainCancel.calendar, null, 'no invite was sent, so no cancellation update');
+        },
+      );
+
+      await t.test(
+        'staff calendars get their own copy of the event and Settings inboxes take precedence',
+        async () => {
+          configureMail();
+          try {
+            const id = await createBooking('staff-calendar@example.test', 30);
+            await decide(id, 'VERIFY');
+            await decide(id, 'APPROVE');
+            const confirmed = await decide(id, 'CONFIRM');
+            const notice = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: id, event: 'RESERVATION_CONFIRMED' },
+            });
+            const invitation = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: id, event: 'STAFF_CALENDAR_REQUEST' },
+            });
+            assert.equal(invitation.recipient, 'staff@example.test');
+            assert.equal(invitation.replyTo, 'staff-calendar@example.test');
+            assert.equal(invitation.calendarMethod, 'REQUEST');
+            assert.equal(
+              invitation.idempotencyKey,
+              `booking:${id}:STAFF_CALENDAR_REQUEST:r${confirmed.revision}`,
+            );
+            assert.match(invitation.subject, /^Confirmed: Wedding for Calendar Client, /);
+            assert.match(invitation.body, /Reservation: ZION-/);
+            const staffRequest = unfold(invitation.calendar);
+            const clientRequest = unfold(notice.calendar);
+            assert.match(staffRequest, /\r\nMETHOD:REQUEST\r\n/);
+            assert.equal(calendarUid(staffRequest), calendarUid(clientRequest));
+            assert.match(staffRequest, new RegExp(`\\r\\nSEQUENCE:${confirmed.revision}\\r\\n`));
+            assert.match(staffRequest, /\r\nATTENDEE;[^\r\n]*:mailto:staff@example\.test\r\n/);
+            assert.doesNotMatch(staffRequest, /mailto:staff-calendar@example\.test/);
+            assert.match(staffRequest, /\r\nSUMMARY:Wedding: Calendar Client \(ZION-/);
+            assert.match(
+              clientRequest,
+              /\r\nATTENDEE;[^\r\n]*:mailto:staff-calendar@example\.test\r\n/,
+            );
+            assert.doesNotMatch(clientRequest, /mailto:staff@/, 'the client copy is unchanged');
+
+            const fake = fakeTransport(() => {});
+            const delivery = await processDueJobs({
+              ids: [notice.id, invitation.id],
+              transport: fake.transport,
+            });
+            assert.equal(delivery.sent, 2);
+            const staffMail = fake.sent.find((message) => message.to === 'staff@example.test');
+            assert.equal(staffMail?.calendar?.method, 'REQUEST');
+            assert.equal(staffMail?.replyTo, 'staff-calendar@example.test');
+
+            // The owner saves new inboxes: new staff email goes there instead of the server default.
+            const saved = ['owner@example.test', 'partner@example.test'];
+            await prisma.systemSetting.create({
+              data: {
+                id: 'singleton',
+                settings: { admin: { staffNotifications: { emails: saved } } },
+              },
+            });
+            await enqueueInquiryReceived(prisma, {
+              id: 'settings-inbox',
+              inquiryReference: 'INQ-SETTINGS-1',
+              fullName: 'Settings Visitor',
+              email: 'settings-visitor@example.test',
+              phoneNumber: null,
+              eventInterest: null,
+              packageInterest: null,
+              preferredContactTime: null,
+              sourcePage: 'contact_us',
+              message: 'Checking which inbox receives this alert.',
+              submittedAt: new Date(),
+            });
+            const alert = await prisma.adminOutbox.findUniqueOrThrow({
+              where: { idempotencyKey: 'inquiry:settings-inbox:staff' },
+            });
+            assert.equal(alert.recipient, saved.join(', '));
+            const alertMail = fakeTransport(() => {});
+            await processDueJobs({ ids: [alert.id], transport: alertMail.transport });
+            assert.deepEqual(
+              alertMail.sent.map((message) => message.to),
+              [saved.join(', ')],
+            );
+            const overview = await readAutomationOverview(null);
+            assert.deepEqual(overview.staffRecipients, {
+              source: 'settings',
+              masked: ['o***@example.test', 'p***@example.test'],
+            });
+            assert.ok(!JSON.stringify(overview).includes('owner@example.test'));
+
+            // The cancellation still reaches the calendar that holds the event.
+            const cancelled = await decide(id, 'CANCEL');
+            const cancellation = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: id, event: 'STAFF_CALENDAR_CANCEL' },
+            });
+            assert.equal(cancellation.recipient, 'staff@example.test');
+            assert.equal(cancellation.calendarMethod, 'CANCEL');
+            assert.match(cancellation.subject, /^Cancelled: Wedding for Calendar Client, /);
+            const staffCancel = unfold(cancellation.calendar);
+            assert.match(staffCancel, /\r\nMETHOD:CANCEL\r\n/);
+            assert.equal(calendarUid(staffCancel), calendarUid(staffRequest));
+            assert.ok(cancelled.revision > confirmed.revision);
+            assert.match(staffCancel, new RegExp(`\\r\\nSEQUENCE:${cancelled.revision}\\r\\n`));
+            assert.match(staffCancel, /\r\nATTENDEE;[^\r\n]*:mailto:staff@example\.test\r\n/);
+
+            // An invitation retried after the cancellation is skipped instead of re-adding it.
+            const retried = await addJob('test:staff-retry', new Date(), {
+              event: 'STAFF_CALENDAR_REQUEST',
+              recipient: 'staff@example.test',
+              bookingId: id,
+            });
+            const lateMail = fakeTransport(() => {});
+            const late = await processDueJobs({ ids: [retried], transport: lateMail.transport });
+            assert.equal(late.skipped, 1);
+            assert.equal(lateMail.calls(), 0);
+            assert.match((await row(retried)).lastError ?? '', /no longer confirmed/);
+
+            // A new confirmation invites the saved inboxes. Cancelling before it is sent
+            // supersedes it, and no calendar holds the event, so no staff cancellation follows.
+            const second = await createBooking('staff-settings@example.test', 40);
+            await decide(second, 'VERIFY');
+            await decide(second, 'APPROVE');
+            await decide(second, 'CONFIRM');
+            const unsent = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: second, event: 'STAFF_CALENDAR_REQUEST' },
+            });
+            assert.equal(unsent.recipient, saved.join(', '));
+            assert.match(
+              unfold(unsent.calendar),
+              /mailto:owner@example\.test\r\n[\s\S]*mailto:partner@example\.test\r\n/,
+            );
+            await decide(second, 'CANCEL');
+            assert.equal((await row(unsent.id)).status, 'EXPIRED');
+            assert.equal(
+              await prisma.adminOutbox.count({
+                where: { bookingId: second, event: 'STAFF_CALENDAR_CANCEL' },
+              }),
+              0,
+            );
+          } finally {
+            await prisma.systemSetting.deleteMany();
+            await prisma.adminOutbox.deleteMany({
+              where: { idempotencyKey: { startsWith: 'test:' } },
+            });
+            clearMail();
+          }
         },
       );
 
@@ -773,6 +961,7 @@ test(
         await addJob('test:masked', new Date(), { recipient: 'juan@gmail.com' });
         const overview = await readAutomationOverview(null);
         assert.equal(overview.emailConfigured, false);
+        assert.deepEqual(overview.staffRecipients, { source: 'none', masked: [] });
         assert.ok(overview.jobs.some((job) => job.recipient === 'j***@gmail.com'));
         assert.ok(!JSON.stringify(overview).includes('juan@gmail.com'));
         assert.ok(!JSON.stringify(overview).includes('week@example.test'));

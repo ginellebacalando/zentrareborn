@@ -1,7 +1,8 @@
 import 'server-only';
 
-import { AUTOMATION_POLICY, applicationUrl, staffRecipients } from './config';
+import { AUTOMATION_POLICY, applicationUrl } from './config';
 import { enqueueJobs, type OutboxDb } from './outbox';
+import { resolveStaffRecipients } from './recipients';
 import {
   bookingRequestAcknowledgement,
   bookingRequestStaffAlert,
@@ -24,7 +25,7 @@ export async function enqueueWebsiteBookingRequest(
 ) {
   const email = booking.email.trim().toLowerCase();
   const since = new Date(now.getTime() - ONE_DAY_MS);
-  const [alertsToday, acknowledgementsToRecipient] = await Promise.all([
+  const [alertsToday, acknowledgementsToRecipient, staff] = await Promise.all([
     db.adminOutbox.count({
       where: {
         event: 'BOOKING_REQUEST_STAFF_ALERT',
@@ -40,6 +41,7 @@ export async function enqueueWebsiteBookingRequest(
         createdAt: { gte: since },
       },
     }),
+    resolveStaffRecipients(db),
   ]);
   const appUrl = applicationUrl();
   return enqueueJobs(
@@ -48,7 +50,7 @@ export async function enqueueWebsiteBookingRequest(
       {
         idempotencyKey: `booking:${booking.id}:BOOKING_REQUEST_STAFF_ALERT`,
         event: 'BOOKING_REQUEST_STAFF_ALERT',
-        recipient: staffRecipients(),
+        recipient: staff.list,
         replyTo: email,
         bookingId: booking.id,
         ...bookingRequestStaffAlert({

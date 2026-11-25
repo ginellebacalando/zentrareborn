@@ -1,5 +1,62 @@
 # Design change log
 
+## 25 November 2026 — Staff notification emails in Settings, staff calendar invitations
+
+User task: the owner wants booking calendar notifications in their own Gmail, with an admin setting
+that names the address(es) that receive them and can be changed later.
+
+Affected screens and files: Admin → Settings → Communications (`components/admin/SystemSettingsForm.tsx`,
+`admin.module.css`): a "Staff notification emails" text field below the alert switches, with a
+persistent label, help text and an inline error (`role="alert"`, `aria-invalid`, `aria-describedby`).
+A bad list opens the section and moves focus to the field. Admin → Automation
+(`components/admin/AutomationPanel.tsx` and `.module.css`): a third Setup item, "Staff notifications",
+showing the partly hidden addresses and where they come from. Server: `lib/automation/recipients.ts`,
+`lib/automation/bookings.ts` (staff calendar invitation and cancellation), `lib/admin/preferences.ts`.
+Tokens only; no new colors, type sizes or motion.
+
+Verification: local preview at desktop width and 320 px. An invalid list showed the message and
+focused the field; two valid addresses saved in lower case; Automation listed them partly hidden and
+wrapped at 320 px with no sideways scrolling. `npm run test:admin` (23) and `npm run test:automation`
+(27) cover saving, validation, roles, the audit entry, the server default, and the staff invitation
+and cancellation.
+
+Limitations: no screen-reader pass; dark theme and 400% zoom not checked for the new field. Whether
+Google Calendar adds the invitation automatically depends on the receiving account's "Add
+invitations to my calendar" setting. The AGENTS.md hand-off to the team chats could not be sent from
+this machine.
+
+## 25 November 2026 — Zeni answers from Zion's official FAQ, with topic chips
+
+User task: Zeni kept sending guests to staff and repeating itself; it should answer everything Zion's
+official documents cover ("zion info" and the FAQ PDF), still answer payment questions while offering
+the admin, and not repeat the same text.
+
+Affected screens and files: the Zeni window on every public page. `config/zeni-topics.ts` (new: six
+topics with keywords, summaries, follow-ups and contacts), `config/public-faqs.ts` (casual chatbot
+wording and a topic for each official answer, plus 15 Zeni-only follow-up questions),
+`lib/chatbot/faq-sources.ts` (new), `lib/chatbot/receptionist.ts`, `lib/chatbot/retrieval.ts`,
+`lib/chatbot/conversation.ts`, `lib/chatbot/types.ts`, `config/chatbot-receptionist.ts` (English and
+Taglish copy), `components/chatbot/Chatbot.tsx` (up to 7 chips), `services/chatbot/sources.ts`,
+`services/chatbot/admin-overview.ts`, `docs/chatbot.md`.
+
+- Welcome: "Hi! I'm Zeni from Zion Events Place. Tap a topic below for quick answers, or just type your
+  question." with seven outlined chips (six topics and "Check a date"); they wrap at 320 px.
+- Topic summaries are a short intro, one bulleted fact per line (the bubble keeps line breaks), and the
+  contact line, followed by an "All FAQs" link, a Talk to staff button for payments and changes, and
+  three follow-up chips. No new colors, type sizes or motion.
+
+Verification: an 18-question probe against the local preview went from 7 good answers to 18 (short,
+Taglish, payment, reschedule, cancel and "outside food" questions now answer from the official FAQ).
+`npm run test:chatbot` passes with five new tests (the probe's questions, topic chips and umbrella words,
+repeated questions, reschedule questions versus requests, and "never guess" for uncovered questions);
+one test now expects the payment-methods question to give the official schedule with a staff option
+instead of a bare hand-off, still never quoting the conflicting methods list. Checked at 320 px: the
+welcome, the seven chips and a payments summary.
+
+Limitations: without a Gemini key the answers are Zion's approved FAQ wording, chosen by keyword
+matching; with a key the model rephrases them from the same sources. Capacity questions still go to
+staff because the published figures differ (120 versus 130). Not checked with a screen reader.
+
 ## 25 November 2026 — Admin sign-in accepts a username
 
 User task: sign in to the admin with a short name ("zentra.bsit.pup") instead of an email address.

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CircleSlash,
   Clock3,
+  Inbox,
   LoaderCircle,
   MailCheck,
   MailWarning,
@@ -23,6 +24,7 @@ import {
   type AutomationJobView,
   type AutomationOverview,
   type AutomationStatus,
+  type StaffRecipientSource,
 } from '@/lib/automation/catalog';
 import styles from './AutomationPanel.module.css';
 
@@ -40,6 +42,14 @@ const STATUS_TONES: Record<AutomationStatus, string> = {
   ACCEPTED: styles.toneSuccess,
   REVIEW_REQUIRED: styles.toneDanger,
   EXPIRED: styles.toneNeutral,
+};
+const STAFF_SOURCE_NOTES: Record<StaffRecipientSource, string> = {
+  settings: 'Saved in Settings under Communications.',
+  environment:
+    'Server default (STAFF_NOTIFICATION_EMAIL). Saving staff notification emails in Settings replaces it.',
+  'sending-account':
+    'Server default: the sending account (SMTP_USER). Saving staff notification emails in Settings replaces it.',
+  none: 'A super administrator can add staff notification emails in Settings under Communications.',
 };
 const dateTime = new Intl.DateTimeFormat('en-PH', {
   timeZone: 'Asia/Manila',
@@ -195,8 +205,9 @@ export default function AutomationPanel() {
           <h1 id="automation-title">Automation</h1>
           <p>
             Emails the system sends on its own: inquiry alerts and acknowledgements, booking notices
-            with calendar invitations, event reminders and the daily staff digest. Every email is
-            saved first, then delivered; nothing is shown as sent until the mail server accepts it.
+            with calendar invitations for the client and the staff, event reminders and the daily
+            staff digest. Every email is saved first, then delivered; nothing is shown as sent until
+            the mail server accepts it.
           </p>
         </div>
         <div className={styles.headerActions}>
@@ -250,7 +261,7 @@ export default function AutomationPanel() {
           <section className={styles.card} aria-labelledby="automation-setup">
             <h2 id="automation-setup">Setup</h2>
             <p className={styles.sectionIntro}>
-              Only whether each setting is present is shown here. Values stay on the server.
+              Passwords and secrets stay on the server. Staff addresses are partly hidden.
             </p>
             <ul className={styles.config}>
               <li className={styles.configItem}>
@@ -280,6 +291,19 @@ export default function AutomationPanel() {
                       : 'No scheduled run has been recorded yet.'}{' '}
                     {data.dueNow > 0 &&
                       `${data.dueNow} email${data.dueNow === 1 ? ' is' : 's are'} due now.`}
+                  </p>
+                </div>
+              </li>
+              <li className={styles.configItem}>
+                <Inbox size={22} aria-hidden="true" />
+                <div>
+                  <h3>Staff notifications</h3>
+                  <ConfigBadge configured={data.staffRecipients.masked.length > 0} />
+                  <p>
+                    {data.staffRecipients.masked.length
+                      ? `Staff alerts, the daily digest and calendar invitations for confirmed bookings go to ${data.staffRecipients.masked.join(', ')}.`
+                      : 'No valid staff address: staff alerts and the daily digest wait, and confirmed bookings send no staff calendar invitation.'}{' '}
+                    {STAFF_SOURCE_NOTES[data.staffRecipients.source]}
                   </p>
                 </div>
               </li>

@@ -1,9 +1,10 @@
 import 'server-only';
 
 import { prisma } from '@/lib/prisma';
-import { AUTOMATION_POLICY, applicationUrl, staffRecipients } from './config';
+import { AUTOMATION_POLICY, applicationUrl } from './config';
 import { enqueueInquiryReceived, inquiryJobKey, inquiryNotificationSelect } from './inquiries';
 import { enqueueJobs, type NewAutomationJob } from './outbox';
+import { resolveStaffRecipients } from './recipients';
 import { dailyDigest, eventReminder } from './templates';
 import { addDays, daysBetween, manilaDay, manilaDayStart, manilaHour, ONE_DAY_MS } from './time';
 
@@ -116,7 +117,7 @@ export async function scheduleDailyDigest(now = new Date()) {
   const dayAfterStart = manilaDayStart(addDays(day, 2));
   const since = new Date(now.getTime() - ONE_DAY_MS);
   const eventSelect = { reference: true, clientName: true, eventType: true, startsAt: true };
-  const [today, tomorrow, newInquiries, inquiries, awaitingApproval, failedEmails] =
+  const [today, tomorrow, newInquiries, inquiries, awaitingApproval, failedEmails, staff] =
     await Promise.all([
       prisma.adminBooking.findMany({
         where: { reservation: 'CONFIRMED', startsAt: { gte: todayStart, lt: tomorrowStart } },
@@ -139,6 +140,7 @@ export async function scheduleDailyDigest(now = new Date()) {
       }),
       prisma.adminBooking.count({ where: { approval: 'PENDING', reservation: 'REQUESTED' } }),
       prisma.adminOutbox.count({ where: { status: 'REVIEW_REQUIRED' } }),
+      resolveStaffRecipients(),
     ]);
   const appUrl = applicationUrl();
   const digest = dailyDigest({
@@ -162,7 +164,7 @@ export async function scheduleDailyDigest(now = new Date()) {
         {
           idempotencyKey: key,
           event: 'DAILY_DIGEST',
-          recipient: staffRecipients(),
+          recipient: staff.list,
           ...digest,
           // A digest is only useful on its own day.
           expiresAt: tomorrowStart,

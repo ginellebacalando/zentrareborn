@@ -21,7 +21,18 @@ Zeni never reserves a date, creates or changes a booking, takes payment or confi
 | Output validation | `lib/chatbot/llm-validation.ts`                                      | Rejects empty or long text (over 700 characters), web addresses, site paths other than public pages, contact details, amounts or numbers not found in the sources, spelled-out amounts, placeholders and booking or availability claims.                     |
 | Unanswered log    | `services/chatbot/gaps.ts`                                           | Redacted questions with no source, a source conflict, a model "not covered" answer, or a staff request right after a question. Logged once per conversation.                                                                                                 |
 
-If the model is off, over its limit, slow, blocked, malformed or rejected by validation, Zeni sends the deterministic answer: the published excerpt, its sources and the same buttons. Questions that no published source covers get an honest "I don't have that yet" and a staff offer; they are not sent to the model.
+If the model is off, over its limit, slow, blocked, malformed or rejected by validation, Zeni sends the deterministic answer: the published excerpt, its sources and the same buttons. Questions that no published source covers get an honest "I don't have that yet", the topic chips and a staff offer; they are not sent to the model.
+
+### Answering before handing off (25 November 2026)
+
+Zion's official chatbot knowledge base ("zion info") and FAQ define six help topics, kept in `config/zeni-topics.ts`: Payments & booking, Food & catering, Venue & setup, Planning & styling, Suppliers & corkage, and Changes & contacts. Each topic has keywords, a summary, follow-up questions and the contact for what Zeni cannot handle (payments, pricing and SOA: Sir Tim Soriano or the Zion Facebook page; planning: the Head Coordinator or the Zion group chat).
+
+- **Welcome and chips:** the welcome offers the six topics and "Check a date". Tapping a topic, or sending only a topic's umbrella word ("payment", "food", "corkage"), shows that topic's summary with its follow-up questions and an "All FAQs" link.
+- **Short questions are answered:** a short or unclear message ("lechon", "do kids eat free?") is searched like any question; Zeni asks what the guest is looking for only when nothing official covers it.
+- **Payments:** payment questions are answered from the official FAQ with a **Talk to staff** button. Because the older built-in list of payment methods ("Cash, Check, Card…") disagrees with other information, it is never quoted; asking which methods are accepted gives the official payment schedule, points to Sir Tim Soriano or the Zion Facebook page and logs the question as a conflict for staff.
+- **Changes:** "Can we reschedule?" or "What if we cancel?" is answered from the FAQ with a staff button; "please move my booking" still starts the staff hand-off.
+- **Ties:** among equally good matches, Zeni prefers a source whose title covers the question, then a direct FAQ answer over a long policy section, then the most specific title. Staff-managed FAQs come before the official FAQ, and the older built-in list comes last.
+- **No repeats:** answers end with one of three closing lines in turn, an answer given earlier in the conversation opens with "Same as before:", and follow-up chips never lead back to the answer just given.
 
 ## Language model configuration (server only)
 
@@ -48,10 +59,11 @@ Google's free tier may use prompts and responses to improve its products, so **n
 
 - Location, email and visiting hours share `config/brand.ts`. Policies and terms use the public pages' configuration.
 - Facility descriptions and photos share `config/public-facilities.ts`; event descriptions and photos share `config/event-package-pages.ts` (eligible only while packages are visible).
-- FAQs use the currently published, visible, effective version in an active visible category. Hidden, archived, draft, future and expired versions are excluded. Until managed FAQs exist, the FAQ page's built-in answers are used.
+- FAQs use the currently published, visible, effective version in an active visible category. Hidden, archived, draft, future and expired versions are excluded. Until managed FAQs exist, the built-in answers in `config/public-faqs.ts` (`publicFaqs`) are used.
+- Zion's official FAQ is always included while FAQs are visible (`lib/chatbot/faq-sources.ts`): the /faq page entries (`faqPageEntries`) plus Zeni-only follow-up questions from the same documents (`zeniExtraFaqs`), except a question a managed or built-in FAQ already answers. Each entry keeps the official wording for /faq and the casual wording Zion approved for the chatbot (`chatAnswer`), which Zeni uses, plus its help topic. The admin Zeni page counts these answers too.
 - Package facts come only from `package_versions.snapshot_data` at `current_version` for active, visible packages and categories. Card prices ("Starts at …") come only from such a published version; the built-in package summaries in `config/chatbot.ts` never show a price on a card.
 - The admin venue policy contributes one plain-language payment requirement only after a super administrator marks it reviewed. Unreviewed policy, cash instructions, contract text and staff identity are excluded.
-- Conflicting published facts (FAQ answers, capacity figures, payment methods, deposit rules) are not resolved by Zeni: it offers staff and logs the question as a conflict. Developer documents are not public knowledge.
+- Conflicting published facts (FAQ answers, capacity figures, payment methods, deposit rules) are not resolved by Zeni: it gives only what is consistent, offers staff and logs the question as a conflict. Developer documents are not public knowledge.
 
 ## Cards, buttons and links
 
@@ -72,7 +84,7 @@ Each value is validated on its own with zod; anything missing or invalid is igno
 
 ## Staff hand-off
 
-When a staff member is available, "Talk to staff" opens a live chat first (next section). Otherwise "Talk to staff", complaints, special requests, reschedules and cancellations collect a name and an email (and keep a phone number if given), then ask for explicit consent. Only then does one standard `NEW` inquiry with source `zeni_receptionist`, an activity and a notification commit, together with the automation outbox jobs for the staff alert and the visitor acknowledgement (`lib/automation`). Retrying the same turn creates no duplicate. The summary for staff contains the redacted request, event details, any booking reference the visitor gave and the last calendar check; it never says a booking exists. An inquiry is not a reservation.
+When a staff member is available, "Talk to staff" opens a live chat first (next section). Otherwise "Talk to staff", complaints, special requests, and requests to reschedule or cancel a booking (questions about those rules are answered from the FAQ first) collect a name and an email (and keep a phone number if given), then ask for explicit consent. Only then does one standard `NEW` inquiry with source `zeni_receptionist`, an activity and a notification commit, together with the automation outbox jobs for the staff alert and the visitor acknowledgement (`lib/automation`). Retrying the same turn creates no duplicate. The summary for staff contains the redacted request, event details, any booking reference the visitor gave and the last calendar check; it never says a booking exists. An inquiry is not a reservation.
 
 ### Live chat with staff
 

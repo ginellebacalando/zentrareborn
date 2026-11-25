@@ -1,5 +1,8 @@
 import 'server-only';
 
+import { isEmailAddress } from '@/lib/email-address';
+import { STAFF_RECIPIENT_LIMITS, type StaffRecipientSource } from './catalog';
+
 /** Delivery policy. Gmail allows about 500 messages per rolling day on a personal account. */
 export const AUTOMATION_POLICY = {
   maxAttempts: 5,
@@ -31,12 +34,7 @@ export const SMTP_DEFAULT_PORT = 465;
 export const MAIL_NOT_CONFIGURED_MESSAGE =
   'Email is not configured (SMTP_USER and SMTP_PASSWORD). This message is waiting and has not been sent.';
 
-const ADDRESS = /^[^\s@<>"(),:;\\[\]]+@[^\s@<>"(),:;\\[\]]+\.[^\s@<>"(),:;\\[\]]+$/;
 const HOST = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/i;
-
-export function isEmailAddress(value: string) {
-  return value.length <= 254 && ADDRESS.test(value);
-}
 
 function env(name: string) {
   const value = process.env[name];
@@ -52,15 +50,25 @@ export function parseMailbox(value: string) {
   return { name, address };
 }
 
-/** Comma-separated staff list (up to five), defaulting to the sending account. */
-export function staffRecipients() {
-  const configured = env('STAFF_NOTIFICATION_EMAIL') || env('SMTP_USER');
-  const addresses = configured
+/**
+ * The server default for staff inboxes, used while Settings has none: STAFF_NOTIFICATION_EMAIL
+ * (comma-separated), else the sending account. The list is all or nothing, and an invalid
+ * STAFF_NOTIFICATION_EMAIL disables the default instead of quietly falling back to SMTP_USER.
+ */
+export function serverStaffRecipients(): { emails: string[]; source: StaffRecipientSource } {
+  const configured = env('STAFF_NOTIFICATION_EMAIL');
+  const addresses = (configured || env('SMTP_USER'))
     .split(',')
     .map((part) => part.trim().toLowerCase())
     .filter(Boolean);
-  if (!addresses.length || addresses.length > 5 || !addresses.every(isEmailAddress)) return '';
-  return addresses.join(', ');
+  if (
+    !addresses.length ||
+    addresses.length > STAFF_RECIPIENT_LIMITS.emails ||
+    !addresses.every(isEmailAddress) ||
+    addresses.join(', ').length > STAFF_RECIPIENT_LIMITS.listLength
+  )
+    return { emails: [], source: 'none' };
+  return { emails: addresses, source: configured ? 'environment' : 'sending-account' };
 }
 
 export type MailSettings =

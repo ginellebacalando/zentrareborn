@@ -36,9 +36,10 @@ Settings, with its own active state. The old `/admin/settings/logs` bookmark red
 to it after the existing access checks. Settings contains only its settings content,
 without section tabs linking to Logs. The log activity filters, pagination, notification
 outbox, and automation job history remain separate from the main settings forms.
-Automation (`/admin/automation`) shows email and scheduler configuration, delivery counts,
-recent emails with masked recipients, Retry for failed emails and "Run due jobs now"; see
-[the automation guide](automation.md).
+Automation (`/admin/automation`) shows email and scheduler configuration, the staff notification
+addresses in use (masked, with whether they come from Settings, `STAFF_NOTIFICATION_EMAIL` or the
+sending account), delivery counts, recent emails with masked recipients, Retry for failed emails
+and "Run due jobs now"; see [the automation guide](automation.md).
 Only the current sidebar destination is selected. Inquiries
 shows received business inquiries, Analytics shows real booking and cash aggregates,
 and Team provides a read-only directory of administrator accounts.
@@ -122,7 +123,8 @@ color and header descriptions in the older sections below, which are kept as his
   nothing reserved), created by `website` (`config/booking.ts`). Each one writes the bookings CREATE audit
   entry the dashboard reads (`sourceInquiryId: null`, `channel: website`), an in-app notification, and
   two outbox emails: the client acknowledgement (`REQUEST_RECEIVED`) and a staff alert
-  (`BOOKING_REQUEST_STAFF_ALERT`, sent to `STAFF_NOTIFICATION_EMAIL` or `SMTP_USER`). The server checks
+  (`BOOKING_REQUEST_STAFF_ALERT`, sent to the staff notification emails from Settings, else
+  `STAFF_NOTIFICATION_EMAIL` or `SMTP_USER`). The server checks
   the date window, booked dates, times, guest count, published package, consent and a honeypot, and limits
   requests to three per email per day and thirty per hour. Website requests follow the "Client inquiries"
   on/off switch in Settings. Staff then approve, decline, edit or confirm them as usual.
@@ -350,6 +352,20 @@ activity records, scoped to the administrator's own records unless they are a
 super administrator, with formula escaping, private response headers, and auditing.
 Public settings responses never expose private admin/security preferences.
 
+Communications also holds **Staff notification emails**: up to five addresses, separated by
+commas, that receive staff alerts (new inquiries and website booking requests), the daily digest
+and a calendar invitation for every confirmed booking, with a matching cancellation when a
+confirmed booking is cancelled. Leaving the field empty uses the server default
+(`STAFF_NOTIFICATION_EMAIL`, else the sending account `SMTP_USER`). A changed list applies to the
+next email; an invitation already sent is cancelled at the inboxes that received it. The field has
+a persistent label and help text; an invalid list keeps the typed text, opens Communications,
+moves focus to the field and shows a persistent message (`role="alert"`, linked with
+`aria-describedby`) until the list is corrected or saved again. The server applies the same rules
+(`lib/admin/preferences-types.ts`), stores the list under `admin.staffNotifications`, and audits
+only the number of addresses. Every administrator can read the list in Settings; only a super
+administrator can change it. Automation shows the addresses in use, partly hidden. See
+[staff addresses](automation.md#staff-addresses).
+
 ## Panel-feedback traceability
 
 The three source PDFs were reviewed as project feedback, not as authorization for unrelated actions. This table records paraphrases, not verbatim quotations.
@@ -434,10 +450,10 @@ visiting the plain `/admin` URL enables automatic entry again while configured.
 
 - Keep `AUTH_SECRET` server-only and use a securely generated value of at least 32 bytes. A local secret was generated in the ignored `.env.local` without printing it. Set the approved production secret separately in the hosting environment; no deployment was performed.
 - Set `AUTH_URL` to the exact HTTPS production origin, alongside the correct public app URL and existing private database configuration. Use HTTPS; never expose database credentials or service-role/API keys through `NEXT_PUBLIC_` variables.
-- Email is delivered by the built-in automation through Gmail SMTP (Nodemailer and a Google App Password). Set server-only `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` and `STAFF_NOTIFICATION_EMAIL`, install `prisma/automation.sql` with `npm run db:automation:check -- --apply`, and schedule `/api/cron/automation` with `CRON_SECRET`. See [the automation guide](automation.md). No mail account was provisioned and no live emails were sent by this change.
+- Email is delivered by the built-in automation through Gmail SMTP (Nodemailer and a Google App Password). Set server-only `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` and, optionally, `STAFF_NOTIFICATION_EMAIL` (the fallback while Settings → Communications has no staff notification emails), install `prisma/automation.sql` with `npm run db:automation:check -- --apply`, and schedule `/api/cron/automation` with `CRON_SECRET`. See [the automation guide](automation.md). No mail account was provisioned and no live emails were sent by this change.
 - Notices are generated transactionally and remain QUEUED without mail configuration. Delivery is attempted right after each decision, by the scheduled run, by `npm run automation:run`, from Automation ("Run due jobs now") and, for a SUPERADMIN, from "Process queued notices" in Logs.
 - Each notice is claimed atomically, so concurrent runs never send it twice. ACCEPTED means the mail server accepted it, not that the recipient read it, and it is never sent again. Temporary failures retry with exponential backoff; permanent rejections and exhausted attempts become REVIEW_REQUIRED, and a send interrupted mid-way is held as REVIEW_REQUIRED rather than resent automatically. Staff can retry failed notices from Automation after checking the error.
-- Confirming a reservation attaches a calendar invitation (`invite.ics`); cancelling a confirmed reservation sends a cancellation update for the same calendar event. Confirmed clients also receive reminders a week and a day before the event, and staff receive a daily digest.
+- Confirming a reservation attaches a calendar invitation (`invite.ics`); cancelling a confirmed reservation sends a cancellation update for the same calendar event. The staff notification addresses receive their own copy of the same event (`STAFF_CALENDAR_REQUEST`) and, after a cancellation, its update (`STAFF_CALENDAR_CANCEL`); the client's notice and the booking history read by analytics are unchanged. Confirmed clients also receive reminders a week and a day before the event, and staff receive a daily digest.
 
 ## Verification and limitations
 

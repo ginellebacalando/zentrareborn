@@ -1,3 +1,5 @@
+import { STAFF_RECIPIENT_LIMITS } from '@/lib/automation/catalog';
+import { isEmailAddress } from '@/lib/email-address';
 import {
   DEFAULT_PUBLIC_SYSTEM_SETTINGS,
   type PublicSystemSettings,
@@ -23,6 +25,11 @@ export type AdminPreferences = {
     notifications: Record<NotificationPreference, boolean>;
     security: { sessionTimeoutMinutes: number };
     localization: PublicSystemSettings['localization'];
+    /**
+     * Inboxes for staff alerts, the daily digest and staff calendar invitations. Empty means the
+     * server default (STAFF_NOTIFICATION_EMAIL, else the sending account).
+     */
+    staffNotifications: { emails: string[] };
   };
 };
 export type PreferencesResponse = {
@@ -39,8 +46,38 @@ export const DEFAULT_ADMIN_PREFERENCES: AdminPreferences = {
     ) as Record<NotificationPreference, boolean>,
     security: { sessionTimeoutMinutes: 30 },
     localization: { ...DEFAULT_PUBLIC_SYSTEM_SETTINGS.localization },
+    staffNotifications: { emails: [] },
   },
 };
+
+/**
+ * Why a staff notification list cannot be saved, or null when it can. Addresses must already be
+ * trimmed and lowercased. The Settings form and the server apply the same rules, which match the
+ * outbox and the calendar writer, so a saved address is never refused at delivery.
+ */
+export function staffNotificationEmailsProblem(emails: readonly string[]) {
+  if (emails.length > STAFF_RECIPIENT_LIMITS.emails)
+    return `Enter up to ${STAFF_RECIPIENT_LIMITS.emails} email addresses.`;
+  const invalid = emails.find((email) => !isEmailAddress(email));
+  if (invalid !== undefined) {
+    if (!invalid) return 'Remove the empty address from the list.';
+    const shown = invalid.length > 60 ? `${invalid.slice(0, 57)}...` : invalid;
+    return `"${shown}" is not a valid email address. Use the form name@example.com.`;
+  }
+  if (new Set(emails).size !== emails.length) return 'List each email address only once.';
+  if (emails.join(', ').length > STAFF_RECIPIENT_LIMITS.listLength)
+    return `Together the addresses must fit in ${STAFF_RECIPIENT_LIMITS.listLength} characters. Remove an address or use a shorter one.`;
+  return null;
+}
+
+/** Reads the Settings field: addresses separated by commas, semicolons or spaces. */
+export function parseStaffNotificationEmails(text: string) {
+  const emails = text
+    .split(/[\s,;]+/)
+    .map((part) => part.toLowerCase())
+    .filter(Boolean);
+  return { emails, problem: staffNotificationEmailsProblem(emails) };
+}
 export function formatPreferenceDate(
   value: string | Date,
   localization: AdminPreferences['admin']['localization'],

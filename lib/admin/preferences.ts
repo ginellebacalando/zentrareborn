@@ -1,4 +1,5 @@
 import 'server-only';
+import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
@@ -11,6 +12,7 @@ import {
   SESSION_TIMEOUT_OPTIONS,
   notificationLabels,
   formatPreferenceDate,
+  staffNotificationEmailsProblem,
 } from './preferences-types';
 import type { AdminActor } from './access';
 import { AdminError } from './errors';
@@ -56,6 +58,14 @@ export const preferencesSchema = z
             dateFormat: z.enum(DATE_FORMAT_OPTIONS),
           })
           .strict(),
+        staffNotifications: z
+          .object({
+            emails: z.array(z.string().trim().toLowerCase()).superRefine((emails, context) => {
+              const problem = staffNotificationEmailsProblem(emails);
+              if (problem) context.addIssue({ code: 'custom', message: problem });
+            }),
+          })
+          .strict(),
       })
       .strict(),
     client: z
@@ -75,6 +85,28 @@ function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+/** Lenient reader for a stored list: keeps the valid, unique addresses that fit the limits. */
+function storedStaffNotificationEmails(settings: unknown) {
+  const stored = record(record(record(settings).admin).staffNotifications).emails;
+  const emails: string[] = [];
+  for (const item of Array.isArray(stored) ? stored : []) {
+    const email = typeof item === 'string' ? item.trim().toLowerCase() : '';
+    if (email && !staffNotificationEmailsProblem([...emails, email])) emails.push(email);
+  }
+  return emails;
+}
+/**
+ * The saved staff notification inboxes (empty when none are saved). Inside a transaction pass its
+ * client: with a one-connection pool, a read through the shared client would wait for the
+ * connection the transaction holds.
+ */
+export async function readStaffNotificationEmails(db: Prisma.TransactionClient = prisma) {
+  const row = await db.systemSetting.findUnique({
+    where: { id: 'singleton' },
+    select: { settings: true },
+  });
+  return storedStaffNotificationEmails(row?.settings);
 }
 export function normalizeAdminPreferences(input: unknown) {
   const root = record(input),
@@ -124,6 +156,7 @@ export function normalizeAdminPreferences(input: unknown) {
           defaults.admin.localization.dateFormat,
         ),
       },
+      staffNotifications: { emails: storedStaffNotificationEmails(root) },
     },
     client: {
       maintenanceMode: bool(client.maintenanceMode, defaults.client.maintenanceMode),
@@ -184,8 +217,17 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         notifications: { ...record(oldAdmin.notifications), ...settings.admin.notifications },
         security: { ...record(oldAdmin.security), ...settings.admin.security },
         localization: settings.admin.localization,
+        staffNotifications: settings.admin.staffNotifications,
       },
     };
+    // The audit trail records that the staff inboxes changed and how many there are, never which.
+    const staffEmails = settings.admin.staffNotifications.emails;
+    const staffChange =
+      storedStaffNotificationEmails(previous?.settings).join(',') === staffEmails.join(',')
+        ? ''
+        : staffEmails.length
+          ? ` Staff notification emails changed (${staffEmails.length} address${staffEmails.length === 1 ? '' : 'es'}).`
+          : ' Staff notification emails cleared; the server default applies.';
     const row = await tx.systemSetting.upsert({
       where: { id: 'singleton' },
       create: {
@@ -202,8 +244,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         userRole: actor.role,
         action: 'SETTINGS_CHANGE',
         module: 'Settings',
-        description:
-          'Updated appearance, communications, session, client access, and localization preferences.',
+        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },

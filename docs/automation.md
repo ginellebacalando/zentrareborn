@@ -49,18 +49,26 @@ Code: `lib/automation/` (server-only), `app/api/cron/automation/route.ts`,
 
 ## What is sent
 
-| Job (`event`)                                                                                                                                      | To                                 | Created                                                                                                                                                                       | Idempotency key                    |
-| -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `INQUIRY_STAFF_ALERT`                                                                                                                              | Staff (`STAFF_NOTIFICATION_EMAIL`) | With the inquiry (contact form and booking page, via `lib/inquiry-service.ts`). Inquiries created elsewhere (the Zeni hand-off) are picked up by the next scheduled run.      | `inquiry:<inquiryId>:staff`        |
-| `INQUIRY_ACKNOWLEDGEMENT`                                                                                                                          | The client                         | Same as above. Expires three days after the inquiry.                                                                                                                          | `inquiry:<inquiryId>:client`       |
-| `REQUEST_RECEIVED`, `REQUEST_APPROVED`, `REJECT`, `REVIEW_POLICY`, `RESERVATION_CONFIRMED`, `CANCEL`, `COMPLETE`, `CASH_RECEIPT`, `RECEIPT_VOIDED` | The client                         | With the admin booking decision (`lib/admin/service.ts`). `RESERVATION_CONFIRMED` attaches `invite.ics`; cancelling a confirmed booking attaches a cancellation `cancel.ics`. | `booking:<id>:<event>:r<revision>` |
-| `EVENT_REMINDER_7D`                                                                                                                                | The client                         | Scheduled run, five to seven days before a `CONFIRMED` event (not if it was confirmed in the last two days). Expires two days before the event.                               | `reminder:7d:<bookingId>`          |
-| `EVENT_REMINDER_1D`                                                                                                                                | The client                         | Scheduled run on the day before the event (Manila calendar). Expires when the event starts.                                                                                   | `reminder:1d:<bookingId>`          |
-| `DAILY_DIGEST`                                                                                                                                     | Staff                              | First scheduled run after 07:00 Manila time. Today's and tomorrow's confirmed events, inquiries from the last 24 hours, requests awaiting approval, failed email count.       | `digest:<YYYY-MM-DD>`              |
+| Job (`event`)                                                                                                                                      | To                                              | Created                                                                                                                                                                                 | Idempotency key                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `INQUIRY_STAFF_ALERT`                                                                                                                              | Staff (see [Staff addresses](#staff-addresses)) | With the inquiry (contact form and booking page, via `lib/inquiry-service.ts`). Inquiries created elsewhere (the Zeni hand-off) are picked up by the next scheduled run.                | `inquiry:<inquiryId>:staff`                       |
+| `INQUIRY_ACKNOWLEDGEMENT`                                                                                                                          | The client                                      | Same as above. Expires three days after the inquiry.                                                                                                                                    | `inquiry:<inquiryId>:client`                      |
+| `BOOKING_REQUEST_STAFF_ALERT`                                                                                                                      | Staff                                           | With a booking request from the public booking page (`services/booking-requests.ts`).                                                                                                   | `booking:<id>:BOOKING_REQUEST_STAFF_ALERT`        |
+| `REQUEST_RECEIVED`, `REQUEST_APPROVED`, `REJECT`, `REVIEW_POLICY`, `RESERVATION_CONFIRMED`, `CANCEL`, `COMPLETE`, `CASH_RECEIPT`, `RECEIPT_VOIDED` | The client                                      | With the admin booking decision (`lib/admin/service.ts`). `RESERVATION_CONFIRMED` attaches `invite.ics`; cancelling a confirmed booking attaches a cancellation `cancel.ics`.           | `booking:<id>:<event>:r<revision>`                |
+| `EVENT_REMINDER_7D`                                                                                                                                | The client                                      | Scheduled run, five to seven days before a `CONFIRMED` event (not if it was confirmed in the last two days). Expires two days before the event.                                         | `reminder:7d:<bookingId>`                         |
+| `EVENT_REMINDER_1D`                                                                                                                                | The client                                      | Scheduled run on the day before the event (Manila calendar). Expires when the event starts.                                                                                             | `reminder:1d:<bookingId>`                         |
+| `DAILY_DIGEST`                                                                                                                                     | Staff                                           | First scheduled run after 07:00 Manila time. Today's and tomorrow's confirmed events, inquiries from the last 24 hours, requests awaiting approval, failed email count.                 | `digest:<YYYY-MM-DD>`                             |
+| `STAFF_CALENDAR_REQUEST`                                                                                                                           | Staff, fixed when created                       | With a reservation confirmation, when a staff address resolves. Attaches the staff copy of the event (`invite.ics`). Skipped if the reservation is no longer confirmed when it is sent. | `booking:<id>:STAFF_CALENDAR_REQUEST:r<revision>` |
+| `STAFF_CALENDAR_CANCEL`                                                                                                                            | The inboxes of the staff invitation             | With the cancellation of a confirmed reservation, when its staff invitation was not superseded. Attaches `cancel.ics`.                                                                  | `booking:<id>:STAFF_CALENDAR_CANCEL:r<revision>`  |
 
 Reminders are prepared from 07:00 Manila time and are re-checked when sent: a reminder for a
 booking that was cancelled meanwhile is skipped. Cancelling a confirmed booking also skips any
-unsent confirmation or reminder for it.
+unsent confirmation, reminder or staff calendar invitation for it.
+
+The staff calendar jobs use their own event names, so the `RESERVATION_CONFIRMED` and `CANCEL`
+rows that analytics, the dashboard and the notification bell count stay one per decision. The
+Activity log lists them with the other automation jobs (`AUTOMATION_ONLY_EVENTS`), not with the
+booking notices.
 
 Abuse guards for the public form: at most three acknowledgements per address per day, and at most
 40 individual staff alerts per day (further inquiries still appear in the admin inbox and the daily
@@ -82,22 +90,42 @@ staff action, so a cancellation (`METHOD:CANCEL`, same `UID`, higher `SEQUENCE`)
 confirmed event (`METHOD:REQUEST`). Nodemailer attaches it as `icalEvent`, which Gmail shows as an
 invitation that can be added to the calendar.
 
+The staff inboxes get their own copy of the same event (`STAFF_CALENDAR_REQUEST` and
+`STAFF_CALENDAR_CANCEL`): the same `UID`, `SEQUENCE` and `ORGANIZER`, with each staff address as an
+`ATTENDEE` instead of the client. Its summary names the client and the reference (for example
+"Wedding: Maria Santos (ZION-2026-…)") and its description lists the client's contact details,
+package and guests. `Reply-To` is the client. The email links to Bookings when
+`NEXT_PUBLIC_APP_URL` is set. The client's invitation is unchanged.
+
+Because the attendees are written into the invitation, a staff invitation keeps the inboxes it was
+created with, and its cancellation goes to those same inboxes (the calendars that hold the event),
+even if the staff list changed in between. If the invitation was cancelled before it went out, no
+staff cancellation is sent. A staff invitation retried after the reservation was cancelled is
+skipped instead of putting the event back.
+
+Calendar limits: Google Calendar adds an invitation by itself only for an address listed as an
+`ATTENDEE`, and only as that account's "Add invitations to my calendar" setting allows; otherwise
+the email shows the invitation with a button to add it. If a staff address is the organizer
+address (`zioneventsplace@gmail.com`, `config/brand.ts`) or the sending account, Gmail may treat
+the invitation as that account's own event and not as an invitation. Use a different staff inbox,
+or check the result in that calendar.
+
 ## Setup
 
 1. **Gmail App Password.** On the venue's Google account turn on 2-Step Verification, then open
    Google Account → Security → App passwords and create one (for example "Zion automation").
 2. **Server environment** (never `NEXT_PUBLIC_`; see `.env.example`):
 
-   | Variable                   | Value                                                                                        |
-   | -------------------------- | -------------------------------------------------------------------------------------------- |
-   | `SMTP_HOST`                | `smtp.gmail.com` (default)                                                                   |
-   | `SMTP_PORT`                | `465` (default, implicit TLS); `587` uses STARTTLS                                           |
-   | `SMTP_USER`                | The full Gmail address                                                                       |
-   | `SMTP_PASSWORD`            | The 16-character App Password (spaces are ignored)                                           |
-   | `MAIL_FROM`                | `Zion Events Place <the same address>`; defaults to `SMTP_USER`                              |
-   | `STAFF_NOTIFICATION_EMAIL` | Staff inbox for alerts and the digest (comma-separated, up to five); defaults to `SMTP_USER` |
-   | `CRON_SECRET`              | At least 32 random characters, for example `openssl rand -hex 32`                            |
-   | `NEXT_PUBLIC_APP_URL`      | Public origin, used for "Open the admin panel" links in staff emails (optional)              |
+   | Variable                   | Value                                                                                                                                                                   |
+   | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `SMTP_HOST`                | `smtp.gmail.com` (default)                                                                                                                                              |
+   | `SMTP_PORT`                | `465` (default, implicit TLS); `587` uses STARTTLS                                                                                                                      |
+   | `SMTP_USER`                | The full Gmail address                                                                                                                                                  |
+   | `SMTP_PASSWORD`            | The 16-character App Password (spaces are ignored)                                                                                                                      |
+   | `MAIL_FROM`                | `Zion Events Place <the same address>`; defaults to `SMTP_USER`                                                                                                         |
+   | `STAFF_NOTIFICATION_EMAIL` | Fallback staff inboxes while Settings has none (comma-separated, up to five, 255 characters in total); defaults to `SMTP_USER`. See [Staff addresses](#staff-addresses) |
+   | `CRON_SECRET`              | At least 32 random characters, for example `openssl rand -hex 32`                                                                                                       |
+   | `NEXT_PUBLIC_APP_URL`      | Public origin, used for "Open the admin panel" links in staff emails (optional)                                                                                         |
 
 3. **Database.** Install the admin schema first if needed (`npm run db:admin:check -- --apply`),
    then the automation schema:
@@ -116,7 +144,28 @@ invitation that can be added to the calendar.
    also paste the file into the Supabase SQL editor.
 
 4. **Check.** Open `/admin/automation` (ADMIN or SUPERADMIN): it shows whether email and the cron
-   secret are configured. `GET /api/health` reports the same booleans plus queue and failure counts.
+   secret are configured, and the staff addresses in use (partly hidden) with where they come from.
+   `GET /api/health` reports the email and cron booleans plus queue and failure counts.
+
+### Staff addresses
+
+Staff alerts (`INQUIRY_STAFF_ALERT`, `BOOKING_REQUEST_STAFF_ALERT`), the daily digest and the staff
+calendar invitations go to the first of these that has a valid address
+(`lib/automation/recipients.ts`):
+
+1. **Admin → Settings → Communications → Staff notification emails.** A super administrator enters
+   up to five addresses separated by commas (255 characters in total). The browser and the server
+   check them with the same rules as the outbox and the calendar writer (`lib/email-address.ts`).
+   They are stored in `system_settings` under `admin.staffNotifications.emails`, are never part of
+   the public settings, and the audit entry records only how many there are.
+2. **`STAFF_NOTIFICATION_EMAIL`** on the server. The whole list must be valid; an invalid value
+   stops staff email instead of falling back to the sending account.
+3. **`SMTP_USER`**, the sending account.
+
+A change applies to the next email. Staff alerts and the digest are addressed again when they are
+sent, so ones still waiting go to the new list. A staff calendar invitation keeps the inboxes it
+was created with (see [Calendar invitations](#calendar-invitations)). With no valid address, staff
+alerts and the digest wait (rechecked hourly) and confirmations prepare no staff invitation.
 
 ## Scheduling
 
@@ -183,11 +232,16 @@ jobs within about 45 seconds; anything left is handled by the next run.
 
 ## Admin and developer views
 
-- **Admin → Automation** (`/admin/automation`, ADMIN and SUPERADMIN): configuration booleans, last
-  scheduled run, counts by status, the 50 most recent emails (type, masked recipient such as
-  `j***@gmail.com`, status, attempts, next attempt, sanitized error), **Retry** for failed emails
-  and **Run due jobs now**. Actions are audited under the Notifications module. The System Logs
-  page keeps its notification outbox and lists automation jobs where the old workflow history was.
+- **Admin → Automation** (`/admin/automation`, ADMIN and SUPERADMIN): configuration booleans, the
+  staff addresses in use (masked, such as `o***@gmail.com`) and whether they come from Settings,
+  `STAFF_NOTIFICATION_EMAIL` or the sending account, last scheduled run, counts by status, the 50
+  most recent emails (type, masked recipient such as `j***@gmail.com`, status, attempts, next
+  attempt, sanitized error), **Retry** for failed emails and **Run due jobs now**. Actions are
+  audited under the Notifications module. The System Logs page keeps its notification outbox and
+  lists automation jobs where the old workflow history was.
+- **Admin → Settings → Communications:** the staff notification emails (see
+  [Staff addresses](#staff-addresses)). Every administrator can read the list; only a super
+  administrator can change it.
 - **Developer Command Center → Automation:** read-only booleans and counts by status.
 - **`/api/health`:** `emailConfigured`, `cronConfigured`, queued and failed counts. No personal data.
 
@@ -198,5 +252,8 @@ MIME render without a network) and `lib/automation/automation.test.ts` (an isola
 idempotency, atomic claims under concurrency, backoff, permanent/sign-in/quota failures,
 interrupted and expired jobs, the daily limit, the "not configured" path, inquiry enqueue through the
 public route without any HTTP call, the Zeni sweep, booking confirmation and cancellation
-invitations, reminders, the digest, masking, health and cron authorization). Tests never contact a
-mail server. Preview harnesses blank all mail settings so they cannot send real email.
+invitations for the client and the staff, the staff address order (Settings, then
+`STAFF_NOTIFICATION_EMAIL`, then `SMTP_USER`), reminders, the digest, masking, health and cron
+authorization). `npm run test:admin` covers saving, validating and auditing the staff notification
+emails. Tests never contact a mail server. Preview harnesses blank all mail settings so they cannot
+send real email.

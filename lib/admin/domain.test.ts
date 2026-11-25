@@ -9,6 +9,7 @@ import {
   paidTotal,
   paymentStatus,
 } from './domain';
+import { parseStaffNotificationEmails } from './preferences-types';
 test('RBAC rejects clients and disabled or temporary accounts', () => {
   assert.equal(canAccessAdmin('CLIENT', 'ACTIVE'), false);
   assert.equal(canAccessAdmin('ADMIN', 'DISABLED'), false);
@@ -99,4 +100,19 @@ test('server booking validation rejects unknown fields, invalid fee, and venue s
   assert.equal(bookingInput.safeParse({ ...b, approval: 'APPROVED' }).success, false);
   assert.equal(bookingInput.safeParse({ ...b, depositCents: 0 }).success, false);
   assert.equal(bookingInput.safeParse({ ...b, venue: 'Other spelling' }).success, false);
+});
+test('the staff notification field splits, normalizes and limits addresses like the server', () => {
+  assert.deepEqual(
+    parseStaffNotificationEmails(' Owner@Gmail.com, staff@example.test;partner@example.test  '),
+    {
+      emails: ['owner@gmail.com', 'staff@example.test', 'partner@example.test'],
+      problem: null,
+    },
+  );
+  assert.deepEqual(parseStaffNotificationEmails(' , '), { emails: [], problem: null });
+  const problem = (text: string) => parseStaffNotificationEmails(text).problem ?? '';
+  assert.match(problem('owner@gmail.com, owner'), /"owner" is not a valid email address/);
+  assert.match(problem('owner@gmail.com, Owner@gmail.com'), /only once/);
+  assert.match(problem('a@x.test b@x.test c@x.test d@x.test e@x.test f@x.test'), /up to 5/);
+  assert.match(problem([1, 2, 3, 4, 5].map((n) => `${'x'.repeat(50)}${n}@x.test`).join()), /255/);
 });

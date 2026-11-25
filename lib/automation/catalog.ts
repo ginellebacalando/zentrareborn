@@ -29,7 +29,11 @@ export const AUTOMATION_STATUS_DESCRIPTIONS: Record<AutomationStatus, string> = 
   EXPIRED: 'Not sent because it was no longer timely or relevant.',
 };
 
-/** Job types created only by the automation module (not by an admin booking decision). */
+/**
+ * Job types created only by the automation module, not the booking decision notices. The staff
+ * calendar jobs accompany a decision but stay out of the RESERVATION_CONFIRMED and CANCEL rows
+ * that analytics, the dashboard and the notification bell count.
+ */
 export const AUTOMATION_ONLY_EVENTS = [
   'INQUIRY_STAFF_ALERT',
   'INQUIRY_ACKNOWLEDGEMENT',
@@ -37,15 +41,27 @@ export const AUTOMATION_ONLY_EVENTS = [
   'EVENT_REMINDER_7D',
   'EVENT_REMINDER_1D',
   'DAILY_DIGEST',
+  'STAFF_CALENDAR_REQUEST',
+  'STAFF_CALENDAR_CANCEL',
 ] as const;
 export type AutomationOnlyEvent = (typeof AUTOMATION_ONLY_EVENTS)[number];
 
-/** Staff-addressed jobs resolve their recipient from server configuration at delivery time. */
+/**
+ * Staff-addressed jobs resolve their recipient again at delivery time, so a changed staff list
+ * applies to waiting jobs. Staff calendar jobs are not listed: their ATTENDEE lines name the
+ * inboxes chosen when the invitation was created.
+ */
 export const STAFF_EVENTS: readonly string[] = [
   'INQUIRY_STAFF_ALERT',
   'BOOKING_REQUEST_STAFF_ALERT',
   'DAILY_DIGEST',
 ];
+
+/** Staff inboxes: the outbox keeps the comma-joined list in a 255-character recipient column. */
+export const STAFF_RECIPIENT_LIMITS = { emails: 5, listLength: 255 } as const;
+
+/** Where the staff inboxes come from, in order of precedence. */
+export type StaffRecipientSource = 'settings' | 'environment' | 'sending-account' | 'none';
 
 export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   INQUIRY_STAFF_ALERT: 'New inquiry alert (staff)',
@@ -54,6 +70,8 @@ export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   EVENT_REMINDER_7D: 'Event reminder, one week',
   EVENT_REMINDER_1D: 'Event reminder, one day',
   DAILY_DIGEST: 'Daily staff digest',
+  STAFF_CALENDAR_REQUEST: 'Calendar invitation (staff)',
+  STAFF_CALENDAR_CANCEL: 'Calendar cancellation (staff)',
   REQUEST_RECEIVED: 'Booking request received',
   REQUEST_APPROVED: 'Booking request approved',
   REJECT: 'Booking request declined',
@@ -93,6 +111,8 @@ export type AutomationJobView = {
 export type AutomationOverview = {
   emailConfigured: boolean;
   cronConfigured: boolean;
+  /** The current staff inboxes, masked, and where they come from. */
+  staffRecipients: { source: StaffRecipientSource; masked: string[] };
   counts: Record<AutomationStatus, number>;
   dueNow: number;
   lastRun: { at: string; trigger: string; sent: number; failed: number } | null;

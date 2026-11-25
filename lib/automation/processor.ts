@@ -1,16 +1,12 @@
 import 'server-only';
 
 import type { AdminOutbox } from '@prisma/client';
+import { isEmailAddress } from '@/lib/email-address';
 import { prisma } from '@/lib/prisma';
 import { STAFF_EVENTS } from './catalog';
-import {
-  AUTOMATION_POLICY,
-  isEmailAddress,
-  readMailSettings,
-  staffRecipients,
-  type MailSettings,
-} from './config';
+import { AUTOMATION_POLICY, readMailSettings, type MailSettings } from './config';
 import { retryDelayMs } from './outbox';
+import { resolveStaffRecipients } from './recipients';
 import {
   classifyDeliveryError,
   createSmtpTransport,
@@ -43,8 +39,9 @@ const EXPIRED_MESSAGE = 'Not sent: the message was no longer timely when deliver
 const DAILY_LIMIT_MESSAGE =
   'The daily sending limit for the mail account was reached. Delivery continues automatically later.';
 const NO_STAFF_ADDRESS_MESSAGE =
-  'No staff address is configured (STAFF_NOTIFICATION_EMAIL or SMTP_USER). This message is waiting.';
+  'No staff address is set (staff notification emails in Settings, STAFF_NOTIFICATION_EMAIL or SMTP_USER). This message is waiting.';
 const REMINDER_EVENTS = new Set(['EVENT_REMINDER_7D', 'EVENT_REMINDER_1D']);
+const STAFF_CALENDAR_REQUEST = 'STAFF_CALENDAR_REQUEST';
 
 function emptyResult(mailConfigured: boolean): DeliveryRunResult {
   return {
@@ -129,22 +126,31 @@ async function finish(job: AdminOutbox, status: 'REVIEW_REQUIRED' | 'EXPIRED', l
   });
 }
 
-/** Reminders are only sent while the reservation is still confirmed and upcoming. */
+/**
+ * Reminders are only sent while the reservation is still confirmed and upcoming. A staff calendar
+ * invitation retried after a cancellation would put a cancelled event back into staff calendars.
+ */
 async function irrelevanceReason(job: AdminOutbox, now: Date) {
-  if (!REMINDER_EVENTS.has(job.event)) return null;
+  const reminder = REMINDER_EVENTS.has(job.event);
+  if (!reminder && job.event !== STAFF_CALENDAR_REQUEST) return null;
   const booking = job.bookingId
     ? await prisma.adminBooking.findUnique({
         where: { id: job.bookingId },
         select: { reservation: true, startsAt: true },
       })
     : null;
-  if (!booking || booking.reservation !== 'CONFIRMED' || booking.startsAt <= now)
-    return 'Not sent: the reservation is no longer confirmed or the event has already started.';
-  return null;
+  if (reminder)
+    return booking?.reservation === 'CONFIRMED' && booking.startsAt > now
+      ? null
+      : 'Not sent: the reservation is no longer confirmed or the event has already started.';
+  return booking?.reservation === 'CONFIRMED'
+    ? null
+    : 'Not sent: the reservation is no longer confirmed, so the calendar invitation is not needed.';
 }
 
-function recipientFor(job: AdminOutbox) {
-  return STAFF_EVENTS.includes(job.event) ? staffRecipients() : job.recipient;
+/** Staff jobs go to the staff inboxes of this run, so a changed list applies to waiting jobs. */
+function recipientFor(job: AdminOutbox, staffList: string) {
+  return STAFF_EVENTS.includes(job.event) ? staffList : job.recipient;
 }
 
 function messageFor(
@@ -209,6 +215,7 @@ export async function processDueJobs(
     select: { id: true },
   });
   if (!candidates.length) return result;
+  const staff = await resolveStaffRecipients();
   const transport = options.transport ?? createSmtpTransport(settings);
   const started = Date.now();
   const budget = options.timeBudgetMs ?? AUTOMATION_POLICY.scheduledTimeBudgetMs;
@@ -232,7 +239,7 @@ export async function processDueJobs(
         result.skipped++;
         continue;
       }
-      const recipient = recipientFor(job);
+      const recipient = recipientFor(job, staff.list);
       if (!recipient) {
         await release(
           job,

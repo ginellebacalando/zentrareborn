@@ -3,7 +3,7 @@ import { zeniCopy } from '@/config/chatbot-receptionist';
 
 const suggestions = ['Where are you located?', 'Wedding packages', 'What are your visiting hours?'];
 const ignored = new Set(
-  'a an the is are am be do does did can could would will i we my our me us you your it that this those these there their here hi hello hey just also so ok okay thanks thank yes of for to from in at on with and or about what which when who how much many please tell know like want need have has any more details information offer offerings offering options find get show list see give provide available zion events place po ba ang ng mga sa ko ako ninyo nyo naman lang kayo ano may meron pa na yung iyong para'.split(
+  'a an the is are am be do does did can could would will i we my our me us you your it that this those these there their here hi hello hey just also so ok okay thanks thank yes of for to from in at on with and or about what which when who how much many please tell know like want need have has any more details information offer offerings offering options find get show list see give provide available zion events place po ba ang ng mga sa ko ako ninyo nyo naman lang kayo ano may meron pa na yung iyong para pwede puwede pwedeng puwedeng mag magpa nag gusto kami namin natin tayo kung din rin daw raw ito iyan yan dito diyan doon paano if happens happen use using used'.split(
     ' ',
   ),
 );
@@ -71,6 +71,40 @@ const aliases: Record<string, string> = {
   kasama: 'inclusion',
   pagkain: 'catering',
   food: 'catering',
+  foods: 'catering',
+  handa: 'catering',
+  // Official FAQ vocabulary (zion info): plurals and Filipino words guests type.
+  rains: 'rain',
+  raining: 'rain',
+  rainy: 'rain',
+  ulan: 'rain',
+  umulan: 'rain',
+  kids: 'kid',
+  children: 'kid',
+  child: 'kid',
+  bata: 'kid',
+  magdala: 'bring',
+  dala: 'bring',
+  dalhin: 'bring',
+  sarili: 'own',
+  sariling: 'own',
+  motifs: 'motif',
+  themes: 'theme',
+  suppliers: 'supplier',
+  carts: 'cart',
+  dishes: 'dish',
+  flowers: 'flower',
+  pegs: 'peg',
+  deposits: 'deposit',
+  fees: 'fee',
+  alcoholic: 'alcohol',
+  liquor: 'alcohol',
+  cars: 'parking',
+  car: 'parking',
+  vehicles: 'parking',
+  rescheduling: 'reschedule',
+  rebook: 'reschedule',
+  hrs: 'hour',
 };
 
 function terms(text: string) {
@@ -97,6 +131,20 @@ function evidence(source: ChatSource) {
 }
 
 export type RankedSource = { source: ChatSource; coverage: number; score: number };
+
+/** True when a source's own title (not its tags) contains every search word of the question. */
+export function titleCoversQuestion(question: string, source: ChatSource) {
+  const query = terms(question);
+  const title = terms(source.title);
+  return query.length > 0 && query.every((word) => title.includes(word));
+}
+
+/** How much of a source's title the question accounts for: higher means a more specific match. */
+export function titleMatchRatio(question: string, source: ChatSource) {
+  const query = terms(question);
+  const title = terms(source.title);
+  return title.length ? title.filter((word) => query.includes(word)).length / title.length : 0;
+}
 
 /** Keyword retrieval over published sources. Only the best-scoring group is returned. */
 export function rankSources(

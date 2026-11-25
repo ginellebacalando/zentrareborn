@@ -2391,6 +2391,18 @@
 .settingsMessage {
   margin-top: 20px;
 }
+/* Staff notification emails: its own group below the alert switches in Communications. */
+.settingsEmails {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+.root .settingsEmails p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .settingsUnavailable {
   padding: var(--space-4);
   margin-top: 20px;

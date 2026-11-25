@@ -1,7 +1,8 @@
 import 'server-only';
 
-import { AUTOMATION_POLICY, applicationUrl, staffRecipients } from './config';
+import { AUTOMATION_POLICY, applicationUrl } from './config';
 import { enqueueJobs, type OutboxDb } from './outbox';
+import { resolveStaffRecipients } from './recipients';
 import { inquiryAcknowledgement, inquiryStaffAlert } from './templates';
 import { ONE_DAY_MS } from './time';
 
@@ -50,7 +51,7 @@ export async function enqueueInquiryReceived(
 ) {
   const email = inquiry.email.trim().toLowerCase();
   const since = new Date(now.getTime() - ONE_DAY_MS);
-  const [alertsToday, acknowledgementsToRecipient] = await Promise.all([
+  const [alertsToday, acknowledgementsToRecipient, staff] = await Promise.all([
     db.adminOutbox.count({
       where: {
         event: 'INQUIRY_STAFF_ALERT',
@@ -66,6 +67,7 @@ export async function enqueueInquiryReceived(
         createdAt: { gte: since },
       },
     }),
+    resolveStaffRecipients(db),
   ]);
   const appUrl = applicationUrl();
   const alert = inquiryStaffAlert({
@@ -94,7 +96,7 @@ export async function enqueueInquiryReceived(
       {
         idempotencyKey: inquiryJobKey(inquiry.id, 'staff'),
         event: 'INQUIRY_STAFF_ALERT',
-        recipient: staffRecipients(),
+        recipient: staff.list,
         replyTo: email,
         ...alert,
         skipReason:

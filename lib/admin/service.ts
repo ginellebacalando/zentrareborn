@@ -87,7 +87,8 @@ async function queue(
   calendar?: CalendarMethod,
 ) {
   const p = await policy(tx);
-  const id = await enqueueBookingNotice(tx, {
+  // The client notice, plus the staff calendar copy when the decision changes the calendar.
+  const ids = await enqueueBookingNotice(tx, {
     booking: b,
     event,
     paid: paidTotal(b.payments),
@@ -96,7 +97,7 @@ async function queue(
   });
   // `after()` runs once the response is sent, i.e. after this transaction commits or rolls back;
   // delivery only claims committed rows, so a rollback leaves nothing to send.
-  if (id) scheduleAutomationDelivery([id]);
+  scheduleAutomationDelivery(ids);
 }
 async function findBooking(tx: Tx, id: string) {
   const b = await tx.adminBooking.findUnique({

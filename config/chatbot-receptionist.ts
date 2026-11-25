@@ -3,6 +3,10 @@ import {
   type ZeniLanguage,
   type ZeniTemplateLanguage,
 } from '@/lib/chatbot/language';
+import { zeniTopics } from './zeni-topics';
+
+/** The six help topics as chips, followed by the calendar check. */
+const topicChips = zeniTopics.map((topic) => topic.label);
 
 /** Zeni's identity and panel wording. The ZENTRA monogram is the avatar; no character is drawn. */
 export const chatbotReceptionist = {
@@ -97,6 +101,12 @@ type ZeniCopy = {
   paymentReview: string;
   capacityReview: string;
   answerFollowUp: string;
+  /** Closing lines for answers, rotated by turn so consecutive answers don't end the same way. */
+  answerFollowUps: string[];
+  /** Opens an answer the guest already received in this conversation. */
+  repeatPrefix: string;
+  /** Closing line when guests ask which payment methods are accepted. */
+  paymentMethods: string;
   privacy: string;
   scope: string;
   abuse: string;
@@ -123,6 +133,7 @@ type ZeniCopy = {
     viewDetails: string;
     viewPackages: string;
     contactPage: string;
+    faqPage: string;
     startsAt: string;
   };
   suggestions: {
@@ -169,7 +180,7 @@ type ZeniCopy = {
 
 const en: ZeniCopy = {
   welcome:
-    'Hello! I’m Zeni, the virtual concierge of Zion Events Place. I can help with packages, available dates and ocular visits.',
+    'Hi! I’m Zeni from Zion Events Place. Tap a topic below for quick answers, or just type your question.',
   greeting: 'Hello! How can I help with your celebration today?',
   welcomeBack: (name) =>
     `Welcome back${name ? `, ${name}` : ''}. I kept the details from this short conversation; earlier messages are not shown again. What would you like to do next?`,
@@ -178,7 +189,7 @@ const en: ZeniCopy = {
     'I’m Zeni, Zion’s virtual concierge, not a person. I answer from Zion’s published information, and I can connect you with our staff at any time.',
   smallTalk: 'I’m doing well, thank you! How can I help with your event at Zion?',
   unclear:
-    'I’d be happy to help. Are you looking for package details, an available date or an ocular visit?',
+    'Happy to help! Tap a topic below, or tell me what you’d like to know: payments, food, the venue, planning, suppliers, or a date.',
   askDate: 'Which date are you considering? Tap a date below to check it against our calendar.',
   invalidDate:
     'I need a full date that hasn’t passed yet. Please pick one on the calendar below or type it, for example 2027-02-14.',
@@ -213,7 +224,7 @@ const en: ZeniCopy = {
   handoffPreview: 'Preview: in a real conversation this would send the message to the staff inbox.',
   complaintPrefix: 'I’m sorry to hear this.',
   knowledgeGap:
-    'I don’t have published information about that yet, so I won’t guess. Would you like me to ask our staff?',
+    'I don’t have that in our official information yet, so I won’t guess. Pick a topic below, or I can ask our staff for you.',
   knowledgeConflict:
     'The published information on this doesn’t match, so I’d rather have our staff confirm it. Shall I ask them?',
   depositClarify: 'Do you mean the reservation payment or the separate security deposit?',
@@ -222,6 +233,14 @@ const en: ZeniCopy = {
   capacityReview:
     'Capacity depends on the space and setup, and the published figures differ, so I won’t pick a number for you. Would you like our staff to confirm it?',
   answerFollowUp: 'Is there anything else you’d like to know?',
+  answerFollowUps: [
+    'Is there anything else you’d like to know?',
+    'Anything else I can help with?',
+    'What else would you like to ask?',
+  ],
+  repeatPrefix: 'Same as before:',
+  paymentMethods:
+    'For which payment methods apply to your booking, please check with Sir Tim Soriano or the Zion Facebook page before you pay. I can also pass your question to our staff.',
   privacy:
     'For your privacy, please don’t share passwords, card numbers or ID details here. I can still help with your event or connect you with our staff.',
   scope:
@@ -259,10 +278,11 @@ const en: ZeniCopy = {
     viewDetails: 'View details',
     viewPackages: 'View packages',
     contactPage: 'Contact page',
+    faqPage: 'All FAQs',
     startsAt: 'Starts at',
   },
   suggestions: {
-    welcome: ['Check a date', 'Wedding packages', 'Schedule a visit'],
+    welcome: [...topicChips, 'Check a date'],
     afterAnswer: ['Check a date', 'Schedule a visit', 'Talk to staff'],
     afterAvailability: ['Wedding packages', 'Where are you located?', 'Talk to staff'],
     afterBooking: ['Wedding packages', 'Schedule a visit', 'Talk to staff'],
@@ -330,7 +350,7 @@ const en: ZeniCopy = {
 
 const taglish: ZeniCopy = {
   welcome:
-    'Hello po! Ako si Zeni, ang virtual concierge ng Zion Events Place. Matutulungan ko po kayo sa packages, available dates at ocular visits.',
+    'Hello po! Ako si Zeni ng Zion Events Place. Pumili po ng topic sa ibaba para sa mabilis na sagot, o i-type lang ang tanong ninyo.',
   greeting: 'Hello po! Paano ko po kayo matutulungan sa inyong celebration?',
   welcomeBack: (name) =>
     `Welcome back po${name ? `, ${name}` : ''}! Naitabi ko ang mga detalye ng maikling usapan natin; hindi na po ipapakita ang mga naunang mensahe. Ano po ang gusto ninyong gawin?`,
@@ -339,7 +359,7 @@ const taglish: ZeniCopy = {
     'Ako po si Zeni, ang virtual concierge ng Zion, hindi po ako tao. Sumasagot ako mula sa published information ng Zion, at puwede ko po kayong i-connect sa aming staff anumang oras.',
   smallTalk: 'Mabuti naman po, salamat! Paano ko po kayo matutulungan sa inyong event sa Zion?',
   unclear:
-    'Masaya po akong tumulong. Package details, available date, o ocular visit po ba ang hanap ninyo?',
+    'Masaya po akong tumulong! Pumili po ng topic sa ibaba, o sabihin kung ano ang gusto ninyong malaman: payments, food, venue, planning, suppliers, o date.',
   askDate:
     'Anong date po ang gusto ninyo? Pumili po kayo sa ibaba para ma-check ko sa calendar namin.',
   invalidDate:
@@ -376,7 +396,7 @@ const taglish: ZeniCopy = {
   handoffPreview: 'Preview: sa totoong usapan, ipapadala nito ang mensahe sa staff inbox.',
   complaintPrefix: 'Pasensya na po sa naranasan ninyo.',
   knowledgeGap:
-    'Wala pa po akong published information tungkol diyan, kaya hindi ko po huhulaan. Gusto n’yo po bang itanong ko sa aming staff?',
+    'Wala pa po iyan sa official information namin, kaya hindi ko po huhulaan. Pumili po ng topic sa ibaba, o itatanong ko po sa aming staff.',
   knowledgeConflict:
     'Hindi po magkatugma ang published information tungkol dito, kaya mas mabuting staff ang mag-confirm. Itatanong ko po ba sa kanila?',
   depositClarify:
@@ -386,6 +406,14 @@ const taglish: ZeniCopy = {
   capacityReview:
     'Nakadepende po ang capacity sa space at setup, at magkaiba ang published figures, kaya hindi ako pipili ng numero. Gusto n’yo po bang ipa-confirm sa staff?',
   answerFollowUp: 'May iba pa po ba kayong gustong malaman?',
+  answerFollowUps: [
+    'May iba pa po ba kayong gustong malaman?',
+    'May iba pa po ba akong maitutulong?',
+    'Ano pa po ang gusto ninyong itanong?',
+  ],
+  repeatPrefix: 'Tulad po ng nabanggit ko:',
+  paymentMethods:
+    'Para sa paraan ng pagbabayad na tatanggapin para sa booking ninyo, pakicheck po muna kay Sir Tim Soriano o sa Zion Facebook page bago magbayad. Puwede ko rin pong itanong sa aming staff.',
   privacy:
     'Para sa inyong privacy, huwag po magbahagi ng password, card number o ID details dito. Matutulungan ko pa rin po kayo sa inyong event, o i-connect sa aming staff.',
   scope:
@@ -424,10 +452,11 @@ const taglish: ZeniCopy = {
     viewDetails: 'Tingnan ang detalye',
     viewPackages: 'Tingnan ang packages',
     contactPage: 'Contact page',
+    faqPage: 'Lahat ng FAQ',
     startsAt: 'Simula sa',
   },
   suggestions: {
-    welcome: ['Mag-check ng date', 'Wedding packages', 'Mag-schedule ng ocular visit'],
+    welcome: [...topicChips, 'Mag-check ng date'],
     afterAnswer: ['Mag-check ng date', 'Mag-schedule ng ocular visit', 'Kausapin ang staff'],
     afterAvailability: ['Wedding packages', 'Saan kayo located?', 'Kausapin ang staff'],
     afterBooking: ['Wedding packages', 'Mag-schedule ng ocular visit', 'Kausapin ang staff'],

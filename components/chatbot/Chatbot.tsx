@@ -611,7 +611,7 @@ export default function Chatbot() {
               role="group"
               aria-label={chatbotReceptionist.suggestionsLabel}
             >
-              {suggestions.slice(0, 4).map((suggestion) => (
+              {suggestions.slice(0, 7).map((suggestion) => (
                 <button
                   type="button"
                   key={suggestion}

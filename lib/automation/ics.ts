@@ -3,6 +3,8 @@
  * Output uses CRLF line endings, folds content lines at 75 octets without splitting UTF-8
  * sequences, escapes TEXT values, and writes every time in UTC so no VTIMEZONE is needed.
  */
+import { EMAIL_ADDRESS_PATTERN } from '@/lib/email-address';
+
 export type CalendarMethod = 'REQUEST' | 'CANCEL';
 
 export type CalendarPerson = { name: string; email: string };
@@ -25,7 +27,6 @@ export type CalendarInvite = {
 
 const PRODUCT_ID = '-//Zion Events Place//ZENTRA Automation//EN';
 const MAX_LINE_OCTETS = 75;
-const EMAIL_ADDRESS = /^[^\s@<>"(),:;\\[\]]+@[^\s@<>"(),:;\\[\]]+\.[^\s@<>"(),:;\\[\]]+$/;
 
 export function formatCalendarDate(value: Date) {
   if (Number.isNaN(value.getTime())) throw new Error('Calendar dates must be valid.');
@@ -53,7 +54,8 @@ function quotedParameter(value: string) {
 
 function mailto(email: string) {
   const address = email.trim().toLowerCase();
-  if (!EMAIL_ADDRESS.test(address)) throw new Error('Calendar participants need a valid email.');
+  if (!EMAIL_ADDRESS_PATTERN.test(address))
+    throw new Error('Calendar participants need a valid email.');
   return `mailto:${address}`;
 }
 

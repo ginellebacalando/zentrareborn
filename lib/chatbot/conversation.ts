@@ -86,6 +86,8 @@ export const conversationSchema = z.object({
   /** Turn number of the last grounded answer, to tell whether a staff request followed one. */
   lastAnswerTurn: z.number().int().default(-1),
   kbItemsUsed: z.array(z.string().max(180)).max(40),
+  /** The main sources of recent answers, so a repeated question gets an acknowledged reply. */
+  answeredRefs: z.array(z.string().max(180)).max(12).default([]),
   statementsShared: z
     .array(z.object({ statement: z.string().max(300), kbReference: z.string().max(180) }))
     .max(10),
@@ -144,6 +146,7 @@ export function createConversation(id: string, now = new Date()): ReceptionistCo
     lastKnowledgeQuestion: '',
     lastAnswerTurn: -1,
     kbItemsUsed: [],
+    answeredRefs: [],
     statementsShared: [],
     recentTurns: [],
     loggedGaps: [],

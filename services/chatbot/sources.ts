@@ -2,7 +2,8 @@ import 'server-only';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
-import { faqPageEntries, publicFaqs } from '@/config/public-faqs';
+import { publicFaqs } from '@/config/public-faqs';
+import { faqChatSource, officialFaqSources } from '@/lib/chatbot/faq-sources';
 import {
   backupPackageSources,
   packageSourcePaths,
@@ -81,21 +82,18 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
   ]);
   if (packages.length > 500) throw new Error('Public package source limit exceeded.');
   const seenFaqQuestions = new Set(faqs.map((faq) => faq.question.trim().toLowerCase()));
-  const backupFaqPageSources: ChatSource[] = settings.client.faqVisible
-    ? faqPageEntries
-        .filter((faq) => !seenFaqQuestions.has(faq.question.trim().toLowerCase()))
-        .map((faq): ChatSource => ({
-          id: faq.id,
-          kind: 'faq',
-          title: faq.question,
-          text: faq.answer,
-          href: `/faq#${encodeURIComponent(faq.id)}`,
-          keywords: faq.tags ?? [],
-        }))
+  // The official FAQ (shown on /faq) plus Zeni-only follow-up questions from the same documents.
+  const backupFaqPageSources = settings.client.faqVisible
+    ? officialFaqSources(seenFaqQuestions)
     : [];
+  const faqChatSources = faqs.map((faq) => faqChatSource(faq));
+  // Ties go to the earlier source: answers staff manage in the admin outrank the official FAQ,
+  // and the older built-in list (used while nothing is managed) comes after it.
+  const managedFaqs = faqs !== publicFaqs;
   const sources: ChatSource[] = [
     ...websiteChatSources,
     ...(settings.client.packagesVisible ? publicEventSources : []),
+    ...(managedFaqs ? faqChatSources : []),
     ...backupFaqPageSources,
     ...(policy?.reviewed &&
     ['DEPOSIT_REQUIRED', 'FULL_PAYMENT_REQUIRED', 'NO_PAYMENT_REQUIRED'].includes(
@@ -118,14 +116,7 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
           },
         ]
       : []),
-    ...faqs.map((faq): ChatSource => ({
-      id: faq.id,
-      kind: 'faq',
-      title: faq.question,
-      text: faq.answer,
-      href: `/faq#${encodeURIComponent(faq.id)}`,
-      keywords: faq.tags ?? [],
-    })),
+    ...(managedFaqs ? [] : faqChatSources),
     ...(settings.client.packagesVisible && managedPackages === 0 ? backupPackageSources : []),
     ...packages.map((row): ChatSource => {
       // Only the version currently published to visitors is eligible. Never read

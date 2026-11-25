@@ -3,6 +3,7 @@ import 'server-only';
 import { BRAND } from '@/config/brand';
 import { EMAIL_SPAM_NOTICE } from '@/lib/email-delivery';
 import { EMAIL_THEME } from './email-theme';
+import type { CalendarMethod } from './ics';
 
 /** A rendered message: HTML for capable clients and a complete plain-text alternative. */
 export type RenderedEmail = { subject: string; text: string; html: string };
@@ -331,6 +332,61 @@ export function bookingRequestAcknowledgement(input: BookingRequestEmailSource):
         ],
       },
     ],
+  });
+}
+
+/** A confirmed booking as the staff calendar email describes it. */
+export type StaffCalendarBooking = {
+  reference: string;
+  clientName: string;
+  email: string;
+  phone: string;
+  eventType: string;
+  packageName: string;
+  guests: number;
+  startsAt: Date;
+  endsAt: Date;
+};
+
+/** Carries the staff copy of a booking's calendar invitation, or its cancellation. */
+export function staffCalendarNotice(
+  booking: StaffCalendarBooking,
+  method: CalendarMethod,
+  bookingsUrl: string | null,
+): RenderedEmail {
+  const cancelled = method === 'CANCEL';
+  const date = manilaDate(booking.startsAt);
+  return renderEmail({
+    subject: `${cancelled ? 'Cancelled' : 'Confirmed'}: ${singleLine(booking.eventType, 60)} for ${singleLine(booking.clientName, 80)}, ${date}`,
+    preheader: cancelled
+      ? `Reservation ${booking.reference} was cancelled; the attached update removes it from your calendar.`
+      : `Reservation ${booking.reference} is confirmed; the attached invitation adds it to your calendar.`,
+    heading: cancelled ? 'Confirmed reservation cancelled' : 'Reservation confirmed',
+    sections: [
+      {
+        paragraphs: [
+          cancelled
+            ? 'This confirmed reservation was cancelled. The calendar update (cancel.ics) removes the event from calendars that received its invitation.'
+            : 'This reservation is confirmed. A calendar invitation (invite.ics) is attached so the event appears in your calendar.',
+          'Reply to this email to contact the client.',
+        ],
+        details: [
+          ['Reservation', booking.reference],
+          ['Client', singleLine(booking.clientName)],
+          ['Email', booking.email],
+          ['Phone', booking.phone],
+          ['Event', singleLine(booking.eventType)],
+          ['Package', singleLine(booking.packageName)],
+          ['Date', date],
+          [
+            'Time',
+            `${manilaTime(booking.startsAt)} to ${manilaTime(booking.endsAt)} (Manila time)`,
+          ],
+          ['Guests', String(booking.guests)],
+        ],
+      },
+    ],
+    action: bookingsUrl ? { label: 'Open bookings', href: bookingsUrl } : undefined,
   });
 }
 

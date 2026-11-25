@@ -38,6 +38,10 @@ test(
     process.env.DATABASE_URL = `postgresql://postgres@127.0.0.1:${address.port}/postgres`;
     process.env.DATABASE_POOL_MAX = '1';
     process.env.AUTH_SECRET = randomBytes(32).toString('hex');
+    // A staff inbox from the shell would add staff calendar invitations to the confirmation
+    // below and change the exact delivery counts this test checks.
+    delete process.env.STAFF_NOTIFICATION_EMAIL;
+    delete process.env.SMTP_USER;
     const { prisma } = await import('../prisma');
     const { adminMutate, adminRead } = await import('./service');
     const { findSignInAccount } = await import('./sign-in');
@@ -272,6 +276,11 @@ test(
         `booking:${b.id}:RESERVATION_CONFIRMED:r${b.revision}`,
       );
       assert.match(confirmation.html ?? '', /ZENTRA/);
+      assert.equal(
+        await prisma.adminOutbox.count({ where: { event: 'STAFF_CALENDAR_REQUEST' } }),
+        0,
+        'Without a staff inbox no staff calendar invitation is prepared',
+      );
       await assert.rejects(
         adminMutate(
           {
@@ -575,8 +584,13 @@ test(
       assert.equal(security.rows.length, 6);
       assert.ok(security.rows.every((r) => r.relrowsecurity));
 
-      const { getAdminPreferences, saveAdminPreferences, activityCsv, csvCell } =
-        await import('./preferences');
+      const {
+        getAdminPreferences,
+        saveAdminPreferences,
+        activityCsv,
+        csvCell,
+        readStaffNotificationEmails,
+      } = await import('./preferences');
       const { getPublicSystemSettings, requireClientFeature } = await import('../system-settings');
       await prisma.systemSetting.create({
         data: {
@@ -585,6 +599,7 @@ test(
         },
       });
       const initialPreferences = await getAdminPreferences();
+      assert.deepEqual(initialPreferences.settings.admin.staffNotifications, { emails: [] });
       const preferenceDraft = structuredClone(initialPreferences.settings);
       preferenceDraft.appearance.defaultTheme = 'dark';
       preferenceDraft.admin.security.sessionTimeoutMinutes = 15;
@@ -647,7 +662,7 @@ test(
       mutedDraft.admin.notifications.bookingConfirmations = false;
       mutedDraft.admin.notifications.bookingCancellations = false;
       mutedDraft.admin.notifications.contractUpdates = false;
-      await saveAdminPreferences(
+      const mutedPreferences = await saveAdminPreferences(
         { op: 'preferences', settings: mutedDraft, updatedAt: savedPreferences.updatedAt },
         actor,
       );
@@ -663,6 +678,71 @@ test(
           ].includes(notice.id),
         ),
       );
+      // Staff notification emails: normalized, limited, audited without addresses, never public.
+      const staffAudits = (text: string) =>
+        prisma.auditLog.findMany({
+          where: { module: 'Settings', action: 'SETTINGS_CHANGE', description: { contains: text } },
+          select: { description: true },
+        });
+      assert.equal((await staffAudits('Staff notification')).length, 0, 'Unchanged lists say so');
+      const staffDraft = structuredClone(mutedDraft);
+      staffDraft.admin.staffNotifications.emails = [' Owner@Example.test ', 'partner@example.test'];
+      const staffUpdate = {
+        op: 'preferences',
+        settings: staffDraft,
+        updatedAt: mutedPreferences.updatedAt,
+      };
+      await assert.rejects(saveAdminPreferences(staffUpdate, administrator), /super administrator/);
+      for (const [emails, problem] of [
+        [['a', 'b', 'c', 'd', 'e', 'f'].map((name) => `${name}@example.test`), /up to 5/],
+        [['owner@example.test', 'not-an-address'], /not-an-address\W+is not a valid email/],
+        [['same@example.test', 'SAME@example.test'], /only once/],
+        [[1, 2, 3, 4, 5].map((index) => `${'x'.repeat(50)}${index}@example.test`), /255/],
+      ] as const)
+        await assert.rejects(
+          saveAdminPreferences(
+            {
+              ...staffUpdate,
+              settings: {
+                ...staffDraft,
+                admin: { ...staffDraft.admin, staffNotifications: { emails: [...emails] } },
+              },
+            },
+            actor,
+          ),
+          problem,
+        );
+      const staffSaved = await saveAdminPreferences(staffUpdate, actor);
+      const staffEmails = ['owner@example.test', 'partner@example.test'];
+      assert.deepEqual(staffSaved.settings.admin.staffNotifications.emails, staffEmails);
+      assert.deepEqual(
+        (await getAdminPreferences()).settings.admin.staffNotifications.emails,
+        staffEmails,
+      );
+      const storedStaff = await prisma.systemSetting.findUniqueOrThrow({
+        where: { id: 'singleton' },
+      });
+      assert.deepEqual(
+        (storedStaff.settings as { admin: { staffNotifications: unknown } }).admin
+          .staffNotifications,
+        { emails: staffEmails },
+      );
+      const changedAudits = await staffAudits('Staff notification emails changed (2 addresses).');
+      assert.equal(changedAudits.length, 1);
+      assert.ok(
+        !changedAudits[0].description.includes('@'),
+        'The audit trail never records the addresses',
+      );
+      assert.ok(!JSON.stringify(await getPublicSystemSettings()).includes('@example.test'));
+      assert.deepEqual(await readStaffNotificationEmails(), staffEmails);
+      const clearedDraft = structuredClone(staffDraft);
+      clearedDraft.admin.staffNotifications.emails = [];
+      await saveAdminPreferences(
+        { op: 'preferences', settings: clearedDraft, updatedAt: staffSaved.updatedAt },
+        actor,
+      );
+      assert.equal((await staffAudits('cleared; the server default applies')).length, 1);
+      assert.deepEqual(await readStaffNotificationEmails(), []);
       await prisma.auditLog.create({
         data: {
           userId: 'test-client-account',

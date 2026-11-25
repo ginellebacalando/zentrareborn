@@ -152,6 +152,8 @@
   color: var(--admin-muted);
   font-size: var(--type-small);
   line-height: var(--line-body);
+  /* Staff addresses have no break points; they must wrap at 320px instead of overflowing. */
+  overflow-wrap: anywhere;
 }
 .badge {
   display: inline-flex;

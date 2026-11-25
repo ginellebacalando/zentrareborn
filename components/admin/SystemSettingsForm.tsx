@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import useSWR, { mutate as refreshCache } from 'swr';
 import {
@@ -11,6 +11,7 @@ import {
   SESSION_TIMEOUT_OPTIONS,
   notificationLabels,
   formatPreferenceDate,
+  parseStaffNotificationEmails,
   type AdminPreferences,
   type NotificationPreference,
   type PreferencesResponse,
@@ -131,6 +132,18 @@ function PreferencesEditor({
   const [settings, setSettings] = useState<AdminPreferences>(initial.settings);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ error: boolean; message: string } | null>(null);
+  // The address list keeps the typed text; it is checked and split only when saving.
+  const [staffEmails, setStaffEmails] = useState(
+    initial.settings.admin.staffNotifications.emails.join(', '),
+  );
+  // `attempt` remounts the message so a repeated save failure is announced again.
+  const [staffEmailsError, setStaffEmailsError] = useState<{
+    message: string;
+    attempt: number;
+  } | null>(null);
+  const communicationsRef = useRef<HTMLDetailsElement>(null);
+  const staffEmailsRef = useRef<HTMLInputElement>(null);
+  const staffEmailsId = useId();
   const { previewTheme, clearPersonalTheme } = useAdminPreferences();
   const disabled = !initial.canEdit || busy;
   useEffect(() => () => previewTheme(null), [previewTheme]);
@@ -152,13 +165,30 @@ function PreferencesEditor({
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setNotice(null);
+    const staffList = parseStaffNotificationEmails(staffEmails);
+    if (staffList.problem) {
+      const message = staffList.problem;
+      setStaffEmailsError((current) => ({ message, attempt: (current?.attempt ?? 0) + 1 }));
+      // The field sits in a disclosure that may be closed; open it before moving focus there.
+      if (communicationsRef.current) communicationsRef.current.open = true;
+      staffEmailsRef.current?.focus();
+      return;
+    }
+    setStaffEmailsError(null);
+    setBusy(true);
     try {
       const response = await fetch('/api/admin/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ op: 'preferences', settings, updatedAt: initial.updatedAt }),
+        body: JSON.stringify({
+          op: 'preferences',
+          settings: {
+            ...settings,
+            admin: { ...settings.admin, staffNotifications: { emails: staffList.emails } },
+          },
+          updatedAt: initial.updatedAt,
+        }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Unable to save settings.');
@@ -343,7 +373,10 @@ function PreferencesEditor({
           </section>
         </div>
         <div>
-          <details className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>
+          <details
+            ref={communicationsRef}
+            className={`${styles.settingsCard} ${styles.settingsDisclosure}`}
+          >
             <summary>
               <h2 className={styles.settingsSectionTitle}>
                 <span>
@@ -378,6 +411,45 @@ function PreferencesEditor({
                 Alert preferences apply to available admin updates. They do not stop transactional
                 notices sent to clients.
               </p>
+              <div className={styles.settingsEmails}>
+                <label>
+                  Staff notification emails
+                  <input
+                    ref={staffEmailsRef}
+                    type="text"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    disabled={disabled}
+                    value={staffEmails}
+                    aria-invalid={staffEmailsError ? true : undefined}
+                    aria-describedby={`${staffEmailsId}-help${staffEmailsError ? ` ${staffEmailsId}-error` : ''}`}
+                    onChange={(event) => {
+                      const text = event.target.value;
+                      setStaffEmails(text);
+                      // The message stays until the list is corrected or saved again.
+                      if (staffEmailsError && !parseStaffNotificationEmails(text).problem)
+                        setStaffEmailsError(null);
+                    }}
+                  />
+                </label>
+                <p id={`${staffEmailsId}-help`} className={styles.help}>
+                  Staff alerts, the daily digest and booking calendar invitations go to these
+                  addresses. Separate up to 5 with commas. Leave empty to use the server default;
+                  Automation shows the addresses in use.
+                </p>
+                {staffEmailsError && (
+                  <p
+                    key={staffEmailsError.attempt}
+                    id={`${staffEmailsId}-error`}
+                    className={styles.error}
+                    role="alert"
+                  >
+                    {staffEmailsError.message}
+                  </p>
+                )}
+              </div>
             </div>
           </details>
           <details className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>
