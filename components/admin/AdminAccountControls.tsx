@@ -126,7 +126,7 @@ export default function AdminAccountControls({
         className={styles.headerIcon}
         aria-label="Dark theme"
         aria-pressed={theme === 'dark'}
-        title={theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'}
+        data-tip={theme === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme'}
         onClick={toggleTheme}
       >
         {theme === 'dark' ? (
@@ -141,7 +141,7 @@ export default function AdminAccountControls({
           type="button"
           className={styles.headerIcon}
           aria-label={`Notifications${notifications.length && !error ? `, ${notifications.length} ${notifications.length === 1 ? 'alert' : 'alerts'}` : ''}`}
-          title="Notifications"
+          data-tip="Notifications"
           aria-expanded={activePanel === 'notifications'}
           aria-controls="admin-notification-panel"
           onClick={() => {
@@ -247,7 +247,7 @@ export default function AdminAccountControls({
         className={`${styles.headerIcon} ${styles.messagesLink}`}
         onClick={navigate}
         aria-label={newInquiries ? 'Messages, new inquiries waiting' : 'Messages'}
-        title="Messages (website inquiries)"
+        data-tip="Messages"
         aria-current={pathname === '/admin/inquiries' ? 'page' : undefined}
       >
         <Mail size={20} strokeWidth={1.5} aria-hidden="true" />
@@ -260,7 +260,8 @@ export default function AdminAccountControls({
           type="button"
           className={styles.accountButton}
           aria-label={`Account menu, ${displayName}, ${roleShort}`}
-          title="Account menu"
+          data-tip="Account menu"
+          data-tip-align="end"
           aria-expanded={activePanel === 'profile'}
           aria-controls="admin-profile-panel"
           onClick={() => setPanel(panel === 'profile' ? null : 'profile')}

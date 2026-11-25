@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { BRAND } from '@/config/brand';
-import { FOOTER_LINKS } from '@/config/navigation';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import SocialLinks from './SocialLinks';
 import styles from './Footer.module.css';
@@ -13,9 +12,9 @@ const LEGAL_LINKS = [
 ] as const;
 
 /**
- * Compact footer: the wordmark, the site links and the social links in one band, then the
- * copyright and the legal links. The address, phone and email live in the home Contact section
- * and on the Contact page, and Book Now stays in the header, so neither is repeated here.
+ * Compact footer: the wordmark and the social links in one band, then the copyright and the legal
+ * links. Nothing here repeats the header: the site links live in the main menu, the address, phone
+ * and email in the home Contact section and on the Contact page, and Book Now in the header.
  */
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -27,16 +26,6 @@ export default function Footer() {
           <ZentraWordmark size="sm" subtitle={BRAND.legalName} />
         </Link>
 
-        <nav aria-label="Footer" className={styles.nav}>
-          <ul className={styles.links}>
-            {FOOTER_LINKS.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href}>{link.label}</Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
         <SocialLinks variant="footer" className={styles.social} />
       </div>
 
@@ -44,7 +33,7 @@ export default function Footer() {
         <p>
           &copy; {year} {BRAND.legalName}. All rights reserved.
         </p>
-        <ul className={styles.legalLinks}>
+        <ul className={styles.legalLinks} aria-label="Legal">
           {LEGAL_LINKS.map((link) => (
             <li key={link.href}>
               <Link href={link.href}>{link.label}</Link>

@@ -318,6 +318,10 @@ submission date; cash uses receipt date and excludes voided or future-dated rece
 The reservation mix is explicitly all-time and reflects each request's current status.
 Receipt-based cash remains distinct from Dashboard's annual secured-contract sales.
 
+Update, 26 November 2026: the charts are drawn with Chart.js (see
+[admin-design.md](admin-design.md), Charts), and the dashboard no longer shows the reservation mix;
+Reports keeps the same all-time split as "Reservation status".
+
 The authenticated dashboard response includes only aggregate chart values from
 `lib/admin/dashboard.ts`. Missing months are zero-filled; empty charts show an honest
 zero-data state. No sample values are inserted into the venue database. Every chart

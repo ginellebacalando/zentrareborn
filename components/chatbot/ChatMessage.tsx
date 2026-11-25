@@ -7,6 +7,7 @@ import { chatbotReceptionist } from '@/config/chatbot-receptionist';
 import type { ChatReply, ReceptionistAction } from '@/lib/chatbot/types';
 import { ChatAvatar } from './ChatAvatar';
 import { CalendarCard, DetailCard } from './ChatCards';
+import { ZeniText } from './ZeniText';
 import styles from './Chatbot.module.css';
 
 export function GuestMessage({ message }: { message: string }) {
@@ -84,10 +85,11 @@ export function ZeniMessage({
   return (
     <ZeniBubble>
       <div className={styles.zeniBubble}>
-        <p className={styles.messageText}>
-          <span className={styles.srOnly}>{chatbotReceptionist.name}: </span>
-          {reply.message}
-        </p>
+        <ZeniText
+          message={reply.message}
+          className={styles.richText}
+          prefix={<span className={styles.srOnly}>{chatbotReceptionist.name}: </span>}
+        />
       </div>
       {(reply.cards ?? []).map((card, index) =>
         card.type === 'calendar' ? (

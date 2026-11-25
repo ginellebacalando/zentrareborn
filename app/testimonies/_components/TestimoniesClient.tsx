@@ -15,7 +15,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
+  CalendarHeart,
   Star,
   User,
   X,
@@ -93,7 +93,7 @@ function StarInput({
   const ratingLabel = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][display];
 
   return (
-    <fieldset className="rounded-2xl border border-zion-accent/20 bg-surface/80 p-4 shadow-sm transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface">
+    <fieldset className="rounded-2xl border border-zion-accent/20 bg-surface p-4 shadow-sm transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface">
       <legend className="px-1 font-sans text-xs font-bold uppercase tracking-[0.14em] text-ink">
         {label}
         {required && <span className="text-accent-ink"> *</span>}
@@ -158,7 +158,7 @@ function RatingDetail({ label, value }: { label: string; value: number | null })
 
 function TestimonyCard({ testimony }: { testimony: PublicTestimony }) {
   return (
-    <article className="group overflow-hidden rounded-[2rem] border border-white/80 bg-surface/75 shadow-[0_18px_60px_color-mix(in_srgb,var(--palette-night)_8%,transparent)] backdrop-blur-md transition duration-500 hover:-translate-y-1 hover:shadow-[0_24px_70px_color-mix(in_srgb,var(--palette-gold)_16%,transparent)]">
+    <article className="group overflow-hidden rounded-[2rem] border border-white/80 bg-surface shadow-[0_18px_60px_color-mix(in_srgb,var(--palette-night)_8%,transparent)] transition duration-500 hover:-translate-y-0.5">
       {testimony.photoUrl && (
         <div className="relative h-56 overflow-hidden">
           <Image
@@ -275,7 +275,7 @@ function FilterSelect({
 
         {open && (
           <div
-            className={`events-scrollbar absolute left-0 z-50 max-h-64 w-full overflow-y-auto rounded-2xl border border-zion-accent/25 bg-surface/95 py-1.5 shadow-[0_12px_40px_color-mix(in_srgb,var(--palette-night)_15%,transparent)] backdrop-blur-xl ${direction === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+            className={`events-scrollbar absolute left-0 z-50 max-h-64 w-full overflow-y-auto rounded-2xl border border-zion-accent/25 bg-surface py-1.5 shadow-[0_12px_40px_color-mix(in_srgb,var(--palette-night)_15%,transparent)] ${direction === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}`}
           >
             {options.map((opt) => (
               <button
@@ -563,7 +563,7 @@ export default function TestimoniesClient({
   }, [rotationIndex, testimonies]);
 
   const modalInputClasses =
-    'w-full rounded-2xl border border-zion-accent/25 bg-surface/85 py-3.5 pl-11 pr-4 font-sans text-sm font-normal text-ink shadow-sm transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15';
+    'w-full rounded-2xl border border-zion-accent/25 bg-surface py-3.5 pl-11 pr-4 font-sans text-sm font-normal text-ink shadow-sm transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15';
 
   return (
     <>
@@ -655,7 +655,7 @@ export default function TestimoniesClient({
           </div>
         )}
 
-        <div className="relative z-30 mb-8 rounded-[1.75rem] border border-white/80 bg-surface/65 p-4 shadow-sm backdrop-blur-md md:p-5">
+        <div className="relative z-30 mb-8 rounded-[1.75rem] border border-white/80 bg-surface p-4 shadow-sm md:p-5">
           <div className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-[0.14em] text-ink">
             <SlidersHorizontal className="h-4 w-4 text-accent-ink" />
             Browse testimonies
@@ -726,12 +726,12 @@ export default function TestimoniesClient({
             {[1, 2, 3, 4, 5, 6].map((item) => (
               <div
                 key={item}
-                className="h-96 animate-pulse rounded-[2rem] border border-white/70 bg-surface/50"
+                className="h-96 animate-pulse rounded-[2rem] border border-white/70 bg-surface"
               />
             ))}
           </div>
         ) : testimonies.length === 0 ? (
-          <div className="rounded-[2rem] border border-dashed border-zion-accent/40 bg-surface/50 px-6 py-20 text-center">
+          <div className="rounded-[2rem] border border-dashed border-zion-accent/40 bg-surface px-6 py-20 text-center">
             <MessageSquareQuote className="mx-auto h-12 w-12 text-accent-ink" />
             <h3 className="mt-5 font-sahitya text-3xl text-ink">No testimonies yet.</h3>
             <p className="mt-2 text-muted">
@@ -752,7 +752,7 @@ export default function TestimoniesClient({
                   type="button"
                   onClick={() => stepEntries(-1)}
                   aria-label="Previous testimonies"
-                  className="touch-target absolute left-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] hover:text-[var(--text-on-action)] motion-reduce:transform-none sm:-left-4 lg:-left-5"
+                  className="touch-target absolute left-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface text-ink shadow-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] hover:text-[var(--text-on-action)] motion-reduce:transform-none sm:-left-4 lg:-left-5"
                 >
                   <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -760,7 +760,7 @@ export default function TestimoniesClient({
                   type="button"
                   onClick={() => stepEntries(1)}
                   aria-label="Next testimonies"
-                  className="touch-target absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface/95 text-ink shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] hover:text-[var(--text-on-action)] motion-reduce:transform-none sm:-right-4 lg:-right-5"
+                  className="touch-target absolute right-1 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-zion-accent/30 bg-surface text-ink shadow-md transition-all duration-300 hover:scale-105 hover:border-zion-accent hover:bg-[var(--palette-client-button)] hover:text-[var(--text-on-action)] motion-reduce:transform-none sm:-right-4 lg:-right-5"
                 >
                   <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -791,21 +791,14 @@ export default function TestimoniesClient({
               setIsFormOpen(false);
             }
           }}
-          className="fixed inset-0 z-[160] flex items-center justify-center overscroll-contain bg-black/55 px-3 py-6 backdrop-blur-md animate-[fadeIn_200ms_ease-out]"
+          className="fixed inset-0 z-[160] flex items-center justify-center overscroll-contain bg-black/55 px-3 py-6 animate-[fadeIn_200ms_ease-out]"
         >
           <div className="events-scrollbar relative max-h-[92vh] w-full max-w-4xl overflow-y-auto overscroll-contain rounded-[2rem] border border-zion-accent/25 bg-[var(--palette-paper)] shadow-[0_32px_90px_-24px_color-mix(in_srgb,var(--palette-night)_45%,transparent)]">
-            {/* Top gold accent bar */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none sticky top-0 z-20 h-1 w-full bg-gradient-to-r from-transparent via-[var(--palette-client-button)] to-transparent"
-            />
-
             {/* Sticky Modal Header */}
-            <div className="sticky top-1 z-10 border-b border-zion-accent/15 bg-[var(--palette-paper)]/95 px-6 py-5 backdrop-blur-md md:px-10">
+            <div className="sticky top-0 z-10 border-b border-zion-accent/15 bg-[var(--palette-paper)]/95 px-6 py-5 md:px-10">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--palette-client-button)]/25 px-3 py-1 font-sans text-xs font-bold uppercase tracking-[0.2em] text-ink">
-                    <Sparkles className="h-3.5 w-3.5 text-accent-ink" aria-hidden="true" />
+                  <span className="font-sans text-xs font-bold uppercase tracking-[0.2em] text-accent-ink">
                     Client Testimony
                   </span>
                   <h2
@@ -830,7 +823,7 @@ export default function TestimoniesClient({
                   type="button"
                   aria-label="Close share experience dialog"
                   onClick={() => setIsFormOpen(false)}
-                  className="touch-target flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zion-accent/25 bg-surface/80 text-muted transition-all duration-300 hover:border-[var(--palette-client-button)] hover:bg-[var(--palette-client-button)] hover:text-ink"
+                  className="touch-target flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zion-accent/25 bg-surface text-muted transition-all duration-300 hover:border-[var(--palette-client-button)] hover:bg-[var(--palette-client-button)] hover:text-ink"
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
@@ -913,14 +906,14 @@ export default function TestimoniesClient({
                       value={form.eventType}
                       placeholder="Select event type"
                       leadingIcon={
-                        <Sparkles aria-hidden="true" className="h-4 w-4 text-accent-ink" />
+                        <CalendarHeart aria-hidden="true" className="h-4 w-4 text-accent-ink" />
                       }
                       options={filterOptions.eventTypes.map((eventType) => ({
                         value: eventType,
                         label: eventType,
                       }))}
                       onChange={(value) => setForm((current) => ({ ...current, eventType: value }))}
-                      triggerClassName="rounded-2xl border border-zion-accent/25 bg-surface/85 px-4 py-3.5 shadow-sm hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:ring-4 focus:ring-zion-accent/15"
+                      triggerClassName="rounded-2xl border border-zion-accent/25 bg-surface px-4 py-3.5 shadow-sm hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:ring-4 focus:ring-zion-accent/15"
                     />
                   </div>
 
@@ -1047,12 +1040,12 @@ export default function TestimoniesClient({
                       onChange={(event) =>
                         setForm((current) => ({ ...current, comment: event.target.value }))
                       }
-                      className="w-full resize-y rounded-2xl border border-zion-accent/25 bg-surface/85 px-5 py-4 font-serif text-base leading-relaxed text-ink shadow-sm transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15"
+                      className="w-full resize-y rounded-2xl border border-zion-accent/25 bg-surface px-5 py-4 font-serif text-base leading-relaxed text-ink shadow-sm transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-zion-accent/40 bg-surface/65 p-5 transition-colors duration-300 hover:border-zion-accent/70 hover:bg-surface/90 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-zion-accent/40 bg-surface p-5 transition-colors duration-300 hover:border-zion-accent/70 hover:bg-surface sm:flex-row sm:items-center sm:justify-between">
                   <label className="flex flex-1 cursor-pointer items-center gap-4">
                     <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--palette-client-button)]/25 text-accent-ink shadow-sm">
                       <Camera className="h-5 w-5" aria-hidden="true" />
@@ -1085,7 +1078,7 @@ export default function TestimoniesClient({
                   )}
                 </div>
 
-                <label className="flex cursor-pointer items-start gap-3.5 rounded-2xl border border-zion-accent/20 bg-surface/75 p-4 text-sm leading-6 text-muted transition-colors hover:border-zion-accent/35">
+                <label className="flex cursor-pointer items-start gap-3.5 rounded-2xl border border-zion-accent/20 bg-surface p-4 text-sm leading-6 text-muted transition-colors hover:border-zion-accent/35">
                   <input
                     required
                     type="checkbox"

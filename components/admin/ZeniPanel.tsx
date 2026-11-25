@@ -10,6 +10,7 @@ import type {
   ZeniPreviewResult,
 } from '@/lib/chatbot/admin-types';
 import type { ZeniLanguage } from '@/lib/chatbot/language';
+import { ZeniText } from '@/components/chatbot/ZeniText';
 import styles from './ZeniPanel.module.css';
 
 const REASON_LABELS: Record<ZeniGapReasonLabel, string> = {
@@ -395,7 +396,7 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
           {result && (
             <div className={styles.result}>
               <h3>Zeni’s reply</h3>
-              <p className={styles.replyText}>{result.reply.message}</p>
+              <ZeniText message={result.reply.message} className={styles.replyText} />
               {(result.reply.cards?.length ?? 0) > 0 && (
                 <p className={styles.muted}>
                   Cards:{' '}

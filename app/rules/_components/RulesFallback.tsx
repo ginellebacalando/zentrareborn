@@ -45,7 +45,7 @@ export default function RulesFallback() {
             ].map((rule, index) => (
               <section
                 key={rule.title}
-                className="rounded-3xl border border-zion-accent/25 bg-surface/55 p-7 shadow-sm backdrop-blur-sm md:p-9"
+                className="rounded-3xl border border-zion-accent/25 bg-surface p-7 shadow-sm md:p-9"
               >
                 <p className="mb-4 text-sm font-bold uppercase tracking-[0.2em] text-[var(--palette-gold-border)]">
                   Guideline {index + 1}

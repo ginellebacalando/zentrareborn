@@ -48,21 +48,12 @@ export default function FacilitiesShowcase({
 }) {
   return (
     <div className="relative overflow-hidden bg-[var(--palette-pearl)] text-[var(--palette-night-subtle)]">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-[-12rem] top-24 h-[28rem] w-[28rem] rounded-full bg-zion-accent/10 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute right-[-14rem] top-[42rem] h-[34rem] w-[34rem] rounded-full bg-[var(--palette-forest)]/10 blur-3xl"
-      />
-
       <section
         id="facilities-spaces"
         className="scroll-mt-24 relative mx-auto w-full max-w-7xl px-[var(--layout-gutter)] pb-10 pt-20 md:pb-16 md:pt-28"
       >
         <FadeIn className="mx-auto max-w-4xl text-center">
-          <div className="mb-5 inline-flex items-center gap-3 rounded-full border border-[var(--palette-gold-border)]/25 bg-surface/70 px-5 py-2 shadow-sm backdrop-blur-md">
+          <div className="mb-5 inline-flex items-center gap-3 rounded-full border border-[var(--palette-gold-border)]/25 bg-surface px-5 py-2 shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--palette-gold-border)]" />
             <p className="text-xs font-bold uppercase tracking-[0.28em] text-[var(--palette-gold-ink)]">
               Explore the venue
@@ -92,7 +83,7 @@ export default function FacilitiesShowcase({
               direction={isReversed ? 'left' : 'right'}
               className="group"
             >
-              <article className="grid overflow-hidden rounded-[2rem] border border-white/80 bg-surface/75 shadow-[0_26px_80px_-40px_color-mix(in_srgb,var(--palette-night)_42%,transparent)] backdrop-blur-xl transition duration-700 hover:-translate-y-1 hover:shadow-[0_34px_90px_-38px_color-mix(in_srgb,var(--palette-night)_50%,transparent)] motion-reduce:transform-none motion-reduce:transition-none lg:grid-cols-12">
+              <article className="grid overflow-hidden rounded-[2rem] border border-white/80 bg-surface shadow-[0_26px_80px_-40px_color-mix(in_srgb,var(--palette-night)_42%,transparent)] transition duration-700 hover:-translate-y-0.5 hover:shadow-[0_34px_90px_-38px_color-mix(in_srgb,var(--palette-night)_50%,transparent)] motion-reduce:transform-none motion-reduce:transition-none lg:grid-cols-12">
                 <div
                   className={`relative min-h-[24rem] overflow-hidden sm:min-h-[31rem] lg:col-span-7 lg:min-h-[38rem] ${
                     isReversed ? 'lg:order-2' : ''
@@ -123,8 +114,7 @@ export default function FacilitiesShowcase({
 
                   {space.isNew ? (
                     <div className="absolute left-5 top-5 sm:left-8 sm:top-8">
-                      <span className="inline-flex items-center gap-2 rounded-full border border-[var(--palette-cream)]/70 bg-[var(--palette-night-subtle)]/88 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-[var(--palette-gold-soft)] shadow-[0_10px_30px_color-mix(in_srgb,var(--palette-night)_28%,transparent)] backdrop-blur-md">
-                        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span className="inline-flex items-center gap-2 rounded-full border border-[var(--palette-cream)]/70 bg-[var(--palette-night-subtle)]/88 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-[var(--palette-gold-soft)] shadow-[0_10px_30px_color-mix(in_srgb,var(--palette-night)_28%,transparent)]">
                         New
                       </span>
                     </div>
@@ -142,7 +132,7 @@ export default function FacilitiesShowcase({
                   <h3 className="font-sahitya text-[clamp(2.4rem,4vw,4rem)] leading-none tracking-[-0.025em] text-[var(--palette-night-subtle)]">
                     {space.name}
                   </h3>
-                  <div className="my-6 h-px w-16 bg-gradient-to-r from-[var(--palette-gold-border)] to-transparent" />
+                  <div className="my-6 h-px w-16 bg-[var(--palette-gold-border)]" />
                   <p className="font-serif text-base leading-8 text-[var(--palette-muted)] sm:text-lg">
                     {space.description}
                   </p>
@@ -180,10 +170,6 @@ export default function FacilitiesShowcase({
       <section className="relative mx-auto w-full max-w-7xl px-[var(--layout-gutter)] py-20 md:py-28">
         <FadeIn>
           <div className="relative overflow-hidden rounded-[2rem] bg-[var(--palette-night-subtle)] px-6 py-14 text-center text-white shadow-[0_30px_80px_-35px_color-mix(in_srgb,var(--palette-night)_80%,transparent)] sm:px-10 md:py-20">
-            <div
-              aria-hidden="true"
-              className="absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-zion-accent/25 blur-3xl"
-            />
             <div className="relative mx-auto max-w-3xl">
               <p className="mb-5 text-xs font-bold uppercase tracking-[0.28em] text-[var(--palette-gold)]">
                 Your celebration starts here
@@ -198,7 +184,7 @@ export default function FacilitiesShowcase({
               <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <OpenChatbotButton
                   prompt="What are your visiting hours and how do I arrange a site visit?"
-                  className="group relative inline-flex min-h-12 w-full items-center justify-center px-8 py-3.5 bg-[var(--palette-night-subtle)] text-white font-sans text-xs font-bold uppercase tracking-[0.18em] overflow-hidden rounded-full transition-all shadow-[0_15px_30px_-10px_color-mix(in_srgb,var(--palette-night)_40%,transparent)] hover:shadow-[0_20px_40px_-15px_color-mix(in_srgb,var(--palette-gold)_50%,transparent)] sm:w-auto"
+                  className="group relative inline-flex min-h-12 w-full items-center justify-center px-8 py-3.5 bg-[var(--palette-night-subtle)] text-white font-sans text-xs font-bold uppercase tracking-[0.18em] overflow-hidden rounded-full transition-all shadow-[0_15px_30px_-10px_color-mix(in_srgb,var(--palette-night)_40%,transparent)] sm:w-auto"
                 >
                   <div className="absolute inset-0 bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out translate-y-full group-hover:translate-y-0" />
                   <span className="relative z-10 flex items-center gap-3 transition-colors duration-500 group-hover:text-[var(--text-on-action)]">

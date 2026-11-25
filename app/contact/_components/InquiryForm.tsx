@@ -144,7 +144,7 @@ type FieldErrors = {
 function inputSurfaceClass(invalid: boolean) {
   return invalid
     ? 'border-zion-accent/70 bg-[var(--palette-gold-soft)]/90 ring-4 ring-zion-accent/10'
-    : 'border-zion-accent/25 bg-surface/80';
+    : 'border-zion-accent/25 bg-surface';
 }
 
 function phoneDigits(value: string) {
@@ -174,7 +174,7 @@ function FormNotice({
   return (
     <div
       role={isSuccess ? 'status' : 'alert'}
-      className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-[0_10px_30px_color-mix(in_srgb,var(--palette-night)_6%,transparent)] backdrop-blur-md ${
+      className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm shadow-[0_10px_30px_color-mix(in_srgb,var(--palette-night)_6%,transparent)] ${
         isSuccess
           ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-900'
           : 'border-zion-accent/35 bg-[var(--palette-gold-soft)]/95 text-[var(--palette-gold-ink)]'
@@ -233,7 +233,7 @@ function ValidationToast({
       <div
         key={`${tone}-${message}`}
         role={isSuccess ? 'status' : 'alert'}
-        className={`relative overflow-hidden rounded-2xl border shadow-[0_22px_60px_color-mix(in_srgb,var(--palette-night)_18%,transparent)] ring-1 ring-white/70 backdrop-blur-xl motion-reduce:animate-none ${
+        className={`relative overflow-hidden rounded-2xl border shadow-[0_22px_60px_color-mix(in_srgb,var(--palette-night)_18%,transparent)] ring-1 ring-white/70 motion-reduce:animate-none ${
           leaving
             ? 'animate-[inquiryToastSlideOutRight_280ms_ease-in_both]'
             : 'animate-[inquiryToastSlideInLeft_420ms_ease-out_both]'
@@ -243,9 +243,6 @@ function ValidationToast({
             : 'border-zion-accent/35 bg-[var(--palette-white)]/95 text-[var(--palette-forest)]'
         }`}
       >
-        <div
-          className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent ${isSuccess ? 'via-emerald-400/75' : 'via-zion-accent/70'} to-transparent`}
-        />
         <div className="flex items-start gap-3 px-4 py-3">
           <span
             className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${isSuccess ? 'bg-emerald-100 text-emerald-700' : 'bg-zion-accent/15 text-accent-ink'}`}
@@ -656,7 +653,7 @@ export default function InquiryForm({
   };
 
   const commonInputClasses = (invalid: boolean) =>
-    `peer w-full rounded-2xl border ${inputSurfaceClass(invalid)} py-3.5 pl-12 pr-5 font-sans text-sm text-ink shadow-sm backdrop-blur-md transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15 disabled:cursor-not-allowed`;
+    `peer w-full rounded-2xl border ${inputSurfaceClass(invalid)} py-3.5 pl-12 pr-5 font-sans text-sm text-ink shadow-sm transition-all duration-300 placeholder:text-muted/70 hover:border-zion-accent/45 hover:bg-surface focus:border-zion-accent focus:bg-surface focus:outline-none focus:ring-4 focus:ring-zion-accent/15 disabled:cursor-not-allowed`;
 
   return (
     <>
@@ -733,7 +730,7 @@ export default function InquiryForm({
             Phone Number <span className="text-accent-ink">*</span>
           </label>
           <div
-            className={`composite-field-focus-shell flex overflow-hidden rounded-2xl border ${inputSurfaceClass(Boolean(fieldErrors.phoneNumber))} shadow-sm backdrop-blur-md transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface focus-within:border-zion-accent focus-within:bg-surface focus-within:ring-4 focus-within:ring-zion-accent/15`}
+            className={`composite-field-focus-shell flex overflow-hidden rounded-2xl border ${inputSurfaceClass(Boolean(fieldErrors.phoneNumber))} shadow-sm transition-all duration-300 hover:border-zion-accent/45 hover:bg-surface focus-within:border-zion-accent focus-within:bg-surface focus-within:ring-4 focus-within:ring-zion-accent/15`}
           >
             <CountrySelect value={phoneCode} disabled={!enabled} onChange={setPhoneCountry} />
             <div className="relative flex min-w-0 flex-1 items-center rounded-r-2xl">
@@ -816,7 +813,7 @@ export default function InquiryForm({
             className={`flex flex-wrap gap-2.5 rounded-2xl border p-3.5 transition-colors duration-300 ${
               fieldErrors.subject
                 ? 'border-zion-accent/70 bg-[var(--palette-gold-soft)]/70'
-                : 'border-zion-accent/20 bg-surface/55'
+                : 'border-zion-accent/20 bg-surface'
             }`}
           >
             {SUBJECT_OPTIONS.map((option) => {
@@ -833,7 +830,7 @@ export default function InquiryForm({
                   className={`rounded-full border px-4 py-2 font-sans text-xs font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-60 ${
                     isSelected
                       ? 'border-[var(--palette-client-button)] bg-[var(--palette-client-button)] text-[var(--text-on-action)] shadow-sm'
-                      : 'border-zion-accent/25 bg-surface/85 text-muted hover:-translate-y-0.5 hover:border-[var(--palette-client-button)] hover:bg-surface hover:text-ink'
+                      : 'border-zion-accent/25 bg-surface text-muted hover:-translate-y-0.5 hover:border-[var(--palette-client-button)] hover:bg-surface hover:text-ink'
                   }`}
                 >
                   {option}

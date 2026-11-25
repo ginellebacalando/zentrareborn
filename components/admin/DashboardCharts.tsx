@@ -5,16 +5,11 @@ import { CalendarCheck, CalendarX, Inbox, MessageSquareText, Wallet } from 'luci
 import {
   ChartDataTable as DataTable,
   BarChart,
-  DonutChart,
   AreaChart,
   TrendChart,
   chartCount as count,
 } from './ChartPrimitives';
-import type {
-  DashboardInsights,
-  DashboardMonth,
-  ReservationSlice,
-} from '@/lib/admin/dashboard-types';
+import type { DashboardInsights, DashboardMonth } from '@/lib/admin/dashboard-types';
 import { money } from '@/lib/admin/domain';
 import styles from './DashboardCharts.module.css';
 import admin from './admin.module.css';
@@ -192,48 +187,6 @@ function ActivityChart({ months }: { months: DashboardMonth[] }) {
   );
 }
 
-function ReservationChart({ reservations }: { reservations: ReservationSlice[] }) {
-  const titleId = useId();
-  const total = reservations.reduce((sum, item) => sum + item.count, 0);
-  return (
-    <article className={`${admin.card} ${styles.card}`} aria-labelledby={titleId}>
-      <div className={styles.cardHeading}>
-        <div>
-          <h3 id={titleId}>Reservation mix</h3>
-          <span className={styles.scope}>All bookings, by current status</span>
-        </div>
-      </div>
-      <DonutChart
-        slices={reservations}
-        label={`${count(total)} total booking requests. Counts and percentages follow.`}
-        center={new Intl.NumberFormat('en-PH', {
-          notation: 'compact',
-          maximumFractionDigits: 1,
-        }).format(total)}
-        caption={total ? 'bookings' : 'No bookings yet'}
-      />
-      <DataTable caption="All-time booking requests by current reservation status">
-        <thead>
-          <tr>
-            <th scope="col">Status</th>
-            <th scope="col">Bookings</th>
-            <th scope="col">Share</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reservations.map((slice) => (
-            <tr key={slice.key}>
-              <th scope="row">{slice.label}</th>
-              <td>{count(slice.count)}</td>
-              <td>{total ? `${((slice.count / total) * 100).toFixed(1)}%` : '0%'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </DataTable>
-    </article>
-  );
-}
-
 const PERIODS = [
   { months: 6, label: '6 months' },
   { months: 12, label: '12 months' },
@@ -272,7 +225,6 @@ export default function DashboardCharts({ insights }: { insights: DashboardInsig
       <div className={styles.grid}>
         <BookingsTrend months={months} />
         <ActivityChart months={months} />
-        <ReservationChart reservations={insights.reservations} />
       </div>
     </section>
   );

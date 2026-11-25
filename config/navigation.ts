@@ -37,15 +37,3 @@ export const MAIN_NAV: readonly NavItem[] = [
 ];
 
 export const BOOK_LINK: NavLink = { label: 'Book Now', href: '/booking' };
-
-/** The original footer list. */
-export const FOOTER_LINKS: readonly NavLink[] = [
-  { label: 'Home', href: '/' },
-  { label: 'Packages', href: '/events/weddings' },
-  { label: 'Gallery', href: '/gallery' },
-  { label: 'About Us', href: '/about' },
-  { label: 'Facilities', href: '/facilities' },
-  { label: 'Testimonies', href: '/testimonies' },
-  { label: 'FAQ', href: '/faq' },
-  { label: 'Contact Us', href: '/contact' },
-];

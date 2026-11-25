@@ -177,13 +177,13 @@ const SwipeCard = ({
         <>
           <motion.div
             style={{ opacity: likeOpacity }}
-            className="absolute top-10 left-10 px-6 py-2 border-4 border-[var(--palette-night-border)] text-[var(--palette-night-border)] font-black text-3xl tracking-widest rounded-xl uppercase rotate-[-15deg] pointer-events-none z-10 bg-surface/10 backdrop-blur-sm"
+            className="absolute top-10 left-10 px-6 py-2 border-4 border-[var(--palette-night-border)] text-[var(--palette-night-border)] font-black text-3xl tracking-widest rounded-xl uppercase rotate-[-15deg] pointer-events-none z-10 bg-surface/10"
           >
             LIKE
           </motion.div>
           <motion.div
             style={{ opacity: nopeOpacity }}
-            className="absolute top-10 right-10 px-6 py-2 border-4 border-[var(--palette-danger)] text-[var(--palette-danger)] font-black text-3xl tracking-widest rounded-xl uppercase rotate-[15deg] pointer-events-none z-10 bg-surface/10 backdrop-blur-sm"
+            className="absolute top-10 right-10 px-6 py-2 border-4 border-[var(--palette-danger)] text-[var(--palette-danger)] font-black text-3xl tracking-widest rounded-xl uppercase rotate-[15deg] pointer-events-none z-10 bg-surface/10"
           >
             NOPE
           </motion.div>
@@ -192,7 +192,7 @@ const SwipeCard = ({
 
       {/* Content */}
       <div className="absolute bottom-8 left-8 right-8 text-white pointer-events-none">
-        <div className="inline-block px-4 py-1.5 bg-zion-accent/90 backdrop-blur-md rounded-full text-xs font-bold tracking-[0.2em] uppercase mb-4 shadow-lg text-black">
+        <div className="inline-block px-4 py-1.5 bg-zion-accent/90 rounded-full text-xs font-bold tracking-[0.2em] uppercase mb-4 shadow-lg text-black">
           {img.category}
         </div>
         <h2 className="text-3xl md:text-4xl font-bold leading-tight mb-2 text-shadow-sm font-sahitya">
@@ -303,7 +303,7 @@ export default function GalleryFallback() {
           <button
             disabled={isFinished}
             onClick={handleSwipe}
-            className={`pointer-events-auto w-16 h-16 rounded-full bg-surface flex items-center justify-center shadow-[0_10px_20px_color-mix(in_srgb,var(--palette-night)_5%,transparent)] border border-neutral-100 text-[var(--palette-danger)] transition-all duration-300 hover:scale-110 hover:shadow-[0_10px_25px_color-mix(in_srgb,var(--palette-gold)_20%,transparent)] active:scale-95 ${isFinished ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            className={`pointer-events-auto w-16 h-16 rounded-full bg-surface flex items-center justify-center shadow-[0_10px_20px_color-mix(in_srgb,var(--palette-night)_5%,transparent)] border border-neutral-100 text-[var(--palette-danger)] transition-all duration-300 hover:scale-110 active:scale-95 ${isFinished ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
           >
             <X className="w-8 h-8" strokeWidth={3} />
           </button>

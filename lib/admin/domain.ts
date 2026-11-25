@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { automationJobLabel } from '@/lib/automation/catalog';
+
 export const paymentRules = [
   'DEPOSIT_REQUIRED',
   'FULL_PAYMENT_REQUIRED',
@@ -109,11 +111,6 @@ export function eventDate(value: Date | string) {
     timeStyle: 'short',
   }).format(new Date(value));
 }
-/** Subject names for the payment notices, where the event name would read harshly to a client. */
-const NOTICE_SUBJECTS: Record<string, string> = {
-  PAYMENT_VERIFIED: 'Payment verified',
-  PAYMENT_REJECTED: 'Payment screenshot not accepted',
-};
 /** The opening paragraph of a booking notice about the payment deadline or a payment. */
 function noticeLead(event: string, amount: string, due: string | null, note?: string) {
   if (event === 'PAYMENT_VERIFIED')
@@ -149,19 +146,47 @@ export function bookingEmail(
   event: string,
   note?: string,
 ) {
+  const dueNow = money(
+    b.paymentRule === 'FULL_PAYMENT_REQUIRED'
+      ? b.totalCents - paid
+      : Math.max(0, b.depositCents - paid),
+  );
   const amount =
     b.paymentRule === 'FULL_PAYMENT_REQUIRED'
-      ? `the full amount of ${money(b.totalCents - paid)}`
-      : `the reservation fee of ${money(Math.max(0, b.depositCents - paid))}`;
-  const lead = noticeLead(event, amount, b.holdExpiresAt ? eventDate(b.holdExpiresAt) : null, note);
+      ? `the full amount of ${dueNow}`
+      : `the reservation fee of ${dueNow}`;
+  const due = b.holdExpiresAt ? eventDate(b.holdExpiresAt) : null;
+  const lead = noticeLead(event, amount, due, note);
+  const asksForFee = !['NO_PAYMENT_REQUIRED', 'FULL_PAYMENT_REQUIRED'].includes(b.paymentRule);
   const requirement =
     b.paymentRule === 'NO_PAYMENT_REQUIRED'
       ? 'No payment is required to secure this reservation.'
       : b.paymentRule === 'FULL_PAYMENT_REQUIRED'
         ? `Full payment of ${money(b.totalCents)} is required before confirmation.`
         : `A reservation fee of ${money(b.depositCents)} is required before confirmation.`;
+  const payment = paymentStatus(b.totalCents, paid);
+  const closing =
+    'Approval alone does not confirm a reservation or indicate payment. Only a CONFIRMED reservation secures the event schedule.';
   return {
-    subject: `Zion Events Place | ${NOTICE_SUBJECTS[event] ?? event.replaceAll('_', ' ')} | ${b.reference}`,
-    body: `Hello ${b.clientName},\n\n${lead ? `${lead}\n\n` : ''}Booking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${paymentStatus(b.totalCents, paid)} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${requirement}\n${instructions}\n\nApproval alone does not confirm a reservation or indicate payment. Only a CONFIRMED reservation secures the event schedule.\n\nZion Events Place`,
+    // The notice's name in sentence case ("Payment deadline extended"), never the raw event code.
+    subject: `Zion Events Place | ${automationJobLabel(event)} | ${b.reference}`,
+    body: `Hello ${b.clientName},\n\n${lead ? `${lead}\n\n` : ''}Booking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${payment} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${requirement}\n${instructions}\n\n${closing}\n\nZion Events Place`,
+    /** The same notice in parts, for the email's booking summary (lib/automation/templates.ts). */
+    parts: {
+      greeting: `Hello ${b.clientName},`,
+      lead,
+      reference: b.reference,
+      approval: b.approval,
+      reservation: b.reservation,
+      payment,
+      total: money(b.totalCents),
+      fee: asksForFee && b.depositCents > 0 ? money(b.depositCents) : null,
+      received: money(paid),
+      balance: money(Math.max(0, b.totalCents - paid)),
+      requirement,
+      instructions,
+      closing,
+      emphasis: [dueNow, ...(due ? [due] : [])],
+    },
   };
 }

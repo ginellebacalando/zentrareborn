@@ -195,7 +195,7 @@ export default function ZionDatePicker({
         className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-2xl border ${
           open
             ? 'border-zion-accent bg-surface ring-4 ring-zion-accent/15'
-            : 'border-zion-accent/25 bg-surface/85 hover:border-zion-accent/45 hover:bg-surface'
+            : 'border-zion-accent/25 bg-surface hover:border-zion-accent/45 hover:bg-surface'
         } py-3.5 pl-4 pr-4 text-left shadow-sm transition-all duration-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60`}
       >
         <span className="flex min-w-0 flex-1 items-center gap-3">
@@ -230,7 +230,7 @@ export default function ZionDatePicker({
               left: position.left,
               width: position.width,
             }}
-            className="z-[220] rounded-2xl border border-zion-accent/25 bg-surface/95 p-4 shadow-[0_18px_48px_color-mix(in_srgb,var(--palette-night)_18%,transparent)] backdrop-blur-xl"
+            className="z-[220] rounded-2xl border border-zion-accent/25 bg-surface p-4 shadow-[0_18px_48px_color-mix(in_srgb,var(--palette-night)_18%,transparent)]"
           >
             {/* Month / Year Header */}
             <div className="mb-3 flex items-center justify-between gap-2 border-b border-zion-accent/15 pb-3">

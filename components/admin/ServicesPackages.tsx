@@ -117,6 +117,7 @@ export default function ServicesPackages() {
                 type="button"
                 className={styles.catalogIconButton}
                 aria-label="New event category"
+                data-tip="New event category"
                 ref={createCategoryRef}
                 onClick={() => open({ type: 'category', item: null })}
               >

@@ -41,44 +41,12 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
-.primary,
-.secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: var(--layout-touch-target);
-  min-width: var(--layout-touch-target);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-control);
-  font: inherit;
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  line-height: var(--line-heading);
-  cursor: pointer;
-  transition: background var(--motion-fast) var(--motion-ease);
-}
+/* Buttons come from the shared admin set, so every page matches (docs/admin-design.md). */
 .primary {
-  background: var(--admin-action);
-  color: var(--admin-on-action);
-  border: 1px solid var(--admin-action);
-}
-.primary:not(:disabled):hover {
-  background: var(--admin-action-hover);
+  composes: primary from './admin.module.css';
 }
 .secondary {
-  background: var(--admin-surface-card);
-  color: var(--admin-ink);
-  border: 1px solid var(--admin-control-line);
-}
-.secondary:not(:disabled):hover {
-  background: var(--admin-surface-subtle);
-  border-color: var(--admin-border);
-}
-.primary:disabled,
-.secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  composes: secondary from './admin.module.css';
 }
 .panel button:focus-visible,
 .panel select:focus-visible {

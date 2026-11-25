@@ -33,14 +33,14 @@ function SectionHeading({
         className="group relative flex w-full min-w-0 cursor-default items-center justify-center gap-3 md:gap-6"
         data-motion="decorative"
       >
-        <div className="h-[1.5px] min-w-4 flex-1 bg-gradient-to-r from-transparent to-[var(--palette-client-section)]/75 opacity-70 transition-all duration-700 ease-out group-hover:to-[var(--palette-client-section)] group-hover:opacity-100 md:max-w-20 md:group-hover:max-w-40" />
+        <div className="h-px min-w-4 flex-1 bg-[var(--palette-client-section)]/60 md:max-w-20" />
         <h2
           id={id}
-          className="min-w-0 text-balance text-center font-serif text-[1.05rem] uppercase tracking-[0.08em] text-ink transition-all duration-700 ease-out group-hover:text-[var(--palette-client-section)] group-hover:drop-shadow-[0_1px_1px_color-mix(in_srgb,var(--palette-ink)_22%,transparent)] min-[360px]:text-xl min-[360px]:tracking-[0.1em] md:text-4xl md:tracking-[0.2em] md:group-hover:tracking-[0.24em]"
+          className="min-w-0 text-balance text-center font-serif text-[1.05rem] uppercase tracking-[0.08em] text-ink min-[360px]:text-xl min-[360px]:tracking-[0.1em] md:text-4xl md:tracking-[0.2em]"
         >
           {title}
         </h2>
-        <div className="h-[1.5px] min-w-4 flex-1 bg-gradient-to-l from-transparent to-[var(--palette-client-section)]/75 opacity-70 transition-all duration-700 ease-out group-hover:to-[var(--palette-client-section)] group-hover:opacity-100 md:max-w-20 md:group-hover:max-w-40" />
+        <div className="h-px min-w-4 flex-1 bg-[var(--palette-client-section)]/60 md:max-w-20" />
       </div>
       {subtitle && (
         <p className="mt-2 text-center font-serif text-base text-ink/80 transition-all duration-500 hover:text-ink md:text-lg">
@@ -105,7 +105,7 @@ export default async function PackageLayout({ eventType }: PackageLayoutProps) {
                           className="relative w-full flex-1"
                         >
                           <div
-                            className={`relative z-10 p-2 md:p-3 bg-surface/40 backdrop-blur-md rounded-3xl border border-white/60 shadow-[0_20px_40px_-15px_color-mix(in_srgb,var(--palette-gold)_15%,transparent)] transform ${isImageLeft ? '-rotate-3' : 'rotate-3'} hover:rotate-0 hover:scale-[1.02] transition-all duration-700 ease-in-out`}
+                            className={`relative z-10 p-2 md:p-3 bg-surface rounded-3xl border border-white/60 transform ${isImageLeft ? '-rotate-3' : 'rotate-3'} hover:rotate-0 hover:scale-[1.02] transition-all duration-700 ease-in-out`}
                           >
                             <Image
                               src={optimizedPublicMediaPath(block.image.src)}
@@ -118,7 +118,7 @@ export default async function PackageLayout({ eventType }: PackageLayoutProps) {
                           </div>
                           {block.secondaryImage && (
                             <div
-                              className={`absolute -bottom-8 ${isImageLeft ? '-right-8' : '-left-8'} z-20 hidden h-56 w-2/3 transform md:block md:h-72 ${isImageLeft ? 'rotate-6' : '-rotate-6'} transition-all duration-700 ease-in-out hover:z-30 hover:-translate-y-4 hover:rotate-0 hover:scale-110 ${isImageLeft ? 'hover:-translate-x-2' : 'hover:translate-x-2'}`}
+                              className={`absolute -bottom-8 ${isImageLeft ? '-right-8' : '-left-8'} z-20 hidden h-56 w-2/3 transform md:block md:h-72 ${isImageLeft ? 'rotate-6' : '-rotate-6'} transition-all duration-700 ease-in-out hover:z-30 hover:rotate-0 ${isImageLeft ? 'hover:-translate-x-2' : 'hover:translate-x-2'}`}
                             >
                               <Image
                                 src={optimizedPublicMediaPath(block.secondaryImage.src)}

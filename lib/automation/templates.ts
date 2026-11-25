@@ -2,12 +2,18 @@ import 'server-only';
 
 import { BRAND } from '@/config/brand';
 import { EMAIL_SPAM_NOTICE } from '@/lib/email-delivery';
-import { EMAIL_THEME } from './email-theme';
+import { applicationUrl } from './config';
+import { EMAIL_THEME, type EmailTone } from './email-theme';
 
 /** A rendered message: HTML for capable clients and a complete plain-text alternative. */
 export type RenderedEmail = { subject: string; text: string; html: string };
 export type EmailDetail = readonly [label: string, value: string];
-export type EmailSection = { heading?: string; paragraphs?: string[]; details?: EmailDetail[] };
+export type EmailSection = {
+  heading?: string;
+  paragraphs?: string[];
+  details?: EmailDetail[];
+  summary?: EmailSummary;
+};
 
 const MANILA = 'Asia/Manila';
 
@@ -49,36 +55,99 @@ export function greetingName(value: string | null | undefined) {
 }
 
 const venueAddress = `${BRAND.legalName}, ${BRAND.address.full}`;
+const AUTOMATED_NOTE = 'This is an automated message from the Zion Events Place system.';
 const footerLines = [
   BRAND.legalName,
   ...BRAND.address.lines,
   `${BRAND.contact.phone} · ${BRAND.contact.email}`,
-  'This is an automated message from the Zion Events Place system.',
+  AUTOMATED_NOTE,
 ];
 
-function paragraphHtml(text: string) {
-  return `<p style="margin:0 0 16px;">${escapeHtml(text).replace(/\r?\n/g, '<br>')}</p>`;
+const T = EMAIL_THEME;
+const LABEL = `font-size:14px;line-height:1.5;color:${T.muted};`;
+const VALUE = `font-size:15px;line-height:1.5;color:${T.text};`;
+const PANEL = `background:${T.surface};border:1px solid ${T.line};border-radius:10px;`;
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Escaped text with line breaks kept; any emphasis phrase (an amount, a deadline) is set in bold.
+ * Phrases are matched in one pass, longest first, so a bolded phrase is never matched again.
+ */
+function richText(text: string, emphasis: readonly string[] = []) {
+  const html = escapeHtml(text).replace(/\r?\n/g, '<br>');
+  const phrases = emphasis
+    .map((phrase) => escapeHtml(phrase.trim()))
+    .filter((phrase) => phrase.length > 2)
+    .sort((a, b) => b.length - a.length);
+  if (!phrases.length) return html;
+  return html.replace(
+    new RegExp(phrases.map(escapeRegExp).join('|'), 'g'),
+    (match) => `<strong style="color:${T.text};">${match}</strong>`,
+  );
+}
+
+function paragraphHtml(text: string, emphasis?: readonly string[]) {
+  return `<p style="margin:0 0 16px;">${richText(text, emphasis)}</p>`;
+}
+
+/** Label and value rows in a soft panel, a hairline between rows. */
 function detailsHtml(details: EmailDetail[]) {
   const rows = details
     .filter(([, value]) => value.trim())
-    .map(
-      ([label, value]) =>
-        `<tr><th scope="row" align="left" valign="top" style="padding:8px 12px 8px 0;border-bottom:1px solid ${EMAIL_THEME.line};color:${EMAIL_THEME.muted};font-weight:normal;font-size:14px;white-space:nowrap;">${escapeHtml(label)}</th><td style="padding:8px 0;border-bottom:1px solid ${EMAIL_THEME.line};color:${EMAIL_THEME.text};font-size:15px;">${escapeHtml(value).replace(/\r?\n/g, '<br>')}</td></tr>`,
-    )
-    .join('');
-  return rows
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px;border-top:1px solid ${EMAIL_THEME.line};">${rows}</table>`
+    .map(([label, value], index) => {
+      const rule = index ? `border-top:1px solid ${T.line};` : '';
+      return `<tr><th scope="row" align="left" valign="top" width="38%" style="padding:10px 16px 10px 0;${rule}${LABEL}font-weight:normal;">${escapeHtml(label)}</th><td valign="top" style="padding:10px 0;${rule}${VALUE}">${richText(value)}</td></tr>`;
+    });
+  return rows.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 24px;${PANEL}"><tr><td style="padding:6px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows.join('')}</table></td></tr></table>`
     : '';
 }
 
-function sectionHtml(section: EmailSection) {
+/** A booking at a glance: its reference, status badges and the payment breakdown. */
+export type EmailSummary = {
+  reference: string;
+  statuses: readonly { label: string; value: string; tone: EmailTone }[];
+  /** `total` marks the closing line (the balance), set apart and in bold. */
+  amounts: readonly { label: string; value: string; total?: boolean }[];
+};
+
+function badgeHtml(value: string, tone: EmailTone) {
+  const colors = T.tones[tone];
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;background:${colors.background};color:${colors.text};font-size:13px;line-height:1.5;font-weight:bold;white-space:nowrap;">${escapeHtml(value)}</span>`;
+}
+
+function rowsTable(rows: string[]) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows.join('')}</table>`;
+}
+
+function summaryHtml(summary: EmailSummary) {
+  const statuses = summary.statuses.map(
+    ({ label, value, tone }) =>
+      `<tr><td style="padding:7px 0;${LABEL}">${escapeHtml(label)}</td><td align="right" style="padding:7px 0;">${badgeHtml(value, tone)}</td></tr>`,
+  );
+  const amounts = summary.amounts.map(({ label, value, total }) => {
+    const accent = total
+      ? `padding-top:12px;border-top:1px solid ${T.line};font-weight:bold;color:${T.text};`
+      : '';
+    return `<tr><td style="padding:6px 0;${LABEL}${accent}">${escapeHtml(label)}</td><td align="right" style="padding:6px 0;${VALUE}white-space:nowrap;${accent}">${escapeHtml(value)}</td></tr>`;
+  });
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;${PANEL}">
+<tr><td style="padding:18px 20px 16px;"><div style="font-size:12px;line-height:1.4;letter-spacing:1.5px;text-transform:uppercase;color:${T.muted};">Booking reference</div><div style="margin-top:4px;font-size:18px;line-height:1.3;font-weight:bold;letter-spacing:0.5px;color:${T.text};">${escapeHtml(summary.reference)}</div></td></tr>
+${statuses.length ? `<tr><td style="padding:8px 20px;border-top:1px solid ${T.line};">${rowsTable(statuses)}</td></tr>` : ''}
+${amounts.length ? `<tr><td style="padding:8px 20px 12px;border-top:1px solid ${T.line};">${rowsTable(amounts)}</td></tr>` : ''}
+</table>`;
+}
+
+function sectionHtml(section: EmailSection, emphasis: readonly string[]) {
   return [
     section.heading
-      ? `<h2 style="margin:24px 0 12px;font-size:18px;line-height:1.3;color:${EMAIL_THEME.brand};">${escapeHtml(section.heading)}</h2>`
+      ? `<h2 style="margin:28px 0 10px;font-size:17px;line-height:1.35;font-weight:bold;color:${T.text};">${escapeHtml(section.heading)}</h2>`
       : '',
-    ...(section.paragraphs ?? []).map(paragraphHtml),
+    ...(section.paragraphs ?? []).map((text) => paragraphHtml(text, emphasis)),
+    section.summary ? summaryHtml(section.summary) : '',
     detailsHtml(section.details ?? []),
   ].join('');
 }
@@ -87,28 +156,68 @@ function sectionText(section: EmailSection) {
   const details = (section.details ?? [])
     .filter(([, value]) => value.trim())
     .map(([label, value]) => `${label}: ${value}`);
+  const summary = section.summary
+    ? [
+        `Booking reference: ${section.summary.reference}`,
+        ...section.summary.statuses.map(({ label, value }) => `${label}: ${value}`),
+        ...section.summary.amounts.map(({ label, value }) => `${label}: ${value}`),
+      ].join('\n')
+    : '';
   return [
     section.heading
       ? `${section.heading}\n${'-'.repeat(Math.min(section.heading.length, 60))}`
       : '',
     ...(section.paragraphs ?? []),
+    summary,
     details.join('\n'),
   ]
     .filter(Boolean)
     .join('\n\n');
 }
 
-/** Branded wrapper: "ZENTRA" over "Zion Events Place", deep green on white. */
+/**
+ * The header logo: the ZENTRA wordmark image from the site's own address, linked to the site.
+ * Without a known address (local runs, tests) the wordmark is set in type instead; the same type
+ * styles the alternative text when a mail app blocks images.
+ */
+function logoHtml() {
+  const origin = applicationUrl();
+  const name = escapeHtml(T.wordmark);
+  const type = `font-family:${T.wordmarkFont};font-size:26px;line-height:1.1;letter-spacing:6px;font-weight:bold;color:${T.brand};`;
+  if (!origin) return `<div style="${type}">${name}</div>`;
+  const { path, width, height } = T.logo;
+  return `<a href="${escapeHtml(origin)}" style="display:inline-block;text-decoration:none;"><img src="${escapeHtml(`${origin}${path}`)}" width="${width}" height="${height}" alt="${name}" style="display:block;border:0;outline:none;text-decoration:none;${type}"></a>`;
+}
+
+const footerHtml = [
+  escapeHtml(BRAND.address.lines.join(', ')),
+  `${escapeHtml(BRAND.contact.phone)} · <a href="${escapeHtml(BRAND.contact.emailHref)}" style="color:${T.muted};text-decoration:underline;">${escapeHtml(BRAND.contact.email)}</a>`,
+  escapeHtml(AUTOMATED_NOTE),
+].join('<br>');
+
+/**
+ * Branded layout shared by every automated email: the ZENTRA logo over the venue name, then a
+ * white card with the heading, sections (paragraphs, a booking summary, label and value panels),
+ * one button and an optional closing note; the venue's address and contacts sit below the card.
+ */
 export function renderEmail(input: {
   subject: string;
   preheader: string;
   heading: string;
   sections: EmailSection[];
   action?: { label: string; href: string };
+  /** A short closing note in small type after the button, such as what approval does not mean. */
+  note?: string;
+  /** Phrases set in bold wherever they appear in the paragraphs: amounts, deadlines. */
+  emphasis?: readonly string[];
 }): RenderedEmail {
   const subject = singleLine(input.subject, 200);
+  const emphasis = input.emphasis ?? [];
   const action = input.action
-    ? `<p style="margin:8px 0 24px;"><a href="${escapeHtml(input.action.href)}" style="display:inline-block;padding:12px 20px;background:${EMAIL_THEME.brand};color:${EMAIL_THEME.onBrand};text-decoration:none;border-radius:6px;font-weight:bold;">${escapeHtml(input.action.label)}</a></p>`
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 28px;"><tr><td style="border-radius:8px;background:${T.brand};"><a href="${escapeHtml(input.action.href)}" style="display:inline-block;padding:13px 24px;border-radius:8px;font-family:${T.bodyFont};font-size:15px;line-height:1.2;font-weight:bold;color:${T.onBrand};text-decoration:none;">${escapeHtml(input.action.label)}</a></td></tr></table>`
+    : '';
+  const note = input.note
+    ? `<p style="margin:8px 0 24px;padding-top:20px;border-top:1px solid ${T.line};font-size:13px;line-height:1.6;color:${T.muted};">${richText(input.note)}</p>`
     : '';
   const html = `<!doctype html>
 <html lang="en">
@@ -116,24 +225,34 @@ export function renderEmail(input: {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <title>${escapeHtml(subject)}</title>
+<style>
+@media (max-width: 520px) {
+  .zentra-outer { padding: 16px 8px !important; }
+  .zentra-pad { padding-left: 20px !important; padding-right: 20px !important; }
+}
+</style>
 </head>
-<body style="margin:0;padding:0;background:${EMAIL_THEME.background};">
+<body style="margin:0;padding:0;background:${T.canvas};-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(input.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${EMAIL_THEME.background};">
-<tr><td align="center" style="padding:24px 16px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:${EMAIL_THEME.bodyFont};">
-<tr><td align="center" style="padding:8px 0 18px;border-bottom:3px solid ${EMAIL_THEME.brand};">
-<div style="font-family:${EMAIL_THEME.wordmarkFont};font-size:30px;line-height:1.1;letter-spacing:8px;font-weight:bold;color:${EMAIL_THEME.brand};">${escapeHtml(EMAIL_THEME.wordmark)}</div>
-<div style="margin-top:6px;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:${EMAIL_THEME.muted};">${escapeHtml(BRAND.legalName)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${T.canvas};">
+<tr><td class="zentra-outer" align="center" style="padding:32px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:${T.background};border:1px solid ${T.line};border-radius:12px;font-family:${T.bodyFont};">
+<tr><td class="zentra-pad" style="padding:28px 32px 22px;border-bottom:1px solid ${T.line};">
+${logoHtml()}
+<div style="margin-top:8px;font-size:12px;line-height:1.4;letter-spacing:2px;text-transform:uppercase;color:${T.muted};">${escapeHtml(BRAND.legalName)}</div>
 </td></tr>
-<tr><td style="padding:28px 0 8px;font-size:16px;line-height:1.6;color:${EMAIL_THEME.text};">
-<h1 style="margin:0 0 20px;font-size:24px;line-height:1.25;color:${EMAIL_THEME.brand};">${escapeHtml(input.heading)}</h1>
-${input.sections.map(sectionHtml).join('\n')}
+<tr><td class="zentra-pad" style="padding:32px 32px 12px;font-size:15px;line-height:1.65;color:${T.text};">
+<h1 style="margin:0 0 20px;font-size:22px;line-height:1.3;font-weight:bold;color:${T.text};">${escapeHtml(input.heading)}</h1>
+${input.sections.map((section) => sectionHtml(section, emphasis)).join('\n')}
 ${action}
+${note}
 </td></tr>
-<tr><td style="padding:16px 0 0;border-top:1px solid ${EMAIL_THEME.line};font-size:13px;line-height:1.5;color:${EMAIL_THEME.muted};">
-${footerLines.map((line) => escapeHtml(line)).join('<br>')}
+</table>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:${T.bodyFont};">
+<tr><td class="zentra-pad" align="center" style="padding:20px 32px 8px;font-size:12px;line-height:1.7;color:${T.muted};">
+${footerHtml}
 </td></tr>
 </table>
 </td></tr>
@@ -141,10 +260,11 @@ ${footerLines.map((line) => escapeHtml(line)).join('<br>')}
 </body>
 </html>`;
   const text = [
-    `${EMAIL_THEME.wordmark}\n${BRAND.legalName}\n${'='.repeat(BRAND.legalName.length)}`,
+    `${T.wordmark}\n${BRAND.legalName}\n${'='.repeat(BRAND.legalName.length)}`,
     input.heading,
     ...input.sections.map(sectionText).filter(Boolean),
     input.action ? `${input.action.label}: ${input.action.href}` : '',
+    input.note ?? '',
     `--\n${footerLines.join('\n')}`,
   ]
     .filter(Boolean)
@@ -152,31 +272,100 @@ ${footerLines.map((line) => escapeHtml(line)).join('<br>')}
   return { subject, text: `${text}\n`, html };
 }
 
-/** Reuses an existing plain-text notice (for example a booking decision) inside the layout. */
-export function renderPlainNotice(input: {
+/**
+ * A booking notice (lib/admin/domain.ts bookingEmail) in parts. The HTML shows the status at a
+ * glance; the plain-text alternative stays the established notice text.
+ */
+export type BookingNoticeParts = {
+  greeting: string;
+  lead: string | null;
+  reference: string;
+  /** Booking states as stored (APPROVED, REQUESTED, UNPAID, ...); shown as badges. */
+  approval: string;
+  reservation: string;
+  payment: string;
+  total: string;
+  /** The reservation fee, when the venue asks for one. */
+  fee: string | null;
+  received: string;
+  balance: string;
+  requirement: string;
+  instructions: string;
+  closing: string;
+  /** Amounts and deadlines to set in bold. */
+  emphasis: string[];
+};
+
+const STATUS_BADGES: Record<string, { value: string; tone: EmailTone }> = {
+  PENDING: { value: 'Pending review', tone: 'waiting' },
+  APPROVED: { value: 'Approved', tone: 'positive' },
+  REJECTED: { value: 'Declined', tone: 'negative' },
+  DECLINED: { value: 'Declined', tone: 'negative' },
+  REQUESTED: { value: 'Requested', tone: 'waiting' },
+  CONFIRMED: { value: 'Confirmed', tone: 'positive' },
+  CANCELLED: { value: 'Cancelled', tone: 'negative' },
+  EXPIRED: { value: 'Expired', tone: 'negative' },
+  COMPLETED: { value: 'Completed', tone: 'neutral' },
+  PAID: { value: 'Paid', tone: 'positive' },
+  PARTIAL: { value: 'Partly paid', tone: 'waiting' },
+  UNPAID: { value: 'Unpaid', tone: 'attention' },
+};
+
+function statusBadge(label: string, state: string) {
+  const known = STATUS_BADGES[state];
+  if (known) return { label, ...known };
+  const words = state.replaceAll('_', ' ').toLowerCase();
+  return { label, value: words.charAt(0).toUpperCase() + words.slice(1), tone: 'neutral' as const };
+}
+
+export function renderBookingNotice(input: {
   subject: string;
   heading: string;
-  body: string;
+  notice: { body: string; parts: BookingNoticeParts };
+  /** Further paragraphs, such as the calendar invitation note. */
   extra?: string[];
   /** A button, for example to the client's private payment page. */
   action?: { label: string; href: string };
 }): RenderedEmail {
-  const paragraphs = [...input.body.split(/\r?\n\s*\r?\n/), ...(input.extra ?? [])]
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const { body, parts } = input.notice;
   const rendered = renderEmail({
     subject: input.subject,
-    preheader: input.heading,
+    preheader: parts.lead ?? `${input.heading} for booking ${parts.reference}.`,
     heading: input.heading,
-    sections: [{ paragraphs }],
+    emphasis: parts.emphasis,
+    sections: [
+      {
+        paragraphs: [parts.greeting, parts.lead ?? ''].filter(Boolean),
+        summary: {
+          reference: parts.reference,
+          statuses: [
+            statusBadge('Approval', parts.approval),
+            statusBadge('Reservation', parts.reservation),
+            statusBadge('Payment', parts.payment),
+          ],
+          amounts: [
+            { label: 'Total', value: parts.total },
+            ...(parts.fee ? [{ label: 'Reservation fee', value: parts.fee }] : []),
+            { label: 'Received', value: parts.received },
+            { label: 'Balance', value: parts.balance, total: true },
+          ],
+        },
+      },
+      {
+        paragraphs: [parts.requirement, parts.instructions, ...(input.extra ?? [])]
+          .map((part) => part.trim())
+          .filter(Boolean),
+      },
+    ],
     action: input.action,
+    note: parts.closing,
   });
   // The stored body stays the established notice text, followed by any extra paragraphs and the
   // action's link, so plain-text mail readers see the link too.
   const link = input.action ? [`${input.action.label}: ${input.action.href}`] : [];
   return {
     ...rendered,
-    text: [input.body.trimEnd(), ...(input.extra ?? []), ...link].join('\n\n'),
+    text: [body.trimEnd(), ...(input.extra ?? []), ...link].join('\n\n'),
   };
 }
 

@@ -83,7 +83,7 @@ export default function TestimonialSection() {
   return (
     <section className="w-full px-4 py-12 md:px-12">
       <div
-        className="relative mx-auto flex max-w-5xl flex-col items-center overflow-hidden rounded-[3rem] border border-[var(--palette-gold)]/30 bg-gradient-to-br from-[var(--palette-gold-soft)]/95 via-white/95 to-white/95 px-7 py-12 text-center shadow-[0_18px_60px_color-mix(in_srgb,var(--palette-night)_6%,transparent)] backdrop-blur-sm md:px-20 md:py-16"
+        className="relative mx-auto flex max-w-5xl flex-col items-center overflow-hidden rounded-[3rem] border border-[var(--palette-gold)]/30 bg-surface px-7 py-12 text-center shadow-[0_18px_60px_color-mix(in_srgb,var(--palette-night)_6%,transparent)] md:px-20 md:py-16"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
@@ -99,7 +99,7 @@ export default function TestimonialSection() {
             <button
               type="button"
               onClick={() => move(-1)}
-              className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/70 text-muted shadow-sm transition hover:bg-surface hover:text-accent-ink md:left-8"
+              className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-muted shadow-sm transition hover:bg-surface hover:text-accent-ink md:left-8"
               aria-label="Previous testimony"
             >
               <ChevronLeft className="h-7 w-7" />
@@ -107,7 +107,7 @@ export default function TestimonialSection() {
             <button
               type="button"
               onClick={() => move(1)}
-              className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/70 text-muted shadow-sm transition hover:bg-surface hover:text-accent-ink md:right-8"
+              className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-muted shadow-sm transition hover:bg-surface hover:text-accent-ink md:right-8"
               aria-label="Next testimony"
             >
               <ChevronRight className="h-7 w-7" />

@@ -24,11 +24,9 @@ export default function ContactPage() {
             <div className="flex flex-col gap-6">
               {/* Location Card */}
               <div
-                className="group bg-surface/60 backdrop-blur-sm rounded-3xl p-7 shadow-sm hover:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_10%,transparent)] border border-zion-accent/20 transition-all duration-500 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-surface rounded-3xl p-7 shadow-sm border border-zion-accent/20 transition-all duration-500 hover:-translate-y-0.5 relative overflow-hidden"
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.1s both' }}
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-zion-accent/10 to-transparent rounded-full blur-2xl -mr-10 -mt-10 transition-transform duration-700 group-hover:scale-150"></div>
-
                 <h2 className="info-heading flex items-center gap-4 text-xl font-serif text-ink mb-4 relative z-10">
                   <div className="w-12 h-12 rounded-full bg-surface shadow-sm flex items-center justify-center border border-zion-accent/30 group-hover:bg-zion-accent/10 transition-colors duration-500 text-accent-ink">
                     <MapPin className="w-5 h-5" aria-hidden="true" />
@@ -42,11 +40,9 @@ export default function ContactPage() {
 
               {/* Business Hours Card */}
               <div
-                className="group bg-surface/60 backdrop-blur-sm rounded-3xl p-7 shadow-sm hover:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_10%,transparent)] border border-zion-accent/20 transition-all duration-500 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-surface rounded-3xl p-7 shadow-sm border border-zion-accent/20 transition-all duration-500 hover:-translate-y-0.5 relative overflow-hidden"
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.2s both' }}
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-zion-accent/10 to-transparent rounded-full blur-2xl -mr-10 -mt-10 transition-transform duration-700 group-hover:scale-150"></div>
-
                 <h2 className="info-heading flex items-center gap-4 text-xl font-serif text-ink mb-4 relative z-10">
                   <div className="w-12 h-12 rounded-full bg-surface shadow-sm flex items-center justify-center border border-zion-accent/30 group-hover:bg-zion-accent/10 transition-colors duration-500 text-accent-ink">
                     <svg
@@ -90,11 +86,9 @@ export default function ContactPage() {
 
               {/* Contact Information Card */}
               <div
-                className="group bg-surface/60 backdrop-blur-sm rounded-3xl p-7 shadow-sm hover:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_10%,transparent)] border border-zion-accent/20 transition-all duration-500 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-surface rounded-3xl p-7 shadow-sm border border-zion-accent/20 transition-all duration-500 hover:-translate-y-0.5 relative overflow-hidden"
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.3s both' }}
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-zion-accent/10 to-transparent rounded-full blur-2xl -mr-10 -mt-10 transition-transform duration-700 group-hover:scale-150"></div>
-
                 <h2 className="info-heading flex items-center gap-4 text-xl font-serif text-ink mb-5 relative z-10">
                   <div className="w-12 h-12 rounded-full bg-surface shadow-sm flex items-center justify-center border border-zion-accent/30 group-hover:bg-zion-accent/10 transition-colors duration-500 text-accent-ink">
                     <svg
@@ -143,11 +137,9 @@ export default function ContactPage() {
 
               {/* Social Media Card */}
               <div
-                className="group bg-surface/60 backdrop-blur-sm rounded-3xl p-7 shadow-sm hover:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_10%,transparent)] border border-zion-accent/20 transition-all duration-500 hover:-translate-y-1 relative overflow-hidden"
+                className="group bg-surface rounded-3xl p-7 shadow-sm border border-zion-accent/20 transition-all duration-500 hover:-translate-y-0.5 relative overflow-hidden"
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.4s both' }}
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-zion-accent/10 to-transparent rounded-full blur-2xl -mr-10 -mt-10 transition-transform duration-700 group-hover:scale-150"></div>
-
                 <h2 className="info-heading flex items-center gap-4 text-xl font-serif text-ink mb-0 relative z-10">
                   <div className="w-12 h-12 rounded-full bg-surface shadow-sm flex items-center justify-center border border-zion-accent/30 group-hover:bg-zion-accent/10 transition-colors duration-500 text-accent-ink">
                     <Share2 className="w-5 h-5" aria-hidden="true" />
@@ -167,7 +159,7 @@ export default function ContactPage() {
               className="flex w-full scroll-mt-28 flex-col items-start"
               style={{ animation: 'fadeInUp 0.6s ease-out 0.5s both' }}
             >
-              <span className="mb-4 rounded-full bg-gradient-to-r from-zion-accent to-[var(--palette-gold)] px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-md">
+              <span className="mb-4 text-xs font-bold uppercase tracking-widest text-accent-ink">
                 Message Us
               </span>
               <h2 className="mb-3 font-serif text-4xl text-ink md:text-5xl">How can we help?</h2>
@@ -176,17 +168,7 @@ export default function ContactPage() {
                 promptly.
               </p>
 
-              <div className="group/form relative w-full overflow-hidden rounded-[2rem] border border-zion-accent/25 bg-surface/75 p-7 shadow-[0_24px_60px_-24px_color-mix(in_srgb,var(--palette-night)_14%,transparent)] backdrop-blur-md transition-shadow duration-500 hover:shadow-[0_28px_70px_-24px_color-mix(in_srgb,var(--palette-gold)_22%,transparent)] sm:p-9">
-                {/* Decorative top accent & ambient glow */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[var(--palette-client-button)]/80 to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-gradient-to-br from-zion-accent/12 to-transparent blur-3xl transition-transform duration-1000 group-hover/form:scale-125"
-                />
-
+              <div className="group/form relative w-full overflow-hidden rounded-[2rem] border border-zion-accent/25 bg-surface p-7 shadow-[0_24px_60px_-24px_color-mix(in_srgb,var(--palette-night)_14%,transparent)] transition-shadow duration-500 sm:p-9">
                 <InquiryForm />
               </div>
             </div>
@@ -210,7 +192,7 @@ export default function ContactPage() {
             </div>
 
             {/* Direction Card */}
-            <div className="bg-surface/60 backdrop-blur-sm border border-neutral-900/10 rounded-2xl p-6 shadow-sm h-full flex flex-col justify-center">
+            <div className="bg-surface border border-neutral-900/10 rounded-2xl p-6 shadow-sm h-full flex flex-col justify-center">
               <h2 className="info-heading flex items-center text-xl font-serif text-ink mb-5">
                 <a
                   href={BRAND.maps.directionsUrl}

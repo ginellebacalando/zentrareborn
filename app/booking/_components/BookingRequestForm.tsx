@@ -9,7 +9,6 @@ import {
   Banknote,
   CalendarDays,
   Check,
-  CheckCircle2,
   CircleAlert,
   Clock,
   Info,
@@ -21,6 +20,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDatePicker';
+import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { BRAND } from '@/config/brand';
 import { packageQuote } from '@/lib/booking-quote';
 import {
@@ -241,6 +241,9 @@ export default function BookingRequestForm({
     guests: initial.guests,
   }));
   const [step, setStep] = useState(0);
+  // Which way the steps move, so the new step slides in from the matching side.
+  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
+  const reducedMotion = useReducedMotion();
   const [errors, setErrors] = useState<FieldErrors>({});
   const [newlyBooked, setNewlyBooked] = useState<string[]>([]);
   const fromZeni = initial.fromZeni;
@@ -270,11 +273,14 @@ export default function BookingRequestForm({
   const guests = Number(form.guests);
   const estimate = estimateFor(pkg, guests);
 
-  // Move focus to the new step's heading, so keyboard and screen-reader users start there.
+  // Move focus to the new step's heading, so keyboard and screen-reader users start there, and
+  // bring it into view (gently, unless reduced motion is set).
   useEffect(() => {
     if (!movedRef.current) return;
-    headingRef.current?.focus();
-  }, [step]);
+    const heading = headingRef.current;
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+  }, [step, reducedMotion]);
 
   useEffect(() => {
     if (reference) doneRef.current?.focus();
@@ -302,6 +308,7 @@ export default function BookingRequestForm({
 
   const goTo = (next: number) => {
     movedRef.current = true;
+    setDirection(next >= step ? 'forward' : 'back');
     setStep(next);
     setSubmitError('');
   };
@@ -438,7 +445,10 @@ export default function BookingRequestForm({
     return (
       <div className={styles.page}>
         <section className={styles.done} aria-labelledby="booking-done-title">
-          <CheckCircle2 aria-hidden="true" className={styles.doneIcon} />
+          <svg className={styles.doneIcon} viewBox="0 0 52 52" aria-hidden="true" focusable="false">
+            <circle className={styles.doneCircle} cx="26" cy="26" r="24" pathLength={1} />
+            <path className={styles.doneTick} d="M15 27.5l7.5 7.5L37.5 19" pathLength={1} />
+          </svg>
           <h1 id="booking-done-title" ref={doneRef} tabIndex={-1} className={styles.doneTitle}>
             {hold ? 'Your date is on hold' : 'Booking request sent'}
           </h1>
@@ -506,19 +516,33 @@ export default function BookingRequestForm({
 
   return (
     <div className={styles.page}>
-      <header className={styles.intro}>
-        <h1 className={styles.title}>Book your event</h1>
-        <p className={styles.lead}>
-          Tell us about your celebration. Most bookings are approved right away and your date is
-          held while you pay the reservation fee; custom proposals are reviewed by our team first.
-        </p>
-        <p className={styles.lead}>
-          Not ready yet?{' '}
-          <Link href="/visit" className={styles.introLink}>
-            Schedule an ocular visit
-          </Link>{' '}
-          to see the venue first.
-        </p>
+      <header className={`${styles.intro} ${styles.hero}`}>
+        <div className={styles.heroText}>
+          <h1 className={styles.title}>Book your event</h1>
+          <p className={styles.lead}>
+            Tell us about your celebration in four short steps. You pay nothing to send a request.
+          </p>
+          <p className={styles.heroLink}>
+            Not ready yet?{' '}
+            <Link href="/visit" className={styles.introLink}>
+              Schedule an ocular visit
+            </Link>{' '}
+            to see the venue first.
+          </p>
+        </div>
+        <ol className={styles.howItWorks} aria-label="How booking works">
+          <li className={styles.howItem}>
+            <strong>Choose your date and package.</strong> Only confirmed events block a date.
+          </li>
+          <li className={styles.howItem}>
+            <strong>Most requests are approved right away.</strong> Custom proposals are reviewed by
+            our team first.
+          </li>
+          <li className={styles.howItem}>
+            <strong>Your date is held while you pay.</strong> The reservation fee confirms your
+            booking.
+          </li>
+        </ol>
       </header>
 
       <ol className={styles.stepper} aria-label="Booking steps">
@@ -549,495 +573,506 @@ export default function BookingRequestForm({
 
       <div className={styles.layout}>
         <form className={styles.panel} onSubmit={onSubmit} noValidate>
-          <h2 ref={headingRef} tabIndex={-1} className={styles.stepTitle}>
-            {STEP_TITLES[step]}
-          </h2>
-
-          {errorList.length ? (
-            <div ref={summaryRef} tabIndex={-1} className={styles.errorSummary} role="alert">
-              <p className={styles.errorSummaryTitle}>
-                <CircleAlert aria-hidden="true" className={styles.inlineIcon} />
-                Please check {errorList.length === 1 ? 'this detail' : 'these details'}:
+          <div key={step} className={styles.stepBody} data-direction={direction}>
+            <div className={styles.stepHead}>
+              <p className={styles.stepEyebrow} aria-hidden="true">
+                Step {step + 1} of {STEPS.length}
               </p>
-              <ul>
-                {errorList.map(([field, message]) => (
-                  <li key={field}>
-                    <a href={`#${FIELD_IDS[field] ?? field}`}>{message}</a>
-                  </li>
-                ))}
-              </ul>
+              <h2 ref={headingRef} tabIndex={-1} className={styles.stepTitle}>
+                {STEP_TITLES[step]}
+              </h2>
             </div>
-          ) : null}
 
-          {step === 0 ? (
-            <>
-              <fieldset
-                className={styles.fieldset}
-                aria-describedby={errors.category ? 'booking-category-first-error' : undefined}
-              >
-                <legend className={styles.legend}>Type of event</legend>
-                <div className={styles.eventGrid}>
-                  {categories.map((item, index) => (
-                    <label key={item.slug} className={styles.eventOption}>
-                      <input
-                        id={index === 0 ? 'booking-category-first' : undefined}
-                        type="radio"
-                        name="category"
-                        value={item.slug}
-                        checked={form.category === item.slug}
-                        onChange={() => chooseCategory(item.slug)}
-                        className={styles.optionInput}
-                      />
-                      <span className={styles.eventMedia}>
-                        {item.imageUrl ? (
-                          <Image
-                            src={item.imageUrl}
-                            alt=""
-                            fill
-                            sizes="(min-width: 64rem) 16rem, (min-width: 40rem) 30vw, 45vw"
-                          />
-                        ) : null}
-                      </span>
-                      <span className={styles.eventName}>
-                        {item.name}
-                        <Check
-                          aria-hidden="true"
-                          className={styles.optionCheck}
-                          strokeWidth={2.5}
-                        />
-                      </span>
-                    </label>
+            {errorList.length ? (
+              <div ref={summaryRef} tabIndex={-1} className={styles.errorSummary} role="alert">
+                <p className={styles.errorSummaryTitle}>
+                  <CircleAlert aria-hidden="true" className={styles.inlineIcon} />
+                  Please check {errorList.length === 1 ? 'this detail' : 'these details'}:
+                </p>
+                <ul>
+                  {errorList.map(([field, message]) => (
+                    <li key={field}>
+                      <a href={`#${FIELD_IDS[field] ?? field}`}>{message}</a>
+                    </li>
                   ))}
-                </div>
-                {fieldError('category')}
-              </fieldset>
-
-              <div className={styles.fieldGrid}>
-                <div className={styles.field}>
-                  <label htmlFor="booking-date" className={styles.label}>
-                    <CalendarDays aria-hidden="true" className={styles.labelIcon} />
-                    Event date
-                  </label>
-                  <ZionDatePicker
-                    id="booking-date"
-                    value={form.date}
-                    minDate={earliest}
-                    maxDate={latest}
-                    placeholder="Choose a date"
-                    getDateStatus={dateStatus}
-                    onChange={(value) => update('date', value)}
-                  />
-                  {form.date && !errors.date && inquired.has(form.date) ? (
-                    <p className={styles.hint}>
-                      Another guest has asked about this date. Send your request and we will confirm
-                      what is available.
-                    </p>
-                  ) : null}
-                  {fieldError('date')}
-                </div>
-
-                <div className={styles.field}>
-                  <label htmlFor="booking-guests" className={styles.label}>
-                    <Users aria-hidden="true" className={styles.labelIcon} />
-                    Number of guests
-                  </label>
-                  <input
-                    id="booking-guests"
-                    className={styles.input}
-                    type="number"
-                    inputMode="numeric"
-                    min={BOOKING_REQUEST_RULES.minGuests}
-                    max={BOOKING_REQUEST_RULES.maxGuests}
-                    value={form.guests}
-                    onChange={(event) => update('guests', event.target.value)}
-                    aria-invalid={Boolean(errors.guests)}
-                    aria-describedby={describedBy('guests', 'booking-guests-hint')}
-                  />
-                  <p id="booking-guests-hint" className={styles.hint}>
-                    Between {BOOKING_REQUEST_RULES.minGuests} and {BOOKING_REQUEST_RULES.maxGuests}{' '}
-                    guests.
-                  </p>
-                  {fieldError('guests')}
-                </div>
-
-                <div className={styles.field}>
-                  <label htmlFor="booking-start" className={styles.label}>
-                    <Clock aria-hidden="true" className={styles.labelIcon} />
-                    Start time
-                  </label>
-                  <select
-                    id="booking-start"
-                    className={styles.input}
-                    value={form.startTime}
-                    onChange={(event) => update('startTime', event.target.value)}
-                    aria-invalid={Boolean(errors.startTime)}
-                    aria-describedby={describedBy('startTime')}
-                  >
-                    <option value="">Choose a time</option>
-                    {TIMES.slice(0, -1).map((value) => (
-                      <option key={value} value={value}>
-                        {timeLabel(value)}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldError('startTime')}
-                </div>
-
-                <div className={styles.field}>
-                  <label htmlFor="booking-end" className={styles.label}>
-                    <Clock aria-hidden="true" className={styles.labelIcon} />
-                    End time
-                  </label>
-                  <select
-                    id="booking-end"
-                    className={styles.input}
-                    value={form.endTime}
-                    onChange={(event) => update('endTime', event.target.value)}
-                    aria-invalid={Boolean(errors.endTime)}
-                    aria-describedby={describedBy('endTime')}
-                  >
-                    <option value="">Choose a time</option>
-                    {TIMES.slice(1).map((value) => (
-                      <option key={value} value={value}>
-                        {timeLabel(value)}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldError('endTime')}
-                </div>
+                </ul>
               </div>
-            </>
-          ) : null}
+            ) : null}
 
-          {step === 1 && category ? (
-            <>
-              <fieldset
-                className={styles.fieldset}
-                aria-describedby={errors.packageId ? 'booking-package-first-error' : undefined}
-              >
-                <legend className={styles.legend}>{category.name} packages</legend>
-                <div className={styles.packageList}>
-                  {category.packages.map((item, index) => {
-                    const itemEstimate = estimateFor(item, guests);
-                    return (
-                      <label key={item.id} className={styles.packageOption}>
+            {step === 0 ? (
+              <>
+                <fieldset
+                  className={styles.fieldset}
+                  aria-describedby={errors.category ? 'booking-category-first-error' : undefined}
+                >
+                  <legend className={styles.legend}>Type of event</legend>
+                  <div className={styles.eventGrid}>
+                    {categories.map((item, index) => (
+                      <label key={item.slug} className={styles.eventOption}>
                         <input
-                          id={index === 0 ? 'booking-package-first' : undefined}
+                          id={index === 0 ? 'booking-category-first' : undefined}
                           type="radio"
-                          name="package"
-                          value={item.id}
-                          checked={form.packageId === item.id}
-                          onChange={() => update('packageId', item.id)}
+                          name="category"
+                          value={item.slug}
+                          checked={form.category === item.slug}
+                          onChange={() => chooseCategory(item.slug)}
                           className={styles.optionInput}
                         />
-                        <span className={styles.packageHeader}>
-                          <span className={styles.packageName}>{item.name}</span>
-                          <span className={styles.packagePrice}>{peso.format(item.price)}</span>
+                        <span className={styles.eventMedia}>
+                          {item.imageUrl ? (
+                            <Image
+                              src={item.imageUrl}
+                              alt=""
+                              fill
+                              sizes="(min-width: 64rem) 16rem, (min-width: 40rem) 30vw, 45vw"
+                            />
+                          ) : null}
+                        </span>
+                        <span className={styles.eventName}>
+                          {item.name}
                           <Check
                             aria-hidden="true"
                             className={styles.optionCheck}
                             strokeWidth={2.5}
                           />
                         </span>
-                        <span className={styles.packageFacts}>
-                          <span>Good for {item.paxIncluded} guests</span>
-                          {item.excessPaxFee > 0 ? (
-                            <span>{peso.format(item.excessPaxFee)} per extra guest</span>
-                          ) : null}
-                          {item.checkInTime && item.checkOutTime ? (
-                            <span>
-                              {item.checkInTime} to {item.checkOutTime}
+                      </label>
+                    ))}
+                  </div>
+                  {fieldError('category')}
+                </fieldset>
+
+                <div className={styles.fieldGrid}>
+                  <div className={styles.field}>
+                    <label htmlFor="booking-date" className={styles.label}>
+                      <CalendarDays aria-hidden="true" className={styles.labelIcon} />
+                      Event date
+                    </label>
+                    <ZionDatePicker
+                      id="booking-date"
+                      value={form.date}
+                      minDate={earliest}
+                      maxDate={latest}
+                      placeholder="Choose a date"
+                      getDateStatus={dateStatus}
+                      onChange={(value) => update('date', value)}
+                    />
+                    {form.date && !errors.date && inquired.has(form.date) ? (
+                      <p className={styles.hint}>
+                        Another guest has asked about this date. Send your request and we will
+                        confirm what is available.
+                      </p>
+                    ) : null}
+                    {fieldError('date')}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label htmlFor="booking-guests" className={styles.label}>
+                      <Users aria-hidden="true" className={styles.labelIcon} />
+                      Number of guests
+                    </label>
+                    <input
+                      id="booking-guests"
+                      className={styles.input}
+                      type="number"
+                      inputMode="numeric"
+                      min={BOOKING_REQUEST_RULES.minGuests}
+                      max={BOOKING_REQUEST_RULES.maxGuests}
+                      value={form.guests}
+                      onChange={(event) => update('guests', event.target.value)}
+                      aria-invalid={Boolean(errors.guests)}
+                      aria-describedby={describedBy('guests', 'booking-guests-hint')}
+                    />
+                    <p id="booking-guests-hint" className={styles.hint}>
+                      Between {BOOKING_REQUEST_RULES.minGuests} and{' '}
+                      {BOOKING_REQUEST_RULES.maxGuests} guests.
+                    </p>
+                    {fieldError('guests')}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label htmlFor="booking-start" className={styles.label}>
+                      <Clock aria-hidden="true" className={styles.labelIcon} />
+                      Start time
+                    </label>
+                    <select
+                      id="booking-start"
+                      className={styles.input}
+                      value={form.startTime}
+                      onChange={(event) => update('startTime', event.target.value)}
+                      aria-invalid={Boolean(errors.startTime)}
+                      aria-describedby={describedBy('startTime')}
+                    >
+                      <option value="">Choose a time</option>
+                      {TIMES.slice(0, -1).map((value) => (
+                        <option key={value} value={value}>
+                          {timeLabel(value)}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldError('startTime')}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label htmlFor="booking-end" className={styles.label}>
+                      <Clock aria-hidden="true" className={styles.labelIcon} />
+                      End time
+                    </label>
+                    <select
+                      id="booking-end"
+                      className={styles.input}
+                      value={form.endTime}
+                      onChange={(event) => update('endTime', event.target.value)}
+                      aria-invalid={Boolean(errors.endTime)}
+                      aria-describedby={describedBy('endTime')}
+                    >
+                      <option value="">Choose a time</option>
+                      {TIMES.slice(1).map((value) => (
+                        <option key={value} value={value}>
+                          {timeLabel(value)}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldError('endTime')}
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {step === 1 && category ? (
+              <>
+                <fieldset
+                  className={styles.fieldset}
+                  aria-describedby={errors.packageId ? 'booking-package-first-error' : undefined}
+                >
+                  <legend className={styles.legend}>{category.name} packages</legend>
+                  <div className={styles.packageList}>
+                    {category.packages.map((item, index) => {
+                      const itemEstimate = estimateFor(item, guests);
+                      return (
+                        <label key={item.id} className={styles.packageOption}>
+                          <input
+                            id={index === 0 ? 'booking-package-first' : undefined}
+                            type="radio"
+                            name="package"
+                            value={item.id}
+                            checked={form.packageId === item.id}
+                            onChange={() => update('packageId', item.id)}
+                            className={styles.optionInput}
+                          />
+                          <span className={styles.packageHeader}>
+                            <span className={styles.packageName}>{item.name}</span>
+                            <span className={styles.packagePrice}>{peso.format(item.price)}</span>
+                            <Check
+                              aria-hidden="true"
+                              className={styles.optionCheck}
+                              strokeWidth={2.5}
+                            />
+                          </span>
+                          <span className={styles.packageFacts}>
+                            <span>Good for {item.paxIncluded} guests</span>
+                            {item.excessPaxFee > 0 ? (
+                              <span>{peso.format(item.excessPaxFee)} per extra guest</span>
+                            ) : null}
+                            {item.checkInTime && item.checkOutTime ? (
+                              <span>
+                                {item.checkInTime} to {item.checkOutTime}
+                              </span>
+                            ) : null}
+                          </span>
+                          {item.inclusions.length ? (
+                            <span className={styles.inclusions}>
+                              {item.inclusions.slice(0, 6).map((inclusion) => (
+                                <span key={inclusion} className={styles.inclusion}>
+                                  <Check aria-hidden="true" className={styles.inclusionIcon} />
+                                  {inclusion}
+                                </span>
+                              ))}
                             </span>
                           ) : null}
-                        </span>
-                        {item.inclusions.length ? (
-                          <span className={styles.inclusions}>
-                            {item.inclusions.slice(0, 6).map((inclusion) => (
-                              <span key={inclusion} className={styles.inclusion}>
-                                <Check aria-hidden="true" className={styles.inclusionIcon} />
-                                {inclusion}
-                              </span>
-                            ))}
-                          </span>
-                        ) : null}
-                        {itemEstimate && itemEstimate.extraGuests > 0 ? (
-                          <span className={styles.packageNote}>
-                            For {guests} guests: about {peso.format(itemEstimate.total)}
-                          </span>
-                        ) : null}
-                      </label>
-                    );
-                  })}
-                  <label className={styles.packageOption}>
-                    <input
-                      id={category.packages.length ? undefined : 'booking-package-first'}
-                      type="radio"
-                      name="package"
-                      value="custom"
-                      checked={form.packageId === 'custom'}
-                      onChange={() => update('packageId', 'custom')}
-                      className={styles.optionInput}
-                    />
-                    <span className={styles.packageHeader}>
-                      <span className={styles.packageName}>Custom proposal</span>
-                      <Check aria-hidden="true" className={styles.optionCheck} strokeWidth={2.5} />
-                    </span>
-                    <span className={styles.packageFacts}>
-                      <span>
-                        Not sure yet, or need something different? Our team will prepare a quote for
-                        you.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-                {fieldError('packageId')}
-              </fieldset>
-
-              <fieldset className={styles.fieldset}>
-                <legend className={styles.legend}>
-                  Also ask us about <span className={styles.optional}>(optional)</span>
-                </legend>
-                <div className={styles.checkList}>
-                  {BOOKING_EXTRAS.map((extra) => (
-                    <label key={extra} className={styles.checkRow}>
+                          {itemEstimate && itemEstimate.extraGuests > 0 ? (
+                            <span className={styles.packageNote}>
+                              For {guests} guests: about {peso.format(itemEstimate.total)}
+                            </span>
+                          ) : null}
+                        </label>
+                      );
+                    })}
+                    <label className={styles.packageOption}>
                       <input
-                        type="checkbox"
-                        checked={form.extras.includes(extra)}
-                        onChange={(event) =>
-                          update(
-                            'extras',
-                            event.target.checked
-                              ? [...form.extras, extra]
-                              : form.extras.filter((item) => item !== extra),
-                          )
-                        }
+                        id={category.packages.length ? undefined : 'booking-package-first'}
+                        type="radio"
+                        name="package"
+                        value="custom"
+                        checked={form.packageId === 'custom'}
+                        onChange={() => update('packageId', 'custom')}
+                        className={styles.optionInput}
                       />
-                      {extra}
-                    </label>
-                  ))}
-                </div>
-                <p className={styles.hint}>Our team quotes these separately.</p>
-              </fieldset>
-            </>
-          ) : null}
-
-          {step === 2 ? (
-            <div className={styles.fieldGrid}>
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label htmlFor="booking-name" className={styles.label}>
-                  Full name
-                </label>
-                <input
-                  id="booking-name"
-                  className={styles.input}
-                  autoComplete="name"
-                  value={form.fullName}
-                  onChange={(event) => update('fullName', event.target.value)}
-                  aria-invalid={Boolean(errors.fullName)}
-                  aria-describedby={describedBy('fullName')}
-                />
-                {fieldError('fullName')}
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="booking-phone" className={styles.label}>
-                  <Phone aria-hidden="true" className={styles.labelIcon} />
-                  Mobile number
-                </label>
-                <input
-                  id="booking-phone"
-                  className={styles.input}
-                  type="tel"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  value={form.phone}
-                  onChange={(event) => update('phone', event.target.value)}
-                  aria-invalid={Boolean(errors.phone)}
-                  aria-describedby={describedBy('phone')}
-                />
-                {fieldError('phone')}
-              </div>
-              <div className={styles.field}>
-                <label htmlFor="booking-email" className={styles.label}>
-                  <Mail aria-hidden="true" className={styles.labelIcon} />
-                  Email
-                </label>
-                <input
-                  id="booking-email"
-                  className={styles.input}
-                  type="email"
-                  autoComplete="email"
-                  value={form.email}
-                  onChange={(event) => update('email', event.target.value)}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={describedBy('email')}
-                />
-                {fieldError('email')}
-              </div>
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label htmlFor="booking-facebook" className={styles.label}>
-                  Facebook name or link <span className={styles.optional}>(optional)</span>
-                </label>
-                <input
-                  id="booking-facebook"
-                  className={styles.input}
-                  value={form.facebook}
-                  onChange={(event) => update('facebook', event.target.value)}
-                />
-              </div>
-              <div className={`${styles.field} ${styles.fieldWide}`}>
-                <label htmlFor="booking-notes" className={styles.label}>
-                  Notes and special requests <span className={styles.optional}>(optional)</span>
-                </label>
-                <textarea
-                  id="booking-notes"
-                  className={`${styles.input} ${styles.textarea}`}
-                  rows={5}
-                  maxLength={NOTES_LIMIT}
-                  value={form.notes}
-                  onChange={(event) => update('notes', event.target.value)}
-                  aria-describedby="booking-notes-hint"
-                />
-                <p id="booking-notes-hint" className={styles.hint}>
-                  For example the celebrant&apos;s name, a theme or setup ideas.{' '}
-                  {NOTES_LIMIT - form.notes.length} characters left.
-                </p>
-              </div>
-              <div className={styles.honeypot} aria-hidden="true">
-                <label htmlFor="booking-website">Website</label>
-                <input
-                  id="booking-website"
-                  tabIndex={-1}
-                  autoComplete="off"
-                  value={form.website}
-                  onChange={(event) => update('website', event.target.value)}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {step === 3 ? (
-            <>
-              <dl className={styles.reviewList}>
-                <ReviewRow label="Event" value={category?.name ?? ''} onEdit={() => goTo(0)} />
-                <ReviewRow
-                  label="Date and time"
-                  value={
-                    form.date
-                      ? `${dateLabel(form.date)}, ${timeLabel(form.startTime)} to ${timeLabel(form.endTime)}`
-                      : ''
-                  }
-                  onEdit={() => goTo(0)}
-                />
-                <ReviewRow label="Guests" value={form.guests} onEdit={() => goTo(0)} />
-                <ReviewRow
-                  label="Package"
-                  value={pkg?.name ?? 'Custom proposal'}
-                  onEdit={() => goTo(1)}
-                />
-                {form.extras.length ? (
-                  <ReviewRow
-                    label="Also asking about"
-                    value={form.extras.join(', ')}
-                    onEdit={() => goTo(1)}
-                  />
-                ) : null}
-                <ReviewRow
-                  label="Contact"
-                  value={`${form.fullName.trim()}\n${form.phone.trim()}\n${form.email.trim()}`}
-                  onEdit={() => goTo(2)}
-                />
-                {form.notes.trim() ? (
-                  <ReviewRow label="Notes" value={form.notes.trim()} onEdit={() => goTo(2)} />
-                ) : null}
-              </dl>
-
-              <fieldset
-                className={styles.fieldset}
-                aria-describedby={describedBy('paymentMethod', 'booking-payment-hint')}
-              >
-                <legend className={styles.legend}>How do you prefer to pay?</legend>
-                <p id="booking-payment-hint" className={styles.hint}>
-                  You pay nothing now. After we approve your request we send the reservation fee
-                  details.
-                </p>
-                <div className={styles.paymentGrid}>
-                  {BOOKING_PAYMENT_METHODS.map((method, index) => {
-                    const Icon = PAYMENT_ICONS[method.value];
-                    return (
-                      <label key={method.value} className={styles.paymentOption}>
-                        <input
-                          id={index === 0 ? 'booking-payment-first' : undefined}
-                          type="radio"
-                          name="paymentMethod"
-                          value={method.value}
-                          checked={form.paymentMethod === method.value}
-                          onChange={() => update('paymentMethod', method.value)}
-                          className={styles.optionInput}
-                        />
-                        <Icon aria-hidden="true" className={styles.paymentIcon} />
-                        <span>{method.label}</span>
+                      <span className={styles.packageHeader}>
+                        <span className={styles.packageName}>Custom proposal</span>
                         <Check
                           aria-hidden="true"
                           className={styles.optionCheck}
                           strokeWidth={2.5}
                         />
+                      </span>
+                      <span className={styles.packageFacts}>
+                        <span>
+                          Not sure yet, or need something different? Our team will prepare a quote
+                          for you.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                  {fieldError('packageId')}
+                </fieldset>
+
+                <fieldset className={styles.fieldset}>
+                  <legend className={styles.legend}>
+                    Also ask us about <span className={styles.optional}>(optional)</span>
+                  </legend>
+                  <div className={styles.checkList}>
+                    {BOOKING_EXTRAS.map((extra) => (
+                      <label key={extra} className={styles.checkRow}>
+                        <input
+                          type="checkbox"
+                          checked={form.extras.includes(extra)}
+                          onChange={(event) =>
+                            update(
+                              'extras',
+                              event.target.checked
+                                ? [...form.extras, extra]
+                                : form.extras.filter((item) => item !== extra),
+                            )
+                          }
+                        />
+                        {extra}
                       </label>
-                    );
-                  })}
-                </div>
-                {fieldError('paymentMethod')}
-              </fieldset>
+                    ))}
+                  </div>
+                  <p className={styles.hint}>Our team quotes these separately.</p>
+                </fieldset>
+              </>
+            ) : null}
 
-              <div className={styles.nextBox}>
-                <h3 className={styles.subheading}>What happens next</h3>
-                <ol className={styles.nextSteps}>
-                  <li>
-                    Most bookings are approved right away, and your date is held for a few days
-                    while you pay the reservation fee. Custom proposals and some larger events are
-                    reviewed by our team first.
-                  </li>
-                  <li>We confirm your date as soon as your payment is received.</li>
-                  <li>You receive a confirmation email with a calendar invitation.</li>
-                </ol>
-              </div>
-
-              <div className={styles.field}>
-                <label className={styles.checkRow} htmlFor="booking-accept">
+            {step === 2 ? (
+              <div className={styles.fieldGrid}>
+                <div className={`${styles.field} ${styles.fieldWide}`}>
+                  <label htmlFor="booking-name" className={styles.label}>
+                    Full name
+                  </label>
                   <input
-                    id="booking-accept"
-                    type="checkbox"
-                    checked={form.accepted}
-                    onChange={(event) => update('accepted', event.target.checked)}
-                    aria-invalid={Boolean(errors.accepted)}
-                    aria-describedby={describedBy('accepted')}
+                    id="booking-name"
+                    className={styles.input}
+                    autoComplete="name"
+                    value={form.fullName}
+                    onChange={(event) => update('fullName', event.target.value)}
+                    aria-invalid={Boolean(errors.fullName)}
+                    aria-describedby={describedBy('fullName')}
                   />
-                  <span>
-                    I have read the{' '}
-                    <Link href="/terms" target="_blank">
-                      Terms and Conditions
-                    </Link>
-                    ,{' '}
-                    <Link href="/policies" target="_blank">
-                      Event Policies
-                    </Link>{' '}
-                    and{' '}
-                    <Link href="/privacy" target="_blank">
-                      Privacy Notice
-                    </Link>{' '}
-                    (each opens in a new tab).
-                  </span>
-                </label>
-                {fieldError('accepted')}
+                  {fieldError('fullName')}
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="booking-phone" className={styles.label}>
+                    <Phone aria-hidden="true" className={styles.labelIcon} />
+                    Mobile number
+                  </label>
+                  <input
+                    id="booking-phone"
+                    className={styles.input}
+                    type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    value={form.phone}
+                    onChange={(event) => update('phone', event.target.value)}
+                    aria-invalid={Boolean(errors.phone)}
+                    aria-describedby={describedBy('phone')}
+                  />
+                  {fieldError('phone')}
+                </div>
+                <div className={styles.field}>
+                  <label htmlFor="booking-email" className={styles.label}>
+                    <Mail aria-hidden="true" className={styles.labelIcon} />
+                    Email
+                  </label>
+                  <input
+                    id="booking-email"
+                    className={styles.input}
+                    type="email"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={(event) => update('email', event.target.value)}
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={describedBy('email')}
+                  />
+                  {fieldError('email')}
+                </div>
+                <div className={`${styles.field} ${styles.fieldWide}`}>
+                  <label htmlFor="booking-facebook" className={styles.label}>
+                    Facebook name or link <span className={styles.optional}>(optional)</span>
+                  </label>
+                  <input
+                    id="booking-facebook"
+                    className={styles.input}
+                    value={form.facebook}
+                    onChange={(event) => update('facebook', event.target.value)}
+                  />
+                </div>
+                <div className={`${styles.field} ${styles.fieldWide}`}>
+                  <label htmlFor="booking-notes" className={styles.label}>
+                    Notes and special requests <span className={styles.optional}>(optional)</span>
+                  </label>
+                  <textarea
+                    id="booking-notes"
+                    className={`${styles.input} ${styles.textarea}`}
+                    rows={5}
+                    maxLength={NOTES_LIMIT}
+                    value={form.notes}
+                    onChange={(event) => update('notes', event.target.value)}
+                    aria-describedby="booking-notes-hint"
+                  />
+                  <p id="booking-notes-hint" className={styles.hint}>
+                    For example the celebrant&apos;s name, a theme or setup ideas.{' '}
+                    {NOTES_LIMIT - form.notes.length} characters left.
+                  </p>
+                </div>
+                <div className={styles.honeypot} aria-hidden="true">
+                  <label htmlFor="booking-website">Website</label>
+                  <input
+                    id="booking-website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={form.website}
+                    onChange={(event) => update('website', event.target.value)}
+                  />
+                </div>
               </div>
+            ) : null}
 
-              {submitError ? (
-                <p className={styles.submitError} role="alert">
-                  <CircleAlert aria-hidden="true" className={styles.inlineIcon} />
-                  {submitError}
-                </p>
-              ) : null}
-            </>
-          ) : null}
+            {step === 3 ? (
+              <>
+                <dl className={styles.reviewList}>
+                  <ReviewRow label="Event" value={category?.name ?? ''} onEdit={() => goTo(0)} />
+                  <ReviewRow
+                    label="Date and time"
+                    value={
+                      form.date
+                        ? `${dateLabel(form.date)}, ${timeLabel(form.startTime)} to ${timeLabel(form.endTime)}`
+                        : ''
+                    }
+                    onEdit={() => goTo(0)}
+                  />
+                  <ReviewRow label="Guests" value={form.guests} onEdit={() => goTo(0)} />
+                  <ReviewRow
+                    label="Package"
+                    value={pkg?.name ?? 'Custom proposal'}
+                    onEdit={() => goTo(1)}
+                  />
+                  {form.extras.length ? (
+                    <ReviewRow
+                      label="Also asking about"
+                      value={form.extras.join(', ')}
+                      onEdit={() => goTo(1)}
+                    />
+                  ) : null}
+                  <ReviewRow
+                    label="Contact"
+                    value={`${form.fullName.trim()}\n${form.phone.trim()}\n${form.email.trim()}`}
+                    onEdit={() => goTo(2)}
+                  />
+                  {form.notes.trim() ? (
+                    <ReviewRow label="Notes" value={form.notes.trim()} onEdit={() => goTo(2)} />
+                  ) : null}
+                </dl>
+
+                <fieldset
+                  className={styles.fieldset}
+                  aria-describedby={describedBy('paymentMethod', 'booking-payment-hint')}
+                >
+                  <legend className={styles.legend}>How do you prefer to pay?</legend>
+                  <p id="booking-payment-hint" className={styles.hint}>
+                    You pay nothing now. After we approve your request we send the reservation fee
+                    details.
+                  </p>
+                  <div className={styles.paymentGrid}>
+                    {BOOKING_PAYMENT_METHODS.map((method, index) => {
+                      const Icon = PAYMENT_ICONS[method.value];
+                      return (
+                        <label key={method.value} className={styles.paymentOption}>
+                          <input
+                            id={index === 0 ? 'booking-payment-first' : undefined}
+                            type="radio"
+                            name="paymentMethod"
+                            value={method.value}
+                            checked={form.paymentMethod === method.value}
+                            onChange={() => update('paymentMethod', method.value)}
+                            className={styles.optionInput}
+                          />
+                          <Icon aria-hidden="true" className={styles.paymentIcon} />
+                          <span>{method.label}</span>
+                          <Check
+                            aria-hidden="true"
+                            className={styles.optionCheck}
+                            strokeWidth={2.5}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {fieldError('paymentMethod')}
+                </fieldset>
+
+                <div className={styles.nextBox}>
+                  <h3 className={styles.subheading}>What happens next</h3>
+                  <ol className={styles.nextSteps}>
+                    <li>
+                      Most bookings are approved right away, and your date is held for a few days
+                      while you pay the reservation fee. Custom proposals and some larger events are
+                      reviewed by our team first.
+                    </li>
+                    <li>We confirm your date as soon as your payment is received.</li>
+                    <li>You receive a confirmation email with a calendar invitation.</li>
+                  </ol>
+                </div>
+
+                <div className={styles.field}>
+                  <label className={styles.checkRow} htmlFor="booking-accept">
+                    <input
+                      id="booking-accept"
+                      type="checkbox"
+                      checked={form.accepted}
+                      onChange={(event) => update('accepted', event.target.checked)}
+                      aria-invalid={Boolean(errors.accepted)}
+                      aria-describedby={describedBy('accepted')}
+                    />
+                    <span>
+                      I have read the{' '}
+                      <Link href="/terms" target="_blank">
+                        Terms and Conditions
+                      </Link>
+                      ,{' '}
+                      <Link href="/policies" target="_blank">
+                        Event Policies
+                      </Link>{' '}
+                      and{' '}
+                      <Link href="/privacy" target="_blank">
+                        Privacy Notice
+                      </Link>{' '}
+                      (each opens in a new tab).
+                    </span>
+                  </label>
+                  {fieldError('accepted')}
+                </div>
+
+                {submitError ? (
+                  <p className={styles.submitError} role="alert">
+                    <CircleAlert aria-hidden="true" className={styles.inlineIcon} />
+                    {submitError}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+          </div>
 
           <div className={styles.actions}>
             {step > 0 ? (
@@ -1052,16 +1087,27 @@ export default function BookingRequestForm({
             ) : (
               <span />
             )}
-            <button type="submit" className={styles.primaryButton} disabled={submitting}>
+            <button
+              type="submit"
+              className={styles.primaryButton}
+              disabled={submitting}
+              aria-busy={submitting || undefined}
+            >
               {step < STEPS.length - 1 ? (
                 <>
                   Continue
                   <ArrowRight aria-hidden="true" className={styles.buttonIcon} />
                 </>
               ) : submitting ? (
-                'Sending…'
+                <>
+                  <span className={styles.spinner} aria-hidden="true" />
+                  Sending…
+                </>
               ) : (
-                'Send booking request'
+                <>
+                  Send booking request
+                  <ArrowRight aria-hidden="true" className={styles.buttonIcon} />
+                </>
               )}
             </button>
           </div>
@@ -1143,9 +1189,12 @@ function ReviewRow({ label, value, onEdit }: { label: string; value: string; onE
 
 function SummaryRow({ label, value }: { label: string; value?: string }) {
   return (
-    <div className={styles.summaryRow}>
+    <div className={styles.summaryRow} data-filled={value ? 'true' : 'false'}>
       <dt>{label}</dt>
-      <dd>{value ?? <span className={styles.muted}>Not chosen yet</span>}</dd>
+      {/* The key re-mounts the value when it changes, replaying its short highlight. */}
+      <dd key={value ?? 'empty'} className={value ? styles.summaryValue : undefined}>
+        {value ?? <span className={styles.muted}>Not chosen yet</span>}
+      </dd>
     </div>
   );
 }

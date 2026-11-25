@@ -154,6 +154,7 @@ export default function CatalogEditor({
           type="button"
           className={styles.popoverClose}
           aria-label="Close editor"
+          data-tip="Close"
           disabled={busy}
           onClick={onClose}
         >

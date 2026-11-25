@@ -35,7 +35,7 @@ export default function TermsClient() {
         {/* Main Section */}
         <section className="flex flex-col items-center">
           <FadeIn direction="up" className="mb-14 text-center">
-            <span className="mb-6 inline-block rounded-full bg-gradient-to-r from-zion-accent to-[var(--palette-gold)] px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-[var(--palette-white)] shadow-md">
+            <span className="mb-6 inline-block text-xs font-bold uppercase tracking-[0.2em] text-accent-ink">
               Important Guidelines
             </span>
             <h2 className="mt-2 font-serif text-4xl text-ink md:text-5xl">
@@ -45,7 +45,7 @@ export default function TermsClient() {
 
           {/* Search Bar */}
           <FadeIn direction="up" delay={80} className="mb-14 w-full max-w-4xl">
-            <div className="flex w-full flex-col gap-3 rounded-full border border-zion-accent/30 bg-surface/75 p-2.5 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-zion-accent/50 focus-within:border-zion-accent/65 focus-within:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_18%,transparent)] md:flex-row">
+            <div className="flex w-full flex-col gap-3 rounded-full border border-zion-accent/30 bg-surface p-2.5 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] transition-all duration-300 hover:-translate-y-0.5 hover:border-zion-accent/50 focus-within:border-zion-accent/65 md:flex-row">
               <label className="relative flex-1">
                 <Search className="pointer-events-none absolute top-3.5 left-6 h-5 w-5 text-ink/50" />
                 <input
@@ -63,7 +63,7 @@ export default function TermsClient() {
           <div className="grid w-full grid-cols-1 items-start gap-8 lg:grid-cols-2 lg:gap-10 xl:gap-12">
             {flatTerms.length === 0 ? (
               <FadeIn direction="up" className="lg:col-span-2">
-                <div className="rounded-[2rem] border border-zion-accent/20 bg-surface/70 px-8 py-16 text-center shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] backdrop-blur-md">
+                <div className="rounded-[2rem] border border-zion-accent/20 bg-surface px-8 py-16 text-center shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)]">
                   <p className="mb-2 font-serif text-2xl text-ink">No terms found.</p>
                   <p className="font-serif text-lg text-muted">
                     We couldn&apos;t find anything matching &ldquo;{search}&rdquo;.
@@ -87,18 +87,10 @@ export default function TermsClient() {
                     <div
                       className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-500 ease-out motion-reduce:transition-none ${
                         isOpen
-                          ? '-translate-y-1 border-zion-accent/55 bg-surface shadow-[0_24px_48px_-16px_color-mix(in_srgb,var(--palette-gold)_24%,transparent)]'
-                          : 'border-zion-accent/20 bg-surface/65 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_3%,transparent)] hover:-translate-y-1.5 hover:border-zion-accent/45 hover:bg-surface hover:shadow-[0_22px_42px_-18px_color-mix(in_srgb,var(--palette-gold)_22%,transparent)]'
+                          ? 'border-zion-accent/55 bg-surface'
+                          : 'border-zion-accent/20 bg-surface shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_3%,transparent)] hover:-translate-y-0.5 hover:border-zion-accent/45 hover:bg-surface'
                       }`}
                     >
-                      {/* Animated Top Gold Accent Sweep */}
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none absolute inset-x-0 top-0 h-1 origin-left bg-gradient-to-r from-zion-accent via-[var(--palette-booklet-cover)] to-[var(--palette-gold)] transition-transform duration-500 ease-out motion-reduce:transition-none ${
-                          isOpen ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
-                        }`}
-                      />
-
                       <button
                         type="button"
                         aria-expanded={isOpen}

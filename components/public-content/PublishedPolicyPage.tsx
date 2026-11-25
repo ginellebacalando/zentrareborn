@@ -33,7 +33,7 @@ export default async function PublishedPolicyPage({
             ))}
           </div>
         ) : (
-          <div className="mx-auto max-w-3xl rounded-3xl border border-zion-accent/30 bg-surface/60 p-8 text-center shadow-sm md:p-12">
+          <div className="mx-auto max-w-3xl rounded-3xl border border-zion-accent/30 bg-surface p-8 text-center shadow-sm md:p-12">
             <h1 className="font-sahitya text-3xl font-bold text-ink">
               Reviewed policy pending publication
             </h1>

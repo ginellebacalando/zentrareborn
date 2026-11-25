@@ -124,6 +124,7 @@ export default function BookingCalendar({
               type="button"
               className={styles.iconButton}
               aria-label="Previous month"
+              data-tip="Previous month"
               onClick={() => shift(-1)}
             >
               <ChevronLeft size={18} strokeWidth={1.5} aria-hidden="true" />
@@ -139,6 +140,7 @@ export default function BookingCalendar({
               type="button"
               className={styles.iconButton}
               aria-label="Next month"
+              data-tip="Next month"
               onClick={() => shift(1)}
             >
               <ChevronRight size={18} strokeWidth={1.5} aria-hidden="true" />

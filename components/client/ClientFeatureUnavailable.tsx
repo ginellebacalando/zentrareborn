@@ -13,7 +13,7 @@ export default function ClientFeatureUnavailable({
 }) {
   return (
     <section className="relative z-10 flex min-h-[420px] w-full items-center justify-center bg-[var(--palette-gold-soft)] px-4 py-20">
-      <div className="mx-auto max-w-2xl rounded-[2rem] border border-zion-accent/25 bg-surface/75 px-6 py-10 text-center shadow-[0_20px_60px_color-mix(in_srgb,var(--palette-night)_8%,transparent)] backdrop-blur-md md:px-10">
+      <div className="mx-auto max-w-2xl rounded-[2rem] border border-zion-accent/25 bg-surface px-6 py-10 text-center shadow-[0_20px_60px_color-mix(in_srgb,var(--palette-night)_8%,transparent)] md:px-10">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent-ink">
           Zion Events Place
         </p>

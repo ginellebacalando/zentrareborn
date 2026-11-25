@@ -46,7 +46,7 @@ export default async function PublishedManagedContentSection({
           <div
             id={`${type.toLowerCase()}-${item.slug}`}
             key={item.id}
-            className="scroll-mt-28 rounded-3xl border border-zion-accent/20 bg-surface/75 p-6 shadow-sm md:p-10"
+            className="scroll-mt-28 rounded-3xl border border-zion-accent/20 bg-surface p-6 shadow-sm md:p-10"
           >
             <StructuredContentRenderer type={item.type} payload={item.version?.payload} />
           </div>

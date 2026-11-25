@@ -40,7 +40,7 @@ export default function SpacesSection() {
             {/* Left elegant fading line */}
             <div className="h-[1.5px] min-w-0 flex-1 bg-gradient-to-r from-transparent to-[var(--palette-client-section)]/75 opacity-70 transition-all duration-700 ease-out group-hover:to-[var(--palette-client-section)] group-hover:opacity-100 md:max-w-20 md:group-hover:max-w-40" />
 
-            <h2 className="shrink-0 text-center font-serif text-[1.05rem] uppercase tracking-[0.08em] text-ink transition-all duration-700 ease-out group-hover:text-[var(--palette-client-section)] group-hover:drop-shadow-[0_1px_1px_color-mix(in_srgb,var(--palette-ink)_22%,transparent)] min-[360px]:text-xl min-[360px]:tracking-[0.1em] md:text-4xl md:tracking-[0.2em] md:group-hover:tracking-[0.24em]">
+            <h2 className="shrink-0 text-center font-serif text-[1.05rem] uppercase tracking-[0.08em] text-ink min-[360px]:text-xl min-[360px]:tracking-[0.1em] md:text-4xl md:tracking-[0.2em]">
               OUR SPACES
             </h2>
 
@@ -53,7 +53,7 @@ export default function SpacesSection() {
           {spaces.map((space, index) => (
             <FadeIn key={space.id} delay={index * 90} direction="up">
               <div
-                className={`relative aspect-[4/5] md:aspect-[3/4] overflow-hidden group cursor-pointer transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_-20px_color-mix(in_srgb,var(--palette-night)_35%,transparent)] ${
+                className={`relative aspect-[4/5] md:aspect-[3/4] overflow-hidden group cursor-pointer transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_24px_50px_-20px_color-mix(in_srgb,var(--palette-night)_35%,transparent)] ${
                   space.id === 1
                     ? 'rounded-b-2xl md:rounded-bl-none md:rounded-r-2xl'
                     : space.id === 2
@@ -66,12 +66,12 @@ export default function SpacesSection() {
                 <AutoplayVenueVideo src={space.video} poster={space.poster} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/20 to-black/10 transition-colors duration-500 group-hover:from-black/65 group-hover:via-black/25" />
 
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white transition-transform duration-500 ease-out group-hover:-translate-y-1">
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-white transition-transform duration-500 ease-out group-hover:-translate-y-0.5">
                   <h3 className="flex flex-col items-center gap-1.5 drop-shadow-[0_2px_16px_color-mix(in_srgb,var(--palette-night)_60%,transparent)]">
                     <span className="font-sans text-xs font-medium uppercase tracking-[0.38em] text-white/85 transition-colors duration-500 group-hover:text-[var(--palette-client-section)]">
                       {space.prefix}
                     </span>
-                    <span className="font-serif text-3xl font-normal italic leading-tight tracking-[0.03em] text-white sm:text-4xl md:text-[2.6rem] transition-all duration-500 group-hover:tracking-[0.06em]">
+                    <span className="font-serif text-3xl font-normal italic leading-tight tracking-[0.03em] text-white sm:text-4xl md:text-[2.6rem] duration-500">
                       {space.title}
                     </span>
                   </h3>

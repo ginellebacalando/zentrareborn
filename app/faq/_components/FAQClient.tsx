@@ -118,7 +118,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
           className="lg:sticky lg:top-28"
           style={{ animation: 'fadeInUp 0.8s ease-out 0.15s both' }}
         >
-          <nav className="rounded-[2rem] border border-zion-accent/20 bg-surface/70 p-7 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] backdrop-blur-md">
+          <nav className="rounded-[2rem] border border-zion-accent/20 bg-surface p-7 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)]">
             <button
               type="button"
               aria-expanded={isQuickGuideOpen}
@@ -164,11 +164,11 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
                             className={`group flex items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-sm transition-all duration-300 ${
                               isActive
                                 ? 'bg-[var(--palette-client-button)]/20 font-semibold text-ink'
-                                : 'text-muted hover:bg-surface/80 hover:text-ink'
+                                : 'text-muted hover:bg-surface hover:text-ink'
                             }`}
                           >
                             <span className="flex items-center gap-2.5 font-serif leading-snug">
-                              <span className="font-sans text-xs font-semibold text-accent-ink/80">
+                              <span className="shrink-0 font-sans text-xs font-semibold tabular-nums text-accent-ink/80">
                                 {String(idx + 1).padStart(2, '0')}
                               </span>
                               <span>{group.shortLabel}</span>
@@ -190,7 +190,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
         {/* Main FAQ Section */}
         <section className="flex min-w-0 flex-col items-center">
           <div className="mb-14 text-center" style={{ animation: 'fadeInUp 0.8s ease-out both' }}>
-            <span className="mb-6 inline-block rounded-full bg-gradient-to-r from-zion-accent to-[var(--palette-gold)] px-5 py-2 text-xs font-bold uppercase tracking-[0.2em] text-white shadow-md">
+            <span className="mb-6 inline-block text-xs font-bold uppercase tracking-[0.2em] text-accent-ink">
               Got Questions?
             </span>
             <h2 className="mt-2 font-serif text-4xl text-ink md:text-5xl">
@@ -200,7 +200,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
 
           {/* Search Bar */}
           <div
-            className="mb-14 flex w-full flex-col gap-3 rounded-full border border-zion-accent/30 bg-surface/70 p-2.5 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] backdrop-blur-md transition-all focus-within:border-zion-accent/60 focus-within:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_15%,transparent)] md:flex-row"
+            className="mb-14 flex w-full flex-col gap-3 rounded-full border border-zion-accent/30 bg-surface p-2.5 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] transition-all focus-within:border-zion-accent/60 md:flex-row"
             style={{ animation: 'fadeInUp 0.8s ease-out 0.2s both' }}
           >
             <label className="relative flex-1">
@@ -219,7 +219,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
           <div className="flex w-full flex-col gap-16">
             {groupedFaqs.length === 0 ? (
               <div
-                className="rounded-[2rem] border border-zion-accent/20 bg-surface/70 px-10 py-16 text-center shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] backdrop-blur-md"
+                className="rounded-[2rem] border border-zion-accent/20 bg-surface px-10 py-16 text-center shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)]"
                 style={{ animation: 'fadeIn 0.5s ease-out both' }}
               >
                 <p className="mb-2 font-serif text-2xl text-ink">No answers found.</p>
@@ -264,10 +264,10 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
                         <article
                           id={faq.id}
                           key={faq.id}
-                          className={`scroll-mt-32 overflow-hidden rounded-[2rem] border backdrop-blur-md transition-all duration-500 ${
+                          className={`scroll-mt-32 overflow-hidden rounded-[2rem] border transition-all duration-500 ${
                             isOpen
-                              ? '-translate-y-1 border-zion-accent/40 bg-surface/90 shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_15%,transparent)]'
-                              : 'border-zion-accent/20 bg-surface/70 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] hover:-translate-y-1 hover:bg-surface/90 hover:shadow-[0_15px_35px_color-mix(in_srgb,var(--palette-gold)_10%,transparent)]'
+                              ? 'border-zion-accent/40 bg-surface'
+                              : 'border-zion-accent/20 bg-surface shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] hover:-translate-y-0.5 hover:bg-surface'
                           }`}
                         >
                           <button
@@ -328,9 +328,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
           style={{ animation: 'fadeInUp 0.8s ease-out 0.5s both' }}
         >
           {/* Quick Contact Card */}
-          <section className="group relative overflow-hidden rounded-[2rem] border border-zion-accent/20 bg-surface/70 p-9 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_15%,transparent)]">
-            <div className="absolute right-0 top-0 -mr-12 -mt-12 h-40 w-40 rounded-full bg-gradient-to-br from-zion-accent/15 to-transparent blur-2xl transition-transform duration-700 group-hover:scale-150"></div>
-
+          <section className="group relative overflow-hidden rounded-[2rem] border border-zion-accent/20 bg-surface p-9 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] transition-all duration-500 hover:-translate-y-0.5">
             <h3 className="relative z-10 mb-4 font-serif text-2xl font-bold text-ink transition-colors group-hover:text-accent-ink">
               Need Help?
             </h3>
@@ -351,9 +349,7 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
           </section>
 
           {/* Info Card */}
-          <section className="group relative overflow-hidden rounded-[2rem] border border-zion-accent/20 bg-surface/70 p-9 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_color-mix(in_srgb,var(--palette-gold)_15%,transparent)]">
-            <div className="absolute right-0 top-0 -mr-12 -mt-12 h-40 w-40 rounded-full bg-gradient-to-br from-zion-accent/15 to-transparent blur-2xl transition-transform duration-700 group-hover:scale-150"></div>
-
+          <section className="group relative overflow-hidden rounded-[2rem] border border-zion-accent/20 bg-surface p-9 shadow-[0_8px_30px_color-mix(in_srgb,var(--palette-night)_4%,transparent)] transition-all duration-500 hover:-translate-y-0.5">
             <h3 className="relative z-10 mb-4 font-serif text-2xl font-bold text-ink transition-colors group-hover:text-accent-ink">
               Venue Viewings
             </h3>

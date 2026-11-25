@@ -158,7 +158,7 @@ export default function ZionSelectPopover({
               left: position.left,
               minWidth: position.width,
             }}
-            className={`events-scrollbar z-[220] max-h-64 overflow-y-auto rounded-2xl border border-zion-accent/25 bg-surface/95 py-1.5 shadow-[0_18px_48px_color-mix(in_srgb,var(--palette-night)_18%,transparent)] backdrop-blur-xl ${panelClassName}`}
+            className={`events-scrollbar z-[220] max-h-64 overflow-y-auto rounded-2xl border border-zion-accent/25 bg-surface py-1.5 shadow-[0_18px_48px_color-mix(in_srgb,var(--palette-night)_18%,transparent)] ${panelClassName}`}
           >
             {options.map((opt) => {
               const isSelected = opt.value === value;

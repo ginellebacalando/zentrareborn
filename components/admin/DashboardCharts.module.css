@@ -34,13 +34,13 @@
 .trendRow {
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(16rem, 1fr);
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
 }
 .trendRow > .card,
 .grid > .card {
@@ -442,11 +442,6 @@
   }
 }
 
-@media (max-width: 1300px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 @media (max-width: 1150px) {
   .trendRow {
     grid-template-columns: minmax(0, 1fr);

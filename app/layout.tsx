@@ -11,6 +11,7 @@ import { BRAND } from '@/config/brand';
 import { ThemeProvider } from './_providers/ThemeProvider';
 import PanelChrome from '@/components/layout/PanelChrome';
 import SkipLink from '@/components/layout/SkipLink';
+import RouteTransition from '@/components/layout/RouteTransition';
 import { archivo, archivoExtended, cinzelDecorative } from './_fonts';
 import Chatbot from '@/components/chatbot/Chatbot';
 
@@ -72,6 +73,7 @@ export default function RootLayout({
           <PanelChrome>
             <GlobalBackground />
             <GlobalHeader />
+            <RouteTransition />
           </PanelChrome>
           {children}
           <PanelChrome>

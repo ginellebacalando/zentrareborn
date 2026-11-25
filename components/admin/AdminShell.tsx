@@ -125,7 +125,8 @@ export default function AdminShell({
         <Link
           href={`/admin/${key}`}
           onClick={navigatePage}
-          title={compact ? label : undefined}
+          data-tip={compact ? label : undefined}
+          data-tip-side="right"
           aria-current={active ? 'page' : undefined}
           className={`${styles.navItem} ${active ? styles.active : ''}`}
         >
@@ -168,7 +169,7 @@ export default function AdminShell({
           className={styles.menuToggle}
           onClick={toggleNavigation}
           aria-label={toggleLabel}
-          title={toggleLabel}
+          data-tip={toggleLabel}
           aria-expanded={open}
           aria-controls="admin-sidebar"
         >

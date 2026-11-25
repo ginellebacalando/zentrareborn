@@ -246,7 +246,7 @@ const SwipeCard = ({
 
   return (
     <motion.div
-      className={`absolute inset-0 w-full h-full rounded-[2.5rem] shadow-[0_20px_50px_color-mix(in_srgb,var(--palette-night)_20%,transparent)] overflow-hidden bg-neutral-900 ${isTop ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
+      className={`absolute inset-0 w-full h-full rounded-[2.5rem] shadow-[0_20px_50px_color-mix(in_srgb,var(--palette-night)_20%,transparent)] overflow-hidden media-placeholder ${isTop ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
       style={{
         x: isTop ? x : 0,
         rotate: isTop ? rotate : 0,
@@ -278,7 +278,7 @@ const SwipeCard = ({
       {/* Content */}
       <div className="absolute bottom-8 left-8 right-8 text-white flex justify-between items-end pointer-events-none">
         <div>
-          <div className="inline-block px-4 py-1.5 bg-zion-accent/90 backdrop-blur-md rounded-full text-xs font-bold tracking-[0.2em] uppercase mb-2 shadow-lg text-black">
+          <div className="inline-block px-4 py-1.5 bg-zion-accent/90 rounded-full text-xs font-bold tracking-[0.2em] uppercase mb-2 shadow-lg text-black">
             {img.category}
           </div>
           <div className="text-white/80 text-sm mt-1">
@@ -496,7 +496,7 @@ export default function CategorizedGallery() {
           return (
             <div
               key={`${img.src}-${idx}`}
-              className={`relative inline-block w-full align-top isolate [transform:translateZ(0)] group overflow-hidden rounded-xl break-inside-avoid mb-3 shadow-sm hover:shadow-2xl transition-all duration-500 bg-neutral-900 cursor-pointer ${aspectClass}`}
+              className={`relative inline-block w-full align-top isolate [transform:translateZ(0)] group overflow-hidden rounded-xl break-inside-avoid mb-3 shadow-sm hover:shadow-2xl transition-all duration-500 media-placeholder cursor-pointer ${aspectClass}`}
             >
               <button
                 type="button"
@@ -524,7 +524,7 @@ export default function CategorizedGallery() {
                     e.stopPropagation();
                     toggleLike(e, img.src);
                   }}
-                  className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                  className="pointer-events-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/40 focus:outline-none transition-transform hover:scale-110 active:scale-95"
                 >
                   <Heart
                     className={`h-5 w-5 transition-colors duration-300 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white/90 hover:text-white'}`}
@@ -602,7 +602,7 @@ export default function CategorizedGallery() {
                   e.stopPropagation();
                   toggleLike(e, shuffledImages[lightboxIndex].src);
                 }}
-                className="absolute z-10 bottom-4 left-4 md:bottom-6 md:left-6 focus:outline-none transition-transform hover:scale-110 bg-black/40 p-2 rounded-full backdrop-blur-md"
+                className="absolute z-10 bottom-4 left-4 md:bottom-6 md:left-6 focus:outline-none transition-transform hover:scale-110 bg-black/40 p-2 rounded-full"
               >
                 <Heart
                   className={`h-6 w-6 md:h-7 md:w-7 transition-colors duration-300 ${likedImages[shuffledImages[lightboxIndex].src] ? 'fill-red-500 text-red-500' : 'text-white/80 hover:text-white'}`}

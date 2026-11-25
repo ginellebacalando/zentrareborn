@@ -10,7 +10,7 @@ import { enqueueJobs, type NewAutomationJob, type OutboxDb } from './outbox';
 import { onlinePaymentsOffered, paymentPageAction, receiptDownloadAction } from './payment-proofs';
 import { resolveStaffRecipients } from './recipients';
 import {
-  renderPlainNotice,
+  renderBookingNotice,
   staffCalendarNotice,
   VENUE_LOCATION,
   type StaffCalendarNoticeKind,
@@ -399,10 +399,10 @@ export async function enqueueBookingNotice(
     : acceptsPayment && PAYMENT_LINK_EVENTS.has(event)
       ? paymentPageAction(booking.id, await onlinePaymentsOffered(db))
       : null;
-  const rendered = renderPlainNotice({
+  const rendered = renderBookingNotice({
     subject: notice.subject,
     heading: automationJobLabel(event),
-    body: notice.body,
+    notice,
     extra: calendar ? [CALENDAR_NOTES[calendar]] : [],
     action: paymentAction ?? undefined,
   });

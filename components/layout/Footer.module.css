@@ -8,14 +8,12 @@
   color: var(--text-primary);
 }
 
-/* Phones: the wordmark, the site links and the social links stack. Wider screens put the
-   wordmark and the social links on one row, and wide desktops add the links between them. */
+/* Phones: the wordmark above the social links; wider screens put them on one row. */
 .inner {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     'brand'
-    'nav'
     'social';
   align-items: center;
   gap: var(--space-4) var(--space-8);
@@ -35,20 +33,6 @@
   align-items: flex-start;
 }
 
-.nav {
-  grid-area: nav;
-}
-
-.links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-6);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.links a,
 .legalLinks a {
   display: inline-flex;
   align-items: center;
@@ -60,14 +44,6 @@
   transition: color var(--motion-fast) var(--motion-ease);
 }
 
-.links a {
-  font-size: var(--type-caption);
-  font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-}
-
-.links a:hover,
 .legalLinks a:hover {
   color: var(--action-primary);
   text-decoration-line: underline;
@@ -112,9 +88,7 @@
 @media (min-width: 30rem) {
   .inner {
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'brand social'
-      'nav nav';
+    grid-template-areas: 'brand social';
   }
 
   .social {
@@ -122,21 +96,7 @@
   }
 }
 
-/* Wide desktops: one band with the links centered between the wordmark and the social links. */
-@media (min-width: 75rem) {
-  .inner {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'brand nav social';
-    padding-block: var(--space-6);
-  }
-
-  .links {
-    justify-content: center;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .links a,
   .legalLinks a {
     transition: none;
   }

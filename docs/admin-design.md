@@ -52,11 +52,15 @@ ZENTRA system, aligned with the main website, and set these rules:
 
 - **Type:** page titles `--type-panel-title` (22–28px, semibold); card titles 16–18px semibold;
   body 16px; tables and secondary text 14px; captions 12px (never smaller).
-- **Shape:** controls 6px radius, cards 8px; card shadow `0 1px 2px` at 6% of `--admin-shadow`.
+- **Shape:** controls 8px radius, cards 12px; card shadow `0 1px 2px` at 6% of `--admin-shadow`.
 - **Targets:** 44px controls (the project default), including sidebar rows, legend toggles and
   segmented switches. Buttons in a row share one height, so fields, buttons and toggles line up.
-- **Spacing:** page gutters 24px (16px on phones), 16px between cards, card padding 16–24px
-  (`--layout-card-padding`, redefined for the admin scope).
+- **Spacing (generous, 26 November 2026):** page gutters up to 48px (16px on phones), 24px between
+  cards and sections, card padding 20–28px (`--layout-card-padding`, redefined for the admin scope).
+- **Buttons:** one set in `admin.module.css` (`.primary`, `.secondary`, `.dangerAction`): 44px tall,
+  8px corners, 14px semibold text, 16px icons; primary with a soft inner highlight, white secondary
+  with a hairline border; a 1px press. Page stylesheets reuse them with CSS Modules `composes`
+  (Automation, Front desk, Live chat, Zeni), so every page's buttons match.
 
 The design check (`scripts/check-design-system.mjs`) verifies the role contrasts in both themes.
 To use Metis' blue instead of ZENTRA green, change the action, accent-ink, focus and highlight roles
@@ -90,6 +94,12 @@ in the admin block of `styles/tokens.css`; no component needs editing.
 - **Search:** one slim toolbar row (`.toolbar`, `.searchBox`): a search field about 26rem wide
   with an icon, a Search button that names it (WCAG technique G167) and a Filter button whose fields
   open in a panel below. No card or label above the field. Phones give the field the full row.
+- **Tooltips:** icon-only controls carry `data-tip` (header icons, the menu toggle, collapsed sidebar
+  links, calendar arrows, package editor icons): a dark label on hover after a short pause, at once on
+  keyboard focus, hidden while the control's menu is open. The accessible name stays the aria-label.
+- **Rows and sections:** every table row highlights under the pointer; dashboard "Coming up" rows open
+  their booking (`/admin/bookings?booking=<id>`); expandable sections (details) open and close
+  smoothly where the browser supports it.
 - **Loading:** skeleton bars in the shape of what is loading (`LoadingSkeleton.tsx`), announced once
   through `role="status"`.
 
@@ -109,9 +119,11 @@ library, Chart.js (`chart-engine.ts`, `useChartJs.ts`, `ChartPrimitives.tsx`).
   one visible; hovering a bar group or donut slice dims the rest; pointing at a donut slice or its
   legend row lifts the slice and shows its share in the centre. The dashboard's period is a
   segmented switch (6 or 12 months); the charts animate to the new range.
-- **Layout (dashboard):** Cash collected (the main chart) beside "For the past 30 days", then
-  Bookings trend, Booking activity and Reservation mix in one row (two, then one, on narrower
-  screens).
+- **Layout (dashboard, 26 November 2026):** the KPI cards and "Bookings this month"; then Website
+  activity with the testimonies hold below it, beside "Coming up at Zion"; then Trends: Cash
+  collected beside "For the past 30 days", and Bookings trend beside Booking activity (one column
+  on narrower screens). The reservation split lives on Reports ("Reservation status") and new
+  inquiries on the Inquiries page, so the dashboard does not repeat them.
 - **Access:** every canvas has `role="img"` and a summary name, and every chart keeps an exact-value
   table for screen readers (`ChartDataTable`). Legends and totals carry the values in text.
 

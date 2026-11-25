@@ -295,51 +295,15 @@
   margin: 0;
 }
 
-.primary,
-.secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  width: fit-content;
-  min-height: var(--layout-touch-target);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--admin-action);
-  border-radius: var(--radius-control);
-  font: inherit;
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease);
-}
-
+/* Buttons come from the shared admin set, so every page matches (docs/admin-design.md). */
 .primary {
-  background: var(--admin-action);
-  color: var(--admin-on-action);
-}
-
-.primary:hover:not(:disabled) {
-  border-color: var(--admin-action-hover);
-  background: var(--admin-action-hover);
+  composes: primary from './admin.module.css';
+  width: fit-content;
 }
 
 .secondary {
-  border-color: var(--admin-control-line);
-  background: var(--admin-surface-card);
-  color: var(--admin-ink);
-}
-
-.secondary:hover:not(:disabled) {
-  border-color: var(--admin-border);
-  background: var(--admin-surface-subtle);
-}
-
-.primary:disabled,
-.secondary:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
+  composes: secondary from './admin.module.css';
+  width: fit-content;
 }
 
 .primary:focus-visible,
@@ -382,14 +346,36 @@
   background: var(--admin-surface-subtle);
 }
 
+/* The reply as the visitor sees it (ZeniText): paragraphs with air between them, real lists. */
 .replyText {
+  display: grid;
+  gap: var(--space-3);
   margin: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-4);
   border-radius: var(--space-1) var(--radius-card) var(--radius-card) var(--radius-card);
   background: var(--admin-surface-card);
-  line-height: 1.55;
-  white-space: pre-wrap;
+  line-height: var(--line-relaxed);
   overflow-wrap: anywhere;
+}
+.replyText p,
+.replyText ul,
+.replyText ol {
+  margin: 0;
+}
+.replyText ul,
+.replyText ol {
+  display: grid;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-6);
+}
+.replyText ul {
+  list-style: disc;
+}
+.replyText ol {
+  list-style: decimal;
+}
+.replyText strong {
+  font-weight: var(--weight-semibold);
 }
 
 @media (max-width: 36rem) {

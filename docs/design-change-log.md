@@ -1,5 +1,113 @@
 # Design change log
 
+## 26 November 2026 (night, second request) — Corporate pass: no duplicates, no template clichés
+
+User task: remove the remaining redundancy (starting with the footer's copy of the header links);
+a bespoke, professional look with subtle motion and none of the generic "AI" patterns (filler
+layouts, heavy gradients, gimmicks); a modern HTML email with the real logo and a structured booking
+summary; a concise admin dashboard limited to the core planned features; Zeni's replies easier to
+read, with her logic unchanged.
+
+- Footer (`components/layout/Footer.tsx`, `Footer.module.css`, `config/navigation.ts`): the copy of
+  the header's menu is gone; the footer keeps the wordmark, social links, copyright and legal links.
+  `FOOTER_LINKS` was removed (nothing else used it).
+- Emails (`lib/automation/templates.ts`, `email-theme.ts`, `lib/admin/domain.ts`,
+  `lib/automation/bookings.ts`): every automated email shares one layout. The header is the ZENTRA
+  wordmark image the website uses (`/images/brand/zentra-wordmark.png`, loaded from the site's
+  address; set in type when the address is unknown or a mail app blocks images) over the venue name.
+  Below it: a white card on a pale green page, the reader's system font, label and value panels, a
+  button that also works in Outlook, and a quiet footer (address, phone, email link). Booking notices
+  (request approved, deadline extended, reservation confirmed, payment verified, ...) add a summary
+  block: the booking reference, then Approval, Reservation and Payment as sentence-case badges in the
+  status colours, then the payment breakdown (total, reservation fee, received, and the balance in
+  bold). Amounts due and deadlines are bold in the text. Subjects name the notice in words ("Zion
+  Events Place | Payment deadline extended | ZION-…") instead of the event code ("HOLD EXTENDED").
+  The plain-text version is unchanged.
+- Zeni (`components/chatbot/ZeniText.tsx`, `ChatMessage.tsx`, `Chatbot.module.css`, and the admin
+  "Ask Zeni" preview): each line of a reply is its own paragraph with space between, "•" lines form a
+  real list, the line height is relaxed (new token `--line-relaxed: 1.7`), bubbles are roomier
+  (12 × 16px padding), and key facts are bold: a list item's lead-in label ("Reservation fee:"), peso
+  amounts and any phrase a reply marks with double asterisks. No word of a reply changes.
+- Admin dashboard (`DashboardOverview.tsx`, `DashboardCharts.tsx`, `admin.module.css`): numbers first
+  (KPI cards, Bookings this month); then what needs attention (Website activity, the testimonies
+  hold) beside what is coming up; then Trends, four charts in two rows. Removed: the "Inquiries
+  awaiting review" card (Website activity lists new inquiries, and the Inquiries page has "Review as
+  request") and the "Reservation mix" chart (Reports shows the same split as "Reservation status").
+  With nothing on hold, the testimonies hold is one quiet line. Page height at 1440×900: about
+  2,830px before, 2,220px after.
+- Public pages, generic patterns removed: blurred colour blobs (About, Contact, FAQ, Facilities);
+  gradient stripes on cards and dialogs (Contact, the inquiry status, the testimony dialog, Policies
+  and Terms); gradient pill labels (FAQ, Contact, Policies, Terms), now plain small capitals;
+  frosted-glass panels, now solid; gold glow shadows; 4–8px hover lifts, now 2px; titles that changed
+  colour and letter spacing under the pointer (Gallery, Spaces, Packages), now still; sparkle icons on
+  labels. The About page's six icon cards of claims nobody can check ("Award-Winning Aesthetic",
+  "Satisfaction Guarantee", "Expert Coordination 24/7") became six facts the venue already publishes
+  in its FAQ and Zeni topics: one event per day with up to 15 hours of access, Selah Hall when it
+  rains, five hours of air-conditioning, a backup generator, parking for 45 vehicles, coordination
+  included. The booking header lost its card, glow and icon tiles: a plain title, lead and a short
+  numbered list. Photo scrims behind text stay.
+- Fixed: the FAQ Quick Guide numbers ("01") split over two lines when a label wrapped.
+
+Checked: the deadline-extended and booking-received emails rendered in Chromium at 1000px and 320px
+(logo from the live site, summary block, bold amounts, button); automation and admin tests; Zeni's
+payments topic in the chat (list, bold labels and amounts, spacing); the dashboard at 1440×900 and
+320px; Booking, FAQ, Contact, About and Gallery at 1440×900; all 19 public pages return 200 and none
+scrolls sideways at 320px. `npm run verify` passed: formatting, design and client-boundary checks, type check, 144 tests (chatbot 68, admin 39, automation 31, developer 6), lint and the production build.
+
+Not checked: the emails in Outlook desktop, Apple Mail and the Gmail apps (only a browser render),
+the dark theme of the public pages touched here, a screen reader, and real phones. The About page
+statistics (12+ years, 400+ customers, 500+ events, 98% satisfaction) were left as they are; they
+need the venue's confirmation.
+
+## 26 November 2026 (night) — Whole-site polish: booking flow, public motion, admin buttons
+
+User task (overnight, decisions delegated): make the whole site simple and easy to use; every admin
+page interactive (hover and click feedback, transitions, clickable cards and rows, tooltips); modern,
+consistent admin buttons with generous spacing; professional, smooth, interactive public pages with
+reduced-motion respected; a redesigned booking page; find and fix anything missing or broken.
+
+Public site:
+
+- Booking (`app/booking/_components/BookingRequestForm.tsx`, `BookingRequest.module.css`): a header
+  card with three "how it works" points; a stepper whose track fills as steps are completed; each
+  step slides in from the side it came from and focus moves to its heading (smooth scroll into
+  view); choice cards lift on hover and answer a click at once (green ring, a check badge that pops
+  in, tinted package and payment tiles, image zoom on event cards); inputs glow on focus; the summary
+  highlights each new choice; buttons nudge their arrow; sending shows a spinner; the confirmation
+  draws its check mark and shows the reference as a ticket. Logic, validation and accessibility are
+  unchanged. Tints come from the theme's action colour, so the dark theme works.
+- Page transitions (`components/layout/RouteTransition.tsx`): on every public page change the new
+  content fades and rises in (0.45s). Not on first load, not in the admin, off under reduced motion.
+- Scroll reveals for every public page (`app/globals.css`, `section-in`): sections without a reveal
+  of their own fade and rise in as they enter the screen. CSS scroll-driven animation in a low cascade
+  layer: browsers without support simply show the content, and component animations win.
+- Loading feedback: a slim progress bar at the top of the screen starts on any click to another
+  page and completes when the page arrives (`RouteTransition.tsx`, `.route-progress`), so a click on a
+  live page (Booking, Contact) always gets an answer. It uses no loading boundary, so server
+  redirects and 404s keep their status codes (a site-wide `loading.tsx` was tried and dropped because
+  it turned the admin sign-in redirect into a 200 response). Gallery tiles shimmer softly instead of
+  showing dark boxes while their photos load (`.media-placeholder`).
+
+Admin:
+
+- Buttons: one modern set for every page (see [admin-design.md](admin-design.md)); the Automation,
+  Front desk, Live chat and Zeni stylesheets now compose it instead of keeping copies.
+- Spacing: generous and consistent (24px between cards, 20–28px card padding, wider page gutters).
+- Interactivity: tooltips on icon-only controls; hover on every table row, team card and expandable
+  section header; smooth open and close of expandable sections; dashboard "Coming up" rows open their
+  booking (new `?booking=<id>` link, removed from the address when the booking is closed).
+
+Checked locally: the booking flow end to end (validation and error summary, step transitions, focus,
+summary, estimate, sending, confirmation; one test request in the local demo database only), the
+booking page in the dark theme and at 320px; page transitions and scroll reveals (every animated
+section ends fully visible); all 19 public pages return 200, their 19 internal links and 70 images
+load; no sideways scrolling at 320px on any public or admin page; admin buttons, tooltip and rows at
+1440×900. `npm run verify` passed after the second request's changes too (see the entry above).
+
+Not checked: a screen reader, reduced-motion emulation (code paths in place), Safari and Firefox (the
+scroll reveals are Chromium-first by design), and real phones. On the Gallery, the phone emulator
+briefly sized the page 7px wide at load before correcting itself; no element overflows afterwards.
+
 ## 26 November 2026 — Interactive charts, compact search, smooth motion
 
 User task (follow-up to the calm redesign): adopt the Metis template's graphs, interactive and as

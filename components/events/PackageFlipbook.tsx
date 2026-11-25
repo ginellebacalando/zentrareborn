@@ -130,7 +130,7 @@ export default function PackageFlipbook({ eventType }: PackageFlipbookProps) {
             role="dialog"
             aria-modal="true"
             aria-label={`${label} package booklet full-screen view`}
-            className={`${styles.modalBackdrop} fixed inset-0 z-[200] flex items-center justify-center bg-ink/75 p-2.5 backdrop-blur-md sm:p-5`}
+            className={`${styles.modalBackdrop} fixed inset-0 z-[200] flex items-center justify-center bg-ink/75 p-2.5 sm:p-5`}
           >
             <button
               type="button"

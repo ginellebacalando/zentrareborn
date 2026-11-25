@@ -122,6 +122,27 @@ export default function AdminWorkspace({
       return () => controller.abort();
     }
   }, [section]);
+  // A link such as /admin/bookings?booking=<id> (Dashboard "Coming up") opens that booking.
+  useEffect(() => {
+    if (section !== 'bookings') return;
+    const id = new URLSearchParams(window.location.search).get('booking');
+    if (!id) return;
+    const controller = new AbortController();
+    fetch(`/api/admin/bookings?id=${encodeURIComponent(id)}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Unable to load booking.');
+        setSelected(body.booking);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted)
+          setError(e instanceof Error ? e.message : 'Unable to load booking.');
+      });
+    return () => controller.abort();
+  }, [section]);
   async function mutate(
     module: string,
     payload: unknown,
@@ -267,6 +288,17 @@ export default function AdminWorkspace({
           onClose={() => {
             restoreDetailFocus.current = true;
             setSelected(null);
+            // A closed booking leaves the address too, so reloading does not reopen it.
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('booking')) {
+              params.delete('booking');
+              const query = params.toString();
+              window.history.replaceState(
+                null,
+                '',
+                `${window.location.pathname}${query ? `?${query}` : ''}`,
+              );
+            }
           }}
         />
       )}
