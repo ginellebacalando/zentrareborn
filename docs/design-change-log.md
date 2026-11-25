@@ -1,5 +1,20 @@
 # Design change log
 
+## 25 November 2026 — Ocular visit button on the home page
+
+User task: add a "Schedule an ocular visit" button to the home page, after asking what the
+walk-in button is for (walk-in booking is staff-only on the Front desk; the public page for visits
+is `/visit`).
+
+Affected: `components/home/AvailabilitySection.tsx`. The Available Dates section gains a third
+button, "Schedule an ocular visit" (the existing outline style), after "Ask Zeni about a date" and
+"Start a booking", and its lead sentence mentions seeing the venue first. No new styles; the main
+menu keeps its original items.
+
+Checked locally: the three buttons and their links, and no sideways scrolling at 320px (the buttons
+stack; the new one wraps to two lines at that width). Not checked: screenshots (the browser pane
+was hidden), 200% text.
+
 ## 25 November 2026 — Ocular visits on the admin Calendar
 
 User task: show visits and walk-ins on the admin Calendar (plan section 16.1: staff see visits on

@@ -19,7 +19,8 @@ bookings (16.2) are in [docs/walk-ins.md](walk-ins.md).
   state and links to schedule a new one or book.
 - **Entry points.** Zeni's "Schedule an ocular visit" opens `/visit?date=<the date being
 discussed>&source=zeni` (the day is preselected when it has open times), the booking page intro
-  ("Not ready yet? Schedule an ocular visit"), and the Business Hours card on the Contact page.
+  ("Not ready yet? Schedule an ocular visit"), the home page's Available Dates section (beside
+  "Start a booking"), and the Business Hours card on the Contact page.
   Earlier Zeni links to `/contact?topic=visit` still open the contact form with a visit message.
 - The page follows the same on/off switch as inquiries and booking requests (Settings, client
   access); while paused it shows the contact details instead.

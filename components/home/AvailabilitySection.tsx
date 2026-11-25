@@ -36,7 +36,8 @@ export default function AvailabilitySection() {
           <div>
             <p className={styles.lead}>
               Popular weekends fill up months ahead. Ask Zeni, our virtual concierge, whether a date
-              is open, or start a booking and choose from the dates the calendar allows.
+              is open, start a booking and choose from the dates the calendar allows, or see the
+              venue in person first on an ocular visit.
             </p>
             <div className={styles.actions}>
               <OpenChatbotButton
@@ -47,6 +48,10 @@ export default function AvailabilitySection() {
               </OpenChatbotButton>
               <Link href="/booking" className={styles.buttonOutline}>
                 Start a booking
+              </Link>
+              {/* The public visit page (docs/visits.md): a time to see the venue before booking. */}
+              <Link href="/visit" className={styles.buttonOutline}>
+                Schedule an ocular visit
               </Link>
             </div>
           </div>
