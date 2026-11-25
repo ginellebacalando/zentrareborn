@@ -1,5 +1,26 @@
 # Design change log
 
+## 25 November 2026 — Payment emails match what the payment page offers
+
+User task: the owner noticed that a "Payment deadline extended" email offered "See how to pay or
+upload your payment", while the payment page showed cash only (no GCash or bank account is set up
+on staging yet).
+
+Affected: the payment page button in client emails (`lib/automation/payment-proofs.ts`,
+`bookings.ts`, `booking-requests.ts`, `templates.ts`, `lib/admin/booking-automation.ts`), the
+booking confirmation screen (`app/booking/_components/BookingRequestForm.tsx`,
+`app/api/client/booking-requests/route.ts`) and the notice body (`lib/admin/domain.ts`).
+
+- The email button reads "See how to pay" until a GCash or bank account is saved in Settings →
+  Online Payments, then "See how to pay or upload your payment".
+- The booking confirmation mentions GCash or bank screenshots only when the page takes them.
+- The notice body says "A reservation fee" and "Full payment" instead of "cash", since verified
+  transfers count too. The venue's own payment instructions below it are unchanged.
+
+No layout, color, type or motion changes. Verification: the payment test now covers both cases (cash
+only, then with a GCash account), and `npm run verify` passed (chatbot 68, admin 27, automation 31,
+developer 6, lint, build). Not checked: the emails in a real inbox.
+
 ## 25 November 2026 — Booking automation phase 2: GCash and bank transfer screenshots
 
 User task: let clients pay the reservation fee by GCash or bank transfer and send the screenshot

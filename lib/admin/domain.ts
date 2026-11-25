@@ -158,8 +158,8 @@ export function bookingEmail(
     b.paymentRule === 'NO_PAYMENT_REQUIRED'
       ? 'No payment is required to secure this reservation.'
       : b.paymentRule === 'FULL_PAYMENT_REQUIRED'
-        ? `Full cash payment of ${money(b.totalCents)} is required before confirmation.`
-        : `A cash reservation fee of ${money(b.depositCents)} is required before confirmation.`;
+        ? `Full payment of ${money(b.totalCents)} is required before confirmation.`
+        : `A reservation fee of ${money(b.depositCents)} is required before confirmation.`;
   return {
     subject: `Zion Events Place | ${NOTICE_SUBJECTS[event] ?? event.replaceAll('_', ' ')} | ${b.reference}`,
     body: `Hello ${b.clientName},\n\n${lead ? `${lead}\n\n` : ''}Booking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${paymentStatus(b.totalCents, paid)} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${requirement}\n${instructions}\n\nApproval alone does not confirm a reservation or indicate payment. Only a CONFIRMED reservation secures the event schedule.\n\nZion Events Place`,

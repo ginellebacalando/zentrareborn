@@ -247,6 +247,8 @@ export default function BookingRequestForm({
     expiresAt: string;
     amountDueCents: number | null;
     paymentPath: string | null;
+    /** The payment page takes GCash or bank transfer screenshots (an account is set up). */
+    onlinePayment: boolean;
   } | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
@@ -342,6 +344,7 @@ export default function BookingRequestForm({
         holdExpiresAt?: string | null;
         amountDueCents?: number | null;
         paymentPath?: string | null;
+        onlinePayment?: boolean;
         error?: string;
       } | null;
       if (response.ok && payload?.reference) {
@@ -354,6 +357,7 @@ export default function BookingRequestForm({
                 paymentPath: payload.paymentPath?.startsWith('/booking/pay/')
                   ? payload.paymentPath
                   : null,
+                onlinePayment: payload.onlinePayment === true,
               }
             : null,
         );
@@ -455,8 +459,9 @@ export default function BookingRequestForm({
                   : `How to pay is in the email we sent to ${form.email.trim()}.`}
               </li>
               <li>
-                We check your payment with our records and confirm your date. For GCash or bank
-                transfers, send the screenshot on your payment page.
+                We check your payment with our records and confirm your date.
+                {hold.onlinePayment &&
+                  ' For GCash or bank transfers, send the screenshot on your payment page.'}
               </li>
               <li>You receive a confirmation email with a calendar invitation.</li>
             </ol>

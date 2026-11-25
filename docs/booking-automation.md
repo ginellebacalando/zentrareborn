@@ -47,7 +47,10 @@ log records only that they changed.
 booking id with `AUTH_SECRET`, so the link cannot be guessed or altered and needs no stored token.
 It appears as a button and a plain link in "Your date is on hold", the deadline reminder,
 "Payment deadline extended" and "Payment screenshot not accepted", and as "See how to pay" on the
-booking page right after a request is held. The page is not indexed and sends no referrer. It shows the booking, the amount and deadline, how to pay, the booking
+booking page right after a request is held. The button reads "See how to pay or upload your
+payment" only while a GCash or bank account is set up; otherwise it reads "See how to pay" and the
+page shows the cash instructions, so no email promises an upload the page cannot take. The page is
+not indexed and sends no referrer. It shows the booking, the amount and deadline, how to pay, the booking
 reference to write in the transfer note, and the upload form while the date is held.
 
 **Uploads** take one JPG, PNG, WebP or PDF up to 4 MB (large phone photos are scaled down in the

@@ -138,31 +138,6 @@ test(
         },
         actor,
       );
-      // Settings: a wrong GCash number is refused; a complete account is offered to clients.
-      const preferences = await getAdminPreferences();
-      const withAccounts = (number: string) => ({
-        op: 'preferences',
-        settings: {
-          ...preferences.settings,
-          admin: {
-            ...preferences.settings.admin,
-            paymentAccounts: {
-              gcash: { accountName: 'Zion Events Place', number },
-              bank: { bankName: '', accountName: '', accountNumber: '' },
-            },
-          },
-        },
-        updatedAt: preferences.updatedAt,
-      });
-      await assert.rejects(adminMutate(withAccounts('12345'), actor), /GCash number/);
-      await adminMutate(withAccounts('0917 123 4567'), actor);
-      const settingsAudit = await prisma.auditLog.findFirstOrThrow({
-        where: { module: 'Settings' },
-        orderBy: { timestamp: 'desc' },
-      });
-      assert.match(settingsAudit.description, /Payment accounts changed\./);
-      assert.doesNotMatch(settingsAudit.description, /0917/, 'The audit never holds the number');
-
       const booking = async (days: number, name: string) => {
         const startsAt = new Date(Date.now() + days * 86400000);
         const created = (await adminMutate(
@@ -199,6 +174,44 @@ test(
         );
         return created.id;
       };
+      // Before any GCash or bank account is set up, the page shows cash only, and the emails link
+      // it without offering an upload.
+      const cashOnly = await booking(12, 'Cash Client');
+      const cashApproval = await prisma.adminOutbox.findFirstOrThrow({
+        where: { bookingId: cashOnly, event: 'REQUEST_APPROVED' },
+      });
+      assert.match(
+        cashApproval.body,
+        /See how to pay: https:\/\/zentra\.example\.test\/booking\/pay\//,
+      );
+      assert.doesNotMatch(cashApproval.body, /upload/);
+      const cashPage = await readPaymentPage(paymentLinkToken(cashOnly));
+      assert.ok(cashPage.state === 'waiting' && cashPage.methods.length === 0);
+      // Settings: a wrong GCash number is refused; a complete account is offered to clients.
+      const preferences = await getAdminPreferences();
+      const withAccounts = (number: string) => ({
+        op: 'preferences',
+        settings: {
+          ...preferences.settings,
+          admin: {
+            ...preferences.settings.admin,
+            paymentAccounts: {
+              gcash: { accountName: 'Zion Events Place', number },
+              bank: { bankName: '', accountName: '', accountNumber: '' },
+            },
+          },
+        },
+        updatedAt: preferences.updatedAt,
+      });
+      await assert.rejects(adminMutate(withAccounts('12345'), actor), /GCash number/);
+      await adminMutate(withAccounts('0917 123 4567'), actor);
+      const settingsAudit = await prisma.auditLog.findFirstOrThrow({
+        where: { module: 'Settings' },
+        orderBy: { timestamp: 'desc' },
+      });
+      assert.match(settingsAudit.description, /Payment accounts changed\./);
+      assert.doesNotMatch(settingsAudit.description, /0917/, 'The audit never holds the number');
+
       const get = (id: string) =>
         prisma.adminBooking.findUniqueOrThrow({ where: { id }, include: { payments: true } });
       const send = (
@@ -251,6 +264,7 @@ test(
         approval.body.includes(`https://zentra.example.test/booking/pay/${token}`),
         'The approval email links the payment page',
       );
+      assert.match(approval.body, /See how to pay or upload your payment: https:/);
 
       // Uploads that must never be stored.
       await assert.rejects(

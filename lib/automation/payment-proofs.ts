@@ -1,10 +1,32 @@
 import 'server-only';
 
-import { PAYMENT_METHOD_LABELS, type OnlinePaymentMethod } from '@/lib/admin/payment-accounts';
+import {
+  onlinePaymentMethods,
+  PAYMENT_METHOD_LABELS,
+  type OnlinePaymentMethod,
+} from '@/lib/admin/payment-accounts';
+import { readPaymentAccounts } from '@/lib/admin/preferences';
+import { paymentPageUrl } from '@/lib/payment-link';
 import { applicationUrl } from './config';
 import { enqueueJobs, type OutboxDb } from './outbox';
 import { resolveStaffRecipients } from './recipients';
 import { paymentProofReceived, paymentProofStaffAlert } from './templates';
+
+/** Whether clients can pay online now: a GCash or bank account is set up in Settings. */
+export async function onlinePaymentsOffered(db: OutboxDb) {
+  return onlinePaymentMethods(await readPaymentAccounts(db)).length > 0;
+}
+
+/**
+ * The payment page button for a client email, or null when the link cannot be built. It offers
+ * uploading only when a GCash or bank account is set up; otherwise the page shows how to pay in
+ * cash, so the button says only that.
+ */
+export function paymentPageAction(bookingId: string, online: boolean) {
+  const href = paymentPageUrl(bookingId);
+  if (!href) return null;
+  return { label: online ? 'See how to pay or upload your payment' : 'See how to pay', href };
+}
 
 /**
  * Enqueues the client's "screenshot received" email and the staff request to verify it, inside

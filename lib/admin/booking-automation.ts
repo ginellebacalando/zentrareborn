@@ -1,11 +1,11 @@
 import 'server-only';
 
 import type { Prisma } from '@prisma/client';
-import { paymentPageUrl } from '@/lib/payment-link';
 import { prisma } from '@/lib/prisma';
 import { enqueueBookingNotice } from '@/lib/automation/bookings';
 import { AUTOMATION_POLICY, applicationUrl } from '@/lib/automation/config';
 import { enqueueJobs, type NewAutomationJob } from '@/lib/automation/outbox';
+import { onlinePaymentsOffered, paymentPageAction } from '@/lib/automation/payment-proofs';
 import { resolveStaffRecipients } from '@/lib/automation/recipients';
 import { balanceAfterEventAlert, holdReminder } from '@/lib/automation/templates';
 import { manilaDay, manilaDayStart, manilaHour, ONE_DAY_MS } from '@/lib/automation/time';
@@ -161,6 +161,7 @@ export async function scheduleHoldReminders(now = new Date()) {
     notices.map((row) => [row.bookingId, row._max.createdAt?.getTime() ?? 0]),
   );
   const { cashInstructions } = await policy();
+  const online = await onlinePaymentsOffered(prisma);
   const jobs: NewAutomationJob[] = [];
   for (const b of held) {
     if (!b.holdExpiresAt) continue;
@@ -178,7 +179,7 @@ export async function scheduleHoldReminders(now = new Date()) {
         holdExpiresAt: b.holdExpiresAt,
         amountDueCents: due,
         instructions: cashInstructions,
-        paymentUrl: paymentPageUrl(b.id),
+        paymentAction: paymentPageAction(b.id, online),
       }),
       expiresAt: b.holdExpiresAt,
     });

@@ -295,8 +295,8 @@ export type BookingRequestOutcome = {
   amountDueCents: number;
   paymentInstructions: string;
   reviewReasons: string[];
-  /** The client's private payment page (phase 2), when the site's address is known. */
-  paymentUrl?: string | null;
+  /** The button to the client's private payment page (phase 2), when the site's address is known. */
+  paymentAction?: { label: string; href: string } | null;
 };
 
 export function bookingRequestStaffAlert(
@@ -373,9 +373,7 @@ function heldBookingAcknowledgement(
         ],
       },
     ],
-    action: outcome.paymentUrl
-      ? { label: 'See how to pay or upload your payment', href: outcome.paymentUrl }
-      : undefined,
+    action: outcome.paymentAction ?? undefined,
   });
 }
 
@@ -570,7 +568,8 @@ export function holdReminder(
     holdExpiresAt: Date;
     amountDueCents: number;
     instructions: string;
-    paymentUrl?: string | null;
+    /** The button to the client's private payment page (phase 2). */
+    paymentAction?: { label: string; href: string } | null;
   },
 ): RenderedEmail {
   const name = greetingName(booking.clientName);
@@ -601,9 +600,7 @@ export function holdReminder(
         ],
       },
     ],
-    action: booking.paymentUrl
-      ? { label: 'See how to pay or upload your payment', href: booking.paymentUrl }
-      : undefined,
+    action: booking.paymentAction ?? undefined,
   });
 }
 

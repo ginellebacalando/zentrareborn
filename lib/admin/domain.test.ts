@@ -81,7 +81,7 @@ test('notifications consistently distinguish approval from paid or confirmed', (
   assert.match(email.body, /Approval: APPROVED/);
   assert.match(email.body, /Reservation: REQUESTED/);
   assert.match(email.body, /Payment: UNPAID/);
-  assert.match(email.body, /cash reservation fee/);
+  assert.match(email.body, /A reservation fee of/);
   assert.doesNotMatch(email.body, /on hold/, 'no deadline, no hold paragraph');
   const held = bookingEmail(
     {

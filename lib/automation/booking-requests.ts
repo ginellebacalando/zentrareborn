@@ -1,9 +1,9 @@
 import 'server-only';
 
-import { paymentPageUrl } from '@/lib/payment-link';
 import { staffCalendarUpdate } from './bookings';
 import { AUTOMATION_POLICY, applicationUrl } from './config';
 import { enqueueJobs, type OutboxDb } from './outbox';
+import { onlinePaymentsOffered, paymentPageAction } from './payment-proofs';
 import { resolveStaffRecipients } from './recipients';
 import {
   bookingRequestAcknowledgement,
@@ -41,7 +41,9 @@ export async function enqueueWebsiteBookingRequest(
     holdExpiresAt: booking.holdExpiresAt ?? null,
     amountDueCents:
       booking.paymentRule === 'FULL_PAYMENT_REQUIRED' ? booking.totalCents : booking.depositCents,
-    paymentUrl: booking.holdExpiresAt ? paymentPageUrl(booking.id) : null,
+    paymentAction: booking.holdExpiresAt
+      ? paymentPageAction(booking.id, await onlinePaymentsOffered(db))
+      : null,
     ...decision,
   };
   const email = booking.email.trim().toLowerCase();
