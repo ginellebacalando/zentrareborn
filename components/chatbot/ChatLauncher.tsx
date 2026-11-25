@@ -16,7 +16,7 @@ type ChatLauncherProps = {
   onOpen: () => void;
 };
 
-/** Figma launcher: a white circle with a thin deep-green ring and the serif "Z" monogram. */
+/** A plain deep-green circle with the serif "Z" monogram; it does not animate. */
 export function ChatLauncher({ buttonRef, ready, open, onOpen }: ChatLauncherProps) {
   const [hintVisible, setHintVisible] = useState(false);
 
@@ -58,8 +58,7 @@ export function ChatLauncher({ buttonRef, ready, open, onOpen }: ChatLauncherPro
         disabled={!ready}
         onClick={onOpen}
       >
-        <span className={styles.ring} aria-hidden="true" />
-        <ZentraMonogram variant="outline" size="lg" className={styles.mark} />
+        <ZentraMonogram variant="solid" size="lg" className={styles.mark} />
       </button>
     </div>
   );

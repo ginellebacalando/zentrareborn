@@ -33,6 +33,7 @@ export const AUTOMATION_STATUS_DESCRIPTIONS: Record<AutomationStatus, string> = 
 export const AUTOMATION_ONLY_EVENTS = [
   'INQUIRY_STAFF_ALERT',
   'INQUIRY_ACKNOWLEDGEMENT',
+  'BOOKING_REQUEST_STAFF_ALERT',
   'EVENT_REMINDER_7D',
   'EVENT_REMINDER_1D',
   'DAILY_DIGEST',
@@ -40,11 +41,16 @@ export const AUTOMATION_ONLY_EVENTS = [
 export type AutomationOnlyEvent = (typeof AUTOMATION_ONLY_EVENTS)[number];
 
 /** Staff-addressed jobs resolve their recipient from server configuration at delivery time. */
-export const STAFF_EVENTS: readonly string[] = ['INQUIRY_STAFF_ALERT', 'DAILY_DIGEST'];
+export const STAFF_EVENTS: readonly string[] = [
+  'INQUIRY_STAFF_ALERT',
+  'BOOKING_REQUEST_STAFF_ALERT',
+  'DAILY_DIGEST',
+];
 
 export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   INQUIRY_STAFF_ALERT: 'New inquiry alert (staff)',
   INQUIRY_ACKNOWLEDGEMENT: 'Inquiry acknowledgement',
+  BOOKING_REQUEST_STAFF_ALERT: 'New booking request alert (staff)',
   EVENT_REMINDER_7D: 'Event reminder, one week',
   EVENT_REMINDER_1D: 'Event reminder, one day',
   DAILY_DIGEST: 'Daily staff digest',

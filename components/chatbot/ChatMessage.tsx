@@ -29,16 +29,12 @@ export function ZeniBubble({ children }: { children: ReactNode }) {
   );
 }
 
+/** A calm, static waiting line such as "Zeni is typing…"; the same text is announced. */
 export function TypingMessage({ label = chatbotReceptionist.typing }: { label?: string }) {
   return (
     <ZeniBubble>
-      <div className={`${styles.zeniBubble} ${styles.typingBubble}`} role="status">
-        <span className={styles.srOnly}>{label}</span>
-        <span className={styles.typingDots} aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </span>
+      <div className={styles.typing} role="status">
+        {label}
       </div>
     </ZeniBubble>
   );

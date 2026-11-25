@@ -223,6 +223,11 @@
   --brand-wordmark: var(--palette-zentra-green);
   --focus-ring: var(--palette-forest);
   --focus-halo: var(--palette-white);
+  /* Form feedback on public pages (errors and confirmations). */
+  --feedback-error-ink: var(--palette-status-cancelled-ink);
+  --feedback-error-surface: var(--palette-status-cancelled-soft);
+  --feedback-success-ink: var(--palette-status-confirmed-ink);
+  --feedback-success-surface: var(--palette-status-confirmed-soft);
   --background: var(--surface-page);
   --foreground: var(--text-primary);
 
@@ -376,4 +381,8 @@
   --brand-wordmark: var(--palette-zentra-pearl);
   --focus-ring: var(--palette-gold);
   --focus-halo: var(--palette-night);
+  --feedback-error-ink: var(--palette-status-cancelled-soft);
+  --feedback-error-surface: var(--palette-night-card);
+  --feedback-success-ink: var(--palette-status-confirmed-soft);
+  --feedback-success-surface: var(--palette-night-card);
 }

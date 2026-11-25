@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createConversation, conversationSchema, conversationSummary } from './conversation';
 import { planReceptionistTurn } from './receptionist';
+import { captureSlots } from './slots';
 import { receptionistIntent } from './intent';
 import { websiteChatSources } from '@/config/chatbot';
 import { publicFaqs } from '@/config/public-faqs';
@@ -392,4 +393,17 @@ test('conversations saved by the previous booking flow still load', () => {
   assert.equal(parsed.booking.status, 'none');
   assert.deepEqual(parsed.recentTurns, []);
   assert.equal(parsed.flags.offeredHandoff, false);
+});
+
+test('suggestion chips are never stored as the visitor name, even right after Zeni asks for it', () => {
+  for (const chip of ['Schedule a visit', 'Wedding packages', 'Check a date', 'Talk to staff']) {
+    const state = createConversation(randomUUID(), NOW);
+    state.awaiting = 'name';
+    captureSlots(state, chip, sources, NOW);
+    assert.equal(state.client.name ?? '', '', chip);
+  }
+  const state = createConversation(randomUUID(), NOW);
+  state.awaiting = 'name';
+  captureSlots(state, 'Maria Santos', sources, NOW);
+  assert.equal(state.client.name, 'Maria Santos');
 });

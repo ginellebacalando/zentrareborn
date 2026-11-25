@@ -3,10 +3,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, CheckCircle2, ShieldAlert, ShieldCheck, Star, Trash2 } from 'lucide-react';
 import { displayStatus } from '@/lib/admin/dashboard-status';
+import { TESTIMONY_HOLD_ANCHOR } from '@/lib/admin/website-activity-feed';
 import { StatusChip } from './BookingStatus';
 import DashboardCharts from './DashboardCharts';
 import DashboardKpis from './DashboardKpis';
 import DashboardStatusCards from './DashboardStatusCards';
+import WebsiteActivity, { refreshWebsiteActivity } from './WebsiteActivity';
 import { useAdminDate } from './AdminPreferencesProvider';
 import type { AdminData, Mutate } from './types';
 import styles from './admin.module.css';
@@ -29,6 +31,8 @@ export default function DashboardOverview({
     setActingId(id);
     try {
       await mutate('dashboard', { op: 'testimony-action', id, action });
+      // A moderated testimony leaves the Website activity list too.
+      void refreshWebsiteActivity();
     } catch {
       // The workspace shows the error; the item stays on hold.
     } finally {
@@ -47,6 +51,7 @@ export default function DashboardOverview({
         <DashboardKpis summary={data.dashboardKpis} months={insights?.months} />
       </section>
       {insights && <DashboardCharts insights={insights} />}
+      <WebsiteActivity />
       <div className={styles.dashboardGrid}>
         <div className={styles.card}>
           <div className={styles.cardHeading}>
@@ -85,7 +90,10 @@ export default function DashboardOverview({
         <div className={styles.card}>
           <div className={styles.cardHeading}>
             <div>
-              <h2>Testimonies hold</h2>
+              {/* Target of the Website activity links; focusable so keyboard focus can land here. */}
+              <h2 id={TESTIMONY_HOLD_ANCHOR} tabIndex={-1}>
+                Testimonies hold
+              </h2>
               <small>
                 Entries automatically flagged for profanity, propaganda, nudity, or unethical
                 content await your final decision.

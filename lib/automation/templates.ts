@@ -237,6 +237,103 @@ export function inquiryAcknowledgement(input: {
   });
 }
 
+/** A booking request sent from the public booking page (an admin booking with status Request). */
+export type BookingRequestEmailSource = {
+  reference: string;
+  clientName: string;
+  email: string;
+  phone: string;
+  eventType: string;
+  packageName: string;
+  startsAt: Date;
+  endsAt: Date;
+  guests: number;
+  totalCents: number;
+  depositCents: number;
+  notes: string;
+  createdAt: Date;
+};
+
+function pesos(cents: number) {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
+function bookingRequestDetails(input: BookingRequestEmailSource): EmailDetail[] {
+  return [
+    ['Booking reference', input.reference],
+    ['Event', singleLine(input.eventType)],
+    ['Package', singleLine(input.packageName)],
+    ['Date', manilaDate(input.startsAt)],
+    ['Time', `${manilaTime(input.startsAt)} to ${manilaTime(input.endsAt)}`],
+    ['Guests', String(input.guests)],
+    [
+      'Estimate',
+      input.totalCents > 0 ? pesos(input.totalCents) : 'Custom proposal; Zion will send a quote',
+    ],
+    ['Reservation fee', input.depositCents > 0 ? pesos(input.depositCents) : ''],
+  ];
+}
+
+export function bookingRequestStaffAlert(
+  input: BookingRequestEmailSource & { bookingsUrl: string | null },
+): RenderedEmail {
+  const notes = input.notes.length > 2000 ? `${input.notes.slice(0, 1997)}...` : input.notes;
+  return renderEmail({
+    subject: `New booking request ${input.reference} | ${singleLine(input.clientName, 80)}`,
+    preheader: `${singleLine(input.eventType)} on ${manilaDate(input.startsAt)} for ${input.guests} guests.`,
+    heading: 'New booking request from the website',
+    sections: [
+      {
+        paragraphs: [
+          'A visitor sent a booking request from the website. It is waiting in Bookings as a Request. The date is not reserved until staff approve it and the reservation is confirmed. Reply to this email to answer the client directly.',
+        ],
+        details: [
+          ['Name', singleLine(input.clientName)],
+          ['Email', input.email],
+          ['Phone', input.phone],
+          ...bookingRequestDetails(input),
+          ['Submitted', manilaDateTime(input.createdAt)],
+        ],
+      },
+      ...(notes ? [{ heading: 'Notes from the client', paragraphs: [notes] }] : []),
+    ],
+    action: input.bookingsUrl ? { label: 'Open bookings', href: input.bookingsUrl } : undefined,
+  });
+}
+
+export function bookingRequestAcknowledgement(input: BookingRequestEmailSource): RenderedEmail {
+  const name = greetingName(input.clientName);
+  return renderEmail({
+    subject: `${BRAND.legalName} | Booking request received | ${input.reference}`,
+    preheader: 'We received your booking request. Our team will review it and contact you.',
+    heading: 'We received your booking request',
+    sections: [
+      {
+        paragraphs: [
+          name ? `Hello ${name},` : 'Hello,',
+          `Thank you for choosing ${BRAND.legalName}. Your booking request is saved and our team will review it.`,
+          'Your date is not reserved yet. After we approve your request we send the reservation fee details, and your date is confirmed once the payment is received and verified.',
+          EMAIL_SPAM_NOTICE,
+        ],
+        details: bookingRequestDetails(input),
+      },
+      {
+        heading: 'What happens next',
+        paragraphs: [
+          '1. We review your request, usually within one to two days.',
+          '2. We contact you with the reservation fee details.',
+          '3. We confirm your date once your payment is verified.',
+          `Questions? Call ${BRAND.contact.phone} or email ${BRAND.contact.email} and mention your booking reference.`,
+        ],
+      },
+    ],
+  });
+}
+
 export type ReminderBooking = {
   reference: string;
   clientName: string;

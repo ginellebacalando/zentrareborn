@@ -1,0 +1,87 @@
+/*
+ * Dashboard "Website activity": one row per visitor-side event (kind icon, one line of text,
+ * status and age). The card, heading, badges and loading/empty/error states come from
+ * admin.module.css; colours use the --admin-* roles, which the admin dark theme re-tints.
+ */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--admin-divider);
+}
+.item:last-child {
+  border-bottom: 0;
+}
+.icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-top: var(--space-1);
+  border-radius: var(--radius-control);
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-ink);
+}
+/* Text and meta share a line when there is room and wrap below each other on narrow screens. */
+.body {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-4);
+  min-width: 0;
+}
+.link {
+  display: flex;
+  flex: 1 1 18rem;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--layout-touch-target);
+  color: var(--admin-ink);
+  font-size: var(--type-small);
+  line-height: var(--line-body);
+}
+.text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.text strong {
+  color: var(--admin-heading);
+}
+.link:hover .text {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.arrow {
+  flex: none;
+  color: var(--admin-muted);
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.time {
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Matches the uppercase booking status chip shown in the same column. */
+.tag {
+  text-transform: uppercase;
+  letter-spacing: var(--label-tracking);
+}
+.panel .footnote {
+  margin: var(--space-4) 0 0;
+}

@@ -1,3 +1,5 @@
+/* A plain launcher: a solid deep-green circle with the serif "Z", a small neutral shadow so it
+   stays visible over photos, and no animation beyond a short color change on hover. */
 .dock {
   --launcher-size: 3.5rem;
   position: fixed;
@@ -12,7 +14,6 @@
 }
 
 .launcher {
-  position: relative;
   display: grid;
   place-items: center;
   width: var(--launcher-size);
@@ -21,59 +22,21 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--chat-accent);
   cursor: pointer;
   pointer-events: auto;
-  box-shadow: 0 var(--space-2) var(--space-6)
-    color-mix(in srgb, var(--chat-shadow) 16%, transparent);
-  transition:
-    transform var(--motion-normal) var(--motion-ease),
-    box-shadow var(--motion-normal) var(--motion-ease);
+  box-shadow: 0 2px var(--space-2) color-mix(in srgb, var(--chat-shadow) 20%, transparent);
 }
 
 .launcher .mark {
-  position: relative;
-  z-index: 1;
   width: var(--launcher-size);
   font-size: 1.85rem;
-  border-color: var(--chat-border);
-  background: var(--chat-surface-card);
-  color: var(--chat-accent);
+  background: var(--chat-action);
+  color: var(--chat-on-action);
+  transition: background-color var(--motion-fast) var(--motion-ease);
 }
 
-/* A soft ring that "breathes" three times after load, then rests. */
-.ring {
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--chat-border);
-  border-radius: 50%;
-  opacity: 0;
-  animation: zeni-breathe calc(var(--motion-slow) * 8) var(--motion-ease) var(--motion-slow) 3;
-}
-
-@keyframes zeni-breathe {
-  0% {
-    opacity: 0.55;
-    transform: scale(1);
-  }
-  70% {
-    opacity: 0;
-    transform: scale(1.18);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.18);
-  }
-}
-
-.launcher:hover:not(:disabled) {
-  transform: translateY(calc(-1 * var(--space-1)));
-  box-shadow: 0 var(--space-3) var(--space-8)
-    color-mix(in srgb, var(--chat-shadow) 22%, transparent);
-}
-
-.launcher:active:not(:disabled) {
-  transform: scale(0.96);
+.launcher:hover:not(:disabled) .mark {
+  background: var(--chat-action-hover);
 }
 
 .launcher:focus-visible {
@@ -94,27 +57,14 @@
   background: var(--chat-surface-card);
   color: var(--chat-ink);
   font-size: var(--type-small);
-  font-weight: var(--weight-medium);
   line-height: 1.35;
-  box-shadow: var(--shadow-card);
-  animation: zeni-hint-in var(--motion-slow) var(--motion-ease) both;
-}
-
-@keyframes zeni-hint-in {
-  from {
-    opacity: 0;
-    transform: translateX(var(--space-2));
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 :global(.dark) .dock {
   --chat-surface-card: var(--palette-zentra-night-card);
-  --chat-accent: var(--palette-zentra-glow);
-  --chat-border: var(--palette-zentra-glow);
+  --chat-action: var(--palette-zentra-glow);
+  --chat-action-hover: var(--palette-zentra-pearl);
+  --chat-on-action: var(--palette-zentra-night);
   --chat-focus: var(--palette-zentra-glow);
   --chat-ink: var(--palette-zentra-pearl);
   --chat-line: var(--palette-zentra-night-raised);
@@ -122,15 +72,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launcher,
-  .launcher:hover:not(:disabled),
-  .launcher:active:not(:disabled) {
+  .launcher .mark {
     transition: none;
-    transform: none;
-  }
-
-  .ring,
-  .hint {
-    animation: none;
   }
 }

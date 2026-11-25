@@ -1,4 +1,8 @@
-/* Zeni panel, after the Figma frame "ZENI CHATBOT LOOK LIKE". Colors come only from --chat-* tokens. */
+/*
+ * Zeni panel. Plain and flat on purpose (user feedback: it should look made by a person, not
+ * "AI"): white surfaces, hairline borders, small radii, no shadows or decorative motion. The only
+ * transitions are short opacity/color changes. Colors come only from --chat-* tokens.
+ */
 
 .dialog {
   --launcher-clearance: calc(
@@ -15,22 +19,17 @@
   padding: 0;
   overflow: hidden;
   overscroll-behavior: contain;
-  border: 1px solid var(--chat-border);
-  border-radius: var(--radius-card);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-control);
   background: var(--chat-surface-page);
   color: var(--chat-ink);
-  box-shadow:
-    0 var(--space-6) var(--space-12) color-mix(in srgb, var(--chat-shadow) 16%, transparent),
-    0 var(--space-1) var(--space-3) color-mix(in srgb, var(--chat-shadow) 8%, transparent);
   font-family: var(--font-zion-sans);
   font-size: var(--type-body);
   line-height: var(--line-body);
   opacity: 0;
-  transform: translateY(var(--space-3)) scale(0.98);
-  transform-origin: bottom right;
-  /* Open and close animate natively; browsers without discrete transitions simply snap. */
-  transition-property: opacity, transform, overlay, display;
-  transition-duration: var(--motion-slow);
+  /* A short fade on open and close; browsers without discrete transitions simply snap. */
+  transition-property: opacity, overlay, display;
+  transition-duration: var(--motion-fast);
   transition-timing-function: var(--motion-ease);
   transition-behavior: allow-discrete;
 }
@@ -39,13 +38,11 @@
   display: flex;
   flex-direction: column;
   opacity: 1;
-  transform: none;
 }
 
 @starting-style {
   .dialog[open] {
     opacity: 0;
-    transform: translateY(var(--space-3)) scale(0.98);
   }
 }
 
@@ -58,14 +55,14 @@
 }
 
 /* ---------------------------------------------------------------------------------------------
-   Header: Z avatar, ZENI, subtitle, How Zeni works, New conversation, Close
+   Header: Z mark, Zeni, venue line, How Zeni works, New conversation, Close
    --------------------------------------------------------------------------------------------- */
 .header {
   display: flex;
   flex: none;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--chat-line);
   background: var(--chat-surface-card);
 }
@@ -89,9 +86,7 @@
   font-family: var(--font-zion-sans);
   font-size: var(--type-body);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  line-height: 1.2;
-  text-transform: uppercase;
+  line-height: var(--line-heading);
 }
 
 .title:focus-visible {
@@ -101,9 +96,9 @@
 }
 
 .subtitle {
-  margin: 2px 0 0;
+  margin: 0;
   color: var(--chat-muted);
-  font-size: var(--type-caption);
+  font-size: var(--type-small);
   line-height: 1.35;
 }
 
@@ -120,7 +115,7 @@
   height: var(--layout-touch-target);
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--chat-muted);
   cursor: pointer;
@@ -146,7 +141,7 @@
 }
 
 /* ---------------------------------------------------------------------------------------------
-   Conversation
+   Conversation: plain rectangular bubbles with the same small radius on every corner
    --------------------------------------------------------------------------------------------- */
 .conversation {
   display: flex;
@@ -157,7 +152,6 @@
   padding: var(--space-4);
   overflow-y: auto;
   overscroll-behavior: contain;
-  scroll-behavior: smooth;
   background: var(--chat-surface-page);
 }
 
@@ -174,7 +168,6 @@
   display: flex;
   gap: var(--space-2);
   min-width: 0;
-  animation: zeni-message-in var(--motion-normal) var(--motion-ease) both;
 }
 
 .guestTurn {
@@ -186,7 +179,7 @@
 }
 
 .turnAvatar {
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 
 .zeniStack {
@@ -202,81 +195,38 @@
 .guestBubble {
   max-width: 100%;
   margin: 0;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-control);
+  line-height: var(--line-body);
   overflow-wrap: anywhere;
 }
 
 .zeniBubble {
-  border-radius: var(--space-1) var(--radius-card) var(--radius-card) var(--radius-card);
   background: var(--chat-surface-zeni);
   color: var(--chat-ink);
 }
 
 .guestBubble {
   max-width: 85%;
-  border-radius: var(--radius-card) var(--space-1) var(--radius-card) var(--radius-card);
+  border-color: var(--chat-surface-guest);
   background: var(--chat-surface-guest);
   color: var(--chat-on-guest);
-  line-height: 1.5;
   white-space: pre-wrap;
 }
 
 .messageText {
   margin: 0;
-  line-height: 1.55;
   white-space: pre-wrap;
 }
 
-.typingBubble {
-  display: inline-flex;
+/* Waiting states ("Zeni is typing…") are static text beside the Z mark, centered on it. */
+.typing {
+  display: flex;
   align-items: center;
-  min-height: var(--layout-touch-target);
-}
-
-.typingDots {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.typingDots span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--chat-muted);
-  animation: zeni-typing calc(var(--motion-slow) * 4) var(--motion-ease) infinite;
-}
-
-.typingDots span:nth-child(2) {
-  animation-delay: var(--motion-fast);
-}
-
-.typingDots span:nth-child(3) {
-  animation-delay: calc(var(--motion-fast) * 2);
-}
-
-@keyframes zeni-typing {
-  0%,
-  60%,
-  100% {
-    opacity: 0.35;
-    transform: none;
-  }
-  30% {
-    opacity: 1;
-    transform: translateY(-3px);
-  }
-}
-
-@keyframes zeni-message-in {
-  from {
-    opacity: 0;
-    transform: translateY(var(--space-2));
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+  min-height: 2.5rem;
+  color: var(--chat-muted);
+  font-size: var(--type-small);
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -289,7 +239,7 @@
   width: 100%;
   padding: var(--space-2);
   border: 1px solid var(--chat-line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--chat-surface-card);
 }
 
@@ -301,7 +251,7 @@
 .detailImage {
   width: 6rem;
   height: 6rem;
-  border-radius: calc(var(--radius-card) - var(--space-1));
+  border-radius: calc(var(--radius-control) / 2);
   object-fit: cover;
 }
 
@@ -363,7 +313,7 @@
   width: 100%;
   padding: var(--space-3);
   border: 1px solid var(--chat-line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--chat-surface-card);
 }
 
@@ -379,8 +329,6 @@
   color: var(--chat-ink);
   font-size: var(--type-small);
   font-weight: var(--weight-semibold);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .calendarNav {
@@ -390,7 +338,7 @@
   height: var(--layout-touch-target);
   padding: 0;
   border: 1px solid var(--chat-line);
-  border-radius: 50%;
+  border-radius: var(--radius-control);
   background: var(--chat-surface-card);
   color: var(--chat-accent);
   cursor: pointer;
@@ -510,7 +458,7 @@
 }
 
 /* ---------------------------------------------------------------------------------------------
-   Actions, sources and suggestions
+   Actions, sources and suggestions: plain outlined buttons; only a primary action is filled
    --------------------------------------------------------------------------------------------- */
 .actions {
   display: flex;
@@ -525,9 +473,9 @@
   justify-content: center;
   gap: var(--space-1);
   min-height: var(--layout-touch-target);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--chat-action);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   font: inherit;
   font-size: var(--type-small);
   font-weight: var(--weight-semibold);
@@ -535,23 +483,10 @@
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  animation: zeni-message-in var(--motion-normal) var(--motion-ease) both;
   transition:
     background-color var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease),
     color var(--motion-fast) var(--motion-ease);
-}
-
-.actions > :nth-child(2) {
-  animation-delay: calc(var(--motion-fast) / 3);
-}
-
-.actions > :nth-child(3) {
-  animation-delay: calc(var(--motion-fast) * 2 / 3);
-}
-
-.actions > :nth-child(n + 4) {
-  animation-delay: var(--motion-fast);
 }
 
 .primaryAction {
@@ -621,9 +556,9 @@
 
 .chip {
   min-height: var(--layout-touch-target);
-  padding: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--chat-control-border);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--chat-surface-card);
   color: var(--chat-ink);
   font: inherit;
@@ -652,7 +587,7 @@
   gap: var(--space-2);
   padding: var(--space-3);
   border: 1px solid var(--chat-line);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-control);
   background: var(--chat-surface-subtle);
 }
 
@@ -681,7 +616,6 @@
 .info {
   display: grid;
   gap: var(--space-3);
-  animation: zeni-message-in var(--motion-normal) var(--motion-ease) both;
 }
 
 .infoTitle {
@@ -700,11 +634,10 @@
 
 .infoSubtitle {
   margin: var(--space-2) 0 0;
-  color: var(--chat-muted);
-  font-size: var(--type-caption);
+  color: var(--chat-ink);
+  font-size: var(--type-body);
   font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
+  line-height: var(--line-heading);
 }
 
 .infoList {
@@ -744,7 +677,7 @@
 }
 
 /* ---------------------------------------------------------------------------------------------
-   Composer: rounded field and green paper-plane send button
+   Composer: a visible label, a normal text field and a plain send button
    --------------------------------------------------------------------------------------------- */
 .composer {
   display: grid;
@@ -759,22 +692,18 @@
   display: none;
 }
 
+.inputLabel {
+  width: fit-content;
+  color: var(--chat-ink);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-heading);
+}
+
 .inputBar {
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
-  border: 1px solid var(--chat-control-border);
-  border-radius: calc(var(--layout-touch-target) / 2 + var(--space-1));
-  background: var(--chat-surface-input);
-  transition:
-    border-color var(--motion-fast) var(--motion-ease),
-    box-shadow var(--motion-fast) var(--motion-ease);
-}
-
-.inputBar:focus-within {
-  border-color: var(--chat-focus);
-  box-shadow: 0 0 0 1px var(--chat-focus);
 }
 
 .inputBar textarea {
@@ -782,22 +711,29 @@
   min-width: 0;
   min-height: var(--layout-touch-target);
   max-height: 7.5rem;
-  padding: var(--space-3) 0 var(--space-2);
-  border: 0;
-  background: transparent;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--chat-control-border);
+  border-radius: var(--radius-control);
+  background: var(--chat-surface-input);
   color: var(--chat-ink);
   font: inherit;
   font-size: var(--type-body);
-  line-height: 1.35;
+  line-height: 1.5;
   resize: none;
   field-sizing: content;
-  outline: none;
-  box-shadow: none;
+  transition: border-color var(--motion-fast) var(--motion-ease);
 }
 
 .inputBar textarea::placeholder {
   color: var(--chat-muted);
   opacity: 1;
+}
+
+.inputBar textarea:focus {
+  border-color: var(--chat-focus);
+  outline: 1px solid var(--chat-focus);
+  outline-offset: 0;
 }
 
 .send {
@@ -807,22 +743,19 @@
   width: var(--layout-touch-target);
   height: var(--layout-touch-target);
   padding: 0;
-  border: 0;
-  border-radius: 50%;
+  border: 1px solid var(--chat-action);
+  border-radius: var(--radius-control);
   background: var(--chat-action);
   color: var(--chat-on-action);
   cursor: pointer;
   transition:
     background-color var(--motion-fast) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease);
+    border-color var(--motion-fast) var(--motion-ease);
 }
 
 .send:hover:not(:disabled) {
+  border-color: var(--chat-action-hover);
   background: var(--chat-action-hover);
-}
-
-.send:active:not(:disabled) {
-  transform: scale(0.95);
 }
 
 .send:focus-visible {
@@ -889,19 +822,10 @@
     height: 100dvh;
     border: 0;
     border-radius: 0;
-    transform: translateY(var(--space-8));
-    transform-origin: bottom center;
-  }
-
-  @starting-style {
-    .dialog[open] {
-      opacity: 0;
-      transform: translateY(var(--space-8));
-    }
   }
 
   .header {
-    padding-top: max(var(--space-3), env(safe-area-inset-top));
+    padding-top: max(var(--space-2), env(safe-area-inset-top));
     padding-right: max(var(--space-2), env(safe-area-inset-right));
     padding-left: max(var(--space-3), env(safe-area-inset-left));
   }
@@ -925,36 +849,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dialog,
-  .dialog[open] {
-    transform: none;
-    transition: none;
-  }
-
-  .turn,
-  .info,
-  .primaryAction,
-  .secondaryAction {
-    animation: none;
-  }
-
-  .typingDots span {
-    animation: none;
-    opacity: 0.7;
-  }
-
-  .conversation {
-    scroll-behavior: auto;
-  }
-
   .iconButton,
+  .calendarDay,
+  .primaryAction,
+  .secondaryAction,
   .chip,
-  .send,
-  .inputBar,
-  .calendarDay {
+  .inputBar textarea,
+  .send {
     transition: none;
-  }
-
-  .send:active:not(:disabled) {
-    transform: none;
   }
 }

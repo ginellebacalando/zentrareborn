@@ -14,6 +14,7 @@ import { readCatalog, saveCatalog } from './catalog';
 import { readDashboardInsights } from './dashboard';
 import { readDashboardKpis } from './dashboard-kpis';
 import { readAnalyticsReport } from './analytics';
+import { readWebsiteActivity } from './website-activity';
 import { AUTOMATION_ONLY_EVENTS, automationJobLabel } from '@/lib/automation/catalog';
 import { enqueueBookingNotice } from '@/lib/automation/bookings';
 import { isMailConfigured } from '@/lib/automation/config';
@@ -147,6 +148,8 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
   if (section === 'services') return readCatalog(params, actor);
   if (section === 'preferences')
     return { ...(await getAdminPreferences()), canEdit: actor.role === 'SUPERADMIN' };
+  // Polled by the dashboard's Website activity panel; read-only, so it has no POST operations.
+  if (section === 'website-activity') return readWebsiteActivity();
   if (section === 'notifications') {
     const [pending, flagged, inquiries, deliveryIssues, p] = await Promise.all([
       prisma.adminBooking.count({

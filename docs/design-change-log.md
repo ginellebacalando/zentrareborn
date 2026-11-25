@@ -1,5 +1,50 @@
 # Design change log
 
+## 25 November 2026 — Booking requests that reach the admin, plain Zeni, website activity
+
+User task: make the booking flow follow the team plan and actually work, make its page professional,
+wide and easy to read with better icons, make Zeni look plain and human-made rather than "AI", and
+let the admin see what visitors do on the site; adopt the plan's automation for these events.
+
+Affected screens and files:
+
+- Booking (`/booking`): `app/booking/page.tsx` (server-loaded catalog, availability and Zeni
+  pre-fill), `app/booking/_components/BookingRequestForm.tsx`, `BookingRequest.module.css`,
+  `booking-types.ts`, `bookingInitial.ts`; the old journey, mountain map, receipt and recommendation
+  files were removed. Four steps (Event, Package, Your details, Review) with a numbered progress
+  bar, photo cards for event types, the availability-aware date picker, half-hour time lists,
+  published packages with prices and inclusions plus a custom-proposal option, optional extras,
+  preferred payment method (nothing is paid online), policy consent, an error summary with links
+  and inline errors, a sticky summary with a live estimate, and a confirmation with the reference.
+  Lucide line icons only; no sparkle or decorative icons. New feedback tokens in
+  `styles/tokens.css` (`--feedback-error-*`, `--feedback-success-*`).
+- Booking requests: `POST /api/client/booking-requests` (`services/booking-requests.ts`,
+  `config/booking.ts`) validates the request again on the server (date window, booked dates, times,
+  guests, published package, consent, honeypot, per-email and hourly limits) and saves an admin
+  booking with status Request (created by `website`), the bookings CREATE audit entry the dashboard
+  reads, an in-app notice, a client acknowledgement and a staff alert
+  (`lib/automation/booking-requests.ts`, new templates and the `BOOKING_REQUEST_STAFF_ALERT` event).
+- Admin dashboard: a "Website activity" panel (`components/admin/WebsiteActivity.tsx`,
+  `WebsiteActivity.module.css`, `lib/admin/website-activity*.ts`) lists website booking requests,
+  inquiries and Zeni hand-offs, testimonies awaiting review and unanswered Zeni questions with status
+  chips, relative times and links; loading, empty and error states; polite announcements only for new
+  items; refresh every 60 seconds without moving focus.
+- Zeni (`components/chatbot/*`): flat white panel with a hairline border, plain header, simple
+  rectangular bubbles, outlined chips, a labelled text field, a solid launcher; no glow, breathing,
+  slide-in or bouncing-dot animations. `lib/chatbot/slots.ts` no longer stores suggestion-chip
+  text ("Schedule a visit") as the visitor's name.
+
+Verification: browser review of the local preview at 1440 and 320 px; the full booking flow sent a
+test request (reference shown, date then marked as requested); server checks refused a booked date,
+a past date, missing consent and too few guests with clear messages; error summary and inline errors
+shown on empty contact fields; Zeni opened in its new look; `npm run test:chatbot` 60/60 including a
+new name-capture test. Full `npm run verify` results are in the commit that adds this entry.
+
+Limitations: emails are only queued until Gmail SMTP is configured; Zeni keeps its built-in answers
+until a Gemini key is added. Not checked with a screen reader, at 200% text scaling, in the dark
+theme or on a real phone. The AGENTS.md hand-off to the team chats could not be sent from this
+machine.
+
 ## 25 November 2026 — Public navigation: Figma header instead of the menu button
 
 User task: make the public navigation look like the Figma header, with no burger menu, while keeping

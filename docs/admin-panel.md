@@ -114,6 +114,24 @@ color and header descriptions in the older sections below, which are kept as his
 - **Calendar:** month grid with today as a solid green square, status dots, and a dark "This month" list.
 - **Dashboard/Reports:** performance overview status cards, teal KPI cards with trend lines, bookings trend.
 
+## Website booking requests and website activity — 25 November 2026
+
+- **Booking requests from the public site** (`POST /api/client/booking-requests`,
+  `services/booking-requests.ts`) are saved as admin bookings with status **Request** (approval pending,
+  nothing reserved), created by `website` (`config/booking.ts`). Each one writes the bookings CREATE audit
+  entry the dashboard reads (`sourceInquiryId: null`, `channel: website`), an in-app notification, and
+  two outbox emails: the client acknowledgement (`REQUEST_RECEIVED`) and a staff alert
+  (`BOOKING_REQUEST_STAFF_ALERT`, sent to `STAFF_NOTIFICATION_EMAIL` or `SMTP_USER`). The server checks
+  the date window, booked dates, times, guest count, published package, consent and a honeypot, and limits
+  requests to three per email per day and thirty per hour. Website requests follow the "Client inquiries"
+  on/off switch in Settings. Staff then approve, decline, edit or confirm them as usual.
+- **Website activity** (dashboard, `components/admin/WebsiteActivity.tsx`, `lib/admin/website-activity.ts`,
+  read through `/api/admin/website-activity`): the newest website booking requests, inquiries and Zeni
+  hand-offs, testimonies awaiting review and questions Zeni could not answer, merged newest first (12
+  items), with status, relative time and a link to the matching section. It refreshes every 60 seconds
+  while the tab is visible and on focus, never moves keyboard focus, and returns no email addresses,
+  phone numbers, messages or comments.
+
 ## Admin color theme
 
 Admin page controls use a 16px radius derived from the shared card token, scoped

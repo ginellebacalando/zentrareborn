@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Info, RotateCcw, SendHorizontal, X } from 'lucide-react';
+import { BRAND } from '@/config/brand';
 import { chatbotReceptionist, zeniCopyFor } from '@/config/chatbot-receptionist';
 import { detectLanguage, type ZeniLanguage } from '@/lib/chatbot/language';
 import { containDialogFocus } from '@/lib/dialog-focus';
@@ -363,13 +364,15 @@ export default function Chatbot() {
         onClose={closeChat}
       >
         <header className={styles.header}>
-          <ChatAvatar size="md" />
+          <ChatAvatar />
+          {/* Plain header: "Zeni" in normal case (screen readers may spell out an all-caps
+              title letter by letter) with the venue name under it. */}
           <div className={styles.identity}>
             <h2 ref={title} id="zion-chatbot-title" className={styles.title} tabIndex={-1}>
-              {chatbotReceptionist.title}
+              {chatbotReceptionist.name}
             </h2>
             <p id="zion-chatbot-subtitle" className={styles.subtitle}>
-              {chatbotReceptionist.subtitle}
+              {BRAND.legalName}
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -520,15 +523,16 @@ export default function Chatbot() {
             void sendQuestion(question);
           }}
         >
+          {/* A persistent visible label; the error sits between it and the field it describes. */}
+          <label htmlFor="zion-chatbot-question" className={styles.inputLabel}>
+            {chatbotReceptionist.inputLabel}
+          </label>
           {error && (
             <p id="zion-chatbot-error" className={styles.error} role="alert">
               {error}
             </p>
           )}
           <div className={styles.inputBar}>
-            <label htmlFor="zion-chatbot-question" className={styles.srOnly}>
-              {chatbotReceptionist.inputLabel}
-            </label>
             <textarea
               ref={input}
               id="zion-chatbot-question"

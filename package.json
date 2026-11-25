@@ -15,7 +15,7 @@
     "test": "node scripts/check-removed-features.mjs && npm run test:chatbot && npm run test:admin && npm run test:automation && npm run test:developer",
     "test:chatbot": "node --conditions=react-server --import tsx --test --test-concurrency=1 lib/chatbot/retrieval.test.ts lib/chatbot/request.test.ts lib/chatbot/conversation.test.ts lib/chatbot/session-security.test.ts lib/chatbot/language.test.ts lib/chatbot/redaction.test.ts lib/chatbot/llm.test.ts lib/chatbot/prefill.test.ts lib/chatbot/integration.test.ts services/orchestration/receptionist-calendar.test.ts",
     "db:receptionist:check": "node scripts/install-receptionist-schema.mjs",
-    "test:admin": "node --conditions=react-server --import tsx --test lib/admin/domain.test.ts lib/admin/integration.test.ts lib/admin/local-access.test.ts lib/admin/dashboard.test.ts lib/admin/analytics.test.ts",
+    "test:admin": "node --conditions=react-server --import tsx --test lib/admin/domain.test.ts lib/admin/integration.test.ts lib/admin/local-access.test.ts lib/admin/dashboard.test.ts lib/admin/analytics.test.ts lib/admin/website-activity.test.ts",
     "db:admin:check": "node scripts/install-admin-schema.mjs",
     "db:automation:check": "node scripts/install-automation-schema.mjs",
     "db:demo:setup": "node scripts/setup-demo-database.mjs",

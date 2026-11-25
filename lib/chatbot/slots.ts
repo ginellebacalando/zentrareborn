@@ -170,6 +170,11 @@ export function captureSlots(
     name.trim().split(/\s+/).length <= 5 &&
     !/\b(interested|looking|planning|ready|sorry|fine|okay|want|would|need|book|hello|hi|yes|no|po|sige|opo|what|where|when|how|why|who|which|can|could|is|are|do|does|you|your|the|saan|ano|paano|magkano|kailan|bakit|ilan|price|package|available|date|staff)\b/i.test(
       name,
+    ) &&
+    // Suggestion chips and quick replies ("Schedule a visit", "Wedding packages") are requests,
+    // not names, even when Zeni has just asked for a name.
+    !/\b(schedule|visits?|ocular|tour|check|reserve|reservation|booking|weddings?|debuts?|birthdays?|christenings?|party|reveal|packages|prices|rates?|quote|inquir(?:e|y)|contact|call|e-?mail|phone|help|thanks?|salamat|continue|start|new|talk|agent|human|person|menu|venue|facilit(?:y|ies)|dates)\b/i.test(
+      name,
     )
   )
     state.client.name = name
