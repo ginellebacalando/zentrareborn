@@ -1,5 +1,42 @@
 # Design change log
 
+## 25 November 2026 — Public navigation: Figma header instead of the menu button
+
+User task: make the public navigation look like the Figma header, with no burger menu, while keeping
+the original menu's items exactly ("yung layout lang babaguhin": only the layout changes).
+
+Affected screens and files: every public page. `components/layout/GlobalHeader.tsx` and
+`GlobalHeader.module.css` (rewritten), `config/navigation.ts` and `lib/navigation.ts` (new; the
+original items and labels), `components/layout/Footer.tsx` (same links, now from the shared config),
+`components/layout/Navbar.tsx` and the `.navigation-dialog` styles (removed), `styles/tokens.css`
+(header heights, `--type-wordmark-compact`), `app/globals.css` (scroll padding),
+`components/home/HomeSections.module.css` (removed a second, now doubled scroll offset).
+
+- Items unchanged: Home, Packages (Weddings, Debuts, Christening, Birthdays, Gender Reveal, Christmas
+  Party), Gallery, About Us, Facilities, Testimonies, Contact Us, FAQ, and Book Now.
+- Desktop (64rem and up): the centered ZENTRA wordmark with an outlined Book Now at the right, then
+  the menu in a row between two hairlines. From 75rem the header condenses into one slim row after
+  scrolling. Packages opens its event types in a panel under the row (disclosure button; Escape,
+  outside click, moving focus away or navigating closes it and Escape returns focus).
+- Tablets: the same two rows; the menu row fits on one line at common tablet widths.
+- Phones (below 48rem): ZENTRA at the left (a centered wordmark would be pushed off-center by the
+  full Book Now label), Book Now at the right, and the full menu in a row that scrolls sideways; the
+  focus ring is drawn inside that row. The header slides away while scrolling down and returns on any
+  scroll up, on keyboard focus, or while Packages is open.
+- The header is fixed with a spacer that reserves its full height, so condensing or sliding it never
+  shifts the page; `scroll-padding-top` keeps linked sections and focused elements clear of it.
+- The current page is underlined as well as colored. Transitions stop with reduced motion.
+
+Verification: browser review of the local preview at 1440, 1024, 820, 375, 360 and 320 px (no
+horizontal page scroll; all eight items reachable; Packages opens, shows the current event type
+underlined and closes with Escape; slim row after scrolling at 1440; phone header hides on scroll
+down and returns on scroll up); keyboard order skip link, wordmark, Home, Packages, Gallery, About
+Us…; `npm run verify` results are in the commit that adds this entry.
+
+Limitations: not checked with a screen reader, with 200% text-only scaling, in the dark theme, or on a
+real phone; reduced motion was reviewed in code, not emulated. The AGENTS.md hand-off to the team
+chats could not be sent from this machine.
+
 ## 25 November 2026 — ZENTRA redesign (Figma), Zeni rebuild, admin redesign, n8n replaced
 
 User task: run the system locally, redesign it to the team's Figma file ("New Zentra") while keeping the

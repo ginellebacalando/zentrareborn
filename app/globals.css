@@ -51,7 +51,7 @@ body {
 html {
   min-width: var(--layout-min-width);
   max-width: 100%;
-  scroll-padding-top: var(--layout-header-height);
+  scroll-padding-top: var(--layout-header-offset);
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
 }

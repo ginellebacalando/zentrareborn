@@ -1,7 +1,7 @@
 /* Shared home-section layout in the Figma style: white sections, centered uppercase green titles. */
+/* Links to a section clear the fixed header through the page's scroll-padding-top. */
 .section {
   padding-block: var(--layout-section-space);
-  scroll-margin-top: var(--layout-header-height);
 }
 
 .subtle {

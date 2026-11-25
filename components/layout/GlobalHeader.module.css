@@ -1,27 +1,47 @@
+/* Reserves the header's full height in the page flow. The bar itself is fixed, so condensing or
+   sliding it on scroll never shifts the content below. */
+.spacer {
+  flex-shrink: 0;
+  height: calc(var(--layout-header-offset) + env(safe-area-inset-top));
+}
+
 .header {
-  position: sticky;
-  top: 0;
+  position: fixed;
+  inset: 0 0 auto;
   z-index: 100;
-  width: 100%;
   padding-top: env(safe-area-inset-top);
   border-bottom: 1px solid var(--line-hairline);
   background: var(--surface-page);
+  transition:
+    box-shadow var(--motion-normal) var(--motion-ease),
+    transform var(--motion-normal) var(--motion-ease);
 }
 
+.header[data-condensed] {
+  box-shadow: var(--shadow-card);
+}
+
+/* Figma layout on every screen: the centered wordmark with Book Now at the right, then the menu
+   in a row between two hairlines. */
 .inner {
   display: grid;
+  grid-template-rows: var(--layout-header-height) var(--layout-header-links-height);
   grid-template-columns: 1fr auto 1fr;
+  grid-template-areas:
+    '. brand book'
+    'nav nav nav';
   align-items: center;
+  column-gap: var(--space-2);
   width: min(100%, var(--layout-max-width));
-  min-height: var(--layout-header-height);
   margin-inline: auto;
   padding-inline: var(--layout-gutter);
 }
 
 .brand {
   display: inline-flex;
+  grid-area: brand;
+  justify-self: center;
   align-items: center;
-  justify-content: center;
   min-height: var(--layout-touch-target);
   padding-inline: var(--space-2);
   border-radius: var(--radius-control);
@@ -29,25 +49,274 @@
 }
 
 .brand :global(.zentra-wordmark__name) {
-  font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.6rem);
+  font-size: var(--type-wordmark-compact);
+  transition: font-size var(--motion-normal) var(--motion-ease);
 }
 
-.actions {
+.book {
+  display: inline-flex;
+  grid-area: book;
+  justify-self: end;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--layout-touch-target);
+  padding: var(--space-2);
+  border: 1px solid var(--action-primary);
+  color: var(--action-primary);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+
+.book:hover,
+.book[aria-current='page'] {
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+/* The nav is the positioning box for the Packages list, so the list is never clipped by the
+   sideways-scrolling row on small screens. */
+.nav {
+  position: relative;
+  grid-area: nav;
+  align-self: stretch;
+  min-width: 0;
+}
+
+/* The upper hairline runs edge to edge, like the header's bottom border. */
+.nav::before {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100vw;
+  border-top: 1px solid var(--line-hairline);
+  content: '';
+  translate: -50% 0;
+}
+
+.links {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: clamp(var(--space-4), 2vw, var(--space-8));
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* A soft lift once the page scrolls; browsers without scroll timelines keep the flat bar. */
-@supports (animation-timeline: scroll()) {
-  .header {
-    animation: header-lift linear both;
-    animation-timeline: scroll(root);
-    animation-range: 0 4rem;
+/* Centers the row when it fits and starts at the left edge when it scrolls. */
+.links > li:first-child {
+  margin-inline-start: auto;
+}
+
+.links > li:last-child {
+  margin-inline-end: auto;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--layout-touch-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-decoration-line: none;
+  text-decoration-thickness: 1px;
+  text-transform: uppercase;
+  text-underline-offset: 0.5em;
+  white-space: nowrap;
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+/* The current page is underlined as well as colored, never marked by color alone. */
+.link:hover,
+.link[aria-current='page'],
+.link[data-current] {
+  color: var(--action-primary);
+  text-decoration-line: underline;
+}
+
+.link[aria-current='page'],
+.link[data-current] {
+  font-weight: var(--weight-semibold);
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: var(--space-4);
+  height: var(--space-4);
+  transition: rotate var(--motion-normal) var(--motion-ease);
+}
+
+.link[aria-expanded='true'] .chevron {
+  rotate: 180deg;
+}
+
+/* The original Packages submenu, opened under the menu row. */
+.panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line-hairline);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-control) var(--radius-control);
+  background: var(--surface-page);
+  box-shadow: var(--shadow-card);
+}
+
+.panelLinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panelLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--layout-touch-target);
+  color: var(--text-primary);
+  font-size: var(--type-small);
+  letter-spacing: var(--tracking-label);
+  text-decoration-line: none;
+  text-decoration-thickness: 1px;
+  text-transform: uppercase;
+  text-underline-offset: 0.4em;
+}
+
+.panelLink:hover,
+.panelLink[aria-current='page'] {
+  color: var(--action-primary);
+  text-decoration-line: underline;
+}
+
+.panelLink[aria-current='page'] {
+  font-weight: var(--weight-semibold);
+}
+
+/* Phones: the wordmark sits at the left, because a centered one would be pushed off-center by
+   the full Book Now label. */
+@media (max-width: 47.99rem) {
+  .inner {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'brand book'
+      'nav nav';
+  }
+
+  .brand {
+    justify-self: start;
   }
 }
 
-@keyframes header-lift {
-  to {
-    box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, var(--palette-zentra-ink) 8%, transparent);
+/* Phones and tablets: the menu row scrolls sideways, and the header slides away while scrolling
+   down (back on any scroll up, on keyboard focus, or while Packages is open). */
+@media (max-width: 63.99rem) {
+  .links {
+    margin-inline: calc(-1 * var(--layout-gutter));
+    padding: var(--space-1) var(--layout-gutter);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  /* Keeps the focus ring inside the scrolling row instead of clipped at its edges. */
+  .links .link:focus-visible {
+    outline-offset: -3px;
+    box-shadow: none;
+  }
+
+  .header[data-hidden]:not(:focus-within, :has([aria-expanded='true'])) {
+    transform: translateY(-100%);
+  }
+
+  .panelLinks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: start;
+  }
+}
+
+/* Tablets and up have room for wider spacing around the wordmark and the button. */
+@media (min-width: 48rem) {
+  .inner {
+    column-gap: var(--space-4);
+  }
+
+  .book {
+    padding-inline: var(--space-4);
+  }
+}
+
+/* Desktop before scrolling: the full Figma header with the large wordmark. */
+@media (min-width: 64rem) {
+  .inner {
+    grid-template-rows:
+      calc(var(--layout-header-expanded-height) - var(--layout-header-links-height))
+      var(--layout-header-links-height);
+  }
+
+  .brand :global(.zentra-wordmark__name) {
+    font-size: var(--type-wordmark);
+  }
+}
+
+@media (min-width: 80rem) {
+  .link {
+    font-size: var(--type-small);
+  }
+}
+
+/* Wide desktops after scrolling: one slim row, the wordmark left and Book Now right. */
+@media (min-width: 75rem) {
+  .header[data-condensed] .inner {
+    grid-template-rows: var(--layout-header-height);
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: 'brand nav book';
+  }
+
+  .header[data-condensed] .brand {
+    justify-self: start;
+  }
+
+  .header[data-condensed] .brand :global(.zentra-wordmark__name) {
+    font-size: var(--type-wordmark-compact);
+  }
+
+  .header[data-condensed] .nav::before {
+    display: none;
+  }
+
+  .header[data-condensed] .link {
+    font-size: var(--type-caption);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header,
+  .brand :global(.zentra-wordmark__name),
+  .book,
+  .link,
+  .chevron {
+    transition: none;
   }
 }

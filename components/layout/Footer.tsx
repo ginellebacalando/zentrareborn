@@ -1,19 +1,9 @@
 import Link from 'next/link';
 import { BRAND } from '@/config/brand';
+import { FOOTER_LINKS } from '@/config/navigation';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import SocialLinks from './SocialLinks';
 import styles from './Footer.module.css';
-
-const EXPLORE_LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'Packages', href: '/events/weddings' },
-  { label: 'Gallery', href: '/gallery' },
-  { label: 'About Us', href: '/about' },
-  { label: 'Facilities', href: '/facilities' },
-  { label: 'Testimonies', href: '/testimonies' },
-  { label: 'FAQ', href: '/faq' },
-  { label: 'Contact Us', href: '/contact' },
-] as const;
 
 const LEGAL_LINKS = [
   { label: 'Terms & Conditions', href: '/terms' },
@@ -42,7 +32,7 @@ export default function Footer() {
         <nav aria-label="Footer" className={styles.column}>
           <h2 className={styles.label}>Explore</h2>
           <ul className={styles.links}>
-            {EXPLORE_LINKS.map((link) => (
+            {FOOTER_LINKS.map((link) => (
               <li key={link.href}>
                 <Link href={link.href}>{link.label}</Link>
               </li>
