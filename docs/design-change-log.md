@@ -1,5 +1,23 @@
 # Design change log
 
+## 25 November 2026 — Admin sign-in accepts a username
+
+User task: sign in to the admin with a short name ("zentra.bsit.pup") instead of an email address.
+
+Affected screen and files: the admin sign-in card (`components/admin/LoginForm.tsx`): the first field
+is now "Email or username", a text field (`autocomplete="username"`, no auto-capitalization or spell
+check) instead of an email field that rejected names without "@". Server: `lib/admin/sign-in.ts`
+(new lookup) and `lib/admin/auth.ts` (failed attempts now limited per account). No layout, color or
+type changes.
+
+Verification: `lib/admin/integration.test.ts` checks email and username lookups in any letter case,
+that `%` and `_` are not wildcards, and that a username shared by two accounts signs in no one. Local
+preview: signed in with the username in different letter case and reached the dashboard. The full
+`npm run verify` result is in the commit that adds this entry.
+
+Limitations: no screen-reader pass of the changed label. The AGENTS.md hand-off to the team chats
+could not be sent from this machine.
+
 ## 25 November 2026 — Closer free stand-in for the ZENTRA wordmark
 
 User task: the shared Vercel preview showed a plain serif ZENTRA logo, so it looked as if the design

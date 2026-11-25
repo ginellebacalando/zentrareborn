@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { canAccessAdmin } from './domain';
 import { localAdminAccessConfig, validateLocalAdminAccess } from './local-access';
 import { getAdminPreferences } from './preferences';
+import { findSignInAccount } from './sign-in';
 
 const dummyHash = '$2b$12$Y7BhLbYrE/BlxtDJYZPPyeM57oiYOQCxhYEaACprXcShgQ.yCJTH2';
 export const { auth, handlers, signIn, signOut } = NextAuth({
@@ -16,28 +17,31 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        email: { type: 'email' },
+        // An email address or a username; the field keeps its name for existing sign-in clients.
+        email: { type: 'text' },
         password: { type: 'password' },
         localAccessToken: { type: 'password' },
       },
       async authorize(credentials, request) {
         const localAccess = validateLocalAdminAccess(credentials.localAccessToken, request);
         if (credentials.localAccessToken && !localAccess) return null;
-        const email =
+        const identifier =
           localAccess?.email ??
-          (typeof credentials.email === 'string' ? credentials.email.trim().toLowerCase() : '');
+          (typeof credentials.email === 'string' ? credentials.email.trim() : '');
         const password = typeof credentials.password === 'string' ? credentials.password : '';
-        if (!email || email.length > 255 || password.length > 128) return null;
-        // Atomic database-backed throttling is shared by all application instances.
+        if (!identifier || identifier.length > 255 || password.length > 128) return null;
+        const user = await findSignInAccount(identifier);
+        // Atomic database-backed throttling is shared by all application instances. Attempts
+        // count per account, so its email address and username share one limit.
         if (!localAccess) {
-          const key = createHash('sha256').update(`login:${email}`).digest('hex');
+          const subject = user ? `account:${user.id}` : identifier.toLowerCase();
+          const key = createHash('sha256').update(`login:${subject}`).digest('hex');
           const limits = await prisma.$queryRaw<{ attempts: number }[]>`
         INSERT INTO zion_admin_rate_limits (key, attempts, "windowAt") VALUES (${key}, 1, NOW())
         ON CONFLICT (key) DO UPDATE SET attempts = CASE WHEN zion_admin_rate_limits."windowAt" < NOW() - INTERVAL '15 minutes' THEN 1 ELSE zion_admin_rate_limits.attempts + 1 END,
         "windowAt" = CASE WHEN zion_admin_rate_limits."windowAt" < NOW() - INTERVAL '15 minutes' THEN NOW() ELSE zion_admin_rate_limits."windowAt" END RETURNING attempts`;
           if (limits[0].attempts > 8) return null;
         }
-        const user = await prisma.user.findUnique({ where: { email } });
         const valid =
           Boolean(localAccess) || (await bcrypt.compare(password, user?.passwordHash ?? dummyHash));
         if (!user || !valid || !canAccessAdmin(user.role, user.status)) {

@@ -102,8 +102,16 @@ export default function LoginForm({
           }}
         >
           <label>
-            Email address
-            <input name="email" type="email" autoComplete="username" required maxLength={255} />
+            Email or username
+            <input
+              name="email"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              maxLength={255}
+            />
           </label>
           <label>
             Password

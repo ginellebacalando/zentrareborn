@@ -40,6 +40,7 @@ test(
     process.env.AUTH_SECRET = randomBytes(32).toString('hex');
     const { prisma } = await import('../prisma');
     const { adminMutate, adminRead } = await import('./service');
+    const { findSignInAccount } = await import('./sign-in');
     const actor = {
       id: 'test-owner',
       email: 'owner@example.test',
@@ -76,6 +77,23 @@ test(
           status: 'ACTIVE',
         },
       });
+      // Admin sign-in takes the email or the username in any letter case, never as a pattern.
+      assert.equal((await findSignInAccount('OWNER@Example.test'))?.id, actor.id);
+      assert.equal((await findSignInAccount('Owner'))?.id, actor.id);
+      assert.equal(await findSignInAccount('own%'), null);
+      assert.equal(await findSignInAccount('_wner'), null);
+      assert.equal(await findSignInAccount('nobody'), null);
+      await prisma.user.create({
+        data: {
+          id: 'test-owner-twin',
+          username: 'OWNER',
+          email: 'owner-twin@example.test',
+          role: 'CLIENT',
+          status: 'ACTIVE',
+        },
+      });
+      assert.equal(await findSignInAccount('owner'), null, 'a shared username signs in no one');
+      await prisma.user.delete({ where: { id: 'test-owner-twin' } });
       await prisma.inquiry.create({
         data: {
           id: 'test-business-inquiry',

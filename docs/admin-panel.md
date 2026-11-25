@@ -380,7 +380,7 @@ The three source PDFs were reviewed as project feedback, not as authorization fo
 
 ## Operating workflow
 
-1. Sign in using an existing active ADMIN or SUPERADMIN account. No live accounts or passwords were created/reset. Password-change-only accounts are restricted to Profile until the password is changed.
+1. Sign in using an existing active ADMIN or SUPERADMIN account, with its email address or its username (`lib/admin/sign-in.ts`: emails match in lowercase; usernames match regardless of letter case, by plain equality, and only when exactly one account has that username). Failed attempts are limited per account, so the email and username share one limit. No live accounts or passwords were created/reset. Password-change-only accounts are restricted to Profile until the password is changed.
 2. A SUPERADMIN reviews Settings, confirms the venue's cash instructions and agreement terms, chooses the reservation rule, and marks the policy reviewed. Unreviewed policy blocks confirmation and contract preparation.
 3. Staff create a request, optionally prefilling it from an existing client inquiry. An inquiry does not automatically reserve a date. The booking starts PENDING / REQUESTED / UNPAID / UNREVIEWED.
 4. Verify the contact and record the method/result. Flagged contacts cannot be approved or confirmed. Approval remains separate from reservation confirmation.
