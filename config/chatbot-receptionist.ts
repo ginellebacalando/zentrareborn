@@ -144,6 +144,26 @@ type ZeniCopy = {
     note: string;
     check: (date: string) => string;
   };
+  /** Live chat with a staff member, opened when Zeni hands the visitor over. */
+  live: {
+    connecting: string;
+    waiting: string;
+    joined: (staff: string) => string;
+    returned: (staff: string) => string;
+    visitorEnded: string;
+    closed: string;
+    missed: string;
+    idle: string;
+    offline: string;
+    waitingBanner: (position: number | null) => string;
+    activeBanner: (staff: string) => string;
+    staffLabel: (staff: string) => string;
+    endChat: string;
+    leaveMessage: string;
+    sendFailed: string;
+    inputLabel: string;
+    placeholder: string;
+  };
   errors: Record<ZeniErrorCode, string>;
 };
 
@@ -259,6 +279,32 @@ const en: ZeniCopy = {
     legendOpen: 'Open to check',
     note: 'Dates only. A date without a confirmed event is not reserved until our staff confirm a booking.',
     check: (date) => `Check ${date}`,
+  },
+  live: {
+    connecting:
+      'I’m bringing in a member of our team. A real person from Zion Events Place will reply right here in this chat.',
+    waiting: 'Waiting for a staff member to join. You can type your question while you wait.',
+    joined: (staff) => `${staff} from Zion Events Place joined the chat.`,
+    returned: (staff) =>
+      `${staff} handed you back to Zeni. Thank you for chatting with us! Ask Zeni anything else you need.`,
+    visitorEnded: 'You ended the chat with our staff. Zeni is here if you need anything else.',
+    closed: 'Our staff closed this chat. Zeni is here if you need anything else.',
+    missed:
+      'Sorry, no one from our team could join just now. Leave your name and email and we will reply as soon as we can.',
+    idle: 'This chat went quiet, so Zeni is back. Ask for our staff again anytime.',
+    offline:
+      'Our team isn’t available for live chat right now, but I can send them your message so they can reply by email.',
+    waitingBanner: (position) =>
+      position && position > 1
+        ? `Waiting for our staff · ${position - 1} ahead of you`
+        : 'Waiting for our staff to join…',
+    activeBanner: (staff) => `You’re chatting with ${staff} from Zion Events Place`,
+    staffLabel: (staff) => `${staff} · Zion staff`,
+    endChat: 'End chat',
+    leaveMessage: 'Leave a message for our team',
+    sendFailed: 'Your message didn’t send. Please try again.',
+    inputLabel: 'Message our staff',
+    placeholder: 'Type your message…',
   },
   errors: {
     origin: 'Please use Zeni on the Zion Events Place website.',
@@ -398,6 +444,35 @@ const taglish: ZeniCopy = {
     legendOpen: 'Puwedeng i-check',
     note: 'Dates lang po ito. Hindi pa reserved ang date na walang confirmed na event hangga’t hindi kinukumpirma ng staff ang booking.',
     check: (date) => `I-check ang ${date}`,
+  },
+  live: {
+    connecting:
+      'Tatawagin ko po ang isa sa aming team. Isang totoong tao mula sa Zion Events Place ang sasagot dito mismo sa chat.',
+    waiting:
+      'Hinihintay po ang staff na sumali. Puwede na po ninyong i-type ang tanong ninyo habang naghihintay.',
+    joined: (staff) => `Sumali na po si ${staff} mula sa Zion Events Place.`,
+    returned: (staff) =>
+      `Ibinalik na po kayo ni ${staff} kay Zeni. Salamat po sa pakikipag-chat! Puwede pa po kayong magtanong kay Zeni.`,
+    visitorEnded:
+      'Tinapos na po ninyo ang chat sa staff. Nandito pa rin po si Zeni kung may kailangan pa kayo.',
+    closed:
+      'Isinara na po ng aming staff ang chat. Nandito pa rin po si Zeni kung may kailangan pa kayo.',
+    missed:
+      'Pasensya na po, walang staff na nakasali ngayon. Iwan po ang inyong pangalan at email at sasagot kami agad.',
+    idle: 'Tumahimik na po ang chat kaya bumalik na si Zeni. Puwede po ulit tumawag ng staff anumang oras.',
+    offline:
+      'Wala pong available na staff para sa live chat ngayon, pero puwede ko pong ipadala sa kanila ang mensahe ninyo para makasagot sila sa email.',
+    waitingBanner: (position) =>
+      position && position > 1
+        ? `Hinihintay ang staff · ${position - 1} ang nauna sa inyo`
+        : 'Hinihintay po ang staff na sumali…',
+    activeBanner: (staff) => `Kausap ninyo si ${staff} mula sa Zion Events Place`,
+    staffLabel: (staff) => `${staff} · Zion staff`,
+    endChat: 'Tapusin ang chat',
+    leaveMessage: 'Mag-iwan ng mensahe sa team',
+    sendFailed: 'Hindi po naipadala ang mensahe. Pakisubukan ulit.',
+    inputLabel: 'Mensahe sa staff',
+    placeholder: 'I-type ang mensahe…',
   },
   errors: {
     origin: 'Pakigamit po si Zeni sa website ng Zion Events Place.',

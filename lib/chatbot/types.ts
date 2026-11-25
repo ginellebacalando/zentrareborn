@@ -107,6 +107,8 @@ export type ChatReply = {
   cards?: ZeniCard[];
   language?: ZeniLanguage;
   context?: ConversationSummary;
+  /** Present when this reply handed the visitor to the staff live chat queue. */
+  live?: { status: 'WAITING' };
 };
 
 export type PublicFaq = { id: string; question: string; answer: string; tags?: string[] };

@@ -2894,3 +2894,21 @@
     animation: none !important;
   }
 }
+
+/* Visitors waiting in live chat: a filled count beside "Live chat" in the sidebar. */
+.navCount {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  margin-left: auto;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--admin-badge);
+  color: var(--admin-on-badge);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}

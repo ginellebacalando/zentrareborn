@@ -20,6 +20,31 @@ export function GuestMessage({ message }: { message: string }) {
   );
 }
 
+/** A message from a real staff member in the live chat, labelled with their first name. */
+export function StaffMessage({ label, message }: { label: string; message: string }) {
+  return (
+    <div className={`${styles.turn} ${styles.zeniTurn}`}>
+      <div className={styles.zeniStack}>
+        {/* Read once, with the message, through the hidden prefix below. */}
+        <p className={styles.staffLabel} aria-hidden="true">
+          {label}
+        </p>
+        <div className={`${styles.zeniBubble} ${styles.staffBubble}`}>
+          <p className={styles.messageText}>
+            <span className={styles.srOnly}>{label}: </span>
+            {message}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A short line from the system in the live chat ("Maria joined the chat."). */
+export function LiveNote({ message }: { message: string }) {
+  return <p className={styles.liveNote}>{message}</p>;
+}
+
 export function ZeniBubble({ children }: { children: ReactNode }) {
   return (
     <div className={`${styles.turn} ${styles.zeniTurn}`}>

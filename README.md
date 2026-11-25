@@ -47,6 +47,11 @@ Every push to `main` redeploys it.
    (`SMTP_*`) and `GEMINI_API_KEY` are optional: without them email stays queued and Zeni uses its
    built-in answers.
 
+When a feature adds tables to an already-filled database, install them before pushing the code
+that uses them. Live chat, for example: `npm run db:live-chat:check` checks, and
+`npm run db:live-chat:check -- --apply --allow-remote` adds `prisma/live-chat.sql` without changing
+existing data.
+
 `vercel.json` runs the functions in Singapore (`sin1`), next to the Supabase region, and schedules
 the daily automation run. Vercel's Hobby plan is for non-commercial use, so move to a paid plan
 before the site serves the business.

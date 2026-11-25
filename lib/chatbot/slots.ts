@@ -147,6 +147,24 @@ function normalizeClock(value: string) {
   return `${String(hour).padStart(2, '0')}:${match[2] ?? '00'}`;
 }
 
+const NAME_ABBREVIATION = /^(?:\p{L}|Ma|Sta|Sto|Jr|Sr|Dr|Engr|Atty)\.$/iu;
+
+/**
+ * A name ends with its sentence: "Ana. Can I talk to someone?" gives "Ana", while initials and
+ * abbreviations common in Filipino names ("Ma. Cristina", "Jose Cruz Jr.") stay whole.
+ */
+function nameBeforeSentenceEnd(candidate: string) {
+  const words: string[] = [];
+  for (const word of candidate.trim().split(/\s+/)) {
+    if (word.endsWith('.') && !NAME_ABBREVIATION.test(word)) {
+      words.push(word.replace(/\.+$/, ''));
+      break;
+    }
+    words.push(word);
+  }
+  return words.join(' ');
+}
+
 /** Extract explicit facts only. Ambiguous dates and inferred contact details are not filled. */
 export function captureSlots(
   state: ReceptionistConversation,
@@ -155,7 +173,7 @@ export function captureSlots(
   now = new Date(),
 ): SlotChanges {
   const changes: SlotChanges = explicitDate(text, now);
-  const name =
+  const statedName =
     text.match(
       /(?:\bmy (?:full )?name is|^name:|\bpangalan ko(?: po)?(?: ay)?)\s*([\p{L}][\p{L}'’.-]*(?:\s+[\p{L}][\p{L}'’.-]*){0,4})/iu,
     )?.[1] ??
@@ -165,6 +183,7 @@ export function captureSlots(
     (state.awaiting === 'name' && /^[\p{L}][\p{L}'’ .-]{1,99}$/u.test(text.trim())
       ? text.trim()
       : undefined);
+  const name = statedName ? nameBeforeSentenceEnd(statedName) : undefined;
   if (
     name &&
     name.trim().split(/\s+/).length <= 5 &&

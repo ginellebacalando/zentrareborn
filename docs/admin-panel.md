@@ -98,7 +98,8 @@ color and header descriptions in the older sections below, which are kept as his
   KPI cards and charts, uppercase letter-spaced labels; the header shows the ZENTRA wordmark with
   "Admin dashboard", a theme toggle, notifications, messages and the account menu. Tokens live in the
   admin block of `styles/tokens.css`; the dark theme uses the ZENTRA night palette.
-- **Labels (routes unchanged):** Dashboard, Bookings, Contracts, Calendar, Inquiries, Payments, Packages
+- **Labels (routes unchanged):** Dashboard, Bookings, Contracts, Calendar, Inquiries, Live chat
+  (`/admin/live-chat`), Payments, Packages
   (`/admin/services`), Zeni (`/admin/zeni`), Reports (`/admin/analytics`), Team; footer: Automation
   (`/admin/automation`), Activity log (`/admin/logs`), Settings.
 - **Booking display status** (`lib/admin/dashboard-status.ts`): Request = requested and awaiting approval;
@@ -131,6 +132,33 @@ color and header descriptions in the older sections below, which are kept as his
   items), with status, relative time and a link to the matching section. It refreshes every 60 seconds
   while the tab is visible and on focus, never moves keyboard focus, and returns no email addresses,
   phone numbers, messages or comments.
+
+## Live chat — 25 November 2026
+
+When a visitor asks Zeni for a person, a staff member can join the same Zeni conversation and hand the
+visitor back to Zeni afterwards. The visitor side and the rules are described in
+[the Zeni guide](chatbot.md#live-chat-with-staff).
+
+- **Live chat page** (`/admin/live-chat`, `app/admin/(panel)/live-chat/page.tsx`,
+  `components/admin/LiveChatPanel.tsx`, API `app/api/admin/live-chat/route.ts`, any signed-in staff
+  account): switch on **Available for live chat** to receive visitors; the hint says who else is
+  available. The queue lists **Waiting** (oldest first, with how long they have waited), **In progress**
+  (with who took it) and **Earlier this week**. A chat shows what the visitor told Zeni, every message
+  and **Take this chat**. The staff member who takes it replies (Enter sends, Shift+Enter adds a line,
+  four quick replies), can note what was agreed (staff only), then chooses **Return to Zeni** or
+  **Close chat**. A chat can be taken once; other staff can read it but not reply.
+- **Alerts on every admin page** (`components/admin/useLiveChatAlerts.ts`, `AdminShell.tsx`): the
+  Live chat item shows the number of waiting visitors, the browser tab title gains "(n)", screen
+  readers hear "A visitor is waiting in live chat.", and a short two-note chime plays unless **Sound
+  alerts** is turned off on the Live chat page (remembered in that browser). The check runs every 15
+  seconds and also keeps the staff member available; availability lapses 90 seconds after the last
+  admin page check.
+- **Timing** (`lib/chatbot/live-chat.ts`): a waiting chat nobody takes within 5 minutes is marked
+  missed and the visitor is offered the email hand-off, which arrives in Inquiries; an active chat with
+  no message for 20 minutes returns to Zeni.
+- **Database:** `prisma/live-chat.sql`; `npm run db:live-chat:check` checks it and
+  `npm run db:live-chat:check -- --apply` installs it (a hosted database also needs `--allow-remote`
+  after approval).
 
 ## Admin color theme
 

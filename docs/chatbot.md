@@ -72,7 +72,22 @@ Each value is validated on its own with zod; anything missing or invalid is igno
 
 ## Staff hand-off
 
-"Talk to staff", complaints, special requests, reschedules and cancellations collect a name and an email (and keep a phone number if given), then ask for explicit consent. Only then does one standard `NEW` inquiry with source `zeni_receptionist`, an activity and a notification commit, together with the automation outbox jobs for the staff alert and the visitor acknowledgement (`lib/automation`). Retrying the same turn creates no duplicate. The summary for staff contains the redacted request, event details, any booking reference the visitor gave and the last calendar check; it never says a booking exists. An inquiry is not a reservation.
+When a staff member is available, "Talk to staff" opens a live chat first (next section). Otherwise "Talk to staff", complaints, special requests, reschedules and cancellations collect a name and an email (and keep a phone number if given), then ask for explicit consent. Only then does one standard `NEW` inquiry with source `zeni_receptionist`, an activity and a notification commit, together with the automation outbox jobs for the staff alert and the visitor acknowledgement (`lib/automation`). Retrying the same turn creates no duplicate. The summary for staff contains the redacted request, event details, any booking reference the visitor gave and the last calendar check; it never says a booking exists. An inquiry is not a reservation.
+
+### Live chat with staff
+
+When the visitor asks for a person ("Talk to staff", or a message with the `human` intent) and at least one staff member is available, Zeni puts the conversation in the live chat queue instead of starting the email hand-off (`services/chatbot/receptionist.ts`, `services/chatbot/live-chat.ts`). The visitor stays in the same Zeni window:
+
+- **Waiting.** Zeni says a real person will reply in this chat. A banner under the header shows "Waiting for our staff to join…" (or how many visitors are ahead) with an **End chat** button, the text field becomes "Message our staff", and messages typed while waiting are kept for staff.
+- **With staff.** A staff member takes the chat on `/admin/live-chat`. The visitor sees "<first name> from Zion Events Place joined the chat." and replies labelled "<first name> · Zion staff". Only the staff member's first name is shared.
+- **Back to Zeni.** Staff choose **Return to Zeni** or **Close chat** when everything is settled, or the visitor chooses **End chat**; an active chat with no message for 20 minutes also returns. A note says Zeni is back, and Zeni answers again in the same window.
+- **Nobody answers.** A chat nobody takes within 5 minutes is marked missed and the visitor is offered **Leave a message for our team**, which runs the email hand-off above. Asking again within 15 minutes of a missed chat goes straight to that hand-off. When nobody is available, Zeni says so and offers the email hand-off at once.
+
+Staff count as available while their switch on `/admin/live-chat` is on and an admin page has checked in within 90 seconds; every admin page checks every 15 seconds through the sidebar badge. Staff see a short summary of what the visitor told Zeni (goal, event, dates, time, guests, package, venue, last question, concerns), never the full Zeni transcript, which stays in Zeni's encrypted memory.
+
+`GET`/`POST`/`DELETE /api/client/chatbot/live` reads, sends to or ends the visitor's chat, found through the Zeni session cookie. Sending needs the website origin, at most 12 messages a minute and 600 characters each; text is kept plain (control characters removed, never rendered as HTML). `GET`/`POST /api/admin/live-chat` (admin session, same-origin mutations, zod validation) serves the inbox: a chat can be taken once, and only the staff member who took it can reply or finish it. The visitor window polls every 3 seconds while a chat is open and the tab is visible; the inbox refreshes every 5 seconds.
+
+`prisma/live-chat.sql` is additive and idempotent: `zion_live_chats` (status `WAITING`, `ACTIVE`, `RETURNED`, `CLOSED` or `MISSED`; at most one open chat per conversation), `zion_live_chat_messages` and `zion_live_chat_staff`, with RLS enabled and `anon` / `authenticated` grants revoked.
 
 ## Session, storage and retry contract
 
@@ -89,9 +104,9 @@ Saved state holds explicit facts, at most three redacted exchanges, logged-quest
 
 ## Interface
 
-`components/chatbot/` follows the Figma frame "ZENI CHATBOT LOOK LIKE": a white circular launcher with a thin deep-green ring and the ZENTRA "Z" monogram (accessible name "Chat with Zeni…"); a white panel with a thin green frame (about 400 × 640 px above the launcher on desktop, a full-height sheet with safe areas on phones and short windows); a header with the Z avatar, "ZENI", "Virtual concierge · Zion Events Place", a "How Zeni works" panel, "New conversation" and close; mist Zeni bubbles and deep-green guest bubbles; a typing indicator; cards; outlined and filled green buttons; and a rounded input with a green send button.
+`components/chatbot/` is plain on purpose (user feedback, 25 November 2026: it should look made by a person, not "AI"): a solid deep-green circular launcher with the ZENTRA "Z" (accessible name "Chat with Zeni…"); a flat white panel with a hairline border above the launcher on desktop (a full-height sheet with safe areas on phones and short windows); a plain header with the Z avatar, "Zeni", "Zion Events Place", a "How Zeni works" panel, "New conversation" and close; simple rectangular bubbles with deep-green guest bubbles; static "Zeni is typing…" text; cards; outlined and filled green buttons; and a labelled text field with a green send button. During a live chat a status banner with **End chat** sits under the header, staff replies are outlined and labelled with the staff member's first name, and status notes are small centered text.
 
-The panel is a native modal `<dialog>`: focus moves to the title, Tab stays inside, Escape closes the info panel or the dialog and focus returns to the launcher. The message list is `role="log"` with `aria-live="polite"`. Controls are at least 44 px, text at least 12 px, focus is visible and status never relies on color alone. Motion uses the shared tokens (320 ms panel transition, 180 ms message entry, a 40 ms button stagger); with reduced motion everything is static. Colors come from the `--chat-*` tokens in `styles/tokens.css`, which alias the ZENTRA palette; the CSS Module swaps them for the dark theme.
+The panel is a native modal `<dialog>`: focus moves to the title, Tab stays inside, Escape closes the info panel or the dialog and focus returns to the launcher. The message list is `role="log"` with `aria-live="polite"`. Controls are at least 44 px, text at least 12 px, focus is visible and status never relies on color alone. The only motion is a short fade when the panel opens or closes and color changes on hover (`--motion-fast`); with reduced motion they are removed. Colors come from the `--chat-*` tokens in `styles/tokens.css`, which alias the ZENTRA palette; the CSS Module swaps them for the dark theme.
 
 ## Admin tools
 
@@ -102,12 +117,14 @@ The panel is a native modal `<dialog>`: focus moves to the title, Tab stays insi
 ```powershell
 npm run db:receptionist:check
 node scripts/install-receptionist-schema.mjs --apply
+npm run db:live-chat:check
+npm run db:live-chat:check -- --apply
 npm run test:chatbot
 npm run verify
 node scripts/preview-chatbot.mjs
 ```
 
-The installer checks by default. `--apply` creates only missing Zeni tables, then verifies their columns and row security; a remote database also needs `--allow-remote` after explicit approval. On Supabase, the same file can be run in the SQL editor.
+Both installers check by default. `--apply` creates only missing tables (Zeni's, or the live chat tables), then verifies them and their row security; a remote database also needs `--allow-remote` after explicit approval. On Supabase, the same file can be run in the SQL editor.
 
 The preview uses a disposable in-memory PostgreSQL on loopback port 3013 with demonstration data (one package and one confirmed event two weeks ahead). The model, email and other outbound services are switched off; stopping it discards everything.
 

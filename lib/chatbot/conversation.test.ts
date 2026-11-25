@@ -407,3 +407,17 @@ test('suggestion chips are never stored as the visitor name, even right after Ze
   captureSlots(state, 'Maria Santos', sources, NOW);
   assert.equal(state.client.name, 'Maria Santos');
 });
+
+test('a stated name ends with its sentence but keeps initials and abbreviations', () => {
+  const cases: Array<[string, string]> = [
+    ['Hi, my name is Ana. Can I talk to a real person about a December 5 wedding?', 'Ana'],
+    ['My name is Ma. Cristina Reyes.', 'Ma. Cristina Reyes'],
+    ['my name is Jose Cruz Jr.', 'Jose Cruz Jr.'],
+    ['Name: Liza M. Santos. I want to book', 'Liza M. Santos'],
+  ];
+  for (const [text, expected] of cases) {
+    const state = createConversation(randomUUID(), NOW);
+    captureSlots(state, text, sources, NOW);
+    assert.equal(state.client.name, expected, text);
+  }
+});

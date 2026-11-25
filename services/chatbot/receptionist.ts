@@ -26,6 +26,7 @@ import {
 import { escalationRequestId, submitReceptionistEscalation } from './escalation';
 import { createGeminiComposer, type ZeniComposeResult, type ZeniComposer } from './gemini';
 import { gapQuestionHash, recordZeniGap } from './gaps';
+import { liveStaffOnline, openLiveChat, recentlyMissedLiveChat } from './live-chat';
 
 /** The calendar card shows about two months ahead. */
 export const CALENDAR_CARD_DAYS = 60;
@@ -40,7 +41,30 @@ export type ZeniTurnDependencies = {
   ) => Promise<void>;
   /** Admin test console: nothing is stored and no inquiry is sent. */
   preview?: boolean;
+  /** Puts the visitor in the staff live chat queue; injectable for tests. */
+  liveHandoff?: typeof tryLiveHandoff;
 };
+
+/**
+ * Opens a staff live chat when a person is available. "offline" means nobody is on live chat, so
+ * Zeni's email hand-off continues; "unavailable" covers a paused site or a missing live chat
+ * schema, where the email hand-off also continues.
+ */
+export async function tryLiveHandoff(
+  state: ReceptionistConversation,
+  settings: PublicSystemSettings,
+): Promise<'opened' | 'offline' | 'unavailable'> {
+  if (settings.client.maintenanceMode) return 'unavailable';
+  try {
+    if ((await liveStaffOnline()) === 0 || (await recentlyMissedLiveChat(state.id)))
+      return 'offline';
+    await openLiveChat(state);
+    return 'opened';
+  } catch {
+    console.error('[zeni] Live chat is unavailable; continuing with the email hand-off.');
+    return 'unavailable';
+  }
+}
 
 type Copy = ReturnType<typeof zeniCopyFor>;
 type LlmOutcome = { status: string; reason?: string; model?: string };
@@ -228,6 +252,28 @@ export async function runReceptionistPipeline(
   let calendarRequest = plan.calendar;
   let gap = plan.gap;
   let llm: LlmOutcome = { status: 'not_needed' };
+
+  // Asking for a person goes straight to the staff live chat when someone is available; otherwise
+  // Zeni's existing hand-off asks for a name and email so staff can reply by email.
+  const wantsPerson = command.action?.type === 'request_human' || plan.intent === 'human';
+  if (wantsPerson && !plan.effect && !dependencies.preview) {
+    const live = await (dependencies.liveHandoff ?? tryLiveHandoff)(state, settings);
+    if (live === 'opened') {
+      state.flags.needsHuman = false;
+      state.awaiting = null;
+      reply = {
+        kind: 'handoff',
+        message: copy.live.connecting,
+        sources: [],
+        suggestions: [],
+        actions: [],
+        links: [],
+        live: { status: 'WAITING' },
+      };
+    } else if (live === 'offline') {
+      reply = { ...reply, message: `${copy.live.offline}\n\n${reply.message}` };
+    }
+  }
 
   if (plan.effect?.type === 'escalation') {
     if (dependencies.preview) {

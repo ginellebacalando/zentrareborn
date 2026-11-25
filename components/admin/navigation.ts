@@ -10,6 +10,7 @@ export const adminModules = [
   { key: 'contracts', label: 'Contracts' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'inquiries', label: 'Inquiries' },
+  { key: 'live-chat', label: 'Live chat' },
   { key: 'payments', label: 'Payments' },
   { key: 'services', label: 'Packages' },
   { key: 'zeni', label: 'Zeni' },

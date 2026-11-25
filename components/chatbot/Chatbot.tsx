@@ -9,12 +9,25 @@ import { containDialogFocus } from '@/lib/dialog-focus';
 import type { ChatReply, ConversationSummary, ReceptionistAction } from '@/lib/chatbot/types';
 import { ChatAvatar } from './ChatAvatar';
 import { ChatLauncher } from './ChatLauncher';
-import { GuestMessage, TypingMessage, ZeniBubble, ZeniMessage } from './ChatMessage';
+import {
+  GuestMessage,
+  LiveNote,
+  StaffMessage,
+  TypingMessage,
+  ZeniBubble,
+  ZeniMessage,
+} from './ChatMessage';
 import { ZeniInfo } from './ZeniInfo';
 import { OPEN_CHATBOT_EVENT, type OpenChatbotDetail } from './OpenChatbotButton';
+import { nextMessageOrder } from './messageOrder';
+import { useLiveChat, type OrderedLiveMessage } from './useLiveChat';
 import styles from './Chatbot.module.css';
 
-type Exchange = { id: string; question: string; reply: ChatReply };
+type Exchange = { id: string; question: string; reply: ChatReply; order: number };
+/** Zeni's exchanges and staff chat messages, shown as one timeline in arrival order. */
+type TimelineItem =
+  | { kind: 'zeni'; order: number; exchange: Exchange }
+  | { kind: 'live'; order: number; message: OrderedLiveMessage };
 type Command = Pick<ReceptionistAction, 'type' | 'value'>;
 type Recovery = { question: string; turnId: string; action?: Command };
 
@@ -64,10 +77,13 @@ export default function Chatbot() {
   const sendRef = useRef<((value: string, action?: ReceptionistAction) => Promise<void>) | null>(
     null,
   );
+  const live = useLiveChat(open);
+  const liveRef = useRef(live);
 
   const language: ZeniLanguage = history.at(-1)?.reply.language ?? context?.language ?? 'en';
   const copy = zeniCopyFor(language);
   const busy = Boolean(pendingQuestion) || restoring || resetting;
+  const liveStatus = live.status?.status;
 
   function closeChat() {
     setInfoOpen(false);
@@ -149,8 +165,9 @@ export default function Chatbot() {
   useEffect(() => {
     const element = conversation.current;
     if (open && !infoOpen && element)
-      element.scrollTop = history.length || pendingQuestion ? element.scrollHeight : 0;
-  }, [history, pendingQuestion, open, infoOpen, restoring, resetting]);
+      element.scrollTop =
+        history.length || live.messages.length || pendingQuestion ? element.scrollHeight : 0;
+  }, [history, pendingQuestion, open, infoOpen, restoring, resetting, live.messages.length]);
 
   async function restoreConversation(showMessage = false) {
     const response = await fetch('/api/client/chatbot', { cache: 'no-store' });
@@ -163,19 +180,30 @@ export default function Chatbot() {
     setContext(payload.reply?.context ?? null);
     setRecovery(payload.retry ?? null);
     if (showMessage && payload.reply && isReply(payload.reply))
-      setHistory([{ id: crypto.randomUUID(), question: '', reply: payload.reply }]);
+      setHistory([
+        { id: crypto.randomUUID(), question: '', reply: payload.reply, order: nextMessageOrder() },
+      ]);
     restored.current = true;
   }
 
   function openConversation() {
     setOpen(true);
-    if (restored.current) return;
+    // Picks up a staff chat that is open or just finished, after Zeni's welcome-back message so
+    // the window reads in order.
+    const refreshLive = () => void live.refresh().catch(() => {});
+    if (restored.current) {
+      refreshLive();
+      return;
+    }
     setRestoring(true);
     void restoreConversation(true)
       .catch((failure: unknown) =>
         setError(failure instanceof Error ? failure.message : copy.errors.restore),
       )
-      .finally(() => setRestoring(false));
+      .finally(() => {
+        setRestoring(false);
+        refreshLive();
+      });
   }
 
   async function sendQuestion(
@@ -241,14 +269,19 @@ export default function Chatbot() {
             : messages.errors.unavailable,
         );
       if (!isReply(payload)) throw new Error(messages.errors.incomplete);
-      setHistory((previous) => [
-        ...previous.slice(-19),
-        { id: crypto.randomUUID(), question: submitted, reply: payload },
-      ]);
+      const exchange: Exchange = {
+        id: crypto.randomUUID(),
+        question: submitted,
+        reply: payload,
+        order: nextMessageOrder(),
+      };
+      setHistory((previous) => [...previous.slice(-19), exchange]);
       setContext(payload.context ?? null);
       retryTurn.current = null;
       setRecovery(null);
       if (!selectedAction) setQuestion('');
+      // Zeni handed the visitor to the staff queue: the window switches to the live chat.
+      if (payload.live?.status === 'WAITING') live.start();
     } catch (failure) {
       if (!controller.signal.aborted || controller.signal.reason === 'timeout') {
         setError(
@@ -274,9 +307,12 @@ export default function Chatbot() {
     if (activeRequest.current || restoring || resetting) return;
     setResetting(true);
     try {
+      // A staff chat ends with its conversation, so staff never wait on a visitor who left.
+      if (live.active) await live.end();
       const response = await fetch('/api/client/chatbot', { method: 'DELETE', cache: 'no-store' });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(payload.error || copy.errors.clear);
+      live.forget();
       setHistory([]);
       setQuestion('');
       setError('');
@@ -295,7 +331,22 @@ export default function Chatbot() {
 
   useEffect(() => {
     sendRef.current = sendQuestion;
+    liveRef.current = live;
   });
+
+  async function sendLiveMessage() {
+    const text = question.trim();
+    if (!text || live.sending) return;
+    if (text.length > MAX_LENGTH) {
+      setError(copy.errors.length);
+      return;
+    }
+    setError('');
+    const result = await live.send(text);
+    if (result === true) setQuestion('');
+    else setError(typeof result === 'string' ? result : copy.live.sendFailed);
+    input.current?.focus({ preventScroll: true });
+  }
 
   // Other pages can open Zeni with a prompt, for example "Ask about this space".
   useEffect(() => {
@@ -321,6 +372,9 @@ export default function Chatbot() {
       retryTurn.current = null;
       restored.current = true;
       queuedPrompt.current = prompt || null;
+      if (liveRef.current.active)
+        void fetch('/api/client/chatbot/live', { method: 'DELETE', cache: 'no-store' });
+      liveRef.current.forget();
       void fetch('/api/client/chatbot', { method: 'DELETE', cache: 'no-store' })
         .catch(() => {
           // Continue with a fresh local conversation even if the server had none.
@@ -344,6 +398,13 @@ export default function Chatbot() {
     ? latest.reply.suggestions
     : copy.suggestions.welcome;
   const blocked = busy || Boolean(recovery);
+  const timeline: TimelineItem[] = [
+    ...history.map((exchange) => ({ kind: 'zeni' as const, order: exchange.order, exchange })),
+    ...live.messages.map((message) => ({ kind: 'live' as const, order: message.order, message })),
+  ].sort((a, b) => a.order - b.order);
+  // "Leave a message" belongs right after a missed chat, not under later answers from Zeni.
+  const offerMessageAfterMiss =
+    liveStatus === 'MISSED' && timeline.at(-1)?.kind === 'live' && !pendingQuestion;
 
   return (
     <>
@@ -410,6 +471,26 @@ export default function Chatbot() {
           </div>
         </header>
 
+        {live.active && live.status && !infoOpen && (
+          <div className={styles.liveBanner}>
+            <p className={styles.liveBannerText} role="status">
+              {live.status.status === 'ACTIVE' && live.status.staffName
+                ? copy.live.activeBanner(live.status.staffName)
+                : copy.live.waitingBanner(live.status.position)}
+            </p>
+            <button
+              type="button"
+              className={styles.liveEnd}
+              // The banner disappears with the chat, so focus moves on to the message field.
+              onClick={() =>
+                void live.end().finally(() => input.current?.focus({ preventScroll: true }))
+              }
+            >
+              {copy.live.endChat}
+            </button>
+          </div>
+        )}
+
         {infoOpen && (
           <div className={styles.infoScroller}>
             <ZeniInfo
@@ -473,17 +554,47 @@ export default function Chatbot() {
             </div>
           )}
 
-          {history.map((exchange, index) => (
-            <div key={exchange.id} className={styles.exchange}>
-              {exchange.question && <GuestMessage message={exchange.question} />}
-              <ZeniMessage
-                reply={exchange.reply}
-                active={index === history.length - 1 && !blocked}
-                onNavigate={closeChat}
-                onAction={(action) => void sendQuestion(action.label, action)}
+          {timeline.map((item) =>
+            item.kind === 'zeni' ? (
+              <div key={item.exchange.id} className={styles.exchange}>
+                {item.exchange.question && <GuestMessage message={item.exchange.question} />}
+                <ZeniMessage
+                  reply={item.exchange.reply}
+                  active={item.exchange.id === latest?.id && !blocked && !live.active}
+                  onNavigate={closeChat}
+                  onAction={(action) => void sendQuestion(action.label, action)}
+                />
+              </div>
+            ) : item.message.sender === 'SYSTEM' ? (
+              <LiveNote key={`live-${item.message.id}`} message={item.message.body} />
+            ) : item.message.sender === 'VISITOR' ? (
+              <GuestMessage key={`live-${item.message.id}`} message={item.message.body} />
+            ) : (
+              <StaffMessage
+                key={`live-${item.message.id}`}
+                label={copy.live.staffLabel(item.message.author)}
+                message={item.message.body}
               />
+            ),
+          )}
+
+          {offerMessageAfterMiss && (
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.primaryAction}
+                disabled={blocked}
+                onClick={() =>
+                  void sendQuestion(copy.live.leaveMessage, {
+                    type: 'request_human',
+                    label: copy.live.leaveMessage,
+                  })
+                }
+              >
+                {copy.live.leaveMessage}
+              </button>
             </div>
-          ))}
+          )}
 
           {pendingQuestion && (
             <>
@@ -494,7 +605,7 @@ export default function Chatbot() {
 
           {resetting && <TypingMessage label={chatbotReceptionist.clearing} />}
 
-          {!restoring && !pendingQuestion && (
+          {!restoring && !pendingQuestion && !live.active && (
             <div
               className={styles.suggestions}
               role="group"
@@ -520,12 +631,13 @@ export default function Chatbot() {
           hidden={infoOpen}
           onSubmit={(event) => {
             event.preventDefault();
-            void sendQuestion(question);
+            if (live.active) void sendLiveMessage();
+            else void sendQuestion(question);
           }}
         >
           {/* A persistent visible label; the error sits between it and the field it describes. */}
           <label htmlFor="zion-chatbot-question" className={styles.inputLabel}>
-            {chatbotReceptionist.inputLabel}
+            {live.active ? copy.live.inputLabel : chatbotReceptionist.inputLabel}
           </label>
           {error && (
             <p id="zion-chatbot-error" className={styles.error} role="alert">
@@ -538,7 +650,7 @@ export default function Chatbot() {
               id="zion-chatbot-question"
               rows={1}
               maxLength={MAX_LENGTH}
-              placeholder={chatbotReceptionist.placeholder}
+              placeholder={live.active ? copy.live.placeholder : chatbotReceptionist.placeholder}
               value={question}
               readOnly={blocked}
               aria-invalid={Boolean(error)}
@@ -547,7 +659,9 @@ export default function Chatbot() {
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();
-                  if (question.trim()) void sendQuestion(question);
+                  if (!question.trim()) return;
+                  if (live.active) void sendLiveMessage();
+                  else void sendQuestion(question);
                 }
               }}
             />
@@ -555,7 +669,7 @@ export default function Chatbot() {
               ref={sendButton}
               type="submit"
               className={styles.send}
-              disabled={blocked || !question.trim()}
+              disabled={blocked || live.sending || !question.trim()}
               aria-label={chatbotReceptionist.send}
               title={chatbotReceptionist.send}
             >

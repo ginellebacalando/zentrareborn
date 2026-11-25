@@ -859,3 +859,69 @@
     transition: none;
   }
 }
+
+/* Live chat with a staff member: a plain status line, labelled staff messages, quiet notes. */
+.liveBanner {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--chat-line);
+  background: var(--chat-surface-zeni);
+  color: var(--chat-ink);
+}
+
+/* The text takes the spare width so "End chat" stays beside it; at large text sizes it wraps. */
+.liveBannerText {
+  flex: 1 1 10rem;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  line-height: var(--line-body);
+}
+
+.liveEnd {
+  min-height: var(--layout-touch-target);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--chat-control-border);
+  border-radius: var(--radius-control);
+  background: var(--chat-surface-card);
+  color: var(--chat-ink);
+  font: inherit;
+  font-size: var(--type-small);
+  cursor: pointer;
+}
+
+.liveEnd:hover {
+  border-color: var(--chat-action);
+}
+
+.staffLabel {
+  margin: 0 0 var(--space-1);
+  color: var(--chat-ink);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.staffBubble {
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--chat-action);
+  border-radius: var(--radius-control);
+  line-height: var(--line-body);
+  overflow-wrap: anywhere;
+}
+
+.liveNote {
+  margin: var(--space-1) auto;
+  max-width: 90%;
+  color: var(--chat-muted);
+  font-size: var(--type-caption);
+  line-height: var(--line-body);
+  text-align: center;
+}

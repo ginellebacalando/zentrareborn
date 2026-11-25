@@ -13,6 +13,7 @@ import {
 } from './navigation';
 import styles from './admin.module.css';
 import AdminAccountControls, { type AdminHeaderUser } from './AdminAccountControls';
+import { useLiveChatAlerts } from './useLiveChatAlerts';
 
 const mobileQuery = '(max-width: 780px)';
 function subscribeToViewport(onChange: () => void) {
@@ -36,6 +37,7 @@ export default function AdminShell({
 }) {
   const pathname = usePathname();
   const { theme } = useAdminPreferences();
+  const liveChat = useLiveChatAlerts(!user.mustChangePassword);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useSyncExternalStore(subscribeToViewport, isMobileViewport, serverViewport);
@@ -129,6 +131,12 @@ export default function AdminShell({
         >
           <AdminNavIcon name={key} />
           <span className={styles.navText}>{label}</span>
+          {key === 'live-chat' && liveChat.waiting > 0 && (
+            <span className={styles.navCount}>
+              {liveChat.waiting}
+              <span className={styles.srOnly}> waiting</span>
+            </span>
+          )}
         </Link>
       </li>
     );
@@ -139,6 +147,9 @@ export default function AdminShell({
       data-admin-theme={theme}
       className={`${styles.root} ${theme === 'dark' ? styles.adminDark : ''} ${collapsed ? styles.sidebarCollapsed : ''}`}
     >
+      <p className={styles.srOnly} role="status" aria-live="polite">
+        {liveChat.announcement}
+      </p>
       <a className={styles.skip} href="#admin-content" inert={mobileOverlay}>
         Skip to content
       </a>

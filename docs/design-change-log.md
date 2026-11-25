@@ -1,5 +1,55 @@
 # Design change log
 
+## 25 November 2026 — Live chat: Zeni hands visitors to real staff
+
+User task: when a visitor asks Zeni for staff, the admin must really be notified; a staff member joins
+the same Zeni conversation from a queue, chats with the visitor as a real person, and hands the visitor
+back to Zeni once everything is settled; improve on the idea.
+
+Affected screens and files:
+
+- Zeni window (every public page): `components/chatbot/Chatbot.tsx`, `ChatMessage.tsx`
+  (`StaffMessage`, `LiveNote`), `Chatbot.module.css`, `useLiveChat.ts`, `messageOrder.ts`, copy in
+  `config/chatbot-receptionist.ts` (English and Taglish). A status banner under the header ("Waiting for
+  our staff to join…", "You're chatting with Maria from Zion Events Place") with **End chat** beside the
+  text; staff replies outlined in the action green and labelled "<first name> · Zion staff" (read once by
+  screen readers); status notes as small centered muted text; the field label and placeholder become
+  "Message our staff"; suggestion chips hide during a chat; **Leave a message for our team** after a
+  missed chat. Zeni and staff messages form one timeline in arrival order, so later Zeni answers appear
+  below the staff chat. A finished chat stays visible for 15 minutes. No new colors, fonts or motion.
+- Admin: a **Live chat** page and sidebar item (Headset icon) with a count badge
+  (`components/admin/LiveChatPanel.tsx` and `.module.css`, `useLiveChatAlerts.ts`, `AdminShell.tsx`,
+  `navigation.ts`, `AdminNavIcon.tsx`, `admin.module.css` `.navCount`). Availability switch with a
+  described hint, queue lists with status chips, a summary of what the visitor told Zeni, the message
+  log (`role="log"`), composer with quick replies, a staff-only outcome note, **Return to Zeni** and
+  **Close chat**; loading, empty, error and success notices; "(n)" in the tab title, a polite
+  announcement and an optional chime on every admin page. Panel text rules are scoped under `.page` so
+  the admin shell's `.root p` and `.root summary` defaults no longer add gaps or mute message text.
+- Server and data: `services/chatbot/live-chat.ts`, `services/chatbot/receptionist.ts`,
+  `app/api/client/chatbot/live/route.ts`, `app/api/admin/live-chat/route.ts`, `lib/chatbot/live-chat.ts`,
+  `prisma/live-chat.sql`, `scripts/install-live-chat-schema.mjs` (`npm run db:live-chat:check`).
+  `lib/chatbot/slots.ts`: a stated name ends with its sentence ("My name is Ana. Can I…" gives "Ana";
+  "Ma. Cristina" and "Jr." stay whole), so staff see the visitor's name.
+
+Verification (local preview, browser): the full flow at 1440 px (the user also tested it by hand) and with
+the visitor at 320 px: hand-off, waiting banner, admin queue with sidebar badge "1", "(1)" title on
+another admin page and the status announcement text, take, replies both ways, staff-only outcome, Return
+to Zeni, a new Zeni answer placed below the staff chat, Close chat, the visitor's End chat, and a chat
+nobody took marked missed with "Leave a message for our team". Keyboard: chats open with Enter; taking a
+chat moves focus to the reply box; Enter sends; Close chat and Return to Zeni move focus to the chat
+heading (3 px focus ring); End chat moves focus to the message field. Admin page at 320 px without
+horizontal scrolling and in the dark theme; Zeni at 1280 px with 200% text keeps the banner and End
+chat usable without overflow. `npm run test:chatbot` passes, including the PGlite flow test (queue,
+claim once, only the claimer replies, return, missed then email hand-off, visitor end, finished chats
+leaving the window, foreign origin refused) and the new name test; the full `npm run verify` result is in
+the commit that adds this entry.
+
+Limitations: not checked with a screen reader, by ear for the chime, on a real phone, or with two staff
+signed in at once (covered only by the automated test). Polling means replies can take up to 3 seconds
+to appear. The public header and hero overflow when 320 px width and 200% text are combined (beyond the
+separate WCAG checks, and outside this change). The AGENTS.md hand-off to the team chats could not be
+sent from this machine.
+
 ## 25 November 2026 — Booking requests that reach the admin, plain Zeni, website activity
 
 User task: make the booking flow follow the team plan and actually work, make its page professional,
