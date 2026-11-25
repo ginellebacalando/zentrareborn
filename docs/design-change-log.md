@@ -1,5 +1,31 @@
 # Design change log
 
+## 25 November 2026 — Ocular visits on the admin Calendar
+
+User task: show visits and walk-ins on the admin Calendar (plan section 16.1: staff see visits on
+the Front desk and the calendar). Walk-ins are bookings, so they were already on it.
+
+Affected: `components/admin/BookingCalendar.tsx`, `components/admin/admin.module.css` (new
+`.visitMark`, `.dayVisits`, `.panelVisit`, `.panelNote`, `.panelLink`), `lib/admin/front-desk.ts`
+(`readCalendarVisits`) and `lib/admin/service.ts` (the Calendar read returns `visits`).
+
+- Day cells: a hollow square beside the round booking dots, with a count when a day has more than
+  one visit; the screen-reader text of the day adds "n ocular visits".
+- Legend: a new "Ocular visit" entry with the same square.
+- Month list: visits appear by time among the bookings as plain entries (date, "Ocular visit ·
+  name", status and time), since their actions are on the Front desk; a "Manage visits on the Front
+  desk" link follows the list. The empty text now reads "No bookings or visits match…".
+- Shape as well as colour separates visits from bookings; admin tokens only, so the night theme
+  applies.
+
+Checked locally (demo database): markers on the three days with visits, the screen-reader text,
+the legend, the month list and link, a booking status filter hiding visits, the search matching a
+visitor, cancelled visits left out, and no sideways scrolling at 320px (day cells 36px wide). Tests:
+`lib/admin/visits.test.ts`.
+
+Not checked: screenshots and the night theme (the browser pane was hidden), 200% text and 400% zoom,
+and a screen reader.
+
 ## 25 November 2026 — Walk-in bookings at the Front desk
 
 User task: build the walk-in flow next (plan section 16.2), after the ocular visits release.

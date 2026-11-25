@@ -6,7 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
 import { DEFAULT_VISIT_RULES, manilaDateKey } from '../visit-rules';
-import type { ClientLookup, FrontDeskAgenda, FrontDeskSlots } from '../visit-types';
+import type { CalendarVisit, ClientLookup, FrontDeskAgenda, FrontDeskSlots } from '../visit-types';
 import type { WalkInPrefill } from '../walk-in-types';
 import type { MailTransport, OutgoingMail } from '../automation/transport';
 
@@ -482,6 +482,34 @@ test(
           where: { idempotencyKey: `visit:${created.id}:staff:r2` },
         }),
         0,
+      );
+
+      // The admin Calendar shows the month's visits beside its events, except cancelled ones.
+      const month = (change: Record<string, string> = {}) =>
+        adminRead(
+          'calendar',
+          new URLSearchParams({
+            from: `${today.slice(0, 8)}01`,
+            to: addDays(`${addDays(today.slice(0, 8) + '01', 32).slice(0, 8)}01`, -1),
+            ...change,
+          }),
+          actor,
+        ) as Promise<{ visits?: CalendarVisit[] }>;
+      const calendar = (await month()).visits ?? [];
+      assert.ok(calendar.some((row) => row.id === todayVisit.id && row.status === 'COMPLETED'));
+      assert.equal(
+        calendar.some((row) => row.status === 'CANCELLED'),
+        false,
+      );
+      assert.deepEqual((await month({ reservation: 'CONFIRMED' })).visits, []);
+      assert.deepEqual(
+        ((await month({ q: 'ana cruz' })).visits ?? []).map((row) => row.reference),
+        ['VIS-TEST-TODAY'],
+      );
+      assert.equal(
+        'visits' in (await adminRead('bookings', new URLSearchParams(), actor)),
+        false,
+        'Only the Calendar reads visits',
       );
 
       // Client lookup by phone in any format, by email in any case, and by name.

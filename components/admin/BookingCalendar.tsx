@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useId, useState } from 'react';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   countDisplayStatuses,
@@ -7,6 +8,7 @@ import {
   displayStatusLabels,
   displayStatuses,
 } from '@/lib/admin/dashboard-status';
+import { visitStatusLabel, type CalendarVisit } from '@/lib/visit-types';
 import { StatusDot, statusTone } from './BookingStatus';
 import type { Booking } from './types';
 import styles from './admin.module.css';
@@ -36,12 +38,28 @@ const timeLabel = (value: string) =>
     minute: '2-digit',
   });
 
+const shortDate = (value: string) =>
+  new Date(value).toLocaleDateString('en-US', {
+    timeZone: TIME_ZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+
+/** A hollow square, so a visit differs from the round booking dots by shape as well as colour. */
+function VisitMark() {
+  return <span className={styles.visitMark} aria-hidden="true" />;
+}
+
 export default function BookingCalendar({
   bookings,
+  visits,
   onOpen,
   onMonth,
 }: {
   bookings: Booking[];
+  /** The month's ocular visits; staff manage them on the Front desk (docs/visits.md). */
+  visits: CalendarVisit[];
   onOpen: (booking: Booking) => void;
   onMonth: (from: string, to: string) => void;
 }) {
@@ -71,6 +89,7 @@ export default function BookingCalendar({
     bookings.filter(
       (booking) => dateKey(booking.startsAt) <= date && dateKey(booking.endsAt) >= date,
     );
+  const visitsOn = (date: string) => visits.filter((visit) => dateKey(visit.startsAt) === date);
   const cells: (string | null)[] = [
     ...Array.from({ length: firstWeekday }, () => null),
     ...Array.from({ length: days }, (_, index) => `${prefix}${pad(index + 1)}`),
@@ -89,6 +108,11 @@ export default function BookingCalendar({
     : isCurrentMonth
       ? 'This month'
       : `${monthLabel.split(' ')[0]} schedule`;
+  // Bookings and visits in one list, by start time.
+  const entries = [
+    ...listed.map((booking) => ({ kind: 'booking' as const, at: booking.startsAt, booking })),
+    ...visits.map((visit) => ({ kind: 'visit' as const, at: visit.startsAt, visit })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
 
   return (
     <div className={styles.calendarLayout}>
@@ -123,7 +147,8 @@ export default function BookingCalendar({
         </div>
         <table className={styles.monthGrid}>
           <caption className={styles.srOnly}>
-            {monthLabel}: days with bookings, by status. Open a booking from the list.
+            {monthLabel}: days with bookings, by status, and with ocular visits. Open a booking from
+            the list.
           </caption>
           <thead>
             <tr>
@@ -141,8 +166,25 @@ export default function BookingCalendar({
                   if (!date)
                     return <td key={`blank-${row}-${column}`} className={styles.blankDay} />;
                   const events = eventsOn(date);
+                  const dayVisits = visitsOn(date);
                   const counts = countDisplayStatuses(events);
                   const isToday = date === today;
+                  const summary = [
+                    events.length
+                      ? `${events.length} ${events.length === 1 ? 'booking' : 'bookings'}: ${displayStatuses
+                          .filter((status) => counts[status])
+                          .map(
+                            (status) =>
+                              `${counts[status]} ${displayStatusLabels[status].toLowerCase()}`,
+                          )
+                          .join(', ')}`
+                      : '',
+                    dayVisits.length
+                      ? `${dayVisits.length} ocular ${dayVisits.length === 1 ? 'visit' : 'visits'}`
+                      : '',
+                  ]
+                    .filter(Boolean)
+                    .join('. ');
                   return (
                     <td key={date}>
                       <span
@@ -151,7 +193,7 @@ export default function BookingCalendar({
                       >
                         {Number(date.slice(-2))}
                       </span>
-                      {events.length > 0 && (
+                      {summary && (
                         <>
                           <span className={styles.dayDots} aria-hidden="true">
                             {events.slice(0, 3).map((booking) => (
@@ -160,17 +202,18 @@ export default function BookingCalendar({
                             {events.length > 3 && (
                               <span className={styles.dayMore}>+{events.length - 3}</span>
                             )}
+                            {dayVisits.length > 0 && (
+                              <span className={styles.dayVisits}>
+                                <VisitMark />
+                                {dayVisits.length > 1 && (
+                                  <span className={styles.dayMore}>{dayVisits.length}</span>
+                                )}
+                              </span>
+                            )}
                           </span>
                           <span className={styles.srOnly}>
                             {isToday ? 'Today. ' : ''}
-                            {events.length} {events.length === 1 ? 'booking' : 'bookings'}:{' '}
-                            {displayStatuses
-                              .filter((status) => counts[status])
-                              .map(
-                                (status) =>
-                                  `${counts[status]} ${displayStatusLabels[status].toLowerCase()}`,
-                              )
-                              .join(', ')}
+                            {summary}
                           </span>
                         </>
                       )}
@@ -188,13 +231,34 @@ export default function BookingCalendar({
               {displayStatusLabels[status]}
             </li>
           ))}
+          <li>
+            <VisitMark />
+            Ocular visit
+          </li>
         </ul>
       </section>
       <section className={styles.monthPanel} aria-labelledby={panelId}>
         <h2 id={panelId}>{panelTitle}</h2>
-        {listed.length ? (
+        {entries.length ? (
           <ol className={styles.panelList}>
-            {listed.map((booking) => {
+            {entries.map((entry) => {
+              if (entry.kind === 'visit') {
+                const { visit } = entry;
+                return (
+                  <li key={`visit-${visit.id}`}>
+                    <div className={`${styles.panelItem} ${styles.panelVisit}`}>
+                      <span className={styles.panelDate}>{shortDate(visit.startsAt)}</span>
+                      <strong>Ocular visit · {visit.clientName}</strong>
+                      <span className={styles.panelMeta}>
+                        <VisitMark />
+                        {visitStatusLabel(visit.status)} · {timeLabel(visit.startsAt)} –{' '}
+                        {timeLabel(visit.endsAt)}
+                      </span>
+                    </div>
+                  </li>
+                );
+              }
+              const { booking } = entry;
               const status = displayStatus(booking);
               return (
                 <li key={booking.id}>
@@ -203,14 +267,7 @@ export default function BookingCalendar({
                     className={`${styles.panelItem} ${statusTone[status]}`}
                     onClick={() => onOpen(booking)}
                   >
-                    <span className={styles.panelDate}>
-                      {new Date(booking.startsAt).toLocaleDateString('en-US', {
-                        timeZone: TIME_ZONE,
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
+                    <span className={styles.panelDate}>{shortDate(booking.startsAt)}</span>
                     <strong>
                       {booking.eventType} · {booking.clientName}
                     </strong>
@@ -225,7 +282,16 @@ export default function BookingCalendar({
             })}
           </ol>
         ) : (
-          <p className={styles.panelEmpty}>No bookings match this month and the filters.</p>
+          <p className={styles.panelEmpty}>
+            No bookings or visits match this month and the filters.
+          </p>
+        )}
+        {visits.length > 0 && (
+          <p className={styles.panelNote}>
+            <Link className={styles.panelLink} href="/admin/front-desk">
+              Manage visits on the Front desk
+            </Link>
+          </p>
         )}
       </section>
     </div>

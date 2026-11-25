@@ -1,3 +1,4 @@
+import type { CalendarVisit } from '@/lib/visit-types';
 import type { DashboardInsights } from '@/lib/admin/dashboard-types';
 import type { DashboardKpis } from '@/lib/admin/dashboard-kpi-types';
 import type { AnalyticsReport } from '@/lib/admin/analytics-types';
@@ -148,6 +149,8 @@ export type AdminData = {
     status: string;
   }[];
   bookings?: Booking[];
+  /** The Calendar month's ocular visits (lib/admin/front-desk.ts). */
+  visits?: CalendarVisit[];
   booking?: Booking;
   inquiry?: Inquiry;
   total?: number;

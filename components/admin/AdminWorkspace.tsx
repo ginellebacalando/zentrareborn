@@ -396,6 +396,7 @@ export default function AdminWorkspace({
             (section === 'calendar' ? (
               <BookingCalendar
                 bookings={data.bookings}
+                visits={data.visits ?? []}
                 onOpen={openBooking}
                 onMonth={onCalendarMonth}
               />

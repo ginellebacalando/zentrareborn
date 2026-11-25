@@ -1783,6 +1783,27 @@
   font-size: var(--type-caption);
   line-height: 1;
 }
+/* Ocular visits (docs/visits.md): a hollow square, so they differ from the round booking dots by
+   shape as well as colour. */
+.visitMark {
+  display: inline-block;
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 1px;
+}
+.dayVisits {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--admin-ink);
+}
+.calendarLegend .visitMark {
+  width: 0.625rem;
+  height: 0.625rem;
+  color: var(--admin-ink);
+}
 .calendarLegend {
   display: flex;
   flex-wrap: wrap;
@@ -1867,6 +1888,23 @@
   margin: var(--space-2) 0 0;
   color: var(--admin-night-muted);
   font-size: var(--type-small);
+}
+/* A visit is managed on the Front desk, so its entry here is information, not a button. */
+.panelVisit .visitMark {
+  color: var(--admin-night-accent);
+}
+.panelVisit:hover strong {
+  text-decoration: none;
+}
+.root .panelNote {
+  margin: var(--space-4) 0 0;
+}
+.root .panelLink {
+  color: var(--admin-night-accent);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 /* ---------- Notices ---------- */

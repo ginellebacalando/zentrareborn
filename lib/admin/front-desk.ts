@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { manilaDateKey } from '@/lib/visit-rules';
 import {
   VISIT_FIELD_LIMITS,
+  type CalendarVisit,
   type ClientLookup,
   type FrontDeskAgenda,
   type FrontDeskSlots,
@@ -158,6 +159,50 @@ export async function readFrontDeskAgenda(now = new Date()): Promise<FrontDeskAg
     needsOutcome: needsOutcome.map(visitView),
     slotMinutes: rules.slotMinutes,
   };
+}
+
+/** Booking filters that say nothing about visits; while one is set the Calendar shows none. */
+const BOOKING_ONLY_FILTERS = ['approval', 'reservation', 'verification', 'eventType'];
+
+/**
+ * The ocular visits of the admin Calendar's month, beside its events: every visit except the
+ * cancelled ones, matched by the Calendar's search (name, email or reference). The caller has
+ * already checked the `from` and `to` dates.
+ */
+export async function readCalendarVisits(params: URLSearchParams): Promise<CalendarVisit[]> {
+  const from = params.get('from');
+  const to = params.get('to');
+  if (!from || !to || BOOKING_ONLY_FILTERS.some((key) => params.get(key))) return [];
+  const q = (params.get('q') ?? '').trim().slice(0, 100);
+  const contains = { contains: q, mode: 'insensitive' as const };
+  const rows = await prisma.adminVisit.findMany({
+    where: {
+      status: { not: 'CANCELLED' },
+      startsAt: {
+        gte: new Date(`${from}T00:00:00+08:00`),
+        lte: new Date(`${to}T23:59:59+08:00`),
+      },
+      ...(q
+        ? { OR: [{ reference: contains }, { clientName: contains }, { email: contains }] }
+        : {}),
+    },
+    orderBy: { startsAt: 'asc' },
+    take: 200,
+    select: {
+      id: true,
+      reference: true,
+      clientName: true,
+      startsAt: true,
+      endsAt: true,
+      status: true,
+    },
+  });
+  return rows.map((visit) => ({
+    ...visit,
+    status: visit.status as VisitStatus,
+    startsAt: visit.startsAt.toISOString(),
+    endsAt: visit.endsAt.toISOString(),
+  }));
 }
 
 /** Phone numbers match on their last digits, whatever spaces or country code were typed. */

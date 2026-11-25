@@ -19,7 +19,12 @@ import {
   type OnlinePaymentMethod,
 } from './payment-accounts';
 import { readBookingProofs } from './payment-proofs';
-import { FRONT_DESK_OPERATIONS, frontDeskMutate, readFrontDesk } from './front-desk';
+import {
+  FRONT_DESK_OPERATIONS,
+  frontDeskMutate,
+  readCalendarVisits,
+  readFrontDesk,
+} from './front-desk';
 import { readDashboardInsights } from './dashboard';
 import { readDashboardKpis } from './dashboard-kpis';
 import { readAnalyticsReport } from './analytics';
@@ -788,7 +793,9 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       ...booking,
       proofsToVerify: _count.paymentProofs,
     }));
-    return { bookings, total, page, policy: await policy() };
+    // The Calendar shows the month's ocular visits beside its events (docs/visits.md).
+    const visits = section === 'calendar' ? await readCalendarVisits(params) : undefined;
+    return { bookings, total, page, policy: await policy(), ...(visits ? { visits } : {}) };
   }
   throw new AdminError('Unknown admin module.', 404);
 }

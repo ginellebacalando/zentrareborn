@@ -152,6 +152,9 @@ color and header descriptions in the older sections below, which are kept as his
   prices and rules; cash now confirms the booking when it meets the policy, otherwise the date is
   held or the request waits for review. Staff may approve an event above the guest limit with a
   logged reason. See [docs/walk-ins.md](walk-ins.md).
+- **Calendar** (`components/admin/BookingCalendar.tsx`): the month's ocular visits appear beside
+  the events, marked with a hollow square (the booking dots are round) and listed with their status;
+  they are managed on the Front desk.
 - **Settings > Ocular Visits** (`components/admin/VisitRulesSettings.tsx`): the weekly hours, the
   length of a visit, visits at the same time, the website's notice and closed dates, checked on save
   with the problem under its field.

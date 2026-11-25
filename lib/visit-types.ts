@@ -152,5 +152,15 @@ export type ClientLookup = {
   clientVisits: FrontDeskVisit[];
 };
 
+/** An ocular visit on the admin Calendar: when, who and how it went. */
+export type CalendarVisit = {
+  id: string;
+  reference: string;
+  clientName: string;
+  startsAt: string;
+  endsAt: string;
+  status: VisitStatus;
+};
+
 /** The open visit times staff can offer, without the notice the website requires. */
 export type FrontDeskSlots = { days: VisitDay[]; slotMinutes: number };

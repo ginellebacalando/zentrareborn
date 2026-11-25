@@ -64,6 +64,12 @@ Every staff role can use it. The page refreshes itself every minute.
 
 Every change is in the activity log under the module **Front desk**, with the visit id.
 
+The admin **Calendar** shows the month's visits beside its events: a hollow square on each day
+with a visit (the booking dots are round), an "Ocular visit" legend entry, and the visits in the
+month list with their status and time, plus a link to the Front desk where they are managed.
+Cancelled visits are left out; a booking status filter hides visits, and the search also matches a
+visitor's name, email or reference (`readCalendarVisits` in `lib/admin/front-desk.ts`).
+
 ## Emails and calendars
 
 | Job                                                       | To                                                    | When                                                                                                                                                               |
@@ -115,7 +121,6 @@ Every change is in the activity log under the module **Front desk**, with the vi
 - Signed-in client accounts that skip the form, and Turnstile on the visit page.
 - Other appointment types (planning meeting, payment visit) and linking a visit to the booking it
   led to.
-- Visits on the admin Calendar page (they are on the Front desk and in the staff calendars).
 - A follow-up email after a no-show.
 
 ## Code
