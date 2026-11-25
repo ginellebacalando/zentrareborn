@@ -10,7 +10,7 @@ type ZentraWordmarkProps = {
 
 /**
  * The ZENTRA wordmark as live text in the brand font stack (Zenitha Classic, falling back to
- * Hedvig Letters Serif), so it stays crisp at every size and needs no image request.
+ * Cinzel Decorative), so it stays crisp at every size and needs no image request.
  */
 export default function ZentraWordmark({ subtitle, size = 'md', className }: ZentraWordmarkProps) {
   return (

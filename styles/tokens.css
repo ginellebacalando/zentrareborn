@@ -235,11 +235,12 @@
    * Fonts follow the plan: Zenitha Classic for the ZENTRA wordmark only and SFT Schrifted Sans for
    * all other text. Those files are trial / personal-use, so they are never committed: they load
    * from the ignored public/fonts/licensed/ folder when `npm run fonts:licensed` has copied them
-   * (see app/layout.tsx). Otherwise the bundled SIL OFL fallbacks render: Hedvig Letters Serif
-   * (Figma's stand-in wordmark font) and Archivo. Archivo's latin-ext face supplies the peso sign,
-   * which neither licensed font contains.
+   * (see app/layout.tsx). Otherwise the bundled SIL OFL fallbacks render: Cinzel Decorative (the
+   * closest free match to Zenitha's swash capitals) and Archivo. Archivo's latin-ext face supplies
+   * the peso sign, which neither licensed font contains.
    */
-  --font-zion-brand: 'Zenitha Classic', var(--font-hedvig, Georgia), 'Times New Roman', serif;
+  --font-zion-brand:
+    'Zenitha Classic', var(--font-cinzel-decorative, Georgia), 'Times New Roman', serif;
   --font-zion-sans:
     'SFT Schrifted Sans', var(--font-archivo-ext, Arial), var(--font-archivo, 'Segoe UI'), Arial,
     sans-serif;

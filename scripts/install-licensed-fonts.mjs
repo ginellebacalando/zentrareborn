@@ -55,7 +55,7 @@ const sourceRoot = candidates.find((candidate) =>
 
 if (!sourceRoot) {
   console.log(
-    'Licensed fonts not found, so the free fallbacks (Archivo, Hedvig Letters Serif) stay in use.\n' +
+    'Licensed fonts not found, so the free fallbacks (Archivo, Cinzel Decorative) stay in use.\n' +
       'Pass --from <folder containing sft_schrifted_sans/ and zenitha_classic/> to install them.',
   );
   process.exit(0);

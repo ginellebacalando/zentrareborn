@@ -1,5 +1,31 @@
 # Design change log
 
+## 25 November 2026 — Closer free stand-in for the ZENTRA wordmark
+
+User task: the shared Vercel preview showed a plain serif ZENTRA logo, so it looked as if the design
+had not been pushed; use a free font that looks closer to the plan's Zenitha Classic.
+
+Affected screens and files: the wordmark and "Z" monogram wherever Zenitha Classic is not installed
+(the public header, the admin header, Zeni's launcher and avatar). `app/_fonts/index.ts`
+(`cinzelDecorative` replaces `hedvig`), `app/_fonts/cinzel-decorative-bold.woff2` and
+`cinzel-decorative-OFL.txt` (Fontsource latin subset, SIL OFL 1.1), `app/layout.tsx`,
+`styles/tokens.css` (`--font-zion-brand`), `components/shared/ZentraWordmark.tsx`,
+`scripts/install-licensed-fonts.mjs`, README and `docs/design-standard.md`. Hedvig Letters Serif's
+file and license were removed. Machines with the licensed fonts are unchanged.
+
+Choice: 28 free Google Fonts were set beside the real Zenitha Classic "ZENTRA" and "Z" at display
+size. Cinzel Decorative Bold was the closest (swash Z and R, similar stroke weight). Its bold cut is
+registered as weight 400, so the stack keeps Zenitha's single regular weight without synthetic bold.
+
+Verification: local preview with the licensed fonts switched off in the browser. The wordmark renders
+in Cinzel Decorative at 165 px wide (Zenitha: 163 px), so the header does not shift; at 320 px the
+header has no horizontal scrolling; Zeni's launcher shows the swash Z. The full `npm run verify`
+result is in the commit that adds this entry.
+
+Limitations: it is still a stand-in (Zenitha's taller letters and joined NT differ), and the real
+fonts need web licenses before the public launch. Not checked in the dark theme (only the typeface
+changed, not colors). The AGENTS.md hand-off to the team chats could not be sent from this machine.
+
 ## 25 November 2026 — Live chat: Zeni hands visitors to real staff
 
 User task: when a visitor asks Zeni for staff, the admin must really be notified; a staff member joins

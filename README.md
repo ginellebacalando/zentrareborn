@@ -63,8 +63,8 @@ wordmark. Those files are a trial and a personal-use version, so they are not in
 machine run `npm run fonts:licensed -- --from <folder with sft_schrifted_sans/ and zenitha_classic/>`
 (the local preview runs it automatically when it finds the folders); the files land in the ignored
 `public/fonts/licensed/` and the layout loads them. Every other build, including Vercel, uses the
-bundled open-license fallbacks Archivo and Hedvig Letters Serif. Buy the licenses before using the
-original fonts on the public website.
+bundled open-license fallbacks Archivo and Cinzel Decorative (the closest free match to Zenitha's
+swash capitals). Buy the licenses before using the original fonts on the public website.
 
 ## Email automation
 

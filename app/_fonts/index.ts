@@ -42,10 +42,15 @@ export const archivoExtended = localFont({
   ],
 });
 
-/** Hedvig Letters Serif: the ZENTRA wordmark (Figma's own wordmark font) when Zenitha is absent. */
-export const hedvig = localFont({
-  src: './hedvig-letters-serif.woff2',
-  variable: '--font-hedvig',
+/**
+ * Cinzel Decorative Bold: the ZENTRA wordmark and "Z" monogram when Zenitha Classic is absent. Of
+ * the free fonts compared on 25 November 2026 it was the closest to Zenitha (swash Z and R, similar
+ * stroke weight). The bold cut is registered as weight 400 because the brand text uses Zenitha's
+ * single regular weight. Cinzel has no true lowercase, which suits the uppercase-only brand text.
+ */
+export const cinzelDecorative = localFont({
+  src: './cinzel-decorative-bold.woff2',
+  variable: '--font-cinzel-decorative',
   weight: '400',
   style: 'normal',
   display: 'swap',

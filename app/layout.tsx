@@ -11,7 +11,7 @@ import { BRAND } from '@/config/brand';
 import { ThemeProvider } from './_providers/ThemeProvider';
 import PanelChrome from '@/components/layout/PanelChrome';
 import SkipLink from '@/components/layout/SkipLink';
-import { archivo, archivoExtended, hedvig } from './_fonts';
+import { archivo, archivoExtended, cinzelDecorative } from './_fonts';
 import Chatbot from '@/components/chatbot/Chatbot';
 
 /**
@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${archivoExtended.variable} ${hedvig.variable} antialiased`}
+      className={`${archivo.variable} ${archivoExtended.variable} ${cinzelDecorative.variable} antialiased`}
     >
       <head>
         <link
