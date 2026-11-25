@@ -775,6 +775,8 @@ export type DigestInquiry = {
   eventInterest: string | null;
 };
 
+export type DigestVisit = { reference: string; clientName: string; startsAt: Date };
+
 function eventLines(events: DigestEvent[], empty: string) {
   return events.length
     ? events.map(
@@ -797,8 +799,11 @@ export function dailyDigest(input: {
   /** GCash or bank screenshots waiting for staff to check against Zion's records (phase 2). */
   paymentScreenshots: number;
   failedEmails: number;
+  /** Ocular visits scheduled for today (docs/visits.md). */
+  visits?: DigestVisit[];
   adminUrl: string | null;
 }): RenderedEmail {
+  const visits = input.visits ?? [];
   const inquiryLines = input.inquiries.map(
     (inquiry) =>
       `${inquiry.reference} · ${singleLine(inquiry.fullName, 80)}${inquiry.eventInterest ? ` · ${singleLine(inquiry.eventInterest, 80)}` : ''}`,
@@ -812,6 +817,7 @@ export function dailyDigest(input: {
         details: [
           ['Confirmed events today', String(input.today.length)],
           ['Confirmed events tomorrow', String(input.tomorrow.length)],
+          ['Ocular visits today', String(visits.length)],
           ['New inquiries (last 24 hours)', String(input.newInquiries)],
           ['Requests under review', String(input.awaitingApproval)],
           ['Waiting for payment', String(input.waitingForPayment)],
@@ -827,6 +833,19 @@ export function dailyDigest(input: {
       {
         heading: 'Tomorrow',
         paragraphs: [eventLines(input.tomorrow, 'No confirmed events.').join('\n')],
+      },
+      {
+        heading: 'Ocular visits today',
+        paragraphs: [
+          visits.length
+            ? visits
+                .map(
+                  (visit) =>
+                    `${manilaTime(visit.startsAt)} · ${singleLine(visit.clientName, 80)} (${visit.reference})`,
+                )
+                .join('\n')
+            : 'No visits scheduled.',
+        ],
       },
       {
         heading: 'New inquiries',

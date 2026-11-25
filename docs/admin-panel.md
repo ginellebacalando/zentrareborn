@@ -135,6 +135,26 @@ color and header descriptions in the older sections below, which are kept as his
   while the tab is visible and on focus, never moves keyboard focus, and returns no email addresses,
   phone numbers, messages or comments.
 
+## Front desk and ocular visits — 25 November 2026
+
+- **Front desk** (`/admin/front-desk`, `app/admin/(panel)/front-desk/page.tsx`,
+  `components/admin/FrontDesk.tsx`, `lib/admin/front-desk.ts`, any signed-in staff account; in the
+  sidebar after Bookings): today's events and ocular visits, earlier visits without an outcome, the
+  next two weeks of visits, **Schedule a visit** for a caller, and a **client lookup** by email,
+  phone or name with the client's bookings and visits. Visit actions follow the state: check in on
+  the day, mark completed, no-show after the start time, reschedule, notes (staff only), cancel with
+  a reason, and **Start booking**, which opens the New request form filled from the visit
+  (`/admin/bookings?visit=<id>`). Changes are logged under the module "Front desk"; the page
+  refreshes every minute and keeps focus on the visit (or on the confirmation when the visit leaves
+  the list).
+- **Settings > Ocular Visits** (`components/admin/VisitRulesSettings.tsx`): the weekly hours, the
+  length of a visit, visits at the same time, the website's notice and closed dates, checked on save
+  with the problem under its field.
+- Visitors schedule on `/visit` and change or cancel through their private link. Emails, reminders,
+  data and limits: [docs/visits.md](visits.md). **Database:** `prisma/visits.sql`;
+  `npm run db:visits:check -- --apply` installs it (a hosted database also needs `--allow-remote`
+  after approval).
+
 ## Live chat — 25 November 2026
 
 When a visitor asks Zeni for a person, a staff member can join the same Zeni conversation and hand the

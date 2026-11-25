@@ -83,6 +83,8 @@ export type Policy = {
   contractTerms: string;
 };
 export type Inquiry = {
+  /** 'visit' when the New request form is pre-filled from an ocular visit (Front desk). */
+  kind?: 'inquiry' | 'visit';
   id?: string;
   inquiryReference: string;
   fullName: string;

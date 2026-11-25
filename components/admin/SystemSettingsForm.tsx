@@ -30,6 +30,7 @@ import {
   type PaymentAccounts,
 } from '@/lib/admin/payment-accounts';
 import { useAdminPreferences } from './AdminPreferencesProvider';
+import VisitRulesSettings, { type VisitRulesHandle } from './VisitRulesSettings';
 import styles from './admin.module.css';
 
 /** The Online Payments fields, in the order a problem is reported. */
@@ -220,6 +221,8 @@ function PreferencesEditor({
   const paymentsRef = useRef<HTMLDetailsElement>(null);
   const accountInputs = useRef<Partial<Record<PaymentAccountField, HTMLInputElement | null>>>({});
   const accountsId = useId();
+  // Ocular visit rules check themselves on save (components/admin/VisitRulesSettings.tsx).
+  const visitRulesRef = useRef<VisitRulesHandle>(null);
   const { previewTheme, clearPersonalTheme } = useAdminPreferences();
   const disabled = !initial.canEdit || busy;
   useEffect(() => () => previewTheme(null), [previewTheme]);
@@ -294,6 +297,8 @@ function PreferencesEditor({
       return;
     }
     setAccountsError(null);
+    const visitRules = visitRulesRef.current?.validate();
+    if (visitRules === null) return;
     setBusy(true);
     try {
       const response = await fetch('/api/admin/preferences', {
@@ -308,6 +313,7 @@ function PreferencesEditor({
               staffNotifications: { emails: staffList.emails },
               bookingRules: bookingRules.rules,
               paymentAccounts,
+              ...(visitRules ? { visitRules } : {}),
             },
           },
           updatedAt: initial.updatedAt,
@@ -756,6 +762,11 @@ function PreferencesEditor({
               ))}
             </div>
           </details>
+          <VisitRulesSettings
+            ref={visitRulesRef}
+            initial={initial.settings.admin.visitRules}
+            disabled={disabled}
+          />
           <details className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>
             <summary>
               <h2 className={styles.settingsSectionTitle}>

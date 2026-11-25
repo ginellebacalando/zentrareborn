@@ -34,11 +34,9 @@ test('booking links carry only valid details and always mark the source', () => 
   assert.equal(bookingEventSlug('gender reveal'), 'gender-reveal');
   assert.equal(bookingEventSlug('christmas party'), 'christmas-party');
   assert.equal(bookingPackageSlug('Wedding — Zion Ultimate'), undefined);
-  assert.equal(
-    buildVisitLink('2027-01-09'),
-    '/contact?topic=visit&date=2027-01-09&source=zeni#message-us',
-  );
-  assert.equal(buildVisitLink(), '/contact?topic=visit&source=zeni#message-us');
+  assert.equal(buildVisitLink('2027-01-09'), '/visit?date=2027-01-09&source=zeni');
+  assert.equal(buildVisitLink('2027-1-9'), '/visit?source=zeni');
+  assert.equal(buildVisitLink(), '/visit?source=zeni');
 });
 
 test('the booking page parses a Zeni link into journey values', () => {
@@ -83,8 +81,8 @@ test('invalid, past, far-future or unknown values are ignored, never guessed', (
   assert.equal(parseBookingPrefill('?event=WEDDING', today).eventType, 'Wedding');
 });
 
-test('the contact page turns a visit link into a visit request message', () => {
-  const visit = parseVisitPrefill(buildVisitLink('2027-01-09').split('#')[0].split('?')[1], today);
+test('the contact page still turns an earlier Zeni visit link into a visit request message', () => {
+  const visit = parseVisitPrefill('topic=visit&date=2027-01-09&source=zeni', today);
   assert.equal(visit?.subject, 'General Message');
   assert.match(visit?.message ?? '', /ocular visit/);
   assert.match(visit?.message ?? '', /Saturday, January 9, 2027/);

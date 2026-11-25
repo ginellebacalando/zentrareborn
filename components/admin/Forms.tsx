@@ -74,7 +74,8 @@ export function BookingForm({
       )}
       {inquiry && (
         <div className={styles.notice}>
-          Inquiry {inquiry.inquiryReference}: {inquiry.message}
+          {inquiry.kind === 'visit' ? 'Ocular visit' : 'Inquiry'} {inquiry.inquiryReference}
+          {inquiry.message ? `: ${inquiry.message}` : ''}
         </div>
       )}
       {error && (
@@ -282,7 +283,7 @@ export function BookingForm({
               booking
                 ? booking.notes
                 : inquiry
-                  ? `From inquiry ${inquiry.inquiryReference}. ${inquiry.message || ''}`
+                  ? `From ${inquiry.kind === 'visit' ? 'ocular visit' : 'inquiry'} ${inquiry.inquiryReference}. ${inquiry.message || ''}`
                   : ''
             }
           />

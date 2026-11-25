@@ -34,6 +34,7 @@ test(
     await db.exec(readFileSync('prisma/booking-holds.sql', 'utf8'));
     await db.exec(readFileSync('prisma/payment-proofs.sql', 'utf8'));
     await db.exec(readFileSync('prisma/payment-receipts.sql', 'utf8'));
+    await db.exec(readFileSync('prisma/visits.sql', 'utf8'));
     const server = createServer(db);
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();

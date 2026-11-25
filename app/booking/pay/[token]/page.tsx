@@ -23,5 +23,9 @@ export default async function PaymentLinkPage({ params }: { params: Promise<{ to
   const { token } = await params;
   const view = await readPaymentPage(token);
   if (view.state === 'invalid') notFound();
-  return <PaymentPage view={view} token={token} />;
+  return (
+    <main id="main-content" tabIndex={-1} className="public-page">
+      <PaymentPage view={view} token={token} />
+    </main>
+  );
 }

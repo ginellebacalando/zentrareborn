@@ -209,7 +209,7 @@ const en: ZeniCopy = {
   bookingWithDetails: (details) =>
     `I’ve added what you shared (${details}) to our booking form. Our staff confirm every booking. Would you like to check a date first? Tap one below.`,
   visit:
-    'Ocular visits are by appointment. Choose your preferred date in the visit request and our staff will confirm the time.',
+    'Ocular visits are by appointment. Pick an open day and time on our visit page, and you get a confirmation email right away.',
   existingBooking:
     'Changes to an existing booking are handled by our staff, so I’ll pass your request to them.',
   handoffName: 'I can send a message to our staff. What name should I put on it?',
@@ -380,7 +380,7 @@ const taglish: ZeniCopy = {
   bookingWithDetails: (details) =>
     `Nailagay ko na po sa booking form ang mga binigay ninyo (${details}). Staff po ang nagkukumpirma ng bawat booking. Gusto n’yo po bang mag-check muna ng date? Pumili po sa ibaba.`,
   visit:
-    'By appointment po ang ocular visits. Ilagay lang po ang gusto ninyong date sa visit request at kokumpirmahin ng staff ang oras.',
+    'By appointment po ang ocular visits. Pumili lang po ng bakanteng araw at oras sa aming visit page, at may confirmation email po kayong matatanggap agad.',
   existingBooking:
     'Ang aming staff po ang nag-aasikaso ng pagbabago sa existing booking, kaya ipapasa ko po ito sa kanila.',
   handoffName:

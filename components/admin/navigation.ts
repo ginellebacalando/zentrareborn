@@ -2,11 +2,14 @@
  * Sidebar destinations. Labels follow the ZENTRA naming rules (plural, non-repeating module
  * names); the route slugs are unchanged, so bookmarks keep working:
  * services → Packages, analytics → Reports, logs → Activity log.
- * Zeni and Automation are owned by their own route folders (app/admin/(panel)/zeni|automation).
+ * Zeni, Front desk and Automation are owned by their own route folders
+ * (app/admin/(panel)/zeni|front-desk|automation).
  */
 export const adminModules = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'bookings', label: 'Bookings' },
+  // Ocular visits and today's agenda (app/admin/(panel)/front-desk, docs/visits.md).
+  { key: 'front-desk', label: 'Front desk' },
   { key: 'contracts', label: 'Contracts' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'inquiries', label: 'Inquiries' },

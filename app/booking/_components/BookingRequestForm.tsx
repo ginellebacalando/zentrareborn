@@ -507,6 +507,13 @@ export default function BookingRequestForm({
           Tell us about your celebration. Most bookings are approved right away and your date is
           held while you pay the reservation fee; custom proposals are reviewed by our team first.
         </p>
+        <p className={styles.lead}>
+          Not ready yet?{' '}
+          <Link href="/visit" className={styles.introLink}>
+            Schedule an ocular visit
+          </Link>{' '}
+          to see the venue first.
+        </p>
       </header>
 
       <ol className={styles.stepper} aria-label="Booking steps">

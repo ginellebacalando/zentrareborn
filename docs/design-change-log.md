@@ -1,5 +1,45 @@
 # Design change log
 
+## 25 November 2026 — Ocular visits and the admin Front desk
+
+User task: build the "Visits + front desk" part of the plan (section 16): visitors schedule an
+ocular visit online, and staff run the day from a Front desk.
+
+Affected screens and files:
+
+- New public page **`/visit`** (`app/visit/`): intro with what to expect, day and time choices as
+  native radio buttons drawn as cards (two per row at 320px, "Show more days"), contact fields with
+  persistent labels, optional event details, privacy consent, an error summary linked to each field,
+  and a confirmation with the reference, time, directions and the reschedule link. A "Good to know"
+  card beside the form on wide screens (below it on phones) repeats the hours, address and contacts.
+- New private page **`/visit/manage/<token>`**: the visit, a new time, and cancellation behind a
+  confirmation step; a change is announced and moves focus to the page heading.
+- New admin page **Front desk** (`components/admin/FrontDesk.tsx`, sidebar item with the concierge
+  bell icon) and the **Settings > Ocular Visits** card (`components/admin/VisitRulesSettings.tsx`).
+- Entry links: the booking page intro ("Not ready yet? Schedule an ocular visit"), the Contact page
+  Business Hours card, and Zeni's visit button (now `/visit`).
+- The private payment page gains the `<main id="main-content">` landmark it lacked, so the skip link
+  reaches it.
+
+Design notes: only existing tokens. The public pages reuse the booking page styles
+(`BookingRequest.module.css`) and add `Visit.module.css` for the choice cards and visit details.
+The admin pieces use the admin theme tokens, so the night theme applies; where the admin root
+styles every `label`, `fieldset`, `input`, `p` and `a`, the new rules use two-class selectors
+(checkboxes stay checkboxes, link buttons keep their colour and size, feedback keeps its colour).
+
+Checked locally (demo database, desktop and 320px): scheduling from a Zeni link with the day
+preselected, the error summary, the confirmation, the queued confirmation email and calendar file,
+rescheduling and cancelling from the manage page (earlier unsent emails skipped, the cancellation
+with a higher calendar sequence), the Settings card (layout, a rule error under its field with
+focus, saving a closed date that the visit page then leaves out), scheduling for a caller with the
+staff calendar copy, check in, mark completed, no-show, the client lookup by phone in another
+format, Start booking, the night theme of the Front desk, and no sideways scrolling at 320px on
+`/visit` and the Front desk. Tests: `lib/visit-rules.test.ts` and `lib/admin/visits.test.ts`.
+
+Not checked: 200% text and 400% zoom, a screen reader, the emails in real mail clients and the
+invitations in Google Calendar or Outlook (no mail was sent locally), Windows high contrast, and
+the hosted site before deployment.
+
 ## 25 November 2026 — Acknowledgment receipt redesign with the ZENTRA wordmark
 
 User task: make the receipt PDF more modern and professional, with the logo used on the current

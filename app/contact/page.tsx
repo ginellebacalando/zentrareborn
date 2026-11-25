@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { MapPin, Share2 } from 'lucide-react';
 
 import PublicSubpageShell from '@/components/client/PublicSubpageShell';
@@ -76,6 +77,14 @@ export default function ContactPage() {
                 </div>
                 <div className="text-left w-full mt-5 pl-16 font-sans tracking-widest uppercase text-accent-ink text-xs font-bold">
                   {BRAND.visits.notice}
+                </div>
+                <div className="w-full pl-16 mt-3 relative z-10">
+                  <Link
+                    href="/visit"
+                    className="inline-flex min-h-11 items-center font-sans text-base font-semibold text-accent-ink underline underline-offset-4"
+                  >
+                    Schedule an ocular visit
+                  </Link>
                 </div>
               </div>
 

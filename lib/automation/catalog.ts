@@ -50,6 +50,14 @@ export const AUTOMATION_ONLY_EVENTS = [
   'STAFF_CALENDAR_PENDING',
   'STAFF_CALENDAR_REQUEST',
   'STAFF_CALENDAR_CANCEL',
+  // Ocular visits (docs/visits.md); they belong to no booking.
+  'VISIT_SCHEDULED',
+  'VISIT_RESCHEDULED',
+  'VISIT_CANCELLED',
+  'VISIT_REMINDER_1D',
+  'VISIT_REMINDER_TODAY',
+  'VISIT_STAFF_CALENDAR',
+  'VISIT_STAFF_CANCEL',
 ] as const;
 export type AutomationOnlyEvent = (typeof AUTOMATION_ONLY_EVENTS)[number];
 
@@ -87,6 +95,13 @@ export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   STAFF_CALENDAR_PENDING: 'Calendar event, pending request (staff)',
   STAFF_CALENDAR_REQUEST: 'Calendar invitation (staff)',
   STAFF_CALENDAR_CANCEL: 'Calendar cancellation (staff)',
+  VISIT_SCHEDULED: 'Ocular visit scheduled',
+  VISIT_RESCHEDULED: 'Ocular visit moved',
+  VISIT_CANCELLED: 'Ocular visit cancelled',
+  VISIT_REMINDER_1D: 'Visit reminder, one day',
+  VISIT_REMINDER_TODAY: 'Visit reminder, same day',
+  VISIT_STAFF_CALENDAR: 'Visit calendar event (staff)',
+  VISIT_STAFF_CANCEL: 'Visit calendar cancellation (staff)',
   REQUEST_RECEIVED: 'Booking request received',
   REQUEST_APPROVED: 'Booking request approved',
   HOLD_EXTENDED: 'Payment deadline extended',

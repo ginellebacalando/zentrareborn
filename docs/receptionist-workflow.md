@@ -23,7 +23,7 @@ Zeni, the virtual concierge, answers from Zion's published information and moves
 
 ## 3. Ocular visits
 
-Zeni shares the published visiting hours (by appointment) and offers **Schedule an ocular visit**, which opens the contact form with a visit request and the preferred date filled in (`/contact?topic=visit&date=…`). Staff confirm the visit time.
+Zeni shares the published visiting hours (by appointment) and offers **Schedule an ocular visit**, which opens the visit page with the date being discussed preselected when it has open times (`/visit?date=…&source=zeni`). The visitor picks an open time and gets a confirmation email with a calendar invitation at once; staff see the visit on the Front desk ([docs/visits.md](visits.md)). Earlier links to `/contact?topic=visit` still open the contact form with a visit message.
 
 ## 4. Staff hand-off
 

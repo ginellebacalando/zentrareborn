@@ -2,6 +2,7 @@ import {
   CalendarCheck,
   CalendarDays,
   ChartLine,
+  ConciergeBell,
   FileSignature,
   Headset,
   History,
@@ -22,6 +23,7 @@ import styles from './admin.module.css';
 const icons: Record<AdminModuleKey, LucideIcon> = {
   dashboard: LayoutDashboard,
   bookings: CalendarCheck,
+  'front-desk': ConciergeBell,
   contracts: FileSignature,
   calendar: CalendarDays,
   inquiries: Inbox,

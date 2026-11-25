@@ -15,6 +15,7 @@ import {
   sweepInquiryNotifications,
 } from './scheduler';
 import type { MailTransport } from './transport';
+import { scheduleVisitReminders } from './visits';
 
 export type AutomationTrigger = 'cron' | 'cli' | 'admin';
 
@@ -30,6 +31,8 @@ export type AutomationRunSummary = {
     /** Reminders to pay the rest of a confirmed booking before the full-payment date. */
     balanceReminders: number;
     completedEvents: number;
+    /** Ocular visit reminders: the day before and on the morning (docs/visits.md). */
+    visitReminders: number;
   };
   delivery: DeliveryRunResult;
   failedSteps: string[];
@@ -66,6 +69,9 @@ export async function runAutomation(options: {
   );
   const completedEvents = await step('completion', failedSteps, () => completeFinishedEvents(now));
   const reminders = await step('reminders', failedSteps, () => scheduleEventReminders(now));
+  const visitReminders = await step('visit-reminders', failedSteps, () =>
+    scheduleVisitReminders(now),
+  );
   const digest = await step('digest', failedSteps, () => scheduleDailyDigest(now));
   const delivery = await processDueJobs({
     now,
@@ -82,6 +88,7 @@ export async function runAutomation(options: {
       holdReminders,
       balanceReminders,
       completedEvents,
+      visitReminders,
     },
     delivery,
     failedSteps,
@@ -93,7 +100,7 @@ export async function runAutomation(options: {
       failed: delivery.failed,
       retrying: delivery.retrying,
       waiting: delivery.waiting,
-      scheduled: inquiries + reminders + digest + holdReminders + balanceReminders,
+      scheduled: inquiries + reminders + digest + holdReminders + balanceReminders + visitReminders,
       bookingsChanged: expiredHolds + completedEvents,
     };
     await prisma.automationState.upsert({

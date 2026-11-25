@@ -2,6 +2,7 @@ import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { AdminError, adminResponse, checkMutationOrigin, requireAdmin } from '@/lib/admin/access';
+import { FRONT_DESK_OPERATIONS } from '@/lib/admin/front-desk';
 import { adminRead, adminMutate } from '@/lib/admin/service';
 
 export const runtime = 'nodejs';
@@ -67,6 +68,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
       settings: ['settings'],
       preferences: ['preferences'],
       services: ['catalog-category', 'catalog-package'],
+      'front-desk': [...FRONT_DESK_OPERATIONS],
     };
     if (typeof op !== 'string' || !allowed[section]?.includes(op))
       throw new AdminError('Operation is not allowed in this module.', 400);

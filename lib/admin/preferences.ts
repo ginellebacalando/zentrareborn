@@ -21,6 +21,12 @@ import {
   type PaymentAccounts,
 } from './payment-accounts';
 import {
+  DEFAULT_VISIT_RULES,
+  VISIT_CLOSED_DATES_MAX,
+  visitRulesProblem,
+  type VisitRules,
+} from '@/lib/visit-rules';
+import {
   DEFAULT_ADMIN_PREFERENCES,
   SESSION_TIMEOUT_OPTIONS,
   notificationLabels,
@@ -108,6 +114,28 @@ export const preferencesSchema = z
               .optional(),
           })
           .strict()
+          .optional(),
+        // Optional like the others: an older Settings page leaves the saved visit rules unchanged.
+        visitRules: z
+          .object({
+            weekly: z
+              .array(
+                z
+                  .object({ open: z.string().max(5), close: z.string().max(5) })
+                  .strict()
+                  .nullable(),
+              )
+              .length(7),
+            slotMinutes: z.number().int(),
+            capacity: z.number().int(),
+            noticeHours: z.number().int(),
+            closedDates: z.array(z.string().max(10)).max(VISIT_CLOSED_DATES_MAX),
+          })
+          .strict()
+          .superRefine((rules, context) => {
+            const issue = visitRulesProblem(rules);
+            if (issue) context.addIssue({ code: 'custom', message: issue.problem });
+          })
           .optional(),
         // Optional like bookingRules: an older Settings page leaves saved accounts unchanged.
         paymentAccounts: z
@@ -209,6 +237,34 @@ function storedPaymentAccounts(settings: unknown): PaymentAccounts {
   });
   return paymentAccountsProblem(accounts) ? structuredClone(EMPTY_PAYMENT_ACCOUNTS) : accounts;
 }
+/** Lenient reader for the saved visit rules: a missing or invalid set falls back to the defaults. */
+function storedVisitRules(settings: unknown): VisitRules {
+  const stored = record(record(record(settings).admin).visitRules);
+  const hours = (value: unknown) => {
+    const day = record(value);
+    return typeof day.open === 'string' && typeof day.close === 'string'
+      ? { open: day.open, close: day.close }
+      : null;
+  };
+  const rules: VisitRules = {
+    weekly: Array.isArray(stored.weekly) ? stored.weekly.map(hours) : [],
+    slotMinutes: typeof stored.slotMinutes === 'number' ? stored.slotMinutes : NaN,
+    capacity: typeof stored.capacity === 'number' ? stored.capacity : NaN,
+    noticeHours: typeof stored.noticeHours === 'number' ? stored.noticeHours : NaN,
+    closedDates: Array.isArray(stored.closedDates)
+      ? stored.closedDates.filter((date): date is string => typeof date === 'string')
+      : [],
+  };
+  return visitRulesProblem(rules) ? structuredClone(DEFAULT_VISIT_RULES) : rules;
+}
+/** The saved visit rules; inside a transaction pass its client. */
+export async function readVisitRules(db: Prisma.TransactionClient = prisma) {
+  const row = await db.systemSetting.findUnique({
+    where: { id: 'singleton' },
+    select: { settings: true },
+  });
+  return storedVisitRules(row?.settings);
+}
 /** The saved payment accounts; inside a transaction pass its client. */
 export async function readPaymentAccounts(db: Prisma.TransactionClient = prisma) {
   const row = await db.systemSetting.findUnique({
@@ -276,6 +332,7 @@ export function normalizeAdminPreferences(input: unknown) {
       staffNotifications: { emails: storedStaffNotificationEmails(root) },
       bookingRules: storedBookingRules(root),
       paymentAccounts: storedPaymentAccounts(root),
+      visitRules: storedVisitRules(root),
     },
     client: {
       maintenanceMode: bool(client.maintenanceMode, defaults.client.maintenanceMode),
@@ -349,6 +406,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         ...(settings.admin.paymentAccounts
           ? { paymentAccounts: settings.admin.paymentAccounts }
           : {}),
+        ...(settings.admin.visitRules ? { visitRules: settings.admin.visitRules } : {}),
       },
     };
     // The audit trail records that the staff inboxes changed and how many there are, never which.
@@ -373,6 +431,12 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         JSON.stringify(storedPaymentAccounts(previous?.settings))
         ? ' Payment accounts changed.'
         : '';
+    const visitsChange =
+      settings.admin.visitRules &&
+      JSON.stringify(settings.admin.visitRules) !==
+        JSON.stringify(storedVisitRules(previous?.settings))
+        ? ' Visit hours or rules changed.'
+        : '';
     const row = await tx.systemSetting.upsert({
       where: { id: 'singleton' },
       create: {
@@ -389,7 +453,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         userRole: actor.role,
         action: 'SETTINGS_CHANGE',
         module: 'Settings',
-        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${accountsChange}`,
+        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${accountsChange}${visitsChange}`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },

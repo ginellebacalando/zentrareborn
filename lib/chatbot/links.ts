@@ -1,7 +1,7 @@
 /**
  * Pre-filled links Zeni offers instead of submitting anything itself. The booking page parses
  * these values with zod (app/booking/_components/bookingPrefill.ts) and ignores anything invalid;
- * the contact page does the same for visit requests.
+ * the visit page (app/visit) does the same for its preferred day.
  */
 export type BookingLinkInput = {
   eventType?: string;
@@ -59,9 +59,10 @@ export function buildBookingLink(input: BookingLinkInput) {
   return `/booking?${params.toString()}`;
 }
 
+/** The ocular visit page (docs/visits.md), opened on the visitor's date when it has open times. */
 export function buildVisitLink(date?: string) {
-  const params = new URLSearchParams({ topic: 'visit' });
+  const params = new URLSearchParams();
   if (date && DATE_KEY.test(date)) params.set('date', date);
   params.set('source', 'zeni');
-  return `/contact?${params.toString()}#message-us`;
+  return `/visit?${params.toString()}`;
 }

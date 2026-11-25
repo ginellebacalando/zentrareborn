@@ -113,10 +113,13 @@ export default function AdminWorkspace({
     }
   }, [selected]);
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('inquiry');
+    // ?inquiry= comes from the Inquiries inbox, ?visit= from the Front desk.
+    const search = new URLSearchParams(window.location.search);
+    const source = search.get('inquiry') ? 'inquiry' : 'visit';
+    const id = search.get(source);
     if (section === 'bookings' && id) {
       const controller = new AbortController();
-      fetch(`/api/admin/bookings?inquiry=${encodeURIComponent(id)}`, {
+      fetch(`/api/admin/bookings?${source}=${encodeURIComponent(id)}`, {
         signal: controller.signal,
       })
         .then(async (r) => {

@@ -19,6 +19,12 @@ import {
   type OnlinePaymentMethod,
 } from './payment-accounts';
 import { readBookingProofs } from './payment-proofs';
+import {
+  bookingPrefillFromVisit,
+  FRONT_DESK_OPERATIONS,
+  frontDeskMutate,
+  readFrontDesk,
+} from './front-desk';
 import { readDashboardInsights } from './dashboard';
 import { readDashboardKpis } from './dashboard-kpis';
 import { readAnalyticsReport } from './analytics';
@@ -302,6 +308,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
     return { ...(await getAdminPreferences()), canEdit: actor.role === 'SUPERADMIN' };
   // Polled by the dashboard's Website activity panel; read-only, so it has no POST operations.
   if (section === 'website-activity') return readWebsiteActivity();
+  if (section === 'front-desk') return readFrontDesk(params);
   if (section === 'notifications') {
     const [pending, flagged, inquiries, deliveryIssues, screenshots, p] = await Promise.all([
       prisma.adminBooking.count({
@@ -723,6 +730,9 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
         booking: { ...booking, paymentProofs: await readBookingProofs(prisma, booking.id) },
       };
     }
+    // "Start booking for this client" on the Front desk pre-fills the New request form.
+    if (params.get('visit'))
+      return { inquiry: await bookingPrefillFromVisit(params.get('visit')!) };
     if (params.get('inquiry')) {
       const inquiry = await prisma.inquiry.findUnique({
         where: { id: params.get('inquiry')! },
@@ -795,6 +805,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
   const op = z.object({ op: z.string() }).parse(raw).op;
   if (op === 'preferences') return saveAdminPreferences(raw, actor);
   if (op === 'catalog-category' || op === 'catalog-package') return saveCatalog(raw, actor);
+  if ((FRONT_DESK_OPERATIONS as readonly string[]).includes(op)) return frontDeskMutate(raw, actor);
   if (op === 'create-booking') {
     const input = z
       .object({

@@ -91,6 +91,7 @@ Notifications (inquiry alerts and acknowledgements, booking decisions with calen
 - `npm run db:booking-holds:check` checks the booking automation column ([docs/booking-automation.md](docs/booking-automation.md)); add `-- --apply` to install `prisma/booking-holds.sql`.
 - `npm run db:payment-proofs:check` checks the private payment screenshot table and the payment method column (phase 2 of the booking automation); add `-- --apply` to install `prisma/payment-proofs.sql`.
 - `npm run db:payment-receipts:check` checks the acknowledgment number column and counter (phase 3); add `-- --apply` to install `prisma/payment-receipts.sql`.
+- `npm run db:visits:check` checks the ocular visit table ([docs/visits.md](docs/visits.md)); add `-- --apply` to install `prisma/visits.sql`.
 - `npm run automation:run` performs one automation run from the command line.
 - `npm run test:automation` tests the outbox, delivery, scheduling, calendar invitations and cron authorization without contacting a mail server.
 

@@ -1,0 +1,75 @@
+/* Settings > Ocular Visits: a card per weekday and the list of closed dates. Two-class
+   selectors where the admin root styles every label, fieldset and input. */
+.days {
+  display: grid;
+  /* Wide enough for two time fields side by side; one card per row on narrow screens. */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.days .day {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-control);
+}
+.day legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-semibold);
+}
+.day .toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--layout-touch-target);
+}
+/* The admin root sizes every input as a full-width field; the switch stays a checkbox. */
+.day .toggle input {
+  flex-shrink: 0;
+  width: 1.25rem;
+  min-width: 0;
+  height: 1.25rem;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--admin-action);
+}
+.times {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
+  gap: var(--space-2);
+}
+.times label {
+  font-size: var(--type-small);
+}
+.addDate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.addDate label {
+  display: grid;
+  flex: 1 1 12rem;
+  gap: var(--space-1);
+}
+.dates {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dates li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-control);
+}

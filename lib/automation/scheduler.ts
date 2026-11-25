@@ -127,6 +127,7 @@ export async function scheduleDailyDigest(now = new Date()) {
     deadlinesToday,
     paymentScreenshots,
     failedEmails,
+    visitsToday,
     staff,
   ] = await Promise.all([
     prisma.adminBooking.findMany({
@@ -159,6 +160,15 @@ export async function scheduleDailyDigest(now = new Date()) {
     }),
     prisma.adminPaymentProof.count({ where: { status: 'SUBMITTED' } }),
     prisma.adminOutbox.count({ where: { status: 'REVIEW_REQUIRED' } }),
+    prisma.adminVisit.findMany({
+      where: {
+        status: { in: ['SCHEDULED', 'CHECKED_IN'] },
+        startsAt: { gte: todayStart, lt: tomorrowStart },
+      },
+      orderBy: { startsAt: 'asc' },
+      take: 20,
+      select: { reference: true, clientName: true, startsAt: true },
+    }),
     resolveStaffRecipients(),
   ]);
   const appUrl = applicationUrl();
@@ -177,6 +187,7 @@ export async function scheduleDailyDigest(now = new Date()) {
     deadlinesToday,
     paymentScreenshots,
     failedEmails,
+    visits: visitsToday,
     adminUrl: appUrl ? `${appUrl}/admin/dashboard` : null,
   });
   return (

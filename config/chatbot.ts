@@ -72,8 +72,8 @@ export const websiteChatSources: ChatSource[] = [
     id: 'visits',
     kind: 'venue',
     title: 'Visiting hours and site visits',
-    href: '/contact',
-    text: `${BRAND.visits.hours.map((entry) => `${entry.days}: ${entry.time}`).join('\n')}\n${BRAND.visits.notice}.`,
+    href: '/visit',
+    text: `${BRAND.visits.hours.map((entry) => `${entry.days}: ${entry.time}`).join('\n')}\n${BRAND.visits.notice}. Choose an open day and time on the visit page; a confirmation email with a calendar invitation follows right away.`,
     keywords: ['visiting', 'hour', 'opening', 'business', 'tour', 'ocular', 'site visit', 'visit'],
   },
   {

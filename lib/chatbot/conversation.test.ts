@@ -234,15 +234,12 @@ test('grounded answers carry sources, cards, links and a redacted compose reques
   assert.ok(facility.reply.links?.some((link) => link.kind === 'visit'));
 });
 
-test('the visit intent offers a pre-filled ocular visit request', () => {
+test('the visit intent opens the visit page on the date the visitor asked about', () => {
   const { say } = scenario();
   say('Is 2099-03-03 available?');
   const plan = say('Can we schedule an ocular visit?');
   assert.equal(plan.reply.kind, 'answer');
-  assert.equal(
-    plan.reply.links?.[0]?.href,
-    '/contact?topic=visit&date=2099-03-03&source=zeni#message-us',
-  );
+  assert.equal(plan.reply.links?.[0]?.href, '/visit?date=2099-03-03&source=zeni');
   assert.match(plan.reply.message, /appointment/);
 });
 

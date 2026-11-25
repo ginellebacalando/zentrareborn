@@ -24,6 +24,13 @@
   line-height: var(--line-body);
 }
 
+.introLink {
+  color: var(--action-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .visuallyHidden {
   position: absolute;
   width: 1px;

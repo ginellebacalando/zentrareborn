@@ -100,6 +100,42 @@ model AdminPaymentProof {
   @@index([referenceNumber])
   @@map("zion_payment_proofs")
 }
+// An ocular visit: a client's scheduled time to see the venue (prisma/visits.sql, docs/visits.md).
+model AdminVisit {
+  id String @id @default(cuid())
+  reference String @unique @db.VarChar(30)
+  clientName String @db.VarChar(180)
+  email String @db.VarChar(255)
+  phone String @db.VarChar(40)
+  startsAt DateTime
+  endsAt DateTime
+  // When the current time was chosen; reminders skip a visit scheduled only hours before.
+  scheduledAt DateTime @default(now())
+  // SCHEDULED, CHECKED_IN, COMPLETED, NO_SHOW or CANCELLED.
+  status String @default("SCHEDULED") @db.VarChar(20)
+  // WEBSITE, ZENI or STAFF.
+  source String @default("WEBSITE") @db.VarChar(20)
+  eventType String @default("") @db.VarChar(100)
+  eventDate DateTime? @db.Date
+  guests Int?
+  message String @default("") @db.Text
+  staffNotes String @default("") @db.Text
+  // Increases when the time changes or the visit is cancelled, so calendar updates replace the
+  // earlier event (the invitation's SEQUENCE).
+  revision Int @default(1)
+  consentAt DateTime?
+  checkedInAt DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  cancelReason String @default("") @db.Text
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([startsAt])
+  @@index([status, startsAt])
+  @@index([email])
+  @@map("zion_visits")
+}
 model AdminContract {
   id String @id @default(cuid())
   bookingId String

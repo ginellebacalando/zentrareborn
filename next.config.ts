@@ -72,15 +72,17 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
         ],
       })),
-      // A client's private payment page and its receipts: the signed link is never indexed or sent
-      // on as a referrer.
-      ...['/booking/pay/:token', '/booking/pay/:token/:path*'].map((source) => ({
-        source,
-        headers: [
-          { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
-          { key: 'Referrer-Policy', value: 'no-referrer' },
-        ],
-      })),
+      // A client's private payment page and its receipts, and a visitor's private visit page: the
+      // signed link is never indexed or sent on as a referrer.
+      ...['/booking/pay/:token', '/booking/pay/:token/:path*', '/visit/manage/:token'].map(
+        (source) => ({
+          source,
+          headers: [
+            { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
+            { key: 'Referrer-Policy', value: 'no-referrer' },
+          ],
+        }),
+      ),
       // Payment screenshots come from the public and receipts are downloads, so even opened
       // directly they stay inert, sandboxed documents. Listed after the site-wide rule, which they
       // replace for this header.

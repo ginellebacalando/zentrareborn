@@ -7,6 +7,7 @@ import { STAFF_EVENTS } from './catalog';
 import { AUTOMATION_POLICY, readMailSettings, type MailSettings } from './config';
 import { retryDelayMs } from './outbox';
 import { resolveStaffRecipients } from './recipients';
+import { visitJobIrrelevance } from './visits';
 import {
   classifyDeliveryError,
   createSmtpTransport,
@@ -135,6 +136,8 @@ async function finish(job: AdminOutbox, status: 'REVIEW_REQUIRED' | 'EXPIRED', l
  * reminder is only useful while the date is still held and its deadline has not passed.
  */
 async function irrelevanceReason(job: AdminOutbox, now: Date) {
+  // Ocular visits have their own rules: a stale time or a cancelled visit is never sent.
+  if (job.event.startsWith('VISIT_')) return visitJobIrrelevance(job, now);
   const reminder = REMINDER_EVENTS.has(job.event);
   if (
     !reminder &&
