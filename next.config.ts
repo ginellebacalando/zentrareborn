@@ -66,22 +66,28 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'private, no-store, max-age=0' },
         ],
       })),
-      // A client's private payment page: its signed link is never indexed or sent on as a referrer.
-      {
-        source: '/booking/pay/:token',
+      // A client's private payment page and its receipts: the signed link is never indexed or sent
+      // on as a referrer.
+      ...['/booking/pay/:token', '/booking/pay/:token/:path*'].map((source) => ({
+        source,
         headers: [
           { key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' },
           { key: 'Referrer-Policy', value: 'no-referrer' },
         ],
-      },
-      // Payment screenshots come from the public, so even opened directly they stay an inert,
-      // sandboxed document. Listed after the site-wide rule, which it replaces for this header.
-      {
-        source: '/api/admin/payment-proofs/:id',
+      })),
+      // Payment screenshots come from the public and receipts are downloads, so even opened
+      // directly they stay inert, sandboxed documents. Listed after the site-wide rule, which they
+      // replace for this header.
+      ...[
+        '/api/admin/payment-proofs/:id',
+        '/api/admin/receipts/:id',
+        '/booking/pay/:token/receipts/:paymentId',
+      ].map((source) => ({
+        source,
         headers: [
           { key: 'Content-Security-Policy', value: "default-src 'none'; img-src 'self'; sandbox" },
         ],
-      },
+      })),
     ];
   },
 };

@@ -13,6 +13,7 @@ import {
   transferReceiptNumber,
 } from './payment-accounts';
 import { sniffPaymentProofType, stripJpegMetadata } from '../payment-proof-file';
+import { balanceDueDate } from './booking-rules';
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const png = () => new Uint8Array([...PNG_SIGNATURE, ...randomBytes(48)]);
@@ -94,6 +95,9 @@ test(
     await db.exec(proofsSql);
     // Re-running the installer SQL must be harmless.
     await db.exec(proofsSql);
+    const receiptsSql = readFileSync('prisma/payment-receipts.sql', 'utf8');
+    await db.exec(receiptsSql);
+    await db.exec(receiptsSql);
     const server = createServer(db, { logLevel: LogLevel.Error });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
@@ -107,7 +111,7 @@ test(
     const { prisma } = await import('../prisma');
     const { adminMutate, adminRead } = await import('./service');
     const { getAdminPreferences } = await import('./preferences');
-    const { expireUnpaidHolds } = await import('./booking-automation');
+    const { expireUnpaidHolds, scheduleBalanceReminders } = await import('./booking-automation');
     const { paymentLinkToken } = await import('../payment-link');
     const { readPaymentPage, submitPaymentProof } = await import('../../services/payment-proofs');
     const actor = {
@@ -428,8 +432,81 @@ test(
         where: { bookingId: first, event: 'RESERVATION_CONFIRMED' },
       });
       assert.equal(confirmation.calendarMethod, 'REQUEST');
-      assert.equal((await readPaymentPage(token)).state, 'confirmed');
-      await assert.rejects(send(first), /not waiting for a payment/);
+      // A balance remains, so the confirmation links the payment page for it.
+      assert.match(confirmation.body, /See how to pay or upload your payment: https:/);
+
+      // Phase 3: every recorded payment has an acknowledgment number and a downloadable receipt.
+      const feePayment = b.payments[0];
+      assert.match(feePayment.acknowledgmentNumber ?? '', /^ACK-\d{4}-\d{6}$/);
+      const verifiedNotice = await prisma.adminOutbox.findFirstOrThrow({
+        where: { bookingId: first, event: 'PAYMENT_VERIFIED' },
+      });
+      assert.ok(
+        verifiedNotice.body.includes(
+          `Download your acknowledgment receipt: https://zentra.example.test/booking/pay/${token}/receipts/${feePayment.id}`,
+        ),
+      );
+      const receiptRoute = await import('../../app/booking/pay/[token]/receipts/[paymentId]/route');
+      const download = await receiptRoute.GET(new Request('https://zentra.example.test/'), {
+        params: Promise.resolve({ token, paymentId: feePayment.id }),
+      });
+      assert.equal(download.status, 200);
+      assert.equal(download.headers.get('content-type'), 'application/pdf');
+      assert.match(
+        download.headers.get('content-disposition') ?? '',
+        /^attachment; filename="ACK-\d{4}-\d{6}\.pdf"$/,
+      );
+      assert.equal(
+        Buffer.from(await download.arrayBuffer())
+          .subarray(0, 5)
+          .toString(),
+        '%PDF-',
+      );
+      const forgedReceipt = await receiptRoute.GET(new Request('https://zentra.example.test/'), {
+        params: Promise.resolve({
+          token: `${first}.forged-signature-forged-signatu`,
+          paymentId: feePayment.id,
+        }),
+      });
+      assert.equal(forgedReceipt.status, 404);
+
+      // After confirmation the same page takes the balance, due 14 days before the event.
+      const balancePage = await readPaymentPage(token);
+      assert.ok(balancePage.state === 'confirmed');
+      assert.equal(balancePage.paying, 'balance');
+      assert.equal(balancePage.amountDueCents, 7000000);
+      assert.equal(balancePage.balanceDueAt, balanceDueDate(b.startsAt, 14).toISOString());
+      assert.deepEqual(
+        balancePage.payments.map((payment) => payment.acknowledgmentNumber),
+        [feePayment.acknowledgmentNumber],
+      );
+      await send(first, { referenceNumber: '5555 6666 777', amount: '70000.00' });
+      const balanceProof = await prisma.adminPaymentProof.findFirstOrThrow({
+        where: { bookingId: first, status: 'SUBMITTED' },
+      });
+      const balanceAlert = await prisma.adminOutbox.findUniqueOrThrow({
+        where: { idempotencyKey: `payment-proof:${balanceProof.id}:staff` },
+      });
+      assert.match(balanceAlert.body, /balance of a confirmed booking/);
+      b = await get(first);
+      assert.deepEqual(
+        await verify(first, balanceProof.id, b.revision, {
+          amountCents: 7000000,
+          referenceNumber: '5555 6666 777',
+        }),
+        { id: first, confirmed: false },
+      );
+      b = await get(first);
+      assert.equal(b.reservation, 'CONFIRMED');
+      const numbers = b.payments
+        .map((payment) => Number(payment.acknowledgmentNumber?.slice(-6)))
+        .sort((x, y) => x - y);
+      assert.equal(numbers.length, 2);
+      assert.equal(numbers[1], numbers[0] + 1, 'Acknowledgment numbers follow each other');
+      const paidPage = await readPaymentPage(token);
+      assert.ok(paidPage.state === 'confirmed' && paidPage.paying === null);
+      assert.equal(paidPage.payments.length, 2);
+      await assert.rejects(send(first), /no payment due right now/);
 
       // The same transfer cannot pay for a second booking.
       const second = await booking(9, 'Second Client');
@@ -450,6 +527,48 @@ test(
       );
       assert.equal((await get(second)).payments.length, 0);
 
+      // Balance reminders: a week before the full-payment date, then the day before.
+      const reminderId = await booking(18, 'Reminder Client');
+      let held = await get(reminderId);
+      await adminMutate(
+        {
+          op: 'cash-receipt',
+          id: reminderId,
+          revision: held.revision,
+          amountCents: 3000000,
+          receiptNumber: 'OR-REMIND-1',
+          receivedAt: new Date().toISOString(),
+          note: '',
+        },
+        actor,
+      );
+      held = await get(reminderId);
+      assert.equal(held.reservation, 'CONFIRMED');
+      const cashNotice = await prisma.adminOutbox.findFirstOrThrow({
+        where: { bookingId: reminderId, event: 'CASH_RECEIPT' },
+      });
+      assert.match(cashNotice.body, /Download your acknowledgment receipt: https:/);
+      const dueAt = balanceDueDate(held.startsAt, 14);
+      assert.equal(
+        await scheduleBalanceReminders(new Date()),
+        0,
+        'Not right after a payment notice',
+      );
+      const later = new Date(Date.now() + 13 * 3_600_000);
+      assert.equal(await scheduleBalanceReminders(later), 1);
+      assert.equal(await scheduleBalanceReminders(later), 0, 'Each reminder is sent once');
+      assert.equal(await scheduleBalanceReminders(new Date(dueAt.getTime() - 12 * 3_600_000)), 1);
+      const reminders = await prisma.adminOutbox.findMany({
+        where: { bookingId: reminderId, event: 'BALANCE_REMINDER' },
+        orderBy: { createdAt: 'asc' },
+      });
+      assert.deepEqual(
+        reminders.map((reminder) => reminder.idempotencyKey?.split(':').at(-1)),
+        ['week', 'day'],
+      );
+      assert.match(reminders[0].body, /remaining balance of .70,000 by /);
+      assert.match(reminders[0].body, /See how to pay or upload your payment: https:/);
+
       // A client cannot flood the review queue.
       for (let upload = 2; upload <= 5; upload += 1) await send(second);
       await assert.rejects(send(second), /several screenshots today/);
@@ -458,6 +577,43 @@ test(
         1,
         'Only the newest upload waits for review',
       );
+
+      // A Settings page from before phase 3 sends no full-payment rule; the saved one stays.
+      const current = await getAdminPreferences();
+      await adminMutate(
+        {
+          op: 'preferences',
+          settings: {
+            ...current.settings,
+            admin: {
+              ...current.settings.admin,
+              bookingRules: { ...current.settings.admin.bookingRules, balanceDueDays: 21 },
+            },
+          },
+          updatedAt: current.updatedAt,
+        },
+        actor,
+      );
+      const saved = await getAdminPreferences();
+      assert.equal(saved.settings.admin.bookingRules.balanceDueDays, 21);
+      await adminMutate(
+        {
+          op: 'preferences',
+          settings: {
+            ...saved.settings,
+            admin: {
+              ...saved.settings.admin,
+              bookingRules: {
+                paymentDeadlineDays: saved.settings.admin.bookingRules.paymentDeadlineDays,
+                reviewGuestLimit: saved.settings.admin.bookingRules.reviewGuestLimit,
+              },
+            },
+          },
+          updatedAt: saved.updatedAt,
+        },
+        actor,
+      );
+      assert.equal((await getAdminPreferences()).settings.admin.bookingRules.balanceDueDays, 21);
     } finally {
       await prisma.$disconnect();
       await new Promise<void>((resolve) => server.close(() => resolve()));

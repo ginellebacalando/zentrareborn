@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
-import { X, Download, ShieldCheck, ChevronDown, Package, Pencil } from 'lucide-react';
+import { X, Download, FileText, ShieldCheck, ChevronDown, Package, Pencil } from 'lucide-react';
+import { balanceDueDate } from '@/lib/admin/booking-rules';
 import { money, paidTotal, paymentStatus, confirmationError } from '@/lib/admin/domain';
 import { displayStatus, displayStatusLabels } from '@/lib/admin/dashboard-status';
 import { onlinePaymentMethods, PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
@@ -160,6 +161,12 @@ export default function BookingDetail({
   const screenshotWaiting = (b.paymentProofs ?? []).some((proof) => proof.status === 'SUBMITTED');
   // Clients can send screenshots only while a GCash or bank account is set up in Settings.
   const onlinePayment = onlinePaymentMethods(settings.admin.paymentAccounts).length > 0;
+  // Zion's terms ask for full payment a set number of days before the event (Settings).
+  const balanceDue =
+    b.reservation === 'CONFIRMED' && paid < b.totalCents
+      ? balanceDueDate(new Date(b.startsAt), settings.admin.bookingRules.balanceDueDays)
+      : null;
+  const balanceOverdue = balanceDue !== null && hasPassed(balanceDue);
   async function submitReceipt(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
@@ -338,6 +345,15 @@ export default function BookingDetail({
                 <dd>{eventDate(deadline)}</dd>
               </>
             )}
+            {balanceDue && (
+              <>
+                <dt>Full payment due</dt>
+                <dd>
+                  {eventDate(balanceDue)}
+                  {balanceOverdue && <span className={styles.detailNote}>Overdue</span>}
+                </dd>
+              </>
+            )}
             <dt>Confirmation rule</dt>
             <dd>
               {b.paymentRule.replaceAll('_', ' ').toLowerCase()}
@@ -475,12 +491,26 @@ export default function BookingDetail({
                       {PAYMENT_METHOD_LABELS[p.method as keyof typeof PAYMENT_METHOD_LABELS] ??
                         p.method}
                     </small>
+                    {p.acknowledgmentNumber && (
+                      <small>Acknowledgment {p.acknowledgmentNumber}</small>
+                    )}
                   </div>
                   <div>
                     <strong>{money(p.amountCents)}</strong>
                     <Badge value={p.voidedAt ? 'VOIDED' : 'RECORDED'} />
                   </div>
                 </div>
+                {p.acknowledgmentNumber && (
+                  <a
+                    className={styles.receiptDownload}
+                    href={`/api/admin/receipts/${encodeURIComponent(p.id)}`}
+                    download
+                  >
+                    <FileText size={16} aria-hidden="true" />
+                    Download receipt (PDF)
+                    <span className={styles.srOnly}> {p.acknowledgmentNumber}</span>
+                  </a>
+                )}
                 {p.note && <p>{p.note}</p>}
                 {p.voidedAt && <p className={styles.help}>Correction: {p.voidReason}</p>}
                 {owner && !p.voidedAt && (

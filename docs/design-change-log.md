@@ -1,5 +1,50 @@
 # Design change log
 
+## 25 November 2026 — Booking automation phase 3: balance payments and acknowledgment receipts
+
+User task: after the plan comparison, build balance payments and receipts next (the user chose
+"Balance + receipts").
+
+Affected screens and files:
+
+- Client payment page (`app/booking/pay/[token]/`, `services/payment-proofs.ts`): after
+  confirmation it shows the remaining balance and the full-payment date (stacked labels on phones),
+  takes a GCash or bank screenshot for the balance, and lists "Payments received" with a
+  "Download receipt (PDF)" link each (underlined; screen readers also hear the acknowledgment
+  number). Messages for a balance screenshot no longer mention a held date.
+- Admin → Bookings (`components/admin/BookingDetail.tsx`, `PaymentProofReview.tsx`): a "Full
+  payment due" row (marked overdue once passed); each payment shows its acknowledgment number and a
+  "Download receipt (PDF)" link (`.receiptDownload`, underlined, touch-sized); the Payment
+  screenshots section stays visible while a confirmed booking has a balance, with wording for a
+  balance payment.
+- Admin → Settings (`components/admin/SystemSettingsForm.tsx`): "Days before the event full
+  payment is due" (default 14 from Zion's terms) in the Booking Automation card; each rule's error
+  now shows under its own field.
+- Receipt PDF (`lib/payment-receipts.ts`, pdf-lib): one A4 page in the ZENTRA palette from
+  `lib/automation/email-theme.ts` (which gains the soft green and danger tokens), standard fonts
+  (amounts as "PHP"), and the footer "This is an acknowledgment of payment and not an official
+  receipt."
+- Emails: "Balance payment reminder" a week and a day before the full-payment date; "Cash receipt
+  recorded" and "Payment verified" link the receipt; the confirmation links the payment page while
+  a balance remains.
+- Data: `prisma/payment-receipts.sql` and its installer (acknowledgment number column and counter).
+
+Tokens only on the web screens; no new type sizes or motion.
+
+Verification: the payment test now covers acknowledgment numbers in order, the client receipt
+download (PDF, attachment, a forged link refused), the balance stage of the payment page, a verified
+balance screenshot, refused uploads once fully paid, the week and day balance reminders, and an
+older Settings page keeping the saved full-payment rule; the rules test covers the due date in
+Manila time. On the local preview (demo database, no email sent): a website booking with ₱5,000 cash
+recorded showed "Full payment due 12/29/2026" for a 12 January event, the payment's acknowledgment
+number and receipt link (PDF, attachment, sandboxed, 401 when signed out); the client page showed
+the ₱40,000 balance, the due date, the receipt and the upload form; a ₱40,000 GCash screenshot was
+verified and the booking showed paid with ACK-2026-000001 and ACK-2026-000002. The emails had the
+receipt and payment links as intended. The new Settings field and the payment page at 320 px were
+checked; the receipt PDF was reviewed rendered with PDF.js. `npm run verify` passed (chatbot 68,
+admin 27, automation 31, developer 6, lint, build). Not checked: 200% text and 400% zoom, screen
+readers, the PDF in Adobe Reader or on a phone, and real email delivery.
+
 ## 25 November 2026 — Waiting bookings always show where payment screenshots arrive
 
 User task: the owner opened a booking waiting for payment and could not find how to verify the

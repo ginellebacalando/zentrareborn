@@ -7,7 +7,7 @@ import { automationJobLabel, STAFF_RECIPIENT_LIMITS } from './catalog';
 import { applicationUrl } from './config';
 import { buildCalendarInvite, type CalendarInvite, type CalendarMethod } from './ics';
 import { enqueueJobs, type NewAutomationJob, type OutboxDb } from './outbox';
-import { onlinePaymentsOffered, paymentPageAction } from './payment-proofs';
+import { onlinePaymentsOffered, paymentPageAction, receiptDownloadAction } from './payment-proofs';
 import { resolveStaffRecipients } from './recipients';
 import {
   renderPlainNotice,
@@ -72,8 +72,16 @@ const CALENDAR_NOTES: Record<CalendarMethod, string> = {
     'The calendar invitation for this event is cancelled. Your calendar app can remove it using the attached update.',
 };
 
-/** Notices that ask the client to pay, so they link to the private payment page. */
-const PAYMENT_LINK_EVENTS = new Set(['REQUEST_APPROVED', 'HOLD_EXTENDED', 'PAYMENT_REJECTED']);
+/**
+ * Notices that ask the client to pay, so they link to the private payment page: the reservation
+ * fee of a held date, or the balance once the booking is confirmed (phase 3).
+ */
+const PAYMENT_LINK_EVENTS = new Set([
+  'REQUEST_APPROVED',
+  'HOLD_EXTENDED',
+  'PAYMENT_REJECTED',
+  'RESERVATION_CONFIRMED',
+]);
 
 const STAFF_CALENDAR_EVENTS = {
   PENDING: 'STAFF_CALENDAR_PENDING',
@@ -358,6 +366,8 @@ export async function enqueueBookingNotice(
     staffCalendar?: StaffCalendarChange;
     /** Event-specific detail for the client, such as why a payment screenshot was not accepted. */
     note?: string;
+    /** A payment just recorded: the notice links its acknowledgment receipt (phase 3). */
+    receiptPaymentId?: string;
     now?: Date;
   },
 ) {
@@ -380,9 +390,13 @@ export async function enqueueBookingNotice(
       },
     });
   const notice = bookingEmail(booking, input.paid, input.instructions, event, input.note);
-  const waitingForPayment = booking.reservation === 'REQUESTED' && booking.approval === 'APPROVED';
-  const paymentAction =
-    waitingForPayment && PAYMENT_LINK_EVENTS.has(event)
+  // The page takes a payment while the date is held, and for the balance after confirmation.
+  const acceptsPayment =
+    (booking.reservation === 'REQUESTED' && booking.approval === 'APPROVED') ||
+    (booking.reservation === 'CONFIRMED' && booking.totalCents > input.paid);
+  const paymentAction = input.receiptPaymentId
+    ? receiptDownloadAction(booking.id, input.receiptPaymentId)
+    : acceptsPayment && PAYMENT_LINK_EVENTS.has(event)
       ? paymentPageAction(booking.id, await onlinePaymentsOffered(db))
       : null;
   const rendered = renderPlainNotice({

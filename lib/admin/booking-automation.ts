@@ -7,9 +7,11 @@ import { AUTOMATION_POLICY, applicationUrl } from '@/lib/automation/config';
 import { enqueueJobs, type NewAutomationJob } from '@/lib/automation/outbox';
 import { onlinePaymentsOffered, paymentPageAction } from '@/lib/automation/payment-proofs';
 import { resolveStaffRecipients } from '@/lib/automation/recipients';
-import { balanceAfterEventAlert, holdReminder } from '@/lib/automation/templates';
+import { balanceAfterEventAlert, balanceReminder, holdReminder } from '@/lib/automation/templates';
 import { manilaDay, manilaDayStart, manilaHour, ONE_DAY_MS } from '@/lib/automation/time';
+import { balanceDueDate } from './booking-rules';
 import { eventDate, paidTotal } from './domain';
+import { readBookingRules } from './preferences';
 import { policy } from './service';
 
 /**
@@ -28,6 +30,15 @@ const REMINDER_LEAD_MS = ONE_DAY_MS;
 /** No reminder when the client heard about the deadline this recently (a short hold). */
 const QUIET_AFTER_NOTICE_MS = ONE_DAY_MS / 2;
 const HOLD_NOTICES = ['REQUEST_RECEIVED', 'REQUEST_APPROVED', 'HOLD_EXTENDED'];
+/** Balance reminders go out this long before the full-payment date, then again a day before. */
+const BALANCE_REMINDER_LEAD_MS = 7 * ONE_DAY_MS;
+/** No balance reminder right after the client heard from us about a payment. */
+const BALANCE_NOTICES = [
+  'RESERVATION_CONFIRMED',
+  'CASH_RECEIPT',
+  'PAYMENT_VERIFIED',
+  'PAYMENT_REJECTED',
+];
 /** Finished events older than this are left to staff, so old balances never crowd the batch. */
 const COMPLETION_WINDOW_DAYS = 30;
 
@@ -182,6 +193,86 @@ export async function scheduleHoldReminders(now = new Date()) {
         paymentAction: paymentPageAction(b.id, online),
       }),
       expiresAt: b.holdExpiresAt,
+    });
+  }
+  return (await enqueueJobs(prisma, jobs, now)).length;
+}
+
+/**
+ * Reminders to pay the rest of a confirmed booking (phase 3): a week before the full-payment date
+ * in Zion's terms and again the day before. A client who sent a screenshot is waiting for staff,
+ * and one who heard from us about a payment in the last twelve hours is not reminded yet; the key
+ * includes the due date, so a changed rule or event date gets its own reminders.
+ */
+export async function scheduleBalanceReminders(now = new Date()) {
+  const rules = await readBookingRules();
+  // The due date is `balanceDueDays` before the event, so only events up to that many days after
+  // the reminder window can have a reminder due now.
+  const latestStart = new Date(
+    now.getTime() + BALANCE_REMINDER_LEAD_MS + (rules.balanceDueDays + 1) * ONE_DAY_MS,
+  );
+  const confirmed = await prisma.adminBooking.findMany({
+    where: {
+      reservation: 'CONFIRMED',
+      startsAt: { gt: now, lte: latestStart },
+      paymentProofs: { none: { status: 'SUBMITTED' } },
+    },
+    orderBy: { startsAt: 'asc' },
+    take: 100,
+    select: {
+      id: true,
+      reference: true,
+      clientName: true,
+      email: true,
+      eventType: true,
+      packageName: true,
+      guests: true,
+      startsAt: true,
+      endsAt: true,
+      totalCents: true,
+      payments: { select: { amountCents: true, voidedAt: true } },
+    },
+  });
+  const owing = confirmed
+    .map((b) => ({
+      ...b,
+      balance: b.totalCents - paidTotal(b.payments),
+      dueAt: balanceDueDate(b.startsAt, rules.balanceDueDays),
+    }))
+    .filter(
+      (b) =>
+        b.balance > 0 &&
+        b.dueAt > now &&
+        b.dueAt.getTime() - now.getTime() <= BALANCE_REMINDER_LEAD_MS,
+    );
+  if (!owing.length) return 0;
+  const notices = await prisma.adminOutbox.groupBy({
+    by: ['bookingId'],
+    where: { bookingId: { in: owing.map((b) => b.id) }, event: { in: BALANCE_NOTICES } },
+    _max: { createdAt: true },
+  });
+  const lastNotice = new Map(
+    notices.map((row) => [row.bookingId, row._max.createdAt?.getTime() ?? 0]),
+  );
+  const { cashInstructions } = await policy();
+  const online = await onlinePaymentsOffered(prisma);
+  const jobs: NewAutomationJob[] = [];
+  for (const b of owing) {
+    if ((lastNotice.get(b.id) ?? 0) > now.getTime() - QUIET_AFTER_NOTICE_MS) continue;
+    const stage = b.dueAt.getTime() - now.getTime() <= ONE_DAY_MS ? 'day' : 'week';
+    jobs.push({
+      idempotencyKey: `balance-reminder:${b.id}:${b.dueAt.toISOString()}:${stage}`,
+      event: 'BALANCE_REMINDER',
+      recipient: b.email,
+      bookingId: b.id,
+      ...balanceReminder({
+        ...b,
+        dueAt: b.dueAt,
+        balanceCents: b.balance,
+        instructions: cashInstructions,
+        paymentAction: paymentPageAction(b.id, online),
+      }),
+      expiresAt: b.dueAt,
     });
   }
   return (await enqueueJobs(prisma, jobs, now)).length;

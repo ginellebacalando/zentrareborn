@@ -2,6 +2,7 @@ import 'server-only';
 
 import { NotificationPriority, NotificationType } from '@prisma/client';
 import { z } from 'zod';
+import { balanceDueDate } from '@/lib/admin/booking-rules';
 import { paidTotal } from '@/lib/admin/domain';
 import {
   normalizeTransferReference,
@@ -10,11 +11,11 @@ import {
   type OnlinePaymentMethod,
   type PaymentAccounts,
 } from '@/lib/admin/payment-accounts';
-import { readPaymentAccounts } from '@/lib/admin/preferences';
+import { readBookingRules, readPaymentAccounts } from '@/lib/admin/preferences';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueuePaymentProofReceived } from '@/lib/automation/payment-proofs';
 import { bookingIdFromPaymentToken } from '@/lib/payment-link';
-import type { PaymentPageView } from '@/lib/payment-page-types';
+import type { PaymentPageView, RecordedPayment } from '@/lib/payment-page-types';
 import {
   PAYMENT_PROOF_MAX_BYTES,
   PaymentProofFileError,
@@ -82,7 +83,17 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
   const booking = await prisma.adminBooking.findUnique({
     where: { id: bookingId },
     include: {
-      payments: { select: { amountCents: true, voidedAt: true } },
+      payments: {
+        orderBy: { receivedAt: 'asc' },
+        select: {
+          id: true,
+          amountCents: true,
+          receivedAt: true,
+          method: true,
+          acknowledgmentNumber: true,
+          voidedAt: true,
+        },
+      },
       paymentProofs: {
         where: { status: { not: 'REPLACED' } },
         orderBy: { createdAt: 'desc' },
@@ -98,13 +109,16 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
     },
   });
   if (!booking) return { state: 'invalid' };
-  const [accounts, venuePolicy] = await Promise.all([
+  const [accounts, venuePolicy, rules] = await Promise.all([
     readPaymentAccounts(),
     prisma.adminPolicy.findUnique({ where: { id: 'venue' }, select: { cashInstructions: true } }),
+    readBookingRules(),
   ]);
   const methods = onlinePaymentMethods(accounts);
   const required =
     booking.paymentRule === 'FULL_PAYMENT_REQUIRED' ? booking.totalCents : booking.depositCents;
+  const paid = paidTotal(booking.payments);
+  const balance = Math.max(0, booking.totalCents - paid);
   const state =
     booking.reservation === 'CONFIRMED' || booking.reservation === 'COMPLETED'
       ? 'confirmed'
@@ -114,6 +128,22 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
           ? 'waiting'
           : 'review';
   const latest = booking.paymentProofs[0];
+  const paying =
+    state === 'waiting' && required > paid
+      ? ('fee' as const)
+      : booking.reservation === 'CONFIRMED' && balance > 0
+        ? ('balance' as const)
+        : null;
+  // Only payments that stand: a voided one has no receipt for the client.
+  const payments: RecordedPayment[] = booking.payments
+    .filter((payment) => !payment.voidedAt)
+    .map((payment) => ({
+      id: payment.id,
+      amountCents: payment.amountCents,
+      receivedAt: payment.receivedAt.toISOString(),
+      method: payment.method as RecordedPayment['method'],
+      acknowledgmentNumber: payment.acknowledgmentNumber,
+    }));
   return {
     state,
     reference: booking.reference,
@@ -122,8 +152,15 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
     packageName: booking.packageName,
     startsAt: booking.startsAt.toISOString(),
     endsAt: booking.endsAt.toISOString(),
-    amountDueCents: Math.max(0, required - paidTotal(booking.payments)),
+    paying,
+    amountDueCents: paying === 'balance' ? balance : Math.max(0, required - paid),
     deadline: booking.holdExpiresAt?.toISOString() ?? null,
+    balanceDueAt:
+      paying === 'balance'
+        ? balanceDueDate(booking.startsAt, rules.balanceDueDays).toISOString()
+        : null,
+    totalCents: booking.totalCents,
+    paidCents: paid,
     cashInstructions: venuePolicy?.cashInstructions ?? '',
     methods,
     accounts: offeredAccounts(accounts, methods),
@@ -136,6 +173,7 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
           reviewReason: latest.reviewReason,
         }
       : null,
+    payments,
   };
 }
 
@@ -223,9 +261,11 @@ export async function submitPaymentProof(request: Request) {
         include: { payments: true },
       });
       if (!booking) throw new PaymentProofError('This payment link is not valid.', 404);
-      if (booking.reservation !== 'REQUESTED' || booking.approval !== 'APPROVED')
-        throw new PaymentProofError('This booking is not waiting for a payment.', 409);
       const balance = booking.totalCents - paidTotal(booking.payments);
+      // A held date pays its reservation fee; a confirmed booking can pay its balance (phase 3).
+      const held = booking.reservation === 'REQUESTED' && booking.approval === 'APPROVED';
+      if (!held && !(booking.reservation === 'CONFIRMED' && balance > 0))
+        throw new PaymentProofError('This booking has no payment due right now.', 409);
       if (amountCents > balance)
         throw new PaymentProofError(`The amount is more than the balance of ${pesos(balance)}.`);
       const [forBooking, overall] = await Promise.all([

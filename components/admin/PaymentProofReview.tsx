@@ -34,6 +34,17 @@ function paidOnLabel(isoDate: string) {
   );
 }
 
+/**
+ * Whether the client can send a screenshot now: for the reservation fee of a held date, or for
+ * the balance of a confirmed booking (phase 3). Mirrors services/payment-proofs.ts.
+ */
+function acceptsScreenshots(b: Booking) {
+  return (
+    (b.reservation === 'REQUESTED' && b.approval === 'APPROVED') ||
+    (b.reservation === 'CONFIRMED' && paidTotal(b.payments) < b.totalCents)
+  );
+}
+
 /** What the client still owes to confirm the booking under its payment rule. */
 function amountDue(b: Booking) {
   const required = b.paymentRule === 'FULL_PAYMENT_REQUIRED' ? b.totalCents : b.depositCents;
@@ -203,9 +214,9 @@ function WaitingProof({
             {PAYMENT_METHOD_LABELS[proof.method]} records, with this amount and reference.
           </label>
           <p className={styles.help}>
-            The payment is recorded with the booking. When it covers the{' '}
-            {b.paymentRule === 'FULL_PAYMENT_REQUIRED' ? 'full amount' : 'reservation fee'}, the
-            booking is confirmed and the client gets the confirmation and calendar invitation.
+            {b.reservation === 'CONFIRMED'
+              ? 'The payment is recorded toward the balance, and the client gets an acknowledgment receipt by email.'
+              : `The payment is recorded with the booking, and the client gets an acknowledgment receipt by email. When it covers the ${b.paymentRule === 'FULL_PAYMENT_REQUIRED' ? 'full amount' : 'reservation fee'}, the booking is confirmed and the client gets the confirmation and calendar invitation.`}
           </p>
           <div className={styles.detailActions}>
             <button className={styles.primary} disabled={busy}>
@@ -249,9 +260,11 @@ function WaitingProof({
           </label>
         </div>
         <p id={`${id}-reject-help`} className={styles.help}>
-          {canVerify && b.reservation === 'REQUESTED'
-            ? 'The client is emailed the reason and asked for a clearer or the correct screenshot. The date stays held for at least another day.'
-            : 'The screenshot is closed without emailing the client.'}
+          {!acceptsScreenshots(b)
+            ? 'The screenshot is closed without emailing the client.'
+            : b.reservation === 'REQUESTED'
+              ? 'The client is emailed the reason and asked for a clearer or the correct screenshot. The date stays held for at least another day.'
+              : 'The client is emailed the reason and asked for a clearer or the correct screenshot.'}
         </p>
         <div className={styles.detailActions}>
           <button className={`${styles.secondary} ${styles.dangerAction}`} disabled={busy}>
@@ -281,7 +294,7 @@ export default function PaymentProofReview({
   const { settings } = useAdminPreferences();
   const id = useId();
   const proofs = b.paymentProofs ?? [];
-  const waitingForPayment = b.reservation === 'REQUESTED' && b.approval === 'APPROVED';
+  const waitingForPayment = acceptsScreenshots(b);
   // Shown on every booking waiting for payment, so staff always know where a screenshot arrives.
   if (!proofs.length && !waitingForPayment) return null;
   const online = onlinePaymentMethods(settings.admin.paymentAccounts).length > 0;

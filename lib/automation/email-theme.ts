@@ -13,6 +13,10 @@ export const EMAIL_THEME = {
   muted: '#4D5A54',
   line: '#D9D9D9',
   onBrand: '#FFFFFF',
+  /** --palette-zentra-green-soft: tinted panels, such as the amount on a receipt. */
+  brandSoft: '#E7F1EC',
+  /** --palette-danger: a voided payment on its receipt. */
+  danger: '#A32F35',
   wordmarkFont: "Georgia, 'Times New Roman', serif",
   bodyFont: 'Arial, Helvetica, sans-serif',
 } as const;

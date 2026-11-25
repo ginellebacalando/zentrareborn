@@ -11,6 +11,8 @@ export type Receipt = {
   note: string;
   /** CASH at the venue, or GCASH / BANK_TRANSFER verified from a payment screenshot. */
   method: string;
+  /** Printed on the payment's acknowledgment receipt (phase 3); older rows may have none. */
+  acknowledgmentNumber: string | null;
   voidedAt: string | null;
   voidReason: string | null;
 };

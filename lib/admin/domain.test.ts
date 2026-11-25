@@ -10,7 +10,12 @@ import {
   paymentStatus,
 } from './domain';
 import { parseStaffNotificationEmails } from './preferences-types';
-import { parseBookingRules, paymentDeadline, websiteReviewReasons } from './booking-rules';
+import {
+  balanceDueDate,
+  parseBookingRules,
+  paymentDeadline,
+  websiteReviewReasons,
+} from './booking-rules';
 test('RBAC rejects clients and disabled or temporary accounts', () => {
   assert.equal(canAccessAdmin('CLIENT', 'ACTIVE'), false);
   assert.equal(canAccessAdmin('ADMIN', 'DISABLED'), false);
@@ -148,18 +153,31 @@ test('booking automation rules: deadlines, review reasons and the Settings field
   );
   assert.match(websiteReviewReasons({ ...ordinary, reviewGuestLimit: 120 }).join(), /120 guests/);
   assert.match(websiteReviewReasons({ ...ordinary, policyReviewed: false }).join(), /policy/);
-  assert.deepEqual(parseBookingRules(' 5 ', ''), {
-    rules: { paymentDeadlineDays: 5, reviewGuestLimit: null },
+  assert.deepEqual(parseBookingRules(' 5 ', '', '14'), {
+    rules: { paymentDeadlineDays: 5, reviewGuestLimit: null, balanceDueDays: 14 },
   });
-  assert.deepEqual(parseBookingRules('3', '130'), {
-    rules: { paymentDeadlineDays: 3, reviewGuestLimit: 130 },
+  assert.deepEqual(parseBookingRules('3', '130', ' 30 '), {
+    rules: { paymentDeadlineDays: 3, reviewGuestLimit: 130, balanceDueDays: 30 },
   });
-  const zeroDays = parseBookingRules('0', '');
+  const zeroDays = parseBookingRules('0', '', '14');
   assert.ok('problem' in zeroDays && zeroDays.field === 'paymentDeadlineDays');
-  const partialGuest = parseBookingRules('3', '1.5');
+  const partialGuest = parseBookingRules('3', '1.5', '14');
   assert.ok('problem' in partialGuest && partialGuest.field === 'reviewGuestLimit');
-  assert.ok('problem' in parseBookingRules('', ''));
-  assert.ok('problem' in parseBookingRules('15', ''));
+  const noBalanceDays = parseBookingRules('3', '', '');
+  assert.ok('problem' in noBalanceDays && noBalanceDays.field === 'balanceDueDays');
+  assert.ok('problem' in parseBookingRules('3', '', '91'));
+  assert.ok('problem' in parseBookingRules('', '', '14'));
+  assert.ok('problem' in parseBookingRules('15', '', '14'));
+  // Full payment is due at the end of the Manila day 14 days before the event.
+  assert.equal(
+    balanceDueDate(new Date('2026-12-09T06:00:00.000Z'), 14).toISOString(),
+    '2026-11-25T15:59:59.999Z',
+  );
+  // An event early on a Manila morning counts from its Manila date, not its UTC date.
+  assert.equal(
+    balanceDueDate(new Date('2026-12-09T17:00:00.000Z'), 1).toISOString(),
+    '2026-12-09T15:59:59.999Z',
+  );
 });
 test('server booking validation rejects unknown fields, invalid fee, and venue spoofing', () => {
   const future = new Date(Date.now() + 86400000).toISOString(),

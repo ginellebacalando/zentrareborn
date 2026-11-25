@@ -604,6 +604,49 @@ export function holdReminder(
   });
 }
 
+/**
+ * Reminds a client with a confirmed booking to pay the rest before the full-payment date in
+ * Zion's terms (phase 3): a week and a day before that date.
+ */
+export function balanceReminder(
+  booking: ReminderBooking & {
+    dueAt: Date;
+    balanceCents: number;
+    instructions: string;
+    paymentAction?: { label: string; href: string } | null;
+  },
+): RenderedEmail {
+  const name = greetingName(booking.clientName);
+  const due = manilaDate(booking.dueAt);
+  const amount = pesos(booking.balanceCents);
+  return renderEmail({
+    subject: `${BRAND.legalName} | Balance reminder | ${booking.reference}`,
+    preheader: `Please pay the remaining ${amount} by ${due}.`,
+    heading: 'Your remaining balance is due soon',
+    sections: [
+      {
+        paragraphs: [
+          name ? `Hello ${name},` : 'Hello,',
+          `Your ${singleLine(booking.eventType)} reservation is confirmed. Please pay the remaining balance of ${amount} by ${due}, as our terms ask for full payment before the event.`,
+          booking.instructions,
+          `Questions? Call ${BRAND.contact.phone} or email ${BRAND.contact.email} and mention your booking reference.`,
+        ].filter(Boolean),
+        details: [
+          ['Booking reference', booking.reference],
+          ['Event date', manilaDate(booking.startsAt)],
+          [
+            'Time',
+            `${manilaTime(booking.startsAt)} to ${manilaTime(booking.endsAt)} (Manila time)`,
+          ],
+          ['Remaining balance', amount],
+          ['Pay by', due],
+        ],
+      },
+    ],
+    action: booking.paymentAction ?? undefined,
+  });
+}
+
 /** Tells staff that a finished event still has a balance, so it was not marked completed. */
 export function balanceAfterEventAlert(input: {
   reference: string;
@@ -653,6 +696,8 @@ export type PaymentProofEmailSource = {
   referenceNumber: string;
   paidOn: string;
   deadline: Date | null;
+  /** The reservation fee of a held date, or the balance of a confirmed booking (phase 3). */
+  stage: 'fee' | 'balance';
 };
 
 function paymentProofDetails(input: PaymentProofEmailSource): EmailDetail[] {
@@ -677,7 +722,9 @@ export function paymentProofReceived(input: PaymentProofEmailSource): RenderedEm
       {
         paragraphs: [
           name ? `Hello ${name},` : 'Hello,',
-          'Thank you. We will check your payment against our GCash or bank records, usually within one business day. Your date stays on hold while we check, and we will email you either way.',
+          input.stage === 'balance'
+            ? 'Thank you. We will check your payment against our GCash or bank records, usually within one business day, and email you either way. Your reservation stays confirmed.'
+            : 'Thank you. We will check your payment against our GCash or bank records, usually within one business day. Your date stays on hold while we check, and we will email you either way.',
           EMAIL_SPAM_NOTICE,
         ],
         details: paymentProofDetails(input),
@@ -697,8 +744,12 @@ export function paymentProofStaffAlert(
     sections: [
       {
         paragraphs: [
-          `A client uploaded a ${input.methodLabel} payment screenshot. Open the booking, compare it with your actual ${input.methodLabel} records, then press Verify payment (the booking confirms itself once the rule is met) or Reject with a reason. A screenshot alone is not proof: it can be edited.`,
-          'The date stays held while the screenshot waits for your decision. Reply to this email to contact the client.',
+          input.stage === 'balance'
+            ? `A client uploaded a ${input.methodLabel} screenshot for the balance of a confirmed booking. Open the booking, compare it with your actual ${input.methodLabel} records, then press Verify payment or Reject with a reason. A screenshot alone is not proof: it can be edited.`
+            : `A client uploaded a ${input.methodLabel} payment screenshot. Open the booking, compare it with your actual ${input.methodLabel} records, then press Verify payment (the booking confirms itself once the rule is met) or Reject with a reason. A screenshot alone is not proof: it can be edited.`,
+          input.stage === 'balance'
+            ? 'Reply to this email to contact the client.'
+            : 'The date stays held while the screenshot waits for your decision. Reply to this email to contact the client.',
         ],
         details: [
           ['Client', singleLine(input.clientName)],

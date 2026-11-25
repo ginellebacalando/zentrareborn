@@ -65,6 +65,9 @@ model AdminCashPayment {
   // How the money arrived: CASH at the venue, or GCASH / BANK_TRANSFER verified from a payment
   // screenshot (booking automation phase 2, prisma/payment-proofs.sql).
   method String @default("CASH") @db.VarChar(20)
+  // Printed on the payment's acknowledgment receipt: ACK-<year>-<number>, issued by a database
+  // counter when the payment is recorded (prisma/payment-receipts.sql).
+  acknowledgmentNumber String? @unique @db.VarChar(30)
   voidedAt DateTime?
   voidedBy String?
   voidReason String?

@@ -12,6 +12,15 @@ export type PaymentProofSummary = {
   reviewReason: string;
 };
 
+/** A payment Zion recorded, with its acknowledgment receipt (phase 3). */
+export type RecordedPayment = {
+  id: string;
+  amountCents: number;
+  receivedAt: string;
+  method: OnlinePaymentMethod | 'CASH';
+  acknowledgmentNumber: string | null;
+};
+
 export type PaymentPageView =
   | { state: 'invalid' }
   | {
@@ -23,12 +32,23 @@ export type PaymentPageView =
       packageName: string;
       startsAt: string;
       endsAt: string;
+      /**
+       * What the page takes now: the reservation fee of a held date, the remaining balance of a
+       * confirmed booking, or nothing.
+       */
+      paying: 'fee' | 'balance' | null;
       amountDueCents: number;
+      /** The payment deadline of a held date. */
       deadline: string | null;
+      /** When full payment is due (Zion's terms), for a confirmed booking with a balance. */
+      balanceDueAt: string | null;
+      totalCents: number;
+      paidCents: number;
       cashInstructions: string;
       methods: OnlinePaymentMethod[];
       accounts: PaymentAccounts;
       proof: PaymentProofSummary | null;
+      payments: RecordedPayment[];
     };
 
 /** The reasons staff can give when a screenshot cannot be verified. */

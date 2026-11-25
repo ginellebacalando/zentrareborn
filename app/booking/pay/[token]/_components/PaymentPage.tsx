@@ -3,7 +3,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, FileText } from 'lucide-react';
 import { BRAND } from '@/config/brand';
 import { PAYMENT_METHOD_LABELS, type OnlinePaymentMethod } from '@/lib/admin/payment-accounts';
 import type { PaymentPageView } from '@/lib/payment-page-types';
@@ -49,6 +49,11 @@ async function shrinkPhoto(file: File): Promise<File> {
   }
 }
 
+/** Whether a moment is already past; kept outside render so the components stay pure. */
+function hasPassed(iso: string) {
+  return new Date(iso).getTime() <= Date.now();
+}
+
 /** Today's date in Manila, the latest date a payment can have been made. */
 function manilaToday() {
   return new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 10);
@@ -56,14 +61,15 @@ function manilaToday() {
 
 function ProofStatus({ view }: { view: View }) {
   const proof = view.proof;
-  if (view.state !== 'waiting' || !proof) return null;
+  if (!view.paying || !proof) return null;
   const method = PAYMENT_METHOD_LABELS[proof.method];
   if (proof.status === 'SUBMITTED')
     return (
       <p className={styles.status} role="status">
         We received your {method} screenshot on {moment.format(new Date(proof.submittedAt))}. We
-        will check it with our records and email you. Your date stays on hold until we decide. If
-        you sent the wrong file, you can send another one below.
+        will check it with our records and email you.
+        {view.paying === 'fee' && ' Your date stays on hold until we decide.'} If you sent the wrong
+        file, you can send another one below.
       </p>
     );
   if (proof.status === 'REJECTED')
@@ -77,6 +83,40 @@ function ProofStatus({ view }: { view: View }) {
     <p className={`${styles.status} ${styles.statusSuccess}`} role="status">
       We verified your payment of {peso.format(proof.amountCents / 100)}. Thank you!
     </p>
+  );
+}
+
+/** Each payment Zion recorded, with its acknowledgment receipt to download (phase 3). */
+function PaymentsReceived({ view, token }: { view: View; token: string }) {
+  if (!view.payments.length) return null;
+  return (
+    <section aria-labelledby="payment-received">
+      <h2 id="payment-received" className={shared.subheading}>
+        Payments received
+      </h2>
+      <ul className={styles.payments}>
+        {view.payments.map((payment) => (
+          <li key={payment.id}>
+            <p>
+              <strong>{peso.format(payment.amountCents / 100)}</strong>{' '}
+              {PAYMENT_METHOD_LABELS[payment.method]} ·{' '}
+              {moment.format(new Date(payment.receivedAt))}
+            </p>
+            {payment.acknowledgmentNumber && (
+              <a
+                className={styles.receiptLink}
+                href={`/booking/pay/${encodeURIComponent(token)}/receipts/${encodeURIComponent(payment.id)}`}
+                download
+              >
+                <FileText aria-hidden="true" className={shared.inlineIcon} />
+                Download receipt (PDF)
+                <span className={shared.visuallyHidden}> {payment.acknowledgmentNumber}</span>
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -371,7 +411,7 @@ export default function PaymentPage({ view, token }: { view: View; token: string
           <dd>
             {clock.format(new Date(view.startsAt))} to {clock.format(new Date(view.endsAt))}
           </dd>
-          {view.state === 'waiting' && (
+          {view.paying === 'fee' && (
             <>
               <dt>Amount to pay now</dt>
               <dd>{peso.format(view.amountDueCents / 100)}</dd>
@@ -379,6 +419,22 @@ export default function PaymentPage({ view, token }: { view: View; token: string
                 <>
                   <dt>Pay by</dt>
                   <dd>{moment.format(new Date(view.deadline))} (Manila time)</dd>
+                </>
+              )}
+            </>
+          )}
+          {view.paying === 'balance' && (
+            <>
+              <dt>Remaining balance</dt>
+              <dd>{peso.format(view.amountDueCents / 100)}</dd>
+              {view.balanceDueAt && (
+                <>
+                  <dt>Full payment due</dt>
+                  <dd>
+                    {hasPassed(view.balanceDueAt)
+                      ? `Now (it was due on ${fullDate.format(new Date(view.balanceDueAt))})`
+                      : fullDate.format(new Date(view.balanceDueAt))}
+                  </dd>
                 </>
               )}
             </>
@@ -394,6 +450,8 @@ export default function PaymentPage({ view, token }: { view: View; token: string
           <p className={`${styles.status} ${styles.statusSuccess}`}>
             Thank you! Your date is secured. We sent the confirmation and a calendar invitation to
             your email.
+            {view.paying === 'balance' &&
+              ' Please pay the remaining balance by the date above. The ways to pay are below.'}
           </p>
         )}
         {view.state === 'closed' && (
@@ -403,8 +461,9 @@ export default function PaymentPage({ view, token }: { view: View; token: string
           </p>
         )}
         <ProofStatus view={view} />
-        {view.state === 'waiting' && <HowToPay view={view} />}
-        {view.state === 'waiting' && view.methods.length > 0 && view.amountDueCents > 0 && (
+        <PaymentsReceived view={view} token={token} />
+        {view.paying && <HowToPay view={view} />}
+        {view.paying && view.methods.length > 0 && view.amountDueCents > 0 && (
           <UploadForm view={view} token={token} />
         )}
         <p className={shared.hint}>

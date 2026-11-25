@@ -3,6 +3,7 @@ import 'server-only';
 import {
   completeFinishedEvents,
   expireUnpaidHolds,
+  scheduleBalanceReminders,
   scheduleHoldReminders,
 } from '@/lib/admin/booking-automation';
 import { prisma } from '@/lib/prisma';
@@ -26,6 +27,8 @@ export type AutomationRunSummary = {
     /** Booking automation: holds released, payment reminders, finished events handled. */
     expiredHolds: number;
     holdReminders: number;
+    /** Reminders to pay the rest of a confirmed booking before the full-payment date. */
+    balanceReminders: number;
     completedEvents: number;
   };
   delivery: DeliveryRunResult;
@@ -58,6 +61,9 @@ export async function runAutomation(options: {
   // Booking automation first, so the reminders and the digest see the released dates.
   const expiredHolds = await step('holds', failedSteps, () => expireUnpaidHolds(now));
   const holdReminders = await step('hold-reminders', failedSteps, () => scheduleHoldReminders(now));
+  const balanceReminders = await step('balance-reminders', failedSteps, () =>
+    scheduleBalanceReminders(now),
+  );
   const completedEvents = await step('completion', failedSteps, () => completeFinishedEvents(now));
   const reminders = await step('reminders', failedSteps, () => scheduleEventReminders(now));
   const digest = await step('digest', failedSteps, () => scheduleDailyDigest(now));
@@ -68,7 +74,15 @@ export async function runAutomation(options: {
     timeBudgetMs: AUTOMATION_POLICY.scheduledTimeBudgetMs,
   });
   const summary = {
-    scheduled: { inquiries, reminders, digest, expiredHolds, holdReminders, completedEvents },
+    scheduled: {
+      inquiries,
+      reminders,
+      digest,
+      expiredHolds,
+      holdReminders,
+      balanceReminders,
+      completedEvents,
+    },
     delivery,
     failedSteps,
   };
@@ -79,7 +93,7 @@ export async function runAutomation(options: {
       failed: delivery.failed,
       retrying: delivery.retrying,
       waiting: delivery.waiting,
-      scheduled: inquiries + reminders + digest + holdReminders,
+      scheduled: inquiries + reminders + digest + holdReminders + balanceReminders,
       bookingsChanged: expiredHolds + completedEvents,
     };
     await prisma.automationState.upsert({

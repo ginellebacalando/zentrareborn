@@ -19,7 +19,9 @@ import {
 import {
   PAYMENT_DEADLINE_DAYS,
   REVIEW_GUEST_LIMIT,
+  BALANCE_DUE_DAYS,
   parseBookingRules,
+  type BookingRuleField,
 } from '@/lib/admin/booking-rules';
 import {
   normalizePaymentAccounts,
@@ -187,15 +189,28 @@ function PreferencesEditor({
   const [guestLimit, setGuestLimit] = useState(
     initial.settings.admin.bookingRules.reviewGuestLimit?.toString() ?? '',
   );
+  const [balanceDays, setBalanceDays] = useState(
+    String(initial.settings.admin.bookingRules.balanceDueDays),
+  );
   const [rulesError, setRulesError] = useState<{
-    field: 'paymentDeadlineDays' | 'reviewGuestLimit';
+    field: BookingRuleField;
     message: string;
     attempt: number;
   } | null>(null);
   const bookingRulesRef = useRef<HTMLDetailsElement>(null);
   const paymentDaysRef = useRef<HTMLInputElement>(null);
   const guestLimitRef = useRef<HTMLInputElement>(null);
+  const balanceDaysRef = useRef<HTMLInputElement>(null);
   const rulesId = useId();
+  /** The rule's message, shown under its own field so it is next to where focus moves. */
+  const ruleError = (field: BookingRuleField) =>
+    rulesError?.field === field ? (
+      <p key={rulesError.attempt} id={`${rulesId}-error`} className={styles.error} role="alert">
+        {rulesError.message}
+      </p>
+    ) : null;
+  const ruleDescribedBy = (field: BookingRuleField, help: string) =>
+    `${rulesId}-${help}${rulesError?.field === field ? ` ${rulesId}-error` : ''}`;
   // Online payment accounts are checked when saving, like the rules above.
   const [accountsError, setAccountsError] = useState<{
     field: PaymentAccountField;
@@ -248,7 +263,7 @@ function PreferencesEditor({
       return;
     }
     setStaffEmailsError(null);
-    const bookingRules = parseBookingRules(paymentDays, guestLimit);
+    const bookingRules = parseBookingRules(paymentDays, guestLimit, balanceDays);
     if ('problem' in bookingRules) {
       const { field, problem } = bookingRules;
       setRulesError((current) => ({
@@ -257,7 +272,12 @@ function PreferencesEditor({
         attempt: (current?.attempt ?? 0) + 1,
       }));
       if (bookingRulesRef.current) bookingRulesRef.current.open = true;
-      (field === 'paymentDeadlineDays' ? paymentDaysRef : guestLimitRef).current?.focus();
+      const fieldRefs = {
+        paymentDeadlineDays: paymentDaysRef,
+        reviewGuestLimit: guestLimitRef,
+        balanceDueDays: balanceDaysRef,
+      };
+      fieldRefs[field].current?.focus();
       return;
     }
     setRulesError(null);
@@ -589,7 +609,7 @@ function PreferencesEditor({
                     disabled={disabled}
                     value={paymentDays}
                     aria-invalid={rulesError?.field === 'paymentDeadlineDays' ? true : undefined}
-                    aria-describedby={`${rulesId}-days-help${rulesError?.field === 'paymentDeadlineDays' ? ` ${rulesId}-error` : ''}`}
+                    aria-describedby={ruleDescribedBy('paymentDeadlineDays', 'days-help')}
                     onChange={(event) => {
                       setPaymentDays(event.target.value);
                       if (rulesError?.field === 'paymentDeadlineDays') setRulesError(null);
@@ -601,6 +621,7 @@ function PreferencesEditor({
                   falls after the event starts. New deadlines use this value; existing ones stay
                   until staff extend them.
                 </p>
+                {ruleError('paymentDeadlineDays')}
               </div>
               <div className={styles.settingsEmails}>
                 <label>
@@ -615,7 +636,7 @@ function PreferencesEditor({
                     disabled={disabled}
                     value={guestLimit}
                     aria-invalid={rulesError?.field === 'reviewGuestLimit' ? true : undefined}
-                    aria-describedby={`${rulesId}-guests-help${rulesError?.field === 'reviewGuestLimit' ? ` ${rulesId}-error` : ''}`}
+                    aria-describedby={ruleDescribedBy('reviewGuestLimit', 'guests-help')}
                     onChange={(event) => {
                       setGuestLimit(event.target.value);
                       if (rulesError?.field === 'reviewGuestLimit') setRulesError(null);
@@ -626,17 +647,36 @@ function PreferencesEditor({
                   Leave empty for no limit. To confirm with Zion: their documents give the capacity
                   as 120 in one place and 130 in another.
                 </p>
+                {ruleError('reviewGuestLimit')}
               </div>
-              {rulesError && (
-                <p
-                  key={rulesError.attempt}
-                  id={`${rulesId}-error`}
-                  className={styles.error}
-                  role="alert"
-                >
-                  {rulesError.message}
+              <div className={styles.settingsEmails}>
+                <label>
+                  Days before the event full payment is due
+                  <input
+                    ref={balanceDaysRef}
+                    type="number"
+                    inputMode="numeric"
+                    min={BALANCE_DUE_DAYS.min}
+                    max={BALANCE_DUE_DAYS.max}
+                    step={1}
+                    required
+                    disabled={disabled}
+                    value={balanceDays}
+                    aria-invalid={rulesError?.field === 'balanceDueDays' ? true : undefined}
+                    aria-describedby={ruleDescribedBy('balanceDueDays', 'balance-help')}
+                    onChange={(event) => {
+                      setBalanceDays(event.target.value);
+                      if (rulesError?.field === 'balanceDueDays') setRulesError(null);
+                    }}
+                  />
+                </label>
+                <p id={`${rulesId}-balance-help`} className={styles.help}>
+                  Zion&apos;s terms ask for full payment {BALANCE_DUE_DAYS.default} days before the
+                  event. Clients see this date on their payment page and get reminders 7 days and 1
+                  day before it.
                 </p>
-              )}
+                {ruleError('balanceDueDays')}
+              </div>
             </div>
           </details>
           <details

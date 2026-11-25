@@ -28,6 +28,14 @@ export function paymentPageAction(bookingId: string, online: boolean) {
   return { label: online ? 'See how to pay or upload your payment' : 'See how to pay', href };
 }
 
+/** The button to a recorded payment's acknowledgment receipt (PDF), or null without a link. */
+export function receiptDownloadAction(bookingId: string, paymentId: string) {
+  const page = paymentPageUrl(bookingId);
+  return page
+    ? { label: 'Download your acknowledgment receipt', href: `${page}/receipts/${paymentId}` }
+    : null;
+}
+
 /**
  * Enqueues the client's "screenshot received" email and the staff request to verify it, inside
  * the transaction that stores the screenshot (booking automation phase 2). The staff email
@@ -45,6 +53,7 @@ export async function enqueuePaymentProofReceived(
     eventType: string;
     startsAt: Date;
     holdExpiresAt: Date | null;
+    reservation: string;
   },
   proof: {
     id: string;
@@ -64,6 +73,8 @@ export async function enqueuePaymentProofReceived(
     referenceNumber: proof.referenceNumber,
     paidOn: proof.paidOn,
     deadline: booking.holdExpiresAt,
+    // A confirmed booking pays its balance; a held one pays the fee that keeps its date.
+    stage: booking.reservation === 'CONFIRMED' ? ('balance' as const) : ('fee' as const),
   };
   return enqueueJobs(
     db,

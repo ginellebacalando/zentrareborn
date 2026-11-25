@@ -93,6 +93,43 @@
   margin: 0;
 }
 
+/* Payments received, each with its acknowledgment receipt (phase 3). */
+.payments {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.payments li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+}
+
+.payments p {
+  margin: 0;
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+  overflow-wrap: break-word;
+}
+
+.receiptLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-self: start;
+  min-height: var(--layout-touch-target);
+  color: var(--action-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .form {
   display: grid;
   gap: var(--space-4);

@@ -8,6 +8,7 @@ import {
   DATE_FORMAT_OPTIONS,
 } from '@/lib/system-settings-types';
 import {
+  BALANCE_DUE_DAYS,
   DEFAULT_BOOKING_RULES,
   PAYMENT_DEADLINE_DAYS,
   REVIEW_GUEST_LIMIT,
@@ -98,6 +99,13 @@ export const preferencesSchema = z
               .min(REVIEW_GUEST_LIMIT.min, 'Enter at least 1 guest, or leave the limit empty.')
               .max(REVIEW_GUEST_LIMIT.max, `Enter at most ${REVIEW_GUEST_LIMIT.max} guests.`)
               .nullable(),
+            // Optional: a Settings page from before phase 3 keeps the saved value (see the save).
+            balanceDueDays: z
+              .number()
+              .int('Enter a whole number of days.')
+              .min(BALANCE_DUE_DAYS.min, `Enter at least ${BALANCE_DUE_DAYS.min} day.`)
+              .max(BALANCE_DUE_DAYS.max, `Enter at most ${BALANCE_DUE_DAYS.max} days.`)
+              .optional(),
           })
           .strict()
           .optional(),
@@ -180,6 +188,9 @@ function storedBookingRules(settings: unknown): BookingRules {
       REVIEW_GUEST_LIMIT.min,
       REVIEW_GUEST_LIMIT.max,
     ),
+    balanceDueDays:
+      whole(stored.balanceDueDays, BALANCE_DUE_DAYS.min, BALANCE_DUE_DAYS.max) ??
+      DEFAULT_BOOKING_RULES.balanceDueDays,
   };
 }
 /** Lenient reader for the saved payment accounts: an incomplete or invalid set is ignored. */
@@ -315,6 +326,14 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
     const oldRoot = record(previous?.settings),
       oldAdmin = record(oldRoot.admin),
       settings = input.settings;
+    const previousRules = storedBookingRules(previous?.settings);
+    const rules: BookingRules | null = settings.admin.bookingRules
+      ? {
+          ...settings.admin.bookingRules,
+          balanceDueDays:
+            settings.admin.bookingRules.balanceDueDays ?? previousRules.balanceDueDays,
+        }
+      : null;
     const stored = {
       ...oldRoot,
       appearance: { ...record(oldRoot.appearance), ...settings.appearance },
@@ -326,7 +345,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         security: { ...record(oldAdmin.security), ...settings.admin.security },
         localization: settings.admin.localization,
         staffNotifications: settings.admin.staffNotifications,
-        ...(settings.admin.bookingRules ? { bookingRules: settings.admin.bookingRules } : {}),
+        ...(rules ? { bookingRules: rules } : {}),
         ...(settings.admin.paymentAccounts
           ? { paymentAccounts: settings.admin.paymentAccounts }
           : {}),
@@ -340,13 +359,12 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         : staffEmails.length
           ? ` Staff notification emails changed (${staffEmails.length} address${staffEmails.length === 1 ? '' : 'es'}).`
           : ' Staff notification emails cleared; the server default applies.';
-    const previousRules = storedBookingRules(previous?.settings);
-    const rules = settings.admin.bookingRules;
     const rulesChange =
       rules &&
       (rules.paymentDeadlineDays !== previousRules.paymentDeadlineDays ||
-        rules.reviewGuestLimit !== previousRules.reviewGuestLimit)
-        ? ` Booking rules changed: ${rules.paymentDeadlineDays} day${rules.paymentDeadlineDays === 1 ? '' : 's'} to pay, ${rules.reviewGuestLimit === null ? 'no guest limit' : `review above ${rules.reviewGuestLimit} guests`}.`
+        rules.reviewGuestLimit !== previousRules.reviewGuestLimit ||
+        rules.balanceDueDays !== previousRules.balanceDueDays)
+        ? ` Booking rules changed: ${rules.paymentDeadlineDays} day${rules.paymentDeadlineDays === 1 ? '' : 's'} to pay, ${rules.reviewGuestLimit === null ? 'no guest limit' : `review above ${rules.reviewGuestLimit} guests`}, full payment ${rules.balanceDueDays} day${rules.balanceDueDays === 1 ? '' : 's'} before the event.`
         : '';
     // Like the staff inboxes, the audit trail notes a change, never the account details.
     const accountsChange =

@@ -34,6 +34,7 @@ import type { CalendarMethod } from '@/lib/automation/ics';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
 import { PAYMENT_REJECTION_REASONS, type PaymentRejectionReason } from '@/lib/payment-page-types';
+import { nextAcknowledgmentNumber } from '@/lib/payment-receipts';
 import {
   bookingInput,
   confirmationError,
@@ -169,12 +170,14 @@ type NoticeOptions = {
   calendar?: CalendarMethod;
   staffCalendar?: StaffCalendarChange;
   note?: string;
+  /** The payment just recorded, whose acknowledgment receipt the notice links. */
+  receiptPaymentId?: string;
 };
 async function queue(
   tx: Tx,
   b: Awaited<ReturnType<typeof findBooking>>,
   event: string,
-  { calendar, staffCalendar, note }: NoticeOptions = {},
+  { calendar, staffCalendar, note, receiptPaymentId }: NoticeOptions = {},
 ) {
   const p = await policy(tx);
   // The client notice, plus the staff calendar email when the change affects staff calendars.
@@ -186,6 +189,7 @@ async function queue(
     calendar,
     staffCalendar,
     note,
+    receiptPaymentId,
   });
   // `after()` runs once the response is sent, i.e. after this transaction commits or rolls back;
   // delivery only claims committed rows, so a rollback leaves nothing to send.
@@ -1066,15 +1070,18 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         throw new AdminError('Cash can only be recorded for an approved, open booking.');
       if (paidTotal(b.payments) + input.amountCents > b.totalCents)
         throw new AdminError('Receipt exceeds the outstanding contract balance.');
-      await tx.adminCashPayment.create({
+      const receivedAt = new Date(input.receivedAt);
+      const payment = await tx.adminCashPayment.create({
         data: {
           bookingId: b.id,
           amountCents: input.amountCents,
           receiptNumber: input.receiptNumber,
-          receivedAt: new Date(input.receivedAt),
+          receivedAt,
           recordedBy: actor.id,
           note: input.note,
+          acknowledgmentNumber: await nextAcknowledgmentNumber(tx, receivedAt),
         },
+        select: { id: true },
       });
       // The booking automation: the payment that meets the confirmation rule confirms the
       // reservation in the same step, so staff never press a separate Confirm button for it.
@@ -1097,7 +1104,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         `Recorded CASH ${money(input.amountCents)} for ${b.reference}; receipt ${input.receiptNumber}.`,
         'CREATE',
       );
-      await queue(tx, updated, 'CASH_RECEIPT');
+      await queue(tx, updated, 'CASH_RECEIPT', { receiptPaymentId: payment.id });
       if (confirmsNow) {
         await audit(
           tx,
@@ -1189,15 +1196,17 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
           `This transfer is already recorded for ${recorded.booking.reference}. Do not record it twice.`,
           409,
         );
+      const receivedAt = new Date(input.receivedAt);
       const payment = await tx.adminCashPayment.create({
         data: {
           bookingId: b.id,
           amountCents: input.amountCents,
           receiptNumber,
-          receivedAt: new Date(input.receivedAt),
+          receivedAt,
           recordedBy: actor.id,
           note: input.note,
           method: proof.method,
+          acknowledgmentNumber: await nextAcknowledgmentNumber(tx, receivedAt),
         },
         select: { id: true },
       });
@@ -1228,7 +1237,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         'APPROVAL',
         { proofId: proof.id, paymentId: payment.id },
       );
-      await queue(tx, updated, 'PAYMENT_VERIFIED');
+      await queue(tx, updated, 'PAYMENT_VERIFIED', { receiptPaymentId: payment.id });
       if (confirmsNow) {
         await audit(
           tx,
@@ -1264,6 +1273,9 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         },
       });
       const waiting = b.reservation === 'REQUESTED' && b.approval === 'APPROVED';
+      // A confirmed booking with a balance can send another screenshot too (phase 3).
+      const acceptsPayment =
+        waiting || (b.reservation === 'CONFIRMED' && paidTotal(b.payments) < b.totalCents);
       // The hold could not expire while staff checked the screenshot, so the client gets at least
       // a day to send another one, never past the start of the event.
       const retryUntil = new Date(Math.min(now.getTime() + 24 * HOUR_MS, b.startsAt.getTime()));
@@ -1286,8 +1298,8 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         'REJECTION',
         { proofId: proof.id },
       );
-      // A closed or confirmed booking needs no new screenshot, so its client is not asked for one.
-      if (waiting) await queue(tx, updated, 'PAYMENT_REJECTED', { note: clientReason });
+      // A closed or fully paid booking needs no new screenshot, so its client is not asked for one.
+      if (acceptsPayment) await queue(tx, updated, 'PAYMENT_REJECTED', { note: clientReason });
       return { id: b.id };
     });
   }

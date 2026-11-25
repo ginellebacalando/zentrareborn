@@ -1638,6 +1638,20 @@
   font-size: var(--type-small);
   margin: 0;
 }
+/* The acknowledgment receipt of a recorded payment (booking automation phase 3); the root
+   prefix outranks the plain link reset so the link stays underlined. */
+.root .receiptDownload {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--layout-touch-target);
+  margin-top: var(--space-2);
+  color: var(--admin-action);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 .receiptCorrection {
   margin-top: var(--space-4);
   border-top: 1px solid var(--admin-divider);
