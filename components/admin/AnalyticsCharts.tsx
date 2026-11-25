@@ -3,14 +3,7 @@
 import type { AnalyticsReport } from '@/lib/admin/analytics-types';
 import { compactReportCash, conversionRate, reportDates } from '@/lib/admin/analytics-export';
 import { money } from '@/lib/admin/domain';
-import {
-  AreaChart,
-  ChartDataTable,
-  BarChart,
-  DonutChart,
-  chartCount,
-  chartTones,
-} from './ChartPrimitives';
+import { AreaChart, ChartDataTable, BarChart, DonutChart, chartCount } from './ChartPrimitives';
 import chart from './DashboardCharts.module.css';
 import styles from './AnalyticsOverview.module.css';
 import admin from './admin.module.css';
@@ -24,8 +17,18 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
     { key: 'secured', label: 'Solid', value: c.convertedInquiries, detail: 'With solid bookings' },
   ];
   const collection = [
-    { key: 'collected', label: 'Cash applied', count: s.paidOnSecuredCents },
-    { key: 'pending', label: 'Pending balance', count: s.outstandingCents },
+    {
+      key: 'collected',
+      label: 'Cash applied',
+      count: s.paidOnSecuredCents,
+      value: money(s.paidOnSecuredCents),
+    },
+    {
+      key: 'pending',
+      label: 'Pending balance',
+      count: s.outstandingCents,
+      value: money(s.outstandingCents),
+    },
   ];
   return (
     <div className={styles.chartGrid}>
@@ -39,6 +42,7 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
         </div>
         <div className={styles.model}>
           <AreaChart
+            name="Cash income"
             points={buckets.map((b) => ({ key: b.key, label: b.label, value: b.cashCents }))}
             label={`${money(c.cashCents)} cash income by ${range.bucketUnit}. Exact values follow in an accessible table.`}
           />
@@ -85,17 +89,6 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
             caption={s.securedContractCents ? 'collected' : 'No secured value'}
           />
         </div>
-        <ul className={styles.collectionLegend}>
-          {collection.map((slice, index) => (
-            <li key={slice.key}>
-              <span>
-                <i className={`${chart.swatch} ${chartTones[index]}`} />
-                {slice.label}
-              </span>
-              <strong>{money(slice.count)}</strong>
-            </li>
-          ))}
-        </ul>
         <p className={admin.srOnly}>
           Secured contract value: {money(s.securedContractCents)}. Applied cash is capped at each
           booking’s value; actual income remains the full recorded cash.
@@ -127,16 +120,6 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
             <small>completed</small>
           </strong>
         </div>
-        <div className={chart.legend}>
-          <span>
-            <i className={`${chart.swatch} ${chartTones[0]}`} />
-            Secured event dates
-          </span>
-          <span>
-            <i className={`${chart.swatch} ${chartTones[1]}`} />
-            Completed events
-          </span>
-        </div>
         <div className={styles.model}>
           <BarChart
             points={buckets.map((b) => ({
@@ -144,7 +127,10 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
               label: b.label,
               values: [b.securedEvents, b.completedEvents],
             }))}
-            series={['secured event dates', 'completed events']}
+            series={[
+              { name: 'Secured event dates', total: chartCount(c.securedEvents) },
+              { name: 'Completed events', total: chartCount(c.completedEvents) },
+            ]}
             label={`${c.securedEvents} secured event dates by start date, including ${c.completedEvents} completed events. Exact values follow.`}
             empty="No events"
           />
@@ -189,7 +175,7 @@ export default function AnalyticsCharts({ report }: { report: AnalyticsReport })
               label: stage.label,
               values: [stage.value],
             }))}
-            series={['distinct inquiries']}
+            series={[{ name: 'Inquiries' }]}
             label={`${c.inquiries} inquiries received, ${c.linkedInquiries} with linked requests, ${c.convertedInquiries} with solid bookings. Verified links only.`}
             empty="No inquiries"
           />

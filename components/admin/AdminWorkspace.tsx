@@ -16,6 +16,7 @@ import { displayStatuses } from '@/lib/admin/dashboard-status';
 import BookingDetail from './BookingDetail';
 import { Badge, enumLabel } from './AdminBadge';
 import AdminOverviewSections from './AdminOverviewSections';
+import LoadingSkeleton from './LoadingSkeleton';
 import AnalyticsOverview from './AnalyticsOverview';
 import SystemSettingsForm from './SystemSettingsForm';
 import ServicesPackages from './ServicesPackages';
@@ -203,7 +204,7 @@ export default function AdminWorkspace({
         <div className={styles.actions}>
           <button
             type="button"
-            className={`${styles.secondary} ${styles.quiet}`}
+            className={styles.secondary}
             onClick={() => {
               if (section === 'services')
                 void refreshCache(
@@ -244,11 +245,7 @@ export default function AdminWorkspace({
           {success}
         </div>
       )}
-      {loading && !data && (
-        <div className={styles.card} role="status">
-          Loading secure workspace…
-        </div>
-      )}
+      {loading && !data && <LoadingSkeleton label="Loading secure workspace…" />}
       {create && data?.policy && (
         <BookingForm
           key={inquiry?.inquiryReference || 'new-request'}
@@ -284,29 +281,28 @@ export default function AdminWorkspace({
       {isList && (
         <>
           <form
-            className={styles.filterPanel}
+            className={styles.toolbar}
+            role="search"
             onSubmit={(event) => {
               event.preventDefault();
               filter('q', query);
             }}
             aria-label="Search and filter records"
           >
-            <div className={styles.searchRow}>
-              <label className={styles.searchLabel}>
-                Search records
-                <span className={styles.searchField}>
-                  <Search size={18} aria-hidden="true" />
-                  <input
-                    aria-label="Search by reference, client, email, event or package"
-                    ref={recordSearchRef}
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Reference, client or event"
-                  />
-                </span>
+            <div className={styles.toolbarRow}>
+              <label className={styles.searchBox}>
+                <span className={styles.srOnly}>Search records</span>
+                <Search size={16} aria-hidden="true" />
+                <input
+                  aria-label="Search by reference, client, email, event or package"
+                  ref={recordSearchRef}
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search reference, client or event"
+                />
               </label>
-              <button type="submit" className={styles.primary}>
+              <button type="submit" className={styles.secondary}>
                 Search
               </button>
               <button
@@ -336,7 +332,9 @@ export default function AdminWorkspace({
                 >
                   <option value="">All approvals</option>
                   {['PENDING', 'APPROVED', 'REJECTED'].map((value) => (
-                    <option key={value}>{value}</option>
+                    <option key={value} value={value}>
+                      {enumLabel(value)}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -348,7 +346,9 @@ export default function AdminWorkspace({
                 >
                   <option value="">All reservations</option>
                   {['REQUESTED', 'CONFIRMED', 'CANCELLED', 'COMPLETED'].map((value) => (
-                    <option key={value}>{value}</option>
+                    <option key={value} value={value}>
+                      {enumLabel(value)}
+                    </option>
                   ))}
                 </select>
               </label>

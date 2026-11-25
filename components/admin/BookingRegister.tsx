@@ -1,5 +1,5 @@
 'use client';
-import { useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { CalendarDays, CircleAlert, ImageIcon, LayoutGrid, Rows3, ShieldAlert } from 'lucide-react';
 import { money, paidTotal, paymentStatus } from '@/lib/admin/domain';
 import {
@@ -203,10 +203,14 @@ export default function BookingRegister({
       )}
       {board && view === 'cards' && shown.length > 0 && (
         <ul className={styles.bookingCards} aria-label="Bookings">
-          {shown.map((booking) => {
+          {shown.map((booking, index) => {
             const status = displayStatus(booking);
             return (
-              <li key={booking.id} className={`${styles.bookingCard} ${styles.clickableCard}`}>
+              <li
+                key={booking.id}
+                className={`${styles.bookingCard} ${styles.clickableCard}`}
+                style={{ '--i': index } as CSSProperties}
+              >
                 <div className={styles.bookingCardHeader}>
                   <StatusChip status={status} />
                   {booking.verification === 'FLAGGED' && (
@@ -276,11 +280,15 @@ export default function BookingRegister({
                 </tr>
               </thead>
               <tbody>
-                {shown.map((booking) => {
+                {shown.map((booking, index) => {
                   const paid = paidTotal(booking.payments),
                     contract = booking.contracts[0];
                   return (
-                    <tr key={booking.id} className={styles.clickableRow}>
+                    <tr
+                      key={booking.id}
+                      className={styles.clickableRow}
+                      style={{ '--i': index } as CSSProperties}
+                    >
                       <td>
                         {/* The row's one control; its ::after makes the whole row clickable. */}
                         <strong>

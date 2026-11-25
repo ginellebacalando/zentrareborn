@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
-import { chartMaximum, donutWedgePath } from './dashboard-chart-math';
+import { chartMaximum, donutWedgePath, smoothLinePath } from './dashboard-chart-math';
 
 test('chart geometry handles empty, single-slice, and large-value domains', () => {
   for (const value of [0, 1, 4, 5, 100, 9999, 2000000000]) {
@@ -17,6 +17,22 @@ test('chart geometry handles empty, single-slice, and large-value domains', () =
     assert.match(path, /A126,80/);
     assert.match(path, /A76,48/);
   }
+});
+
+test('smooth chart lines stay within each pair of values (no overshoot)', () => {
+  const points = [0, 0, 5, 5, 2, 9].map((value, index) => ({ x: index * 20, y: 30 - value * 3 }));
+  const path = smoothLinePath(points);
+  assert.ok(!/NaN|Infinity/.test(path));
+  const segments = path.split(' C').slice(1);
+  assert.equal(segments.length, points.length - 1);
+  segments.forEach((segment, index) => {
+    const [, c1y, , c2y] = segment.split(' ').map(Number);
+    const low = Math.min(points[index].y, points[index + 1].y);
+    const high = Math.max(points[index].y, points[index + 1].y);
+    for (const y of [c1y, c2y]) assert.ok(y >= low - 1e-9 && y <= high + 1e-9, `segment ${index}`);
+  });
+  assert.equal(smoothLinePath([]), '');
+  assert.equal(smoothLinePath([{ x: 4, y: 8 }]), 'M4 8');
 });
 
 test(

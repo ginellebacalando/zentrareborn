@@ -1,5 +1,47 @@
 # Design change log
 
+## 26 November 2026 — Interactive charts, compact search, smooth motion
+
+User task (follow-up to the calm redesign): adopt the Metis template's graphs, interactive and as
+smooth as the link; make it professional; align all buttons; minimal, well-used spacing; search bars
+"just right" instead of oversized; smooth animations everywhere; some creativity.
+
+Affected: `components/admin/chart-engine.ts`, `useChartJs.ts`, `CountUp.tsx` and
+`LoadingSkeleton.tsx` (new), `ChartPrimitives.tsx` (rewritten on Chart.js), `DashboardCharts.tsx` and
+`.module.css`, `AnalyticsCharts.tsx`, `DashboardKpis.tsx` and `.module.css`,
+`DashboardStatusCards.tsx`, `AdminWorkspace.tsx`, `BookingRegister.tsx`, `ServicesPackages.tsx`,
+`WebsiteActivity.tsx`, `admin.module.css`, `lib/admin/dashboard-chart-math.ts` (smooth line path,
+with a test) and `package.json` (Chart.js 4.6.1, pinned; MIT).
+
+- Charts (dashboard and Reports): Chart.js like Metis, coloured from the admin tokens. Smooth lines
+  over gradient fills, rounded bars rising in turn, a donut whose centre shows the pointed-at
+  slice, an HTML tooltip that glides between months with a dashed guide line (Escape hides it),
+  legend toggles, and a 6/12-month segmented switch. The dashboard puts Cash collected beside the
+  30-day summary, then three charts in a row. KPI sparklines are smooth and reveal left to right.
+- Search: the Bookings, Payments, Contracts and Calendar search is one slim row (field, Search,
+  Filter) instead of a labelled card; Packages search matches. Filter fields open in a panel below.
+- Buttons: one height across rows; Refresh buttons are regular bordered secondary buttons; the
+  Search button is secondary so each page keeps one primary action; a 1px press and a soft glow on
+  primary hover. Segmented switches and legend toggles keep 44px targets.
+- Spacing: page gutters 24px, 16px between cards, card padding 16–24px; four booking cards per row
+  at 1440px.
+- Motion: content rises in, cards and rows arrive in turn, KPI figures count up, skeleton loading
+  bars, filter panel slides open; all off under reduced motion.
+- Also: the Website activity subtitle was removed; filter options read in sentence case; table cells
+  keep whole words (a log column had split "Authentication").
+
+Checked locally (demo data): Dashboard, Bookings, Calendar, Packages, Reports, Front desk, Activity
+log and Settings at 1440×900; chart tooltips, bar and donut hover, legend toggles and the period
+switch by mouse and keyboard (Enter, Space); a live theme switch redraws the charts in the light
+tokens (canvas pixels checked); the dashboard at 320px with no sideways scrolling; dark theme on the
+dashboard. `npm run verify` passed (design check; tests: chatbot 68, admin 39, automation 31,
+developer 6; lint with no warnings; production build).
+
+Not checked: a screen reader, reduced-motion emulation (the code paths are in place), 200% text and
+400% zoom on the new charts, and the remaining pages in the dark theme and at 320px. The local demo
+database sometimes answers parallel requests with 503 (Reports showed "Admin data is unavailable"
+once, then loaded); this predates these changes and does not occur on Postgres.
+
 ## 26 November 2026 — Calm admin redesign (Metis vibe, ZENTRA colours)
 
 User task: a recorded video brief plus the Metis template link: make the admin feel like Metis in

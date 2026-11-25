@@ -15,6 +15,8 @@ import { changePercent } from '@/lib/admin/analytics-math';
 import { compactReportCash, reportDates, reportTimestamp } from '@/lib/admin/analytics-export';
 import { money } from '@/lib/admin/domain';
 import { Sparkline } from './ChartPrimitives';
+import CountUp from './CountUp';
+import LoadingSkeleton from './LoadingSkeleton';
 import admin from './admin.module.css';
 import styles from './DashboardKpis.module.css';
 
@@ -22,6 +24,9 @@ const count = (value: number) => value.toLocaleString('en-PH');
 const number = (value: number, cash: boolean) => (cash ? money(value) : count(value));
 const compactNumber = (value: number, cash: boolean) =>
   cash && value >= 1_000_000 ? compactReportCash(value) : number(value, cash);
+// Stable formatters for the counting-up figures (whole units at every frame).
+const countingCash = (value: number) => compactNumber(Math.round(value), true);
+const countingCount = (value: number) => compactNumber(Math.round(value), false);
 
 function percentage(value: number | null) {
   if (value === null) return 'New';
@@ -94,12 +99,7 @@ export default function DashboardKpis({
   summary?: Summary;
   months?: DashboardMonth[];
 }) {
-  if (!summary)
-    return (
-      <div className={admin.card} role="status">
-        Loading business overview…
-      </div>
-    );
+  if (!summary) return <LoadingSkeleton variant="metrics" label="Loading business overview…" />;
   const { year, quality } = summary;
   const previousYear = year - 1;
   const dated = quality.undatedSecuredBookings === 0;
@@ -199,7 +199,16 @@ export default function DashboardKpis({
               </span>
               <span className={styles.value}>
                 {upperBound && <span className={styles.qualifier}>Up to</span>}
-                <strong>{unavailable ? '—' : compactNumber(card.metric.value, card.cash)}</strong>
+                <strong>
+                  {unavailable ? (
+                    '—'
+                  ) : (
+                    <CountUp
+                      value={card.metric.value}
+                      format={card.cash ? countingCash : countingCount}
+                    />
+                  )}
+                </strong>
               </span>
               <span className={styles.period}>{card.period}</span>
               <span className={styles.footer}>

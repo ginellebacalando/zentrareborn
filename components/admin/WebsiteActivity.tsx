@@ -241,14 +241,10 @@ export default function WebsiteActivity() {
       <div className={admin.cardHeading}>
         <div>
           <h2 id="website-activity-title">Website activity</h2>
-          <p>
-            Newest booking requests, inquiries, testimonies to review and questions Zeni could not
-            answer on the public site.
-          </p>
         </div>
         <button
           type="button"
-          className={`${admin.secondary} ${admin.quiet}`}
+          className={admin.secondary}
           aria-disabled={refreshing || undefined}
           onClick={() => void refresh()}
         >

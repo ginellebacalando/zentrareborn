@@ -7,8 +7,11 @@ import {
 } from '@/lib/admin/dashboard-status';
 import type { DashboardInsights } from '@/lib/admin/dashboard-types';
 import { StatusDot } from './BookingStatus';
+import CountUp from './CountUp';
 import admin from './admin.module.css';
 import styles from './DashboardKpis.module.css';
+
+const formatCount = (value: number) => Math.round(value).toLocaleString('en-PH');
 
 /**
  * This month's bookings in one card: the month is named once, and each status cell (dot, label,
@@ -37,7 +40,9 @@ export default function DashboardStatusCards({ month }: { month: DashboardInsigh
                   <StatusDot status={status} />
                   {displayStatusLabels[status]}
                 </span>
-                <strong className={styles.statusValue}>{value.toLocaleString('en-PH')}</strong>
+                <strong className={styles.statusValue}>
+                  <CountUp value={value} format={formatCount} />
+                </strong>
               </Link>
             </li>
           );

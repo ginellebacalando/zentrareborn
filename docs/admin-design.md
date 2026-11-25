@@ -53,8 +53,10 @@ ZENTRA system, aligned with the main website, and set these rules:
 - **Type:** page titles `--type-panel-title` (22–28px, semibold); card titles 16–18px semibold;
   body 16px; tables and secondary text 14px; captions 12px (never smaller).
 - **Shape:** controls 6px radius, cards 8px; card shadow `0 1px 2px` at 6% of `--admin-shadow`.
-- **Targets:** 44px controls (the project default), including sidebar rows.
-- **Motion:** colour and shadow transitions only (`--motion-fast`); none under reduced motion.
+- **Targets:** 44px controls (the project default), including sidebar rows, legend toggles and
+  segmented switches. Buttons in a row share one height, so fields, buttons and toggles line up.
+- **Spacing:** page gutters 24px (16px on phones), 16px between cards, card padding 16–24px
+  (`--layout-card-padding`, redefined for the admin scope).
 
 The design check (`scripts/check-design-system.mjs`) verifies the role contrasts in both themes.
 To use Metis' blue instead of ZENTRA green, change the action, accent-ink, focus and highlight roles
@@ -85,6 +87,48 @@ in the admin block of `styles/tokens.css`; no component needs editing.
   between "Review requests" and "Show all bookings" without moving keyboard focus.
 - **Notices:** soft fill in their hue (error, success, info, warning), no side stripe.
 - **Status chips and badges:** pill, soft fill, ink text, sentence case; status chips add a dot.
+- **Search:** one slim toolbar row (`.toolbar`, `.searchBox`): a search field about 26rem wide
+  with an icon, a Search button that names it (WCAG technique G167) and a Filter button whose fields
+  open in a panel below. No card or label above the field. Phones give the field the full row.
+- **Loading:** skeleton bars in the shape of what is loading (`LoadingSkeleton.tsx`), announced once
+  through `role="status"`.
+
+## Charts
+
+The dashboard and Reports charts follow the Metis template's interactive charts and use the same
+library, Chart.js (`chart-engine.ts`, `useChartJs.ts`, `ChartPrimitives.tsx`).
+
+- **Colours** come from the `--admin-*` tokens of the chart's own subtree, read at runtime, so the
+  dark theme applies and a theme switch redraws the chart in place. No colour is written in code.
+- **Marks:** smooth monotone lines (they never dip below zero) over soft gradient fills; rounded
+  bars that rise one after another; a donut with its total in the centre; dashed grid lines and
+  muted 12px axis labels.
+- **Tooltip:** an HTML card (`.tooltip`) that appears at the hovered month and glides along as the
+  pointer moves, with a dashed guide line on line charts. Escape hides it (WCAG 1.4.13).
+- **Interaction:** legends are toggle buttons (`aria-pressed`) that show or hide a series, keeping
+  one visible; hovering a bar group or donut slice dims the rest; pointing at a donut slice or its
+  legend row lifts the slice and shows its share in the centre. The dashboard's period is a
+  segmented switch (6 or 12 months); the charts animate to the new range.
+- **Layout (dashboard):** Cash collected (the main chart) beside "For the past 30 days", then
+  Bookings trend, Booking activity and Reservation mix in one row (two, then one, on narrower
+  screens).
+- **Access:** every canvas has `role="img"` and a summary name, and every chart keeps an exact-value
+  table for screen readers (`ChartDataTable`). Legends and totals carry the values in text.
+
+## Motion
+
+Smooth but quiet; every effect below is off under `prefers-reduced-motion` (the reduced-motion rule
+at the end of `admin.module.css`, `prefersReducedMotion()` for Chart.js and `useReducedMotion()` for
+the counting figures).
+
+- Page content rises in (fade and 8px rise, about 320ms, children 40ms apart). Backwards fill only,
+  so no transform stays behind to affect fixed or sticky elements.
+- Booking cards and table rows arrive one after another (index in `--i`, capped).
+- KPI and month figures count up to their value (`CountUp.tsx`, framer-motion); the cards' accessible
+  names carry the exact values.
+- Charts draw in, sparklines reveal left to right, the donut centre fades between values.
+- Buttons press down 1px; the primary button gains a soft green glow on hover; the filter panel
+  slides open; skeleton bars shimmer while loading.
 
 ## Checks for admin changes
 

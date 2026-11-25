@@ -241,25 +241,6 @@
 .model {
   min-width: 0;
 }
-.collectionLegend {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--space-3);
-  font-size: var(--type-small);
-}
-.collectionLegend li {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.collectionLegend span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
 .summaryTiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

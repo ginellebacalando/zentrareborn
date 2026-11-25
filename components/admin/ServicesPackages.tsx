@@ -6,6 +6,7 @@ import type { CatalogData } from '@/lib/admin/catalog-types';
 import { useAdminDate } from './AdminPreferencesProvider';
 import CatalogEditor, { type CatalogEditing } from './CatalogEditor';
 import { enumLabel } from './AdminBadge';
+import LoadingSkeleton from './LoadingSkeleton';
 import styles from './admin.module.css';
 
 function price(value: number, currency: string) {
@@ -91,12 +92,7 @@ export default function ServicesPackages() {
         </button>
       </div>
     );
-  if (!data)
-    return (
-      <div className={styles.card} role="status">
-        Loading services and packages…
-      </div>
-    );
+  if (!data) return <LoadingSkeleton label="Loading services and packages…" />;
   return (
     <>
       {notice && (
@@ -219,24 +215,26 @@ export default function ServicesPackages() {
                 )}
               </div>
               <form
-                className={`${styles.filterPanel} ${styles.searchRow}`}
+                className={`${styles.toolbar} ${styles.toolbarRow}`}
+                role="search"
+                aria-label="Search packages"
                 onSubmit={(event) => {
                   event.preventDefault();
                   setSearch(query);
                   setPage(1);
                 }}
               >
-                <label className={styles.searchLabel}>
-                  Search packages
+                <label className={styles.searchBox}>
+                  <span className={styles.srOnly}>Search packages</span>
+                  <Search size={16} aria-hidden="true" />
                   <input
-                    aria-label="Search packages"
-                    placeholder="Package name or description"
+                    type="search"
+                    placeholder="Search package name or description"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                   />
                 </label>
-                <button className={styles.secondary}>
-                  <Search size={15} />
+                <button type="submit" className={styles.secondary}>
                   Search
                 </button>
               </form>
