@@ -143,10 +143,15 @@ color and header descriptions in the older sections below, which are kept as his
   next two weeks of visits, **Schedule a visit** for a caller, and a **client lookup** by email,
   phone or name with the client's bookings and visits. Visit actions follow the state: check in on
   the day, mark completed, no-show after the start time, reschedule, notes (staff only), cancel with
-  a reason, and **Start booking**, which opens the New request form filled from the visit
-  (`/admin/bookings?visit=<id>`). Changes are logged under the module "Front desk"; the page
+  a reason, and **Start booking**, which opens the walk-in booking filled from the visit. Changes
+  are logged under the module "Front desk"; the page
   refreshes every minute and keeps focus on the visit (or on the confirmation when the visit leaves
   the list).
+- **Walk-in booking** (`/admin/front-desk/walk-in`, `components/admin/WalkInBooking.tsx`,
+  `lib/admin/walk-in.ts`): four steps (client, event, consent, payment) with the website's packages,
+  prices and rules; cash now confirms the booking when it meets the policy, otherwise the date is
+  held or the request waits for review. Staff may approve an event above the guest limit with a
+  logged reason. See [docs/walk-ins.md](walk-ins.md).
 - **Settings > Ocular Visits** (`components/admin/VisitRulesSettings.tsx`): the weekly hours, the
   length of a visit, visits at the same time, the website's notice and closed dates, checked on save
   with the problem under its field.

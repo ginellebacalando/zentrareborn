@@ -7,6 +7,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
 import { DEFAULT_VISIT_RULES, manilaDateKey } from '../visit-rules';
 import type { ClientLookup, FrontDeskAgenda, FrontDeskSlots } from '../visit-types';
+import type { WalkInPrefill } from '../walk-in-types';
 import type { MailTransport, OutgoingMail } from '../automation/transport';
 
 const DAY_MS = 86_400_000;
@@ -516,16 +517,24 @@ test(
         /at least 3 characters/,
       );
 
-      // "Start booking for this client" pre-fills the New request form without an inquiry link.
+      // "Start booking" opens the walk-in page with the visitor's details.
       const prefill = (await adminRead(
-        'bookings',
-        new URLSearchParams({ visit: created.id }),
+        'front-desk',
+        new URLSearchParams({ 'walk-in': 'prefill', visit: created.id }),
         actor,
-      )) as { inquiry: { kind: string; fullName: string; phoneNumber: string; id?: string } };
-      assert.equal(prefill.inquiry.kind, 'visit');
-      assert.equal(prefill.inquiry.fullName, 'Jose Reyes');
-      assert.equal(prefill.inquiry.phoneNumber, '+63 917 555 0202');
-      assert.equal(prefill.inquiry.id, undefined);
+      )) as WalkInPrefill;
+      assert.equal(prefill.source, 'visit');
+      assert.equal(prefill.visitId, created.id);
+      assert.equal(prefill.clientName, 'Jose Reyes');
+      assert.equal(prefill.phone, '+63 917 555 0202');
+      await assert.rejects(
+        adminRead(
+          'front-desk',
+          new URLSearchParams({ 'walk-in': 'prefill', visit: 'missing' }),
+          actor,
+        ),
+        /Visit not found/,
+      );
     } finally {
       await prisma.$disconnect();
       await new Promise<void>((resolve) => server.close(() => resolve()));

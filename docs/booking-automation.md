@@ -121,6 +121,10 @@ private, never cached and served as attachments.
 
 ## Rules
 
+Walk-in bookings at the Front desk follow the same rules and prices ([docs/walk-ins.md](walk-ins.md)):
+the booking page, its server and the walk-in page share `lib/booking-quote.ts` (the price of a
+package for a guest count, and the date and time limits) and `websiteReviewReasons`.
+
 - **Payment deadline:** _Settings → Booking Automation → Days to pay the reservation fee_ (1 to 14,
   default 3). The deadline is never after the event starts. New deadlines use the current value;
   existing ones stay until staff extend them.

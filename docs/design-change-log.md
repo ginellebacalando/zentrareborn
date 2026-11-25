@@ -1,5 +1,39 @@
 # Design change log
 
+## 25 November 2026 — Walk-in bookings at the Front desk
+
+User task: build the walk-in flow next (plan section 16.2), after the ocular visits release.
+
+Affected screens and files:
+
+- New admin page **Walk-in booking** (`/admin/front-desk/walk-in`,
+  `components/admin/WalkInBooking.tsx`, `WalkInBooking.module.css`): a four-step form (Client,
+  Event, Consent, Payment) with a step indicator, a step heading that takes focus, an error summary
+  linked to each field, choice cards built on native radio buttons and checkboxes, and a summary
+  beside the form (below it under 75rem) with the live price and what saving will do. The result
+  screen names the outcome (Confirmed, Date on hold, Saved for review) and offers the receipt, the
+  payment page (when GCash or bank details exist), Bookings and a new walk-in.
+- The client step has a returning-client search; the consent step has a bordered notice for the
+  client to read and tick on the staff screen.
+- Front desk: **Walk-in booking** in the header, **Start booking** on visits now opens the walk-in
+  page, and **Book for <client>** in the client lookup.
+- The booking page's price estimate now comes from the shared `lib/booking-quote.ts`; the amounts
+  shown do not change.
+
+Design notes: Front desk styles and admin theme tokens only, so the night theme applies; the radio
+and checkbox sizes use two-class selectors because the admin root styles every input as a field.
+
+Checked locally (demo database): the returning-client search filling the details, the error summary
+on the event step, the price for 150 guests (₱172,500 with a ₱5,000 fee), on-screen consent that
+needs the client's tick, cash now confirming the booking with its receipt, emails and staff calendar
+event, pay later, part of the fee, a custom proposal saved for review, a taken date refused, the
+pre-fill from a visit, and no sideways scrolling at 320px on all four steps. Tests:
+`lib/booking-quote.test.ts`, `lib/admin/walk-in.test.ts`.
+
+Not checked: screenshots (the browser pane was hidden, so the layout was measured rather than
+viewed), the night theme of this page, 200% text and 400% zoom, a screen reader, and the emails in
+real mail clients.
+
 ## 25 November 2026 — Ocular visits and the admin Front desk
 
 User task: build the "Visits + front desk" part of the plan (section 16): visitors schedule an

@@ -15,6 +15,7 @@ import { readBookingRules } from '@/lib/admin/preferences';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueueWebsiteBookingRequest } from '@/lib/automation/booking-requests';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
+import { bookingScheduleProblem, packageQuote } from '@/lib/booking-quote';
 import { prisma } from '@/lib/prisma';
 import { readPublicDateAvailability } from '@/lib/public-availability';
 import { getPublicPackagesForCategory, ServicesPackagesError } from '@/lib/services-packages';
@@ -85,16 +86,6 @@ const requestSchema = z
 
 export type BookingRequestInput = z.input<typeof requestSchema>;
 
-/** Today's date in Manila (UTC+8, no daylight saving) shifted by `days`, as YYYY-MM-DD. */
-function manilaDate(days = 0, now = Date.now()) {
-  return new Date(now + 8 * HOUR_MS + days * DAY_MS).toISOString().slice(0, 10);
-}
-
-function minutesOf(value: string) {
-  const [hours, minutes] = value.split(':').map(Number);
-  return hours * 60 + minutes;
-}
-
 function bookingReference() {
   return `ZION-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
 }
@@ -146,20 +137,9 @@ export async function submitBookingRequest(request: Request) {
     );
   const input = parsed.data;
 
-  const earliest = manilaDate(BOOKING_REQUEST_RULES.minLeadDays);
-  const latest = manilaDate(BOOKING_REQUEST_RULES.maxDaysAhead);
-  if (input.date < earliest)
-    throw new BookingRequestError('Please choose a date from tomorrow onward.');
-  if (input.date > latest)
-    throw new BookingRequestError('Please choose a date within the next two years.');
-  const start = minutesOf(input.startTime);
-  const end = minutesOf(input.endTime);
-  if (
-    start < minutesOf(BOOKING_REQUEST_RULES.firstStart) ||
-    end > minutesOf(BOOKING_REQUEST_RULES.lastEnd) ||
-    end - start < BOOKING_REQUEST_RULES.minDurationMinutes
-  )
-    throw new BookingRequestError('The event must end at least one hour after it starts.');
+  // The same date and time rules as walk-in bookings at the Front desk (lib/booking-quote.ts).
+  const scheduleIssue = bookingScheduleProblem(input);
+  if (scheduleIssue) throw new BookingRequestError(scheduleIssue.problem);
 
   const availability = await readPublicDateAvailability(input.date, input.date);
   if (availability.booked.includes(input.date))
@@ -193,9 +173,9 @@ export async function submitBookingRequest(request: Request) {
     );
 
   const { category, pkg } = await chosenPackage(input.eventCategory, input.packageId);
-  const extraGuests = pkg ? Math.max(0, input.guests - pkg.paxIncluded) : 0;
-  const totalCents = pkg ? Math.round((pkg.price + extraGuests * pkg.excessPaxFee) * 100) : 0;
-  const depositCents = pkg ? Math.min(Math.round(pkg.reservationFee * 100), totalCents) : 0;
+  const { extraGuests, totalCents, depositCents } = pkg
+    ? packageQuote(pkg, input.guests)
+    : { extraGuests: 0, totalCents: 0, depositCents: 0 };
   const payment = BOOKING_PAYMENT_METHODS.find((method) => method.value === input.paymentMethod);
   const [policy, rules] = await Promise.all([venuePolicy(), readBookingRules()]);
   const reviewReasons = websiteReviewReasons({

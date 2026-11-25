@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import Link from 'next/link';
 import useSWR from 'swr';
-import { CalendarPlus, LoaderCircle, RefreshCw, Search } from 'lucide-react';
+import { CalendarPlus, LoaderCircle, RefreshCw, Search, UserPlus } from 'lucide-react';
 import { displayStatus } from '@/lib/admin/dashboard-status';
 import {
   visitSourceLabel,
@@ -18,6 +19,8 @@ import { StatusChip } from './BookingStatus';
 import styles from './FrontDesk.module.css';
 
 const ENDPOINT = '/api/admin/front-desk';
+/** Walk-in bookings at the desk (components/admin/WalkInBooking.tsx). */
+const WALK_IN_PATH = '/admin/front-desk/walk-in';
 /** The confirmation of the last action; it takes focus when the visit it was about moved away. */
 const NOTICE_ID = 'front-desk-notice';
 const clock = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', timeStyle: 'short' });
@@ -469,10 +472,10 @@ function VisitCard({
           Notes
         </button>
         {status !== 'CANCELLED' && status !== 'NO_SHOW' && (
-          <a className={styles.secondary} href={`/admin/bookings?visit=${visit.id}`}>
+          <Link className={styles.secondary} href={`${WALK_IN_PATH}?visit=${visit.id}`}>
             Start booking
             <span className={styles.visuallyHidden}> for {name}</span>
-          </a>
+          </Link>
         )}
         {scheduled && (
           <button
@@ -652,6 +655,12 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
     { shouldRetryOnError: false },
   );
   const latest = data && (data.clientVisits[0] ?? data.clientBookings[0]);
+  // Only an id travels in the address; the walk-in page reads the client's details itself.
+  const bookFrom = data?.clientBookings[0]
+    ? `booking=${data.clientBookings[0].id}`
+    : data?.clientVisits[0]
+      ? `visit=${data.clientVisits[0].id}`
+      : null;
   const found = data ? data.clientBookings.length + data.clientVisits.length : 0;
   return (
     <section className={styles.card} aria-labelledby={`${id}-title`}>
@@ -755,6 +764,12 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
                   <CalendarPlus size={16} aria-hidden="true" />
                   Schedule a visit for {latest.clientName}
                 </button>
+                {bookFrom && (
+                  <Link className={styles.secondary} href={`${WALK_IN_PATH}?${bookFrom}`}>
+                    <UserPlus size={16} aria-hidden="true" />
+                    Book for {latest.clientName}
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -837,6 +852,10 @@ export default function FrontDesk() {
             <CalendarPlus size={16} aria-hidden="true" />
             Schedule a visit
           </button>
+          <Link className={styles.primary} href={WALK_IN_PATH}>
+            <UserPlus size={16} aria-hidden="true" />
+            Walk-in booking
+          </Link>
         </div>
       </header>
 

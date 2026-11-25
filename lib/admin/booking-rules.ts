@@ -126,3 +126,15 @@ export function websiteReviewReasons(request: {
     reasons.push(`more than ${request.reviewGuestLimit} guests`);
   return reasons;
 }
+
+/**
+ * A walk-in booking at the Front desk follows the website's review rules, except that staff who
+ * meet the client may approve a larger event themselves, with a reason for the activity log.
+ * `blocking` reasons still need the decision on Bookings (a price to quote, a fee to set, the
+ * policy to review); `overridable` ones can be approved at the desk.
+ */
+export function walkInReview(request: Parameters<typeof websiteReviewReasons>[0]) {
+  const all = websiteReviewReasons(request);
+  const blocking = websiteReviewReasons({ ...request, reviewGuestLimit: null });
+  return { blocking, overridable: all.filter((reason) => !blocking.includes(reason)) };
+}

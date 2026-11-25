@@ -2,8 +2,8 @@
 
 Visitors schedule an ocular visit on the website and get a confirmation email with a calendar
 invitation right away; staff run the day from the admin **Front desk**. This covers plan section
-16.1 (ocular visits) and the parts of 16.2 and 16.3 that need no walk-in wizard: the client lookup
-with history, scheduling for callers, and "Start booking for this client".
+16.1 (ocular visits) and 16.3 (returning clients: the client lookup with history); walk-in
+bookings (16.2) are in [docs/walk-ins.md](walk-ins.md).
 
 ## For visitors
 
@@ -56,10 +56,11 @@ Every staff role can use it. The page refreshes itself every minute.
   website's notice. The email is optional; without it only the staff calendars get the event. Staff
   confirm that the client agreed to share the details.
 - **Client lookup** by email (any case), phone (matched on its last ten digits, so `0917 555 0101`
-  and `+63 917 555 0101` are the same) or part of the name: the client's bookings and visits, and a
-  button to schedule a visit with their details.
-- **Start booking** opens Bookings with the New request form filled from the visit
-  (`/admin/bookings?visit=<id>`): the request is not linked to an inquiry.
+  and `+63 917 555 0101` are the same) or part of the name: the client's bookings and visits, and
+  buttons to schedule a visit or start a walk-in booking with their details.
+- **Start booking** opens the walk-in booking filled from the visit
+  (`/admin/front-desk/walk-in?visit=<id>`, [docs/walk-ins.md](walk-ins.md)); when the visitor
+  books, a checked-in visit is marked completed.
 
 Every change is in the activity log under the module **Front desk**, with the visit id.
 
@@ -111,8 +112,6 @@ Every change is in the activity log under the module **Front desk**, with the vi
 
 ## Not included yet
 
-- The walk-in wizard of plan 16.2 (consent capture, package, cash and confirmation in one flow);
-  walk-ins use New request and Record cash on Bookings for now.
 - Signed-in client accounts that skip the form, and Turnstile on the visit page.
 - Other appointment types (planning meeting, payment visit) and linking a visit to the booking it
   led to.

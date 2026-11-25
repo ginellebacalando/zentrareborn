@@ -26,11 +26,12 @@ import {
 import type { AdminActor } from './access';
 import { AdminError } from './errors';
 import { readVisitRules } from './preferences';
+import { createWalkInBooking, readWalkInOptions, readWalkInPrefill } from './walk-in';
 
 /**
  * The admin Front desk (docs/visits.md): today's agenda of visits and events, upcoming visits,
- * visit outcomes and notes, visits scheduled for callers, and a client lookup by email, phone
- * or name with the client's bookings and visits.
+ * visit outcomes and notes, visits scheduled for callers, a client lookup by email, phone or
+ * name with the client's bookings and visits, and walk-in bookings (docs/walk-ins.md).
  */
 
 const DAY_MS = 24 * 60 * 60_000;
@@ -41,6 +42,7 @@ export const FRONT_DESK_OPERATIONS = [
   'cancel-visit',
   'visit-outcome',
   'visit-notes',
+  'walk-in-booking',
 ] as const;
 
 const visitSelect = {
@@ -224,8 +226,14 @@ export async function lookupClient(raw: string): Promise<ClientLookup> {
   };
 }
 
-/** What the Front desk page reads: the agenda, a lookup, or the open times for a form. */
+/**
+ * What the Front desk pages read: the agenda, a lookup, the open visit times for a form, or the
+ * walk-in page's options and a client's details to start from (lib/admin/walk-in.ts).
+ */
 export async function readFrontDesk(params: URLSearchParams) {
+  const walkIn = params.get('walk-in');
+  if (walkIn === 'options') return readWalkInOptions();
+  if (walkIn === 'prefill') return readWalkInPrefill(params);
   const lookup = params.get('lookup');
   if (lookup !== null) return lookupClient(lookup);
   if (params.has('slots')) {
@@ -428,6 +436,7 @@ export async function frontDeskMutate(raw: unknown, actor: AdminActor) {
       return { id: visit.id, status: 'CANCELLED' };
     }
     if (op === 'visit-outcome') return recordOutcome(outcomeSchema.parse(raw), actor);
+    if (op === 'walk-in-booking') return createWalkInBooking(raw, actor);
     const input = notesSchema.parse(raw);
     const visit = await prisma.adminVisit.findUnique({
       where: { id: input.id },
@@ -444,44 +453,4 @@ export async function frontDeskMutate(raw: unknown, actor: AdminActor) {
     if (error instanceof VisitError) throw new AdminError(error.message, error.status);
     throw error;
   }
-}
-
-/** The New request form's pre-fill; a visit links no inquiry, so it carries no inquiry id. */
-type VisitBookingPrefill = {
-  kind: 'visit';
-  id?: string;
-  inquiryReference: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  eventInterest: string | null;
-  requestedEventDate: string | null;
-  message: string;
-};
-
-/** The New request form, pre-filled from a visit ("Start booking for this client"). */
-export async function bookingPrefillFromVisit(visitId: string): Promise<VisitBookingPrefill> {
-  const visit = await prisma.adminVisit.findUnique({
-    where: { id: visitId },
-    select: {
-      reference: true,
-      clientName: true,
-      email: true,
-      phone: true,
-      eventType: true,
-      eventDate: true,
-      message: true,
-    },
-  });
-  if (!visit) throw new AdminError('Visit not found.', 404);
-  return {
-    kind: 'visit',
-    inquiryReference: visit.reference,
-    fullName: visit.clientName,
-    email: visit.email,
-    phoneNumber: visit.phone,
-    eventInterest: visit.eventType || null,
-    requestedEventDate: visit.eventDate ? visit.eventDate.toISOString().slice(0, 10) : null,
-    message: visit.message,
-  };
 }

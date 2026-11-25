@@ -1,0 +1,171 @@
+/* Walk-in booking (docs/walk-ins.md). The Front desk styles (FrontDesk.module.css) provide the
+   panel, cards, fields and buttons; these rules lay out the steps, the choice cards and the
+   summary. Admin theme tokens only, so the night theme applies. */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  padding-top: var(--space-2);
+  border-top: 3px solid var(--admin-divider);
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.step[data-state='done'],
+.step[data-state='current'] {
+  border-top-color: var(--admin-action);
+  color: var(--admin-ink);
+}
+.layout {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
+}
+@media (min-width: 75rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    align-items: start;
+  }
+  .summary {
+    position: sticky;
+    top: var(--space-6);
+  }
+}
+.choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* The radio or checkbox sits in the first column; every line of text in the second. */
+.choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-1) var(--space-3);
+  height: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-input);
+  font-size: var(--type-small);
+  line-height: var(--line-body);
+  cursor: pointer;
+}
+.choice:has(:checked) {
+  border-color: var(--admin-action);
+  box-shadow: inset 0 0 0 1px var(--admin-action);
+}
+.choice:has(:focus-visible) {
+  outline: 3px solid var(--admin-focus);
+  outline-offset: 3px;
+}
+/* The admin root sizes every input as a full-width field; radios and checkboxes stay small. */
+.walkIn .choice input,
+.walkIn .tick input {
+  flex-shrink: 0;
+  width: 1.25rem;
+  min-width: 0;
+  height: 1.25rem;
+  min-height: 0;
+  margin-top: 0.15em;
+  padding: 0;
+  accent-color: var(--admin-action);
+}
+.choice > :not(input) {
+  grid-column: 2;
+}
+.choiceTitle {
+  color: var(--admin-ink);
+  font-size: var(--type-body);
+}
+.tick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--type-small);
+  line-height: var(--line-body);
+}
+.fieldset {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.fieldset legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}
+.summaryList {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--type-small);
+  line-height: var(--line-body);
+}
+.summaryList dt {
+  color: var(--admin-muted);
+}
+.summaryList dd {
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.total {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--admin-divider);
+}
+/* The client reads and agrees on the staff tablet: larger text, clear edges. */
+.consentBox {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 2px solid var(--admin-action);
+  border-radius: var(--radius-card);
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+}
+.consentBox a {
+  color: var(--admin-action);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.errorSummary {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--admin-danger);
+  border-radius: var(--radius-control);
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  font-size: var(--type-small);
+}
+.errorSummary ul {
+  margin: 0;
+  padding-left: var(--space-6);
+}
+.errorSummary a {
+  color: inherit;
+  text-decoration: underline;
+}
+.fieldError {
+  color: var(--admin-danger);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+}
+.result {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 48rem;
+}

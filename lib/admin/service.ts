@@ -19,12 +19,7 @@ import {
   type OnlinePaymentMethod,
 } from './payment-accounts';
 import { readBookingProofs } from './payment-proofs';
-import {
-  bookingPrefillFromVisit,
-  FRONT_DESK_OPERATIONS,
-  frontDeskMutate,
-  readFrontDesk,
-} from './front-desk';
+import { FRONT_DESK_OPERATIONS, frontDeskMutate, readFrontDesk } from './front-desk';
 import { readDashboardInsights } from './dashboard';
 import { readDashboardKpis } from './dashboard-kpis';
 import { readAnalyticsReport } from './analytics';
@@ -730,9 +725,6 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
         booking: { ...booking, paymentProofs: await readBookingProofs(prisma, booking.id) },
       };
     }
-    // "Start booking for this client" on the Front desk pre-fills the New request form.
-    if (params.get('visit'))
-      return { inquiry: await bookingPrefillFromVisit(params.get('visit')!) };
     if (params.get('inquiry')) {
       const inquiry = await prisma.inquiry.findUnique({
         where: { id: params.get('inquiry')! },

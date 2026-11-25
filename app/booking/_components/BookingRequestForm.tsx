@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDatePicker';
 import { BRAND } from '@/config/brand';
+import { packageQuote } from '@/lib/booking-quote';
 import {
   BOOKING_EXTRAS,
   BOOKING_PAYMENT_METHODS,
@@ -148,12 +149,16 @@ function dateLabel(iso: string) {
   }).format(new Date(`${iso}T00:00:00Z`));
 }
 
+/** The server and the Front desk price bookings with the same function (lib/booking-quote.ts). */
 function estimateFor(pkg: BookingPackage | null, guests: number) {
   if (!pkg) return null;
-  const extraGuests = Number.isFinite(guests) ? Math.max(0, guests - pkg.paxIncluded) : 0;
-  const extraCost = extraGuests * pkg.excessPaxFee;
-  const total = pkg.price + extraCost;
-  return { extraGuests, extraCost, total, reservationFee: Math.min(pkg.reservationFee, total) };
+  const quote = packageQuote(pkg, guests);
+  return {
+    extraGuests: quote.extraGuests,
+    extraCost: quote.extraCents / 100,
+    total: quote.totalCents / 100,
+    reservationFee: quote.depositCents / 100,
+  };
 }
 
 function validate(
