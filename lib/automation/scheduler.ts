@@ -117,31 +117,48 @@ export async function scheduleDailyDigest(now = new Date()) {
   const dayAfterStart = manilaDayStart(addDays(day, 2));
   const since = new Date(now.getTime() - ONE_DAY_MS);
   const eventSelect = { reference: true, clientName: true, eventType: true, startsAt: true };
-  const [today, tomorrow, newInquiries, inquiries, awaitingApproval, failedEmails, staff] =
-    await Promise.all([
-      prisma.adminBooking.findMany({
-        where: { reservation: 'CONFIRMED', startsAt: { gte: todayStart, lt: tomorrowStart } },
-        orderBy: { startsAt: 'asc' },
-        take: 20,
-        select: eventSelect,
-      }),
-      prisma.adminBooking.findMany({
-        where: { reservation: 'CONFIRMED', startsAt: { gte: tomorrowStart, lt: dayAfterStart } },
-        orderBy: { startsAt: 'asc' },
-        take: 20,
-        select: eventSelect,
-      }),
-      prisma.inquiry.count({ where: { submittedAt: { gte: since, lte: now } } }),
-      prisma.inquiry.findMany({
-        where: { submittedAt: { gte: since, lte: now } },
-        orderBy: { submittedAt: 'desc' },
-        take: 10,
-        select: { inquiryReference: true, fullName: true, eventInterest: true },
-      }),
-      prisma.adminBooking.count({ where: { approval: 'PENDING', reservation: 'REQUESTED' } }),
-      prisma.adminOutbox.count({ where: { status: 'REVIEW_REQUIRED' } }),
-      resolveStaffRecipients(),
-    ]);
+  const [
+    today,
+    tomorrow,
+    newInquiries,
+    inquiries,
+    awaitingApproval,
+    waitingForPayment,
+    deadlinesToday,
+    failedEmails,
+    staff,
+  ] = await Promise.all([
+    prisma.adminBooking.findMany({
+      where: { reservation: 'CONFIRMED', startsAt: { gte: todayStart, lt: tomorrowStart } },
+      orderBy: { startsAt: 'asc' },
+      take: 20,
+      select: eventSelect,
+    }),
+    prisma.adminBooking.findMany({
+      where: { reservation: 'CONFIRMED', startsAt: { gte: tomorrowStart, lt: dayAfterStart } },
+      orderBy: { startsAt: 'asc' },
+      take: 20,
+      select: eventSelect,
+    }),
+    prisma.inquiry.count({ where: { submittedAt: { gte: since, lte: now } } }),
+    prisma.inquiry.findMany({
+      where: { submittedAt: { gte: since, lte: now } },
+      orderBy: { submittedAt: 'desc' },
+      take: 10,
+      select: { inquiryReference: true, fullName: true, eventInterest: true },
+    }),
+    prisma.adminBooking.count({ where: { approval: 'PENDING', reservation: 'REQUESTED' } }),
+    prisma.adminBooking.count({ where: { approval: 'APPROVED', reservation: 'REQUESTED' } }),
+    prisma.adminBooking.count({
+      where: {
+        approval: 'APPROVED',
+        reservation: 'REQUESTED',
+        holdExpiresAt: { gte: todayStart, lt: tomorrowStart },
+      },
+    }),
+    prisma.adminOutbox.count({ where: { status: 'REVIEW_REQUIRED' } }),
+    resolveStaffRecipients(),
+  ]);
   const appUrl = applicationUrl();
   const digest = dailyDigest({
     day: todayStart,
@@ -154,6 +171,8 @@ export async function scheduleDailyDigest(now = new Date()) {
       eventInterest: item.eventInterest,
     })),
     awaitingApproval,
+    waitingForPayment,
+    deadlinesToday,
     failedEmails,
     adminUrl: appUrl ? `${appUrl}/admin/dashboard` : null,
   });

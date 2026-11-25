@@ -4,6 +4,9 @@ import { isEmailAddress } from '@/lib/email-address';
 import { STAFF_RECIPIENT_LIMITS, type StaffRecipientSource } from './catalog';
 
 /** Delivery policy. Gmail allows about 500 messages per rolling day on a personal account. */
+/** The automation state row that records the last scheduled run (read by the overview). */
+export const LAST_RUN_STATE_KEY = 'last-run';
+
 export const AUTOMATION_POLICY = {
   maxAttempts: 5,
   /** Exponential backoff: 2, 8, 32 and 128 minutes, capped at six hours. */

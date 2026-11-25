@@ -13,7 +13,15 @@ import styles from './admin.module.css';
 import { useAdminDate } from './AdminPreferencesProvider';
 
 type BookingAction =
-  'VERIFY' | 'FLAG' | 'APPROVE' | 'REJECT' | 'REVIEW_POLICY' | 'CONFIRM' | 'CANCEL' | 'COMPLETE';
+  | 'VERIFY'
+  | 'FLAG'
+  | 'APPROVE'
+  | 'REJECT'
+  | 'REVIEW_POLICY'
+  | 'CONFIRM'
+  | 'CANCEL'
+  | 'COMPLETE'
+  | 'EXTEND_HOLD';
 type ActionOption = {
   action: BookingAction;
   label: string;
@@ -23,10 +31,12 @@ type ActionOption = {
 };
 
 /**
- * Figma's actions mapped onto the existing state machine (lib/admin/service.ts); nothing here adds
- * a transition. "Mark as pending" is approval (request → pending), "Confirm" secures the date and
- * "Cancel booking" closes it. The server re-checks every rule; the client only hides actions the
- * server would always refuse and explains the ones that are temporarily blocked.
+ * The booking automation's actions (docs/booking-automation.md) mapped onto the server's state
+ * machine (lib/admin/service.ts). Under review: approve (which holds the date until the payment
+ * deadline) or reject. Waiting for payment: record the payment below, which confirms the booking by
+ * itself, or extend the deadline. Confirm remains for bookings that need no payment. The server
+ * re-checks every rule; the client only hides actions the server would always refuse and explains
+ * the ones that are temporarily blocked.
  */
 function bookingActions(
   b: Booking,
@@ -36,17 +46,27 @@ function bookingActions(
 ): { main: ActionOption[]; more: ActionOption[] } {
   if (['CANCELLED', 'COMPLETED'].includes(b.reservation)) return { main: [], more: [] };
   const requested = b.reservation === 'REQUESTED';
+  const approved = b.approval === 'APPROVED';
+  const flagged = b.verification === 'FLAGGED';
   const main: ActionOption[] = [];
   const more: ActionOption[] = [];
-  if (requested && b.approval !== 'APPROVED')
+  if (requested && !approved)
     main.push({
       action: 'APPROVE',
-      label: 'Mark as pending',
-      tone: 'secondary',
-      blocked: b.verification !== 'VERIFIED' ? 'Verify the client contact before approval.' : null,
+      label: 'Approve request',
+      tone: 'primary',
+      blocked: flagged
+        ? 'This request is flagged as suspicious. Clear the flag first.'
+        : b.totalCents < 1
+          ? 'Set the price with Edit details first.'
+          : null,
     });
-  if (requested)
-    main.push({ action: 'CONFIRM', label: 'Confirm', tone: 'primary', blocked: confirmHint });
+  if (requested && b.approval === 'PENDING')
+    main.push({ action: 'REJECT', label: 'Reject request', tone: 'danger' });
+  if (requested && approved && b.holdExpiresAt)
+    main.push({ action: 'EXTEND_HOLD', label: 'Extend payment deadline', tone: 'secondary' });
+  if (requested && approved && !confirmHint)
+    main.push({ action: 'CONFIRM', label: 'Confirm', tone: 'primary' });
   if (b.reservation === 'CONFIRMED')
     main.push({
       action: 'COMPLETE',
@@ -60,23 +80,23 @@ function bookingActions(
             : null,
     });
   main.push({ action: 'CANCEL', label: 'Cancel booking', tone: 'danger' });
-  if (b.reservation !== 'CONFIRMED' && b.verification !== 'VERIFIED')
-    more.push({ action: 'VERIFY', label: 'Verify contact', tone: 'secondary' });
-  if (b.reservation !== 'CONFIRMED' && b.verification !== 'FLAGGED')
+  if (b.reservation !== 'CONFIRMED' && flagged)
+    more.push({ action: 'VERIFY', label: 'Clear flag (contact verified)', tone: 'secondary' });
+  if (b.reservation !== 'CONFIRMED' && !flagged)
     more.push({ action: 'FLAG', label: 'Flag as suspicious', tone: 'danger' });
-  if (requested && b.approval !== 'REJECTED')
-    more.push({ action: 'REJECT', label: 'Reject request', tone: 'danger' });
-  if (requested)
+  if (requested && policy && b.policyVersion !== policy.version)
     more.push({
       action: 'REVIEW_POLICY',
       label: 'Re-review under current policy',
       tone: 'secondary',
-      blocked:
-        !policy?.reviewed || b.verification !== 'VERIFIED'
-          ? 'Review the venue policy in Settings and verify this request first.'
-          : null,
+      blocked: !policy.reviewed ? 'Review the venue policy in Settings first.' : null,
     });
   return { main, more };
+}
+
+/** Whether a moment is already in the past; kept outside render so the component stays pure. */
+function hasPassed(moment: Date) {
+  return moment.getTime() <= Date.now();
 }
 
 export default function BookingDetail({
@@ -130,6 +150,9 @@ export default function BookingDetail({
     (contract) => contract.status === 'ISSUED' || contract.status === 'SIGNED',
   );
   const canEdit = b.reservation === 'REQUESTED' && !lockedByAgreement && !!policy;
+  const holding = b.reservation === 'REQUESTED' && b.approval === 'APPROVED';
+  const deadline = holding && b.holdExpiresAt ? new Date(b.holdExpiresAt) : null;
+  const deadlinePassed = deadline !== null && hasPassed(deadline);
   async function submitReceipt(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget,
@@ -302,6 +325,12 @@ export default function BookingDetail({
           <dl>
             <dt>Balance</dt>
             <dd>{money(b.totalCents - paid)}</dd>
+            {deadline && (
+              <>
+                <dt>Pay by</dt>
+                <dd>{eventDate(deadline)}</dd>
+              </>
+            )}
             <dt>Confirmation rule</dt>
             <dd>
               {b.paymentRule.replaceAll('_', ' ').toLowerCase()}
@@ -310,6 +339,15 @@ export default function BookingDetail({
           </dl>
         </section>
       </div>
+      {deadline && (
+        <p className={styles.notice} role="status">
+          {deadlinePassed
+            ? paid > 0
+              ? `The payment deadline (${eventDate(deadline)}) passed with a partial payment. Extend the deadline or cancel the booking.`
+              : `The payment deadline (${eventDate(deadline)}) passed. The date is released automatically within a few minutes unless you extend the deadline.`
+            : `Waiting for payment until ${eventDate(deadline)}. Record the payment in Cash receipts: the booking confirms itself. If no payment arrives by then, the date is released automatically.`}
+        </p>
+      )}
       {b.notes && <div className={styles.notice}>Staff notes: {b.notes}</div>}
       {editing && canEdit && policy && (
         <BookingForm
@@ -331,8 +369,8 @@ export default function BookingDetail({
             Actions
           </h3>
           <p>
-            Record how contact was verified or why a decision was made. Approval marks a request
-            pending; only confirmation secures the venue date.
+            Record why you made a decision. Approving a request holds its date until the payment
+            deadline; recording the payment confirms the booking automatically.
           </p>
           <label htmlFor={noteId}>
             Decision note (required)
@@ -343,7 +381,7 @@ export default function BookingDetail({
               minLength={5}
               maxLength={2000}
               rows={2}
-              placeholder="Contact method, result, or reason…"
+              placeholder="For example: checked the details with the client by phone"
             />
           </label>
           <div className={styles.detailActions}>
@@ -409,8 +447,8 @@ export default function BookingDetail({
             <ChevronDown size={18} aria-hidden="true" />
           </summary>
           <p>
-            Only cash actually received is recorded here. Receipts do not automatically confirm a
-            reservation.
+            Only cash actually received is recorded here. When the payments reach the confirmation
+            rule (the reservation fee or the full amount), the booking is confirmed automatically.
           </p>
           <ul className={styles.receiptList}>
             {b.payments.map((p) => (

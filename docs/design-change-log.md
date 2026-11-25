@@ -1,5 +1,53 @@
 # Design change log
 
+## 25 November 2026 — Booking automation phase 1: the system approves, staff record payments
+
+User task: follow the team plan, where the system checks a booking's details and staff only check
+the payment and decide unusual requests, with a 3-day payment deadline (chosen by the user).
+
+Affected screens and files:
+
+- Public booking page (`app/booking/_components/BookingRequestForm.tsx`,
+  `services/booking-requests.ts`, `app/api/client/booking-requests/route.ts`): the intro and the
+  review step's "What happens next" explain that most bookings are approved at once and held
+  while the client pays. After sending, an approved request shows "Your date is on hold" with the
+  reservation fee and the deadline; a request that needs review keeps the previous text.
+- Admin → Bookings (`components/admin/BookingDetail.tsx`, `lib/admin/dashboard-status.ts`): the
+  tabs are Under review, Waiting for payment, Confirmed and Cancelled. Actions are Approve request
+  and Reject request (under review), Extend payment deadline (waiting for payment), Confirm (only
+  when no payment is needed), Complete event and Cancel booking; Clear flag replaces Verify contact.
+  A status note gives the payment deadline (or says it passed), Payment status adds a Pay by row,
+  and Cash receipts says that recording the fee confirms the booking.
+- Admin → Settings (`components/admin/SystemSettingsForm.tsx`): a Booking Automation card with
+  "Days to pay the reservation fee" and "Review bookings with more guests than", using the Staff
+  notification emails pattern: persistent labels and help, and on a bad value an inline message
+  (`role="alert"`, `aria-invalid`, `aria-describedby`) that opens the card and focuses the field.
+- Emails: "Your date is on hold", approval and extension with the deadline, a payment reminder,
+  "Payment deadline passed", staff alerts "waiting for payment" or "needs review", "Balance still
+  due after the event", a staff calendar removal for a missed deadline, and digest counts.
+- Server: `lib/admin/booking-rules.ts`, `booking-automation.ts`, `lib/booking-occupancy.ts`,
+  `lib/admin/service.ts`, preferences; `prisma/booking-holds.sql` and its installer; held dates
+  are unavailable on the booking page and in Zeni's calendar. A "Custom proposal" request, which
+  the database used to refuse, now saves and goes to review.
+
+Tokens and existing components only; no new colors, type sizes, layout patterns or motion.
+
+Verification: `npm run verify` passed (chatbot 68, admin 24, automation 31, developer 6, lint,
+build). The new tests cover approval with a deadline, payment confirming by itself, a partial
+payment, extension, the reminder, release of an unpaid hold, completion and the balance alert,
+held-date emails and the Settings rules. On the local preview a website booking showed "Your date
+is on hold" with ₱5,000 and a deadline three days later; Admin listed it under Waiting for
+payment with the deadline note and Pay by row, and recording ₱5,000 confirmed it at once. At
+320 px the Booking Automation card and a held booking's detail (note, actions, Pay by) fit with
+no sideways scrolling.
+
+Limitations: GCash and bank transfer uploads with a Verify payment screen are phase 2. Dark theme,
+200% text and 400% zoom, a screen reader and reduced motion were not checked for the changed
+screens; the inline error of the Settings card was checked in code only, since the number fields'
+native validation answers first in the browser. Emails and the scheduled jobs were checked by
+tests, not by real inboxes. The AGENTS.md hand-off to the team chats could not be sent from this
+machine.
+
 ## 25 November 2026 — Booking requests appear in the owner's calendar as pending events
 
 User task: as the owner, see every booking that comes in on their own Google Calendar right away,

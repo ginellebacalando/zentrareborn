@@ -278,24 +278,45 @@ function bookingRequestDetails(input: BookingRequestEmailSource): EmailDetail[] 
   ];
 }
 
+/**
+ * What the system decided for a website request (docs/booking-automation.md): a payment deadline
+ * when it approved the request and holds the date, or the reasons it needs staff review.
+ */
+export type BookingRequestOutcome = {
+  holdExpiresAt: Date | null;
+  amountDueCents: number;
+  paymentInstructions: string;
+  reviewReasons: string[];
+};
+
 export function bookingRequestStaffAlert(
-  input: BookingRequestEmailSource & { bookingsUrl: string | null },
+  input: BookingRequestEmailSource & { bookingsUrl: string | null; outcome: BookingRequestOutcome },
 ): RenderedEmail {
   const notes = input.notes.length > 2000 ? `${input.notes.slice(0, 1997)}...` : input.notes;
+  const { holdExpiresAt, amountDueCents, reviewReasons } = input.outcome;
+  const name = singleLine(input.clientName, 80);
   return renderEmail({
-    subject: `New booking request ${input.reference} | ${singleLine(input.clientName, 80)}`,
+    subject: holdExpiresAt
+      ? `New booking ${input.reference} | ${name} | waiting for payment`
+      : `Booking request ${input.reference} | ${name} | needs review`,
     preheader: `${singleLine(input.eventType)} on ${manilaDate(input.startsAt)} for ${input.guests} guests.`,
-    heading: 'New booking request from the website',
+    heading: holdExpiresAt
+      ? 'New booking waiting for payment'
+      : 'Booking request needs your review',
     sections: [
       {
         paragraphs: [
-          'A visitor sent a booking request from the website. It is waiting in Bookings as a Request. The date is not reserved until staff approve it and the reservation is confirmed. Reply to this email to answer the client directly.',
+          holdExpiresAt
+            ? `A visitor booked from the website. The system approved it and holds the date until ${manilaDateTime(holdExpiresAt)} for the payment of ${pesos(amountDueCents)}. When the client pays, record the cash in Bookings and the booking confirms itself. If no payment arrives by the deadline, the date is released automatically.`
+            : `A visitor sent a booking request that needs a staff decision: ${reviewReasons.join('; ')}. Open Bookings to approve or reject it; approving holds the date while the client pays.`,
+          'Reply to this email to answer the client directly.',
         ],
         details: [
           ['Name', singleLine(input.clientName)],
           ['Email', input.email],
           ['Phone', input.phone],
           ...bookingRequestDetails(input),
+          ['Pay by', holdExpiresAt ? manilaDateTime(holdExpiresAt) : ''],
           ['Submitted', manilaDateTime(input.createdAt)],
         ],
       },
@@ -305,7 +326,52 @@ export function bookingRequestStaffAlert(
   });
 }
 
-export function bookingRequestAcknowledgement(input: BookingRequestEmailSource): RenderedEmail {
+/** The client's email when the system approved the request and holds the date for the payment. */
+function heldBookingAcknowledgement(
+  input: BookingRequestEmailSource,
+  outcome: BookingRequestOutcome & { holdExpiresAt: Date },
+): RenderedEmail {
+  const name = greetingName(input.clientName);
+  const amount = pesos(outcome.amountDueCents);
+  const deadline = manilaDateTime(outcome.holdExpiresAt);
+  return renderEmail({
+    subject: `${BRAND.legalName} | Your date is on hold | ${input.reference}`,
+    preheader: `Pay ${amount} by ${deadline} to confirm your date.`,
+    heading: 'Your date is on hold',
+    sections: [
+      {
+        paragraphs: [
+          name ? `Hello ${name},` : 'Hello,',
+          `Thank you for choosing ${BRAND.legalName}. Your booking is approved and your date is on hold for you until ${deadline} (Manila time).`,
+          `To confirm it, please pay ${amount} before the deadline. ${outcome.paymentInstructions}`.trim(),
+          'If we do not receive your payment by then, the hold ends and the date opens to other clients.',
+          EMAIL_SPAM_NOTICE,
+        ],
+        details: [
+          ...bookingRequestDetails(input),
+          ['Amount to pay now', amount],
+          ['Pay by', deadline],
+        ],
+      },
+      {
+        heading: 'What happens next',
+        paragraphs: [
+          `1. Pay ${amount} by ${deadline}.`,
+          '2. We record your payment and confirm your date right away.',
+          '3. You receive a confirmation email with a calendar invitation.',
+          `Questions? Call ${BRAND.contact.phone} or email ${BRAND.contact.email} and mention your booking reference.`,
+        ],
+      },
+    ],
+  });
+}
+
+export function bookingRequestAcknowledgement(
+  input: BookingRequestEmailSource,
+  outcome?: BookingRequestOutcome,
+): RenderedEmail {
+  if (outcome?.holdExpiresAt)
+    return heldBookingAcknowledgement(input, { ...outcome, holdExpiresAt: outcome.holdExpiresAt });
   const name = greetingName(input.clientName);
   return renderEmail({
     subject: `${BRAND.legalName} | Booking request received | ${input.reference}`,
@@ -352,7 +418,12 @@ export type StaffCalendarBooking = {
  * reservation, or the removal of either from the staff calendars.
  */
 export type StaffCalendarNoticeKind =
-  'PENDING' | 'CONFIRMED' | 'CONFIRMED_CANCELLED' | 'REQUEST_DECLINED' | 'REQUEST_CANCELLED';
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'CONFIRMED_CANCELLED'
+  | 'REQUEST_DECLINED'
+  | 'REQUEST_CANCELLED'
+  | 'REQUEST_EXPIRED';
 
 const STAFF_CALENDAR_COPY: Record<
   StaffCalendarNoticeKind,
@@ -393,6 +464,14 @@ const STAFF_CALENDAR_COPY: Record<
     preheader: 'was cancelled; the attached update removes its pending event from your calendar.',
     paragraph:
       'This booking request was cancelled before it was confirmed. The calendar update (cancel.ics) removes its pending event from calendars that received it.',
+  },
+  REQUEST_EXPIRED: {
+    subject: 'Payment deadline passed',
+    heading: 'Held date released',
+    preheader:
+      'passed its payment deadline; the attached update removes its pending event from your calendar.',
+    paragraph:
+      'The payment deadline passed without the payment, so the system released the date for other clients. The calendar update (cancel.ics) removes the pending event from calendars that received it.',
   },
 };
 
@@ -472,6 +551,77 @@ export function eventReminder(booking: ReminderBooking, lead: 'week' | 'day'): R
   });
 }
 
+/** Reminds a client whose date is held that the payment deadline is near (booking automation). */
+export function holdReminder(
+  booking: ReminderBooking & { holdExpiresAt: Date; amountDueCents: number; instructions: string },
+): RenderedEmail {
+  const name = greetingName(booking.clientName);
+  const deadline = manilaDateTime(booking.holdExpiresAt);
+  const amount = pesos(booking.amountDueCents);
+  return renderEmail({
+    subject: `${BRAND.legalName} | Payment reminder | ${booking.reference}`,
+    preheader: `Pay ${amount} by ${deadline} to keep your date.`,
+    heading: 'Your payment is due soon',
+    sections: [
+      {
+        paragraphs: [
+          name ? `Hello ${name},` : 'Hello,',
+          `Your ${singleLine(booking.eventType)} date is still on hold for you until ${deadline} (Manila time). Please pay ${amount} before then to confirm it.`,
+          booking.instructions,
+          'If we do not receive your payment by then, the hold ends and the date opens to other clients.',
+          `Questions? Call ${BRAND.contact.phone} or email ${BRAND.contact.email} and mention your booking reference.`,
+        ].filter(Boolean),
+        details: [
+          ['Booking reference', booking.reference],
+          ['Event date', manilaDate(booking.startsAt)],
+          [
+            'Time',
+            `${manilaTime(booking.startsAt)} to ${manilaTime(booking.endsAt)} (Manila time)`,
+          ],
+          ['Amount to pay now', amount],
+          ['Pay by', deadline],
+        ],
+      },
+    ],
+  });
+}
+
+/** Tells staff that a finished event still has a balance, so it was not marked completed. */
+export function balanceAfterEventAlert(input: {
+  reference: string;
+  clientName: string;
+  email: string;
+  phone: string;
+  eventType: string;
+  startsAt: Date;
+  balanceCents: number;
+  bookingsUrl: string | null;
+}): RenderedEmail {
+  return renderEmail({
+    subject: `Balance still due ${input.reference} | ${singleLine(input.clientName, 80)}`,
+    preheader: `${pesos(input.balanceCents)} is still due for an event that has ended.`,
+    heading: 'Balance still due after the event',
+    sections: [
+      {
+        paragraphs: [
+          'This event has ended, but its balance is not fully paid, so it was not marked completed. Record the remaining payment in Bookings; the event is completed on the next morning run once it is fully paid.',
+          'Reply to this email to contact the client.',
+        ],
+        details: [
+          ['Reservation', input.reference],
+          ['Client', singleLine(input.clientName)],
+          ['Email', input.email],
+          ['Phone', input.phone],
+          ['Event', singleLine(input.eventType)],
+          ['Event date', manilaDate(input.startsAt)],
+          ['Balance due', pesos(input.balanceCents)],
+        ],
+      },
+    ],
+    action: input.bookingsUrl ? { label: 'Open bookings', href: input.bookingsUrl } : undefined,
+  });
+}
+
 export type DigestEvent = {
   reference: string;
   clientName: string;
@@ -500,6 +650,9 @@ export function dailyDigest(input: {
   newInquiries: number;
   inquiries: DigestInquiry[];
   awaitingApproval: number;
+  /** Requests the system approved that hold their date until the client pays. */
+  waitingForPayment: number;
+  deadlinesToday: number;
   failedEmails: number;
   adminUrl: string | null;
 }): RenderedEmail {
@@ -509,7 +662,7 @@ export function dailyDigest(input: {
   );
   return renderEmail({
     subject: `${BRAND.legalName} | Daily digest | ${manilaDate(input.day)}`,
-    preheader: `${input.today.length} event(s) today, ${input.newInquiries} new inquiry(ies), ${input.awaitingApproval} request(s) awaiting approval.`,
+    preheader: `${input.today.length} event(s) today, ${input.newInquiries} new inquiry(ies), ${input.awaitingApproval} request(s) under review, ${input.waitingForPayment} waiting for payment.`,
     heading: `Daily digest for ${manilaDate(input.day)}`,
     sections: [
       {
@@ -517,7 +670,9 @@ export function dailyDigest(input: {
           ['Confirmed events today', String(input.today.length)],
           ['Confirmed events tomorrow', String(input.tomorrow.length)],
           ['New inquiries (last 24 hours)', String(input.newInquiries)],
-          ['Requests awaiting approval', String(input.awaitingApproval)],
+          ['Requests under review', String(input.awaitingApproval)],
+          ['Waiting for payment', String(input.waitingForPayment)],
+          ['Payment deadlines today', String(input.deadlinesToday)],
           ['Emails that failed delivery', String(input.failedEmails)],
         ],
       },

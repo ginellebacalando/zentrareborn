@@ -42,6 +42,8 @@ export const AUTOMATION_ONLY_EVENTS = [
   'EVENT_REMINDER_7D',
   'EVENT_REMINDER_1D',
   'DAILY_DIGEST',
+  'HOLD_REMINDER',
+  'BALANCE_AFTER_EVENT',
   'STAFF_CALENDAR_PENDING',
   'STAFF_CALENDAR_REQUEST',
   'STAFF_CALENDAR_CANCEL',
@@ -57,6 +59,7 @@ export const STAFF_EVENTS: readonly string[] = [
   'INQUIRY_STAFF_ALERT',
   'BOOKING_REQUEST_STAFF_ALERT',
   'DAILY_DIGEST',
+  'BALANCE_AFTER_EVENT',
 ];
 
 /** Staff inboxes: the outbox keeps the comma-joined list in a 255-character recipient column. */
@@ -72,11 +75,15 @@ export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   EVENT_REMINDER_7D: 'Event reminder, one week',
   EVENT_REMINDER_1D: 'Event reminder, one day',
   DAILY_DIGEST: 'Daily staff digest',
+  HOLD_REMINDER: 'Payment deadline reminder',
+  BALANCE_AFTER_EVENT: 'Balance still due after the event (staff)',
   STAFF_CALENDAR_PENDING: 'Calendar event, pending request (staff)',
   STAFF_CALENDAR_REQUEST: 'Calendar invitation (staff)',
   STAFF_CALENDAR_CANCEL: 'Calendar cancellation (staff)',
   REQUEST_RECEIVED: 'Booking request received',
   REQUEST_APPROVED: 'Booking request approved',
+  HOLD_EXTENDED: 'Payment deadline extended',
+  HOLD_EXPIRED: 'Payment deadline passed',
   REJECT: 'Booking request declined',
   REVIEW_POLICY: 'Booking re-reviewed under policy',
   RESERVATION_CONFIRMED: 'Reservation confirmed',

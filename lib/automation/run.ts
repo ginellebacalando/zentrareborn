@@ -1,7 +1,12 @@
 import 'server-only';
 
+import {
+  completeFinishedEvents,
+  expireUnpaidHolds,
+  scheduleHoldReminders,
+} from '@/lib/admin/booking-automation';
 import { prisma } from '@/lib/prisma';
-import { AUTOMATION_POLICY } from './config';
+import { AUTOMATION_POLICY, LAST_RUN_STATE_KEY } from './config';
 import { processDueJobs, type DeliveryRunResult } from './processor';
 import {
   scheduleDailyDigest,
@@ -14,12 +19,18 @@ export type AutomationTrigger = 'cron' | 'cli' | 'admin';
 
 /** Counts only; safe to return from the cron endpoint and to log. */
 export type AutomationRunSummary = {
-  scheduled: { inquiries: number; reminders: number; digest: number };
+  scheduled: {
+    inquiries: number;
+    reminders: number;
+    digest: number;
+    /** Booking automation: holds released, payment reminders, finished events handled. */
+    expiredHolds: number;
+    holdReminders: number;
+    completedEvents: number;
+  };
   delivery: DeliveryRunResult;
   failedSteps: string[];
 };
-
-export const LAST_RUN_STATE_KEY = 'last-run';
 
 async function step(name: string, failed: string[], work: () => Promise<number>) {
   try {
@@ -44,6 +55,10 @@ export async function runAutomation(options: {
   const now = options.now ?? new Date();
   const failedSteps: string[] = [];
   const inquiries = await step('inquiries', failedSteps, () => sweepInquiryNotifications(now));
+  // Booking automation first, so the reminders and the digest see the released dates.
+  const expiredHolds = await step('holds', failedSteps, () => expireUnpaidHolds(now));
+  const holdReminders = await step('hold-reminders', failedSteps, () => scheduleHoldReminders(now));
+  const completedEvents = await step('completion', failedSteps, () => completeFinishedEvents(now));
   const reminders = await step('reminders', failedSteps, () => scheduleEventReminders(now));
   const digest = await step('digest', failedSteps, () => scheduleDailyDigest(now));
   const delivery = await processDueJobs({
@@ -52,7 +67,11 @@ export async function runAutomation(options: {
     limit: AUTOMATION_POLICY.scheduledBatch,
     timeBudgetMs: AUTOMATION_POLICY.scheduledTimeBudgetMs,
   });
-  const summary = { scheduled: { inquiries, reminders, digest }, delivery, failedSteps };
+  const summary = {
+    scheduled: { inquiries, reminders, digest, expiredHolds, holdReminders, completedEvents },
+    delivery,
+    failedSteps,
+  };
   await step('record', failedSteps, async () => {
     const detail = {
       trigger: options.trigger,
@@ -60,7 +79,8 @@ export async function runAutomation(options: {
       failed: delivery.failed,
       retrying: delivery.retrying,
       waiting: delivery.waiting,
-      scheduled: inquiries + reminders + digest,
+      scheduled: inquiries + reminders + digest + holdReminders,
+      bookingsChanged: expiredHolds + completedEvents,
     };
     await prisma.automationState.upsert({
       where: { key: LAST_RUN_STATE_KEY },

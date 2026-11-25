@@ -10,6 +10,7 @@ import {
   paymentStatus,
 } from './domain';
 import { parseStaffNotificationEmails } from './preferences-types';
+import { parseBookingRules, paymentDeadline, websiteReviewReasons } from './booking-rules';
 test('RBAC rejects clients and disabled or temporary accounts', () => {
   assert.equal(canAccessAdmin('CLIENT', 'ACTIVE'), false);
   assert.equal(canAccessAdmin('ADMIN', 'DISABLED'), false);
@@ -33,6 +34,9 @@ test('approval, reservation, payment, and contact verification are independent',
   assert.ok(confirmationError(b, 3000000, false));
   assert.ok(confirmationError({ ...b, paymentRule: 'FULL_PAYMENT_REQUIRED' }, 3000000, true));
   assert.equal(confirmationError({ ...b, paymentRule: 'NO_PAYMENT_REQUIRED' }, 0, true), null);
+  // The booking automation: the payment secures the date, so an unreviewed contact may confirm.
+  assert.equal(confirmationError({ ...b, verification: 'UNREVIEWED' }, 3000000, true), null);
+  assert.match(confirmationError({ ...b, verification: 'FLAGGED' }, 3000000, true)!, /flagged/);
   assert.equal(paymentStatus(10000000, 3000000), 'PARTIAL');
   assert.equal(
     paidTotal([
@@ -78,6 +82,84 @@ test('notifications consistently distinguish approval from paid or confirmed', (
   assert.match(email.body, /Reservation: REQUESTED/);
   assert.match(email.body, /Payment: UNPAID/);
   assert.match(email.body, /cash reservation fee/);
+  assert.doesNotMatch(email.body, /on hold/, 'no deadline, no hold paragraph');
+  const held = bookingEmail(
+    {
+      reference: 'ZION-TEST',
+      clientName: 'Client',
+      approval: 'APPROVED',
+      reservation: 'REQUESTED',
+      totalCents: 100000,
+      depositCents: 30000,
+      paymentRule: 'DEPOSIT_REQUIRED',
+      holdExpiresAt: new Date('2030-03-04T09:30:00Z'),
+    },
+    0,
+    'Cash at the venue after approval.',
+    'REQUEST_APPROVED',
+  );
+  assert.match(held.body, /your date is on hold for you\. Please pay the reservation fee of/);
+  assert.match(held.body, /Mar 4, 2030, 5:30\sPM \(Manila time\)/);
+  const expired = bookingEmail(
+    {
+      reference: 'ZION-TEST',
+      clientName: 'Client',
+      approval: 'APPROVED',
+      reservation: 'CANCELLED',
+      totalCents: 100000,
+      depositCents: 30000,
+      paymentRule: 'DEPOSIT_REQUIRED',
+    },
+    0,
+    'Cash at the venue after approval.',
+    'HOLD_EXPIRED',
+  );
+  assert.match(expired.body, /The payment deadline passed/);
+});
+test('booking automation rules: deadlines, review reasons and the Settings fields', () => {
+  const from = new Date('2030-03-01T00:00:00Z');
+  assert.equal(
+    paymentDeadline(from, new Date('2030-03-20T00:00:00Z'), 3).toISOString(),
+    '2030-03-04T00:00:00.000Z',
+  );
+  // Never after the event starts, and never before the moment of approval.
+  assert.equal(
+    paymentDeadline(from, new Date('2030-03-02T06:00:00Z'), 3).toISOString(),
+    '2030-03-02T06:00:00.000Z',
+  );
+  assert.equal(
+    paymentDeadline(from, new Date('2030-02-01T00:00:00Z'), 3).toISOString(),
+    from.toISOString(),
+  );
+  const ordinary = {
+    totalCents: 10000000,
+    depositCents: 500000,
+    paymentRule: 'DEPOSIT_REQUIRED',
+    guests: 150,
+    policyReviewed: true,
+    reviewGuestLimit: null,
+  };
+  assert.deepEqual(websiteReviewReasons(ordinary), []);
+  assert.match(websiteReviewReasons({ ...ordinary, totalCents: 0 }).join(), /custom proposal/);
+  assert.match(websiteReviewReasons({ ...ordinary, depositCents: 0 }).join(), /no reservation fee/);
+  assert.match(
+    websiteReviewReasons({ ...ordinary, paymentRule: 'NO_PAYMENT_REQUIRED' }).join(),
+    /no payment is required/,
+  );
+  assert.match(websiteReviewReasons({ ...ordinary, reviewGuestLimit: 120 }).join(), /120 guests/);
+  assert.match(websiteReviewReasons({ ...ordinary, policyReviewed: false }).join(), /policy/);
+  assert.deepEqual(parseBookingRules(' 5 ', ''), {
+    rules: { paymentDeadlineDays: 5, reviewGuestLimit: null },
+  });
+  assert.deepEqual(parseBookingRules('3', '130'), {
+    rules: { paymentDeadlineDays: 3, reviewGuestLimit: 130 },
+  });
+  const zeroDays = parseBookingRules('0', '');
+  assert.ok('problem' in zeroDays && zeroDays.field === 'paymentDeadlineDays');
+  const partialGuest = parseBookingRules('3', '1.5');
+  assert.ok('problem' in partialGuest && partialGuest.field === 'reviewGuestLimit');
+  assert.ok('problem' in parseBookingRules('', ''));
+  assert.ok('problem' in parseBookingRules('15', ''));
 });
 test('server booking validation rejects unknown fields, invalid fee, and venue spoofing', () => {
   const future = new Date(Date.now() + 86400000).toISOString(),

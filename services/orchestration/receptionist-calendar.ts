@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { Prisma } from '@prisma/client';
+import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
 import { assertDateKey, assertTime, nextDateKey, venueDateKey } from '@/lib/calendar-time';
 
 /**
@@ -67,12 +68,16 @@ function manilaInstant(date: string, time: string) {
   return new Date(`${assertDateKey(date)}T${assertTime(time)}:00+08:00`);
 }
 
+/**
+ * Bookings that make a slot unavailable: confirmed reservations and approved requests holding
+ * their date while the client pays (lib/booking-occupancy.ts), so Zeni and the booking page agree.
+ */
 export function confirmedCalendarOverlapWhere(
   query: ReceptionistCalendarQuery,
 ): Prisma.AdminBookingWhereInput {
   return {
     venue: query.venue,
-    reservation: 'CONFIRMED',
+    OR: OCCUPYING_BOOKINGS,
     startsAt: { lt: query.endsAt },
     endsAt: { gt: query.startsAt },
   };

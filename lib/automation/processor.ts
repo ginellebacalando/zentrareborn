@@ -43,6 +43,7 @@ const NO_STAFF_ADDRESS_MESSAGE =
 const REMINDER_EVENTS = new Set(['EVENT_REMINDER_7D', 'EVENT_REMINDER_1D']);
 const STAFF_CALENDAR_REQUEST = 'STAFF_CALENDAR_REQUEST';
 const STAFF_CALENDAR_PENDING = 'STAFF_CALENDAR_PENDING';
+const HOLD_REMINDER = 'HOLD_REMINDER';
 
 function emptyResult(mailConfigured: boolean): DeliveryRunResult {
   return {
@@ -130,22 +131,33 @@ async function finish(job: AdminOutbox, status: 'REVIEW_REQUIRED' | 'EXPIRED', l
 /**
  * Reminders are only sent while the reservation is still confirmed and upcoming. A staff calendar
  * invitation retried after a cancellation would put a cancelled event back into staff calendars,
- * and a pending event sent after its request was decided would show a stale request.
+ * and a pending event sent after its request was decided would show a stale request. A payment
+ * reminder is only useful while the date is still held and its deadline has not passed.
  */
 async function irrelevanceReason(job: AdminOutbox, now: Date) {
   const reminder = REMINDER_EVENTS.has(job.event);
-  if (!reminder && job.event !== STAFF_CALENDAR_REQUEST && job.event !== STAFF_CALENDAR_PENDING)
+  if (
+    !reminder &&
+    ![STAFF_CALENDAR_REQUEST, STAFF_CALENDAR_PENDING, HOLD_REMINDER].includes(job.event)
+  )
     return null;
   const booking = job.bookingId
     ? await prisma.adminBooking.findUnique({
         where: { id: job.bookingId },
-        select: { reservation: true, approval: true, startsAt: true },
+        select: { reservation: true, approval: true, startsAt: true, holdExpiresAt: true },
       })
     : null;
   if (reminder)
     return booking?.reservation === 'CONFIRMED' && booking.startsAt > now
       ? null
       : 'Not sent: the reservation is no longer confirmed or the event has already started.';
+  if (job.event === HOLD_REMINDER)
+    return booking?.reservation === 'REQUESTED' &&
+      booking.approval === 'APPROVED' &&
+      booking.holdExpiresAt &&
+      booking.holdExpiresAt > now
+      ? null
+      : 'Not sent: the booking is no longer waiting for its payment.';
   if (job.event === STAFF_CALENDAR_PENDING)
     return booking?.reservation === 'REQUESTED' && booking.approval !== 'REJECTED'
       ? null

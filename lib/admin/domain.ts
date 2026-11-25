@@ -64,6 +64,11 @@ export function paidTotal(payments: { amountCents: number; voidedAt: Date | stri
 export function paymentStatus(total: number, paid: number) {
   return paid >= total ? 'PAID' : paid > 0 ? 'PARTIAL' : 'UNPAID';
 }
+/**
+ * Why a booking cannot be confirmed yet, or null when it can. Since the booking automation
+ * (docs/booking-automation.md), the received payment is what secures a date: contact verification
+ * is optional, but a request flagged as suspicious stays blocked until staff clear the flag.
+ */
 export function confirmationError(
   b: {
     approval: string;
@@ -79,8 +84,8 @@ export function confirmationError(
   if (!reviewed)
     return 'The venue must review its reservation and cash payment policy in Settings first.';
   if (b.approval !== 'APPROVED') return 'Approve this request first. Approval is not confirmation.';
-  if (b.verification !== 'VERIFIED')
-    return 'Verify the client contact before confirming; flagged or unreviewed requests cannot reserve dates.';
+  if (b.verification === 'FLAGGED')
+    return 'This request is flagged as suspicious. Verify the client contact to clear the flag first.';
   if (b.reservation !== 'REQUESTED') return 'Only a requested reservation can be confirmed.';
   if (b.paymentRule === 'DEPOSIT_REQUIRED' && paid < b.depositCents)
     return 'The required cash reservation fee has not been received.';
@@ -104,6 +109,17 @@ export function eventDate(value: Date | string) {
     timeStyle: 'short',
   }).format(new Date(value));
 }
+/** The opening paragraph of a booking notice whose event changes the payment deadline. */
+function deadlineLead(event: string, amount: string, due: string | null) {
+  if (event === 'REQUEST_APPROVED' && due)
+    return `Your request is approved and your date is on hold for you. Please pay ${amount} by ${due} (Manila time) to confirm it. If we do not receive it by then, the hold ends and the date opens to other clients.`;
+  if (event === 'HOLD_EXTENDED' && due)
+    return `Your payment deadline was extended. Please pay ${amount} by ${due} (Manila time) to keep your date on hold.`;
+  if (event === 'HOLD_EXPIRED')
+    return 'The payment deadline passed before we received your payment, so your date is no longer on hold and other clients may book it. If you still want this date, send a new booking request or contact us.';
+  return null;
+}
+
 export function bookingEmail(
   b: {
     reference: string;
@@ -113,11 +129,18 @@ export function bookingEmail(
     totalCents: number;
     depositCents: number;
     paymentRule: string;
+    /** Payment deadline of an approved request, when it holds its date (booking automation). */
+    holdExpiresAt?: Date | string | null;
   },
   paid: number,
   instructions: string,
   event: string,
 ) {
+  const amount =
+    b.paymentRule === 'FULL_PAYMENT_REQUIRED'
+      ? `the full amount of ${money(b.totalCents - paid)}`
+      : `the reservation fee of ${money(Math.max(0, b.depositCents - paid))}`;
+  const lead = deadlineLead(event, amount, b.holdExpiresAt ? eventDate(b.holdExpiresAt) : null);
   const requirement =
     b.paymentRule === 'NO_PAYMENT_REQUIRED'
       ? 'No payment is required to secure this reservation.'
@@ -126,6 +149,6 @@ export function bookingEmail(
         : `A cash reservation fee of ${money(b.depositCents)} is required before confirmation.`;
   return {
     subject: `Zion Events Place | ${event.replaceAll('_', ' ')} | ${b.reference}`,
-    body: `Hello ${b.clientName},\n\nBooking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${paymentStatus(b.totalCents, paid)} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${requirement}\n${instructions}\n\nApproval alone does not confirm a reservation or indicate payment. Only a CONFIRMED reservation secures the event schedule.\n\nZion Events Place`,
+    body: `Hello ${b.clientName},\n\n${lead ? `${lead}\n\n` : ''}Booking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${paymentStatus(b.totalCents, paid)} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${requirement}\n${instructions}\n\nApproval alone does not confirm a reservation or indicate payment. Only a CONFIRMED reservation secures the event schedule.\n\nZion Events Place`,
   };
 }

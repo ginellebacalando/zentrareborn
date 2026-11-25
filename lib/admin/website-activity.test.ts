@@ -72,7 +72,7 @@ test('each source becomes one labelled item that links to the screen handling it
     kind: 'booking',
     title: 'Booking request',
     summary: 'Maria Santos · Wedding · Dec 20, 2026',
-    status: { tone: 'request', label: 'Request' },
+    status: { tone: 'request', label: 'Under review' },
     occurredAt: minutesAgo(5),
     href: '/admin/bookings?status=request',
   });
@@ -85,7 +85,7 @@ test('each source becomes one labelled item that links to the screen handling it
     reservation: 'REQUESTED',
     createdAt: minutesAgo(30),
   });
-  assert.deepEqual(approved.status, { tone: 'pending', label: 'Pending' });
+  assert.deepEqual(approved.status, { tone: 'pending', label: 'Waiting for payment' });
   assert.equal(approved.href, '/admin/bookings?status=pending');
 
   const contactForm = {
@@ -406,7 +406,10 @@ test(
         ],
       );
       assert.equal(feed.items[3].kind, 'handoff');
-      assert.deepEqual(feed.items.at(-1)!.status, { tone: 'pending', label: 'Pending' });
+      assert.deepEqual(feed.items.at(-1)!.status, {
+        tone: 'pending',
+        label: 'Waiting for payment',
+      });
       const serialized = JSON.stringify(feed);
       for (const privateText of ['@example.test', '0917', 'Private', 'QA-'])
         assert.ok(!serialized.includes(privateText), `${privateText} must not be exposed`);

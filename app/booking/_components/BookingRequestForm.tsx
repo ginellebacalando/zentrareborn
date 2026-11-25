@@ -129,6 +129,15 @@ function timeLabel(value: string) {
   return `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${suffix}`;
 }
 
+/** A payment deadline as Manila time, for example "Nov 28, 2026, 5:49 PM". */
+function deadlineLabel(iso: string) {
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(iso));
+}
+
 function dateLabel(iso: string) {
   return new Intl.DateTimeFormat('en-PH', {
     timeZone: 'UTC',
@@ -233,6 +242,10 @@ export default function BookingRequestForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [reference, setReference] = useState('');
+  // Set when the booking automation approved the request and holds the date until a deadline.
+  const [hold, setHold] = useState<{ expiresAt: string; amountDueCents: number | null } | null>(
+    null,
+  );
   const headingRef = useRef<HTMLHeadingElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef<HTMLHeadingElement>(null);
@@ -324,9 +337,16 @@ export default function BookingRequestForm({
       });
       const payload = (await response.json().catch(() => null)) as {
         reference?: string;
+        holdExpiresAt?: string | null;
+        amountDueCents?: number | null;
         error?: string;
       } | null;
       if (response.ok && payload?.reference) {
+        setHold(
+          payload.holdExpiresAt
+            ? { expiresAt: payload.holdExpiresAt, amountDueCents: payload.amountDueCents ?? null }
+            : null,
+        );
         setReference(payload.reference);
         return;
       }
@@ -401,26 +421,44 @@ export default function BookingRequestForm({
         <section className={styles.done} aria-labelledby="booking-done-title">
           <CheckCircle2 aria-hidden="true" className={styles.doneIcon} />
           <h1 id="booking-done-title" ref={doneRef} tabIndex={-1} className={styles.doneTitle}>
-            Booking request sent
+            {hold ? 'Your date is on hold' : 'Booking request sent'}
           </h1>
           <p className={styles.lead}>
-            Thank you{firstName ? `, ${firstName}` : ''}. Your request is now with our team.
+            {hold
+              ? `Thank you${firstName ? `, ${firstName}` : ''}. Your booking is approved and your date is held for you until ${deadlineLabel(hold.expiresAt)} (Manila time).`
+              : `Thank you${firstName ? `, ${firstName}` : ''}. Your request is now with our team.`}
           </p>
           <p className={styles.reference}>
             Booking reference <strong>{reference}</strong>
           </p>
           <h2 className={styles.subheading}>What happens next</h2>
-          <ol className={styles.nextSteps}>
-            <li>We review your request, usually within one to two days.</li>
-            <li>
-              We contact you at {form.email.trim()} or {form.phone.trim()} with the reservation fee
-              details.
-            </li>
-            <li>We confirm your date once your payment is verified.</li>
-          </ol>
+          {hold ? (
+            <ol className={styles.nextSteps}>
+              <li>
+                Pay{' '}
+                {hold.amountDueCents
+                  ? `the ${peso.format(hold.amountDueCents / 100)} reservation fee`
+                  : 'the reservation fee'}{' '}
+                by {deadlineLabel(hold.expiresAt)}. How to pay is in the email we sent to{' '}
+                {form.email.trim()}.
+              </li>
+              <li>We record your payment and confirm your date right away.</li>
+              <li>You receive a confirmation email with a calendar invitation.</li>
+            </ol>
+          ) : (
+            <ol className={styles.nextSteps}>
+              <li>We review your request, usually within one to two days.</li>
+              <li>
+                We contact you at {form.email.trim()} or {form.phone.trim()} with the reservation
+                fee details.
+              </li>
+              <li>We confirm your date once your payment is verified.</li>
+            </ol>
+          )}
           <p className={styles.muted}>
-            Your date is not reserved until Zion confirms it. Keep your booking reference for any
-            questions.
+            {hold
+              ? 'If we do not receive your payment by the deadline, the hold ends and the date opens to other clients. Keep your booking reference for any questions.'
+              : 'Your date is not reserved until Zion confirms it. Keep your booking reference for any questions.'}
           </p>
           <div className={styles.actions}>
             <Link href="/" className={styles.secondaryButton}>
@@ -440,8 +478,8 @@ export default function BookingRequestForm({
       <header className={styles.intro}>
         <h1 className={styles.title}>Book your event</h1>
         <p className={styles.lead}>
-          Tell us about your celebration. Our team reviews every request and contacts you to confirm
-          the details and the reservation fee.
+          Tell us about your celebration. Most bookings are approved right away and your date is
+          held while you pay the reservation fee; custom proposals are reviewed by our team first.
         </p>
       </header>
 
@@ -915,9 +953,13 @@ export default function BookingRequestForm({
               <div className={styles.nextBox}>
                 <h3 className={styles.subheading}>What happens next</h3>
                 <ol className={styles.nextSteps}>
-                  <li>We review your request, usually within one to two days.</li>
-                  <li>We contact you with the reservation fee details.</li>
-                  <li>We confirm your date once your payment is verified.</li>
+                  <li>
+                    Most bookings are approved right away, and your date is held for a few days
+                    while you pay the reservation fee. Custom proposals and some larger events are
+                    reviewed by our team first.
+                  </li>
+                  <li>We confirm your date as soon as your payment is received.</li>
+                  <li>You receive a confirmation email with a calendar invitation.</li>
                 </ol>
               </div>
 

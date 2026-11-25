@@ -179,6 +179,9 @@ test(
     await db.exec(automationSql);
     // Re-running the installer SQL must be harmless.
     await db.exec(automationSql);
+    const bookingHoldsSql = readFileSync('prisma/booking-holds.sql', 'utf8');
+    await db.exec(bookingHoldsSql);
+    await db.exec(bookingHoldsSql);
     const server = createServer(db, { logLevel: LogLevel.Error });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
@@ -1068,6 +1071,237 @@ test(
         },
       );
 
+      await t.test(
+        'booking automation: payment confirms, unpaid holds are released, events complete',
+        async () => {
+          configureMail();
+          const { completeFinishedEvents, expireUnpaidHolds, scheduleHoldReminders } =
+            await import('../admin/booking-automation');
+          const { enqueueWebsiteBookingRequest } = await import('./booking-requests');
+          const venuePolicy = await prisma.adminPolicy.findUniqueOrThrow({
+            where: { id: 'venue' },
+          });
+          await adminMutate(
+            {
+              op: 'settings',
+              version: venuePolicy.version,
+              reviewed: true,
+              paymentRule: 'DEPOSIT_REQUIRED',
+              cashInstructions: 'Pay the reservation fee in cash at Zion Events Place.',
+              contractTerms: 'Venue reviewed terms and cash policy. '.repeat(10),
+            },
+            owner,
+          );
+          const create = async (email: string, daysAhead: number) => {
+            const request = bookingRequest(email, daysAhead);
+            const booking = {
+              ...request.booking,
+              depositCents: 500_000,
+              paymentRule: 'DEPOSIT_REQUIRED',
+            };
+            return ((await adminMutate({ ...request, booking }, owner)) as { id: string }).id;
+          };
+          const receipt = (id: string, revision: number, amountCents: number, number: string) =>
+            adminMutate(
+              {
+                op: 'cash-receipt',
+                id,
+                revision,
+                amountCents,
+                receiptNumber: number,
+                receivedAt: new Date().toISOString(),
+                note: '',
+              },
+              owner,
+            );
+          const count = (bookingId: string, event: string) =>
+            prisma.adminOutbox.count({ where: { bookingId, event } });
+          try {
+            // Approval holds the date; recording the reservation fee confirms it by itself.
+            const paidId = await create('pays@example.test', 90);
+            const approved = await decide(paidId, 'APPROVE');
+            assert.ok(approved.holdExpiresAt, 'approval sets a payment deadline');
+            await receipt(paidId, approved.revision, 500_000, 'AUTO-001');
+            const paid = await prisma.adminBooking.findUniqueOrThrow({ where: { id: paidId } });
+            assert.equal(paid.reservation, 'CONFIRMED');
+            assert.equal(paid.holdExpiresAt, null);
+            assert.equal(await count(paidId, 'CASH_RECEIPT'), 1);
+            assert.equal(await count(paidId, 'RESERVATION_CONFIRMED'), 1);
+            assert.equal(await count(paidId, 'STAFF_CALENDAR_REQUEST'), 1);
+
+            // Staff can give a client more time; the client hears about the new deadline.
+            const extendId = await create('extend@example.test', 95);
+            await decide(extendId, 'APPROVE');
+            await prisma.adminBooking.update({
+              where: { id: extendId },
+              data: { holdExpiresAt: new Date(Date.now() + 3_600_000) },
+            });
+            const extended = await decide(extendId, 'EXTEND_HOLD');
+            assert.ok(extended.holdExpiresAt! > new Date(Date.now() + 2 * 86_400_000));
+            const extensionNotice = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: extendId, event: 'HOLD_EXTENDED' },
+            });
+            assert.match(extensionNotice.body, /Your payment deadline was extended/);
+
+            // One reminder a day before the deadline, not right after the client heard about it.
+            await prisma.adminBooking.update({
+              where: { id: extendId },
+              data: { holdExpiresAt: new Date(Date.now() + 20 * 3_600_000) },
+            });
+            assert.equal(await scheduleHoldReminders(new Date()), 0);
+            const halfDayLater = new Date(Date.now() + 13 * 3_600_000);
+            assert.equal(await scheduleHoldReminders(halfDayLater), 1);
+            assert.equal(await scheduleHoldReminders(halfDayLater), 0, 'one reminder per deadline');
+            const reminder = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: extendId, event: 'HOLD_REMINDER' },
+            });
+            assert.match(reminder.subject, /Payment reminder/);
+            assert.match(reminder.body, /still on hold for you until/);
+
+            // A deadline that passes without a payment releases the date; a partly paid hold is
+            // left to staff.
+            const unpaidId = await create('unpaid@example.test', 100);
+            await decide(unpaidId, 'APPROVE');
+            const unpaidEvent = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: unpaidId, event: 'STAFF_CALENDAR_PENDING' },
+            });
+            await processDueJobs({
+              ids: [unpaidEvent.id],
+              transport: fakeTransport(() => {}).transport,
+            });
+            const partId = await create('partly@example.test', 105);
+            const partHeld = await decide(partId, 'APPROVE');
+            await receipt(partId, partHeld.revision, 100_000, 'AUTO-002');
+            const overdue = new Date(Date.now() - 60_000);
+            await prisma.adminBooking.updateMany({
+              where: { id: { in: [unpaidId, partId] } },
+              data: { holdExpiresAt: overdue },
+            });
+            assert.equal(await expireUnpaidHolds(new Date()), 1);
+            const released = await prisma.adminBooking.findUniqueOrThrow({
+              where: { id: unpaidId },
+            });
+            assert.equal(released.reservation, 'CANCELLED');
+            assert.match(released.decisionReason, /payment deadline passed/);
+            const expiredNotice = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: unpaidId, event: 'HOLD_EXPIRED' },
+            });
+            assert.match(expiredNotice.body, /no longer on hold/);
+            const removal = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: unpaidId, event: 'STAFF_CALENDAR_CANCEL' },
+            });
+            assert.match(removal.subject, /^Payment deadline passed: /);
+            assert.equal(
+              (await prisma.adminBooking.findUniqueOrThrow({ where: { id: partId } })).reservation,
+              'REQUESTED',
+            );
+            assert.equal(await expireUnpaidHolds(new Date()), 0, 'nothing left to release');
+            const automationAudit = await prisma.auditLog.findFirstOrThrow({
+              where: { userName: 'Booking automation', description: { startsWith: 'Released ' } },
+            });
+            assert.equal(automationAudit.userRole, 'SYSTEM');
+
+            // The morning after an event: fully paid completes, a balance alerts staff once.
+            const morningNow = new Date(
+              manilaDayStart(manilaDay(new Date())).getTime() + 9 * 3_600_000,
+            );
+            const endedAt = new Date(morningNow.getTime() - 30 * 3_600_000);
+            for (const id of ['fully-paid', 'balance-due'])
+              await prisma.adminBooking.create({
+                data: {
+                  id,
+                  reference: `ZION-${id}`,
+                  clientName: 'Finished Client',
+                  email: `${id}@example.test`,
+                  phone: '09123456789',
+                  eventType: 'Debut',
+                  packageName: 'Premium',
+                  venue: 'Zion Events Place',
+                  startsAt: new Date(endedAt.getTime() - 5 * 3_600_000),
+                  endsAt: endedAt,
+                  guests: 100,
+                  totalCents: 300_000,
+                  depositCents: 0,
+                  paymentRule: 'DEPOSIT_REQUIRED',
+                  approval: 'APPROVED',
+                  reservation: 'CONFIRMED',
+                  verification: 'VERIFIED',
+                  policyVersion: 1,
+                  createdBy: 'test',
+                  updatedBy: 'test',
+                },
+              });
+            await prisma.adminCashPayment.create({
+              data: {
+                bookingId: 'fully-paid',
+                amountCents: 300_000,
+                receiptNumber: 'AUTO-PAID',
+                receivedAt: endedAt,
+                recordedBy: 'test',
+                note: '',
+              },
+            });
+            assert.equal(await completeFinishedEvents(morningNow), 2);
+            const completed = await prisma.adminBooking.findUniqueOrThrow({
+              where: { id: 'fully-paid' },
+            });
+            assert.equal(completed.reservation, 'COMPLETED');
+            assert.equal(await count('fully-paid', 'COMPLETE'), 1);
+            assert.equal(
+              (await prisma.adminBooking.findUniqueOrThrow({ where: { id: 'balance-due' } }))
+                .reservation,
+              'CONFIRMED',
+            );
+            const balance = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: 'balance-due', event: 'BALANCE_AFTER_EVENT' },
+            });
+            assert.equal(balance.recipient, 'staff@example.test');
+            assert.equal(balance.replyTo, 'balance-due@example.test');
+            assert.equal(await completeFinishedEvents(morningNow), 0, 'one alert per booking');
+
+            // A website request the system approved tells the client to pay by the deadline.
+            const webStart = new Date(Date.now() + 120 * 86_400_000);
+            const heldWeb = await prisma.adminBooking.create({
+              data: {
+                reference: 'ZION-WEB-HELD',
+                clientName: 'Held Client',
+                email: 'held-client@example.test',
+                phone: '09123456789',
+                eventType: 'Birthdays',
+                packageName: 'Milestone Birthday',
+                venue: 'Zion Events Place',
+                startsAt: webStart,
+                endsAt: new Date(webStart.getTime() + 3_600_000),
+                guests: 150,
+                totalCents: 11_650_000,
+                depositCents: 500_000,
+                paymentRule: 'DEPOSIT_REQUIRED',
+                approval: 'APPROVED',
+                holdExpiresAt: new Date(Date.now() + 3 * 86_400_000),
+                policyVersion: 1,
+                createdBy: 'website',
+                updatedBy: 'website',
+              },
+            });
+            await enqueueWebsiteBookingRequest(prisma, heldWeb, new Date(), {
+              reviewReasons: [],
+              paymentInstructions: 'Pay the reservation fee in cash at Zion Events Place.',
+            });
+            const acknowledgement = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: heldWeb.id, event: 'REQUEST_RECEIVED' },
+            });
+            assert.match(acknowledgement.subject, /Your date is on hold/);
+            assert.match(acknowledgement.body, /please pay ₱5,000 before the deadline/);
+            const staffAlert = await prisma.adminOutbox.findFirstOrThrow({
+              where: { bookingId: heldWeb.id, event: 'BOOKING_REQUEST_STAFF_ALERT' },
+            });
+            assert.match(staffAlert.subject, /waiting for payment$/);
+          } finally {
+            clearMail();
+          }
+        },
+      );
+
       await t.test('reminders and the digest are scheduled once per booking and day', async () => {
         await prisma.adminOutbox.deleteMany({});
         const morning = new Date('2030-03-04T01:00:00Z');
@@ -1143,7 +1377,8 @@ test(
         assert.equal(digest.event, 'DAILY_DIGEST');
         assert.equal(digest.expiresAt?.toISOString(), '2030-03-04T16:00:00.000Z');
         assert.match(digest.body, /Confirmed events tomorrow: 1/);
-        assert.match(digest.body, /Requests awaiting approval: \d+/);
+        assert.match(digest.body, /Requests under review: \d+/);
+        assert.match(digest.body, /Waiting for payment: \d+/);
         assert.match(digest.body, /Emails that failed delivery: \d+/);
 
         await prisma.adminBooking.update({

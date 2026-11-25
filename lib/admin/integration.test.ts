@@ -31,6 +31,7 @@ test(
     const adminSql = readFileSync('prisma/admin.sql', 'utf8');
     await db.exec(adminSql.slice(adminSql.indexOf('-- Admin-only data')));
     await db.exec(readFileSync('prisma/automation.sql', 'utf8'));
+    await db.exec(readFileSync('prisma/booking-holds.sql', 'utf8'));
     const server = createServer(db);
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
@@ -226,8 +227,8 @@ test(
           actor,
         );
       };
-      await assert.rejects(action('APPROVE'), /Verify the client/);
-      await action('VERIFY');
+      // Booking automation: approval needs no contact verification and holds the date until a
+      // payment deadline, never later than the event start (docs/booking-automation.md).
       await action('APPROVE');
       const reviewedAlerts = await adminRead('notifications', new URLSearchParams(), actor);
       assert.ok('notifications' in reviewedAlerts && reviewedAlerts.notifications);
@@ -235,6 +236,16 @@ test(
       let b = await get();
       assert.equal(b.reservation, 'REQUESTED');
       assert.equal(b.payments.length, 0);
+      assert.ok(b.holdExpiresAt, 'Approval sets a payment deadline');
+      const expectedDeadline = Math.min(Date.now() + 3 * 86400000, b.startsAt.getTime());
+      assert.ok(Math.abs(b.holdExpiresAt.getTime() - expectedDeadline) < 60000);
+      const approvalNotice = await prisma.adminOutbox.findFirstOrThrow({
+        where: { bookingId: b.id, event: 'REQUEST_APPROVED' },
+      });
+      assert.match(
+        approvalNotice.body,
+        /your date is on hold for you\. Please pay the reservation fee/,
+      );
       await assert.rejects(action('CONFIRM'), /reservation fee/);
       const receipt = {
         op: 'cash-receipt',
@@ -260,9 +271,11 @@ test(
         ),
         /exceeds/,
       );
-      await action('CONFIRM');
+      // Recording the reservation fee confirmed the booking by itself: no Confirm click.
       b = await get();
       assert.equal(b.reservation, 'CONFIRMED');
+      assert.equal(b.holdExpiresAt, null);
+      await assert.rejects(action('CONFIRM'), /Only a requested reservation/);
       const confirmation = await prisma.adminOutbox.findFirstOrThrow({
         where: { bookingId: b.id, event: 'RESERVATION_CONFIRMED' },
       });
@@ -335,10 +348,34 @@ test(
         actor,
       );
       assert.equal((await get()).contracts[0].status, 'SIGNED');
+      // A second request for the same slot cannot be approved while another booking holds or
+      // confirms it, so two clients never pay for the same date.
+      const clash = (await adminMutate(
+        { op: 'create-booking', booking: { ...input, email: 'clash@example.test' } },
+        actor,
+      )) as { id: string };
+      const clashRow = await prisma.adminBooking.findUniqueOrThrow({ where: { id: clash.id } });
+      await assert.rejects(
+        adminMutate(
+          {
+            op: 'booking-action',
+            id: clash.id,
+            revision: clashRow.revision,
+            action: 'APPROVE',
+            reason: 'Same date as a confirmed event.',
+          },
+          actor,
+        ),
+        /already held or confirmed/,
+      );
+      const later = {
+        startsAt: new Date(Date.parse(startsAt) + 7 * 86400000).toISOString(),
+        endsAt: new Date(Date.parse(endsAt) + 7 * 86400000).toISOString(),
+      };
       const other = (await adminMutate(
         {
           op: 'create-booking',
-          booking: { ...input, email: 'other@example.test' },
+          booking: { ...input, ...later, email: 'other@example.test' },
         },
         actor,
       )) as { id: string };
@@ -360,16 +397,19 @@ test(
       let x = await prisma.adminBooking.findUniqueOrThrow({
         where: { id: other.id },
       });
+      // A partial payment below the reservation fee keeps the booking waiting for payment.
       await adminMutate(
         {
           ...receipt,
           id: x.id,
           revision: x.revision,
+          amountCents: 1000000,
           receiptNumber: 'TEST-002',
         },
         actor,
       );
       x = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
+      assert.equal(x.reservation, 'REQUESTED');
       await assert.rejects(
         adminMutate(
           {
@@ -377,18 +417,18 @@ test(
             id: x.id,
             revision: x.revision,
             action: 'CONFIRM',
-            reason: 'Request for same date',
+            reason: 'Checked the partial payment.',
           },
           actor,
         ),
-        /conflicts/,
+        /reservation fee/,
       );
       const dashboard = (await adminRead('dashboard', new URLSearchParams(), actor)) as {
         confirmed: number;
         cashCents: number;
       };
       assert.equal(dashboard.confirmed, 1);
-      assert.equal(dashboard.cashCents, 6000000);
+      assert.equal(dashboard.cashCents, 4000000);
       await adminMutate(
         {
           op: 'settings',
@@ -453,6 +493,7 @@ test(
       x = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
       const editable = {
         ...input,
+        ...later,
         email: 'other@example.test',
         paymentRule: 'FULL_PAYMENT_REQUIRED',
       };
@@ -490,6 +531,7 @@ test(
       edited = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });
       assert.equal(edited.guests, 80);
       assert.equal(edited.approval, 'PENDING', 'Changed terms return to review');
+      assert.equal(edited.holdExpiresAt, null, 'Back in review, the date is no longer held');
       assert.equal(edited.decisionReason, 'Client confirmed a larger guest list.');
       assert.equal(edited.verification, 'VERIFIED', 'Unchanged contact keeps verification');
       await edit(edited, { guests: 80, email: 'changed@example.test' });
@@ -503,8 +545,8 @@ test(
         edit(edited, {
           guests: 80,
           email: 'changed@example.test',
-          totalCents: 2000000,
-          depositCents: 1000000,
+          totalCents: 500000,
+          depositCents: 100000,
         }),
         /cash already received/,
       );

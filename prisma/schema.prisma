@@ -36,6 +36,9 @@ model AdminBooking {
   notes String @default("") @db.Text
   decisionReason String @default("") @db.Text
   policyVersion Int
+  // Payment deadline while an approved request waits for its reservation payment (booking
+  // automation phase 1, prisma/booking-holds.sql). Null once confirmed or never approved.
+  holdExpiresAt DateTime?
   revision Int @default(1)
   createdBy String
   updatedBy String
@@ -46,6 +49,7 @@ model AdminBooking {
   @@index([startsAt, reservation])
   @@index([approval, createdAt])
   @@index([email])
+  @@index([holdExpiresAt])
   @@map("zion_admin_bookings")
 }
 model AdminCashPayment {

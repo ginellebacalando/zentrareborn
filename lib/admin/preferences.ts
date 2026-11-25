@@ -8,6 +8,12 @@ import {
   DATE_FORMAT_OPTIONS,
 } from '@/lib/system-settings-types';
 import {
+  DEFAULT_BOOKING_RULES,
+  PAYMENT_DEADLINE_DAYS,
+  REVIEW_GUEST_LIMIT,
+  type BookingRules,
+} from './booking-rules';
+import {
   DEFAULT_ADMIN_PREFERENCES,
   SESSION_TIMEOUT_OPTIONS,
   notificationLabels,
@@ -66,6 +72,29 @@ export const preferencesSchema = z
             }),
           })
           .strict(),
+        // Optional so an older Settings page cannot erase saved rules; omitted means unchanged.
+        bookingRules: z
+          .object({
+            paymentDeadlineDays: z
+              .number()
+              .int('Enter a whole number of days.')
+              .min(
+                PAYMENT_DEADLINE_DAYS.min,
+                `Give clients at least ${PAYMENT_DEADLINE_DAYS.min} day to pay.`,
+              )
+              .max(
+                PAYMENT_DEADLINE_DAYS.max,
+                `Give clients at most ${PAYMENT_DEADLINE_DAYS.max} days to pay.`,
+              ),
+            reviewGuestLimit: z
+              .number()
+              .int('Enter a whole number of guests.')
+              .min(REVIEW_GUEST_LIMIT.min, 'Enter at least 1 guest, or leave the limit empty.')
+              .max(REVIEW_GUEST_LIMIT.max, `Enter at most ${REVIEW_GUEST_LIMIT.max} guests.`)
+              .nullable(),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     client: z
@@ -107,6 +136,32 @@ export async function readStaffNotificationEmails(db: Prisma.TransactionClient =
     select: { settings: true },
   });
   return storedStaffNotificationEmails(row?.settings);
+}
+/** Lenient reader for the saved booking rules: out-of-range values fall back to the defaults. */
+function storedBookingRules(settings: unknown): BookingRules {
+  const stored = record(record(record(settings).admin).bookingRules);
+  const whole = (value: unknown, min: number, max: number) =>
+    typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max
+      ? value
+      : null;
+  return {
+    paymentDeadlineDays:
+      whole(stored.paymentDeadlineDays, PAYMENT_DEADLINE_DAYS.min, PAYMENT_DEADLINE_DAYS.max) ??
+      DEFAULT_BOOKING_RULES.paymentDeadlineDays,
+    reviewGuestLimit: whole(
+      stored.reviewGuestLimit,
+      REVIEW_GUEST_LIMIT.min,
+      REVIEW_GUEST_LIMIT.max,
+    ),
+  };
+}
+/** The saved booking rules; inside a transaction pass its client (see readStaffNotificationEmails). */
+export async function readBookingRules(db: Prisma.TransactionClient = prisma) {
+  const row = await db.systemSetting.findUnique({
+    where: { id: 'singleton' },
+    select: { settings: true },
+  });
+  return storedBookingRules(row?.settings);
 }
 export function normalizeAdminPreferences(input: unknown) {
   const root = record(input),
@@ -157,6 +212,7 @@ export function normalizeAdminPreferences(input: unknown) {
         ),
       },
       staffNotifications: { emails: storedStaffNotificationEmails(root) },
+      bookingRules: storedBookingRules(root),
     },
     client: {
       maintenanceMode: bool(client.maintenanceMode, defaults.client.maintenanceMode),
@@ -218,6 +274,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         security: { ...record(oldAdmin.security), ...settings.admin.security },
         localization: settings.admin.localization,
         staffNotifications: settings.admin.staffNotifications,
+        ...(settings.admin.bookingRules ? { bookingRules: settings.admin.bookingRules } : {}),
       },
     };
     // The audit trail records that the staff inboxes changed and how many there are, never which.
@@ -228,6 +285,14 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         : staffEmails.length
           ? ` Staff notification emails changed (${staffEmails.length} address${staffEmails.length === 1 ? '' : 'es'}).`
           : ' Staff notification emails cleared; the server default applies.';
+    const previousRules = storedBookingRules(previous?.settings);
+    const rules = settings.admin.bookingRules;
+    const rulesChange =
+      rules &&
+      (rules.paymentDeadlineDays !== previousRules.paymentDeadlineDays ||
+        rules.reviewGuestLimit !== previousRules.reviewGuestLimit)
+        ? ` Booking rules changed: ${rules.paymentDeadlineDays} day${rules.paymentDeadlineDays === 1 ? '' : 's'} to pay, ${rules.reviewGuestLimit === null ? 'no guest limit' : `review above ${rules.reviewGuestLimit} guests`}.`
+        : '';
     const row = await tx.systemSetting.upsert({
       where: { id: 'singleton' },
       create: {
@@ -244,12 +309,16 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         userRole: actor.role,
         action: 'SETTINGS_CHANGE',
         module: 'Settings',
-        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}`,
+        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },
     });
-    return { settings, updatedAt: row.updatedAt.toISOString(), canEdit: true };
+    return {
+      settings: normalizeAdminPreferences(stored),
+      updatedAt: row.updatedAt.toISOString(),
+      canEdit: true,
+    };
   });
 }
 export function csvCell(value: string) {

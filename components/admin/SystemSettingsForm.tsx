@@ -16,6 +16,11 @@ import {
   type NotificationPreference,
   type PreferencesResponse,
 } from '@/lib/admin/preferences-types';
+import {
+  PAYMENT_DEADLINE_DAYS,
+  REVIEW_GUEST_LIMIT,
+  parseBookingRules,
+} from '@/lib/admin/booking-rules';
 import { useAdminPreferences } from './AdminPreferencesProvider';
 import styles from './admin.module.css';
 
@@ -144,6 +149,22 @@ function PreferencesEditor({
   const communicationsRef = useRef<HTMLDetailsElement>(null);
   const staffEmailsRef = useRef<HTMLInputElement>(null);
   const staffEmailsId = useId();
+  // Booking automation rules keep the typed text too; they are checked when saving.
+  const [paymentDays, setPaymentDays] = useState(
+    String(initial.settings.admin.bookingRules.paymentDeadlineDays),
+  );
+  const [guestLimit, setGuestLimit] = useState(
+    initial.settings.admin.bookingRules.reviewGuestLimit?.toString() ?? '',
+  );
+  const [rulesError, setRulesError] = useState<{
+    field: 'paymentDeadlineDays' | 'reviewGuestLimit';
+    message: string;
+    attempt: number;
+  } | null>(null);
+  const bookingRulesRef = useRef<HTMLDetailsElement>(null);
+  const paymentDaysRef = useRef<HTMLInputElement>(null);
+  const guestLimitRef = useRef<HTMLInputElement>(null);
+  const rulesId = useId();
   const { previewTheme, clearPersonalTheme } = useAdminPreferences();
   const disabled = !initial.canEdit || busy;
   useEffect(() => () => previewTheme(null), [previewTheme]);
@@ -176,6 +197,19 @@ function PreferencesEditor({
       return;
     }
     setStaffEmailsError(null);
+    const bookingRules = parseBookingRules(paymentDays, guestLimit);
+    if ('problem' in bookingRules) {
+      const { field, problem } = bookingRules;
+      setRulesError((current) => ({
+        field,
+        message: problem,
+        attempt: (current?.attempt ?? 0) + 1,
+      }));
+      if (bookingRulesRef.current) bookingRulesRef.current.open = true;
+      (field === 'paymentDeadlineDays' ? paymentDaysRef : guestLimitRef).current?.focus();
+      return;
+    }
+    setRulesError(null);
     setBusy(true);
     try {
       const response = await fetch('/api/admin/preferences', {
@@ -185,7 +219,11 @@ function PreferencesEditor({
           op: 'preferences',
           settings: {
             ...settings,
-            admin: { ...settings.admin, staffNotifications: { emails: staffList.emails } },
+            admin: {
+              ...settings.admin,
+              staffNotifications: { emails: staffList.emails },
+              bookingRules: bookingRules.rules,
+            },
           },
           updatedAt: initial.updatedAt,
         }),
@@ -450,6 +488,90 @@ function PreferencesEditor({
                   </p>
                 )}
               </div>
+            </div>
+          </details>
+          <details
+            ref={bookingRulesRef}
+            className={`${styles.settingsCard} ${styles.settingsDisclosure}`}
+          >
+            <summary>
+              <h2 className={styles.settingsSectionTitle}>
+                <span>
+                  <i className="fi fi-rr-calendar" aria-hidden="true" />
+                </span>
+                Booking Automation
+                <ChevronDown size={18} aria-hidden="true" />
+              </h2>
+            </summary>
+            <div className={styles.settingsCardBody}>
+              <p className={styles.help}>
+                Ordinary website bookings are approved automatically and hold their date while the
+                client pays. Recording the payment confirms the booking; an unpaid hold is released
+                when its deadline passes. Custom proposals, packages without a reservation fee and
+                larger events go to staff review.
+              </p>
+              <div className={styles.settingsEmails}>
+                <label>
+                  Days to pay the reservation fee
+                  <input
+                    ref={paymentDaysRef}
+                    type="number"
+                    inputMode="numeric"
+                    min={PAYMENT_DEADLINE_DAYS.min}
+                    max={PAYMENT_DEADLINE_DAYS.max}
+                    step={1}
+                    required
+                    disabled={disabled}
+                    value={paymentDays}
+                    aria-invalid={rulesError?.field === 'paymentDeadlineDays' ? true : undefined}
+                    aria-describedby={`${rulesId}-days-help${rulesError?.field === 'paymentDeadlineDays' ? ` ${rulesId}-error` : ''}`}
+                    onChange={(event) => {
+                      setPaymentDays(event.target.value);
+                      if (rulesError?.field === 'paymentDeadlineDays') setRulesError(null);
+                    }}
+                  />
+                </label>
+                <p id={`${rulesId}-days-help`} className={styles.help}>
+                  {PAYMENT_DEADLINE_DAYS.min} to {PAYMENT_DEADLINE_DAYS.max} days. A deadline never
+                  falls after the event starts. New deadlines use this value; existing ones stay
+                  until staff extend them.
+                </p>
+              </div>
+              <div className={styles.settingsEmails}>
+                <label>
+                  Review bookings with more guests than
+                  <input
+                    ref={guestLimitRef}
+                    type="number"
+                    inputMode="numeric"
+                    min={REVIEW_GUEST_LIMIT.min}
+                    max={REVIEW_GUEST_LIMIT.max}
+                    step={1}
+                    disabled={disabled}
+                    value={guestLimit}
+                    aria-invalid={rulesError?.field === 'reviewGuestLimit' ? true : undefined}
+                    aria-describedby={`${rulesId}-guests-help${rulesError?.field === 'reviewGuestLimit' ? ` ${rulesId}-error` : ''}`}
+                    onChange={(event) => {
+                      setGuestLimit(event.target.value);
+                      if (rulesError?.field === 'reviewGuestLimit') setRulesError(null);
+                    }}
+                  />
+                </label>
+                <p id={`${rulesId}-guests-help`} className={styles.help}>
+                  Leave empty for no limit. To confirm with Zion: their documents give the capacity
+                  as 120 in one place and 130 in another.
+                </p>
+              </div>
+              {rulesError && (
+                <p
+                  key={rulesError.attempt}
+                  id={`${rulesId}-error`}
+                  className={styles.error}
+                  role="alert"
+                >
+                  {rulesError.message}
+                </p>
+              )}
             </div>
           </details>
           <details className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>

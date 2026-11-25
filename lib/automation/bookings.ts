@@ -32,6 +32,8 @@ export type BookingNoticeSource = {
   totalCents: number;
   depositCents: number;
   paymentRule: string;
+  /** Payment deadline while an approved request holds its date (booking automation). */
+  holdExpiresAt?: Date | null;
 };
 
 /** The booking fields the staff copy of its calendar event needs. */
@@ -53,9 +55,9 @@ export type StaffCalendarSource = Pick<
 /**
  * How a booking change affects its event in the staff calendars. A request appears as a pending
  * event as soon as it arrives; confirming it turns that same event into the reservation, and
- * declining or cancelling removes it.
+ * declining, cancelling or a missed payment deadline removes it.
  */
-export type StaffCalendarChange = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED';
+export type StaffCalendarChange = 'PENDING' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
 
 /** One event per booking in every calendar: updates and cancellations reuse this UID. */
 export function bookingCalendarUid(bookingId: string) {
@@ -82,6 +84,7 @@ const STAFF_EVENT_STATUS: Record<StaffCalendarNoticeKind, string> = {
   CONFIRMED_CANCELLED: 'This reservation was cancelled.',
   REQUEST_DECLINED: 'This booking request was declined.',
   REQUEST_CANCELLED: 'This booking request was cancelled.',
+  REQUEST_EXPIRED: 'The payment deadline passed, so the date was released.',
 };
 
 /** The Bookings view each staff email links to, matching the dashboard status cards. */
@@ -91,6 +94,7 @@ const STAFF_BOOKINGS_VIEW: Record<StaffCalendarNoticeKind, string> = {
   CONFIRMED_CANCELLED: 'cancelled',
   REQUEST_DECLINED: 'cancelled',
   REQUEST_CANCELLED: 'cancelled',
+  REQUEST_EXPIRED: 'cancelled',
 };
 
 /** Unsent staff calendar emails that a newer change replaces, and the reason shown for each. */
@@ -111,11 +115,18 @@ const SUPERSEDED_STAFF_EMAILS: Record<StaffCalendarChange, { events: string[]; r
     events: [STAFF_CALENDAR_EVENTS.PENDING, STAFF_CALENDAR_EVENTS.REQUEST],
     reason: 'Not sent: the reservation was cancelled before this message went out.',
   },
+  EXPIRED: {
+    events: [STAFF_CALENDAR_EVENTS.PENDING, STAFF_CALENDAR_EVENTS.REQUEST],
+    reason: 'Not sent: the payment deadline passed before this message went out.',
+  },
 };
 
 function removesEvent(kind: StaffCalendarNoticeKind) {
   return (
-    kind === 'CONFIRMED_CANCELLED' || kind === 'REQUEST_DECLINED' || kind === 'REQUEST_CANCELLED'
+    kind === 'CONFIRMED_CANCELLED' ||
+    kind === 'REQUEST_DECLINED' ||
+    kind === 'REQUEST_CANCELLED' ||
+    kind === 'REQUEST_EXPIRED'
   );
 }
 
@@ -240,7 +251,11 @@ function staffNoticeKind(
 ): StaffCalendarNoticeKind {
   if (change === 'PENDING' || change === 'CONFIRMED') return change;
   if (held?.state === 'PENDING')
-    return change === 'DECLINED' ? 'REQUEST_DECLINED' : 'REQUEST_CANCELLED';
+    return change === 'DECLINED'
+      ? 'REQUEST_DECLINED'
+      : change === 'EXPIRED'
+        ? 'REQUEST_EXPIRED'
+        : 'REQUEST_CANCELLED';
   return 'CONFIRMED_CANCELLED';
 }
 
@@ -258,7 +273,7 @@ async function staffCalendarJob(
   now: Date,
 ): Promise<NewAutomationJob | null> {
   const held = await heldStaffEvent(db, booking.id);
-  const removal = change === 'DECLINED' || change === 'CANCELLED';
+  const removal = change === 'DECLINED' || change === 'CANCELLED' || change === 'EXPIRED';
   const emails = removal
     ? (held?.emails ?? [])
     : staffRecipientList([...(await resolveStaffRecipients(db)).emails, ...(held?.emails ?? [])]);

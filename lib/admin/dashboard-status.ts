@@ -4,10 +4,12 @@
  * never replace those fields, and every action still follows the state machine enforced in
  * lib/admin/service.ts (approval, then cash and policy checks, then confirmation).
  *
- * - request:   reservation REQUESTED and approval PENDING. Waiting for a staff decision
- *              (flagged and unverified requests stay here and keep their own badge).
- * - pending:   reservation REQUESTED and approval APPROVED. Approved, but the required cash and
- *              the reservation confirmation are still outstanding. Approval is not confirmation.
+ * - request:   reservation REQUESTED and approval PENDING. Under review: a request the booking
+ *              automation could not approve by itself, or one staff entered, waiting for a staff
+ *              decision (flagged requests stay here and keep their own badge).
+ * - pending:   reservation REQUESTED and approval APPROVED. Waiting for payment: the date is held
+ *              until the payment deadline; the payment that meets the rule confirms it.
+ *              Approval is not confirmation (docs/booking-automation.md).
  * - confirmed: reservation CONFIRMED or COMPLETED. The date is secured; completed events stay here.
  * - cancelled: reservation CANCELLED, or approval REJECTED. Closed without a secured date.
  *
@@ -19,8 +21,8 @@ export type DisplayStatus = (typeof displayStatuses)[number];
 export type DisplayStatusCounts = Record<DisplayStatus, number>;
 
 export const displayStatusLabels: Record<DisplayStatus, string> = {
-  request: 'Request',
-  pending: 'Pending',
+  request: 'Under review',
+  pending: 'Waiting for payment',
   confirmed: 'Confirmed',
   cancelled: 'Cancelled',
 };
@@ -28,7 +30,7 @@ export const displayStatusLabels: Record<DisplayStatus, string> = {
 /** One short sentence per state, used in accessible names and empty states. */
 export const displayStatusDescriptions: Record<DisplayStatus, string> = {
   request: 'Waiting for a staff decision',
-  pending: 'Approved; cash and confirmation outstanding',
+  pending: 'Approved; the date is held until the client pays',
   confirmed: 'Date secured',
   cancelled: 'Cancelled or rejected',
 };

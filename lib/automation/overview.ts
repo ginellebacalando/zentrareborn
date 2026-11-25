@@ -9,11 +9,15 @@ import {
   type AutomationOverview,
   type AutomationStatus,
 } from './catalog';
-import { AUTOMATION_POLICY, isCronConfigured, isMailConfigured } from './config';
+import {
+  AUTOMATION_POLICY,
+  isCronConfigured,
+  isMailConfigured,
+  LAST_RUN_STATE_KEY,
+} from './config';
 import { maskEmail, maskRecipients, sanitizeErrorMessage } from './privacy';
 import { processDueJobs } from './processor';
 import { resolveStaffRecipients } from './recipients';
-import { LAST_RUN_STATE_KEY } from './run';
 import type { MailTransport } from './transport';
 
 async function statusCounts() {

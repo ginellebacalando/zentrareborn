@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { OCCUPYING_BOOKINGS, occupiesSlot } from '@/lib/booking-occupancy';
 import { prisma } from '@/lib/prisma';
 
 /** The admin calendar's venue (see lib/admin/domain.ts); public availability reads the same records. */
@@ -26,9 +27,9 @@ function manilaDays(startsAt: Date, endsAt: Date) {
 }
 
 /**
- * Dates only, never client details. A date is "booked" when a confirmed reservation touches it and
- * "inquired" when an open request does (rejected, cancelled and completed records are ignored).
- * This is guidance for choosing a date, not a hold: staff confirmation rechecks conflicts.
+ * Dates only, never client details. A date is "booked" when a booking occupies it (a confirmed
+ * reservation, or an approved request holding it while the client pays) and "inquired" when a
+ * request waits for staff review (rejected, cancelled and completed records are ignored).
  */
 export async function readPublicDateAvailability(
   from: string,
@@ -41,18 +42,15 @@ export async function readPublicDateAvailability(
       venue: VENUE,
       startsAt: { lt: end },
       endsAt: { gt: start },
-      OR: [
-        { reservation: 'CONFIRMED' },
-        { reservation: 'REQUESTED', approval: { not: 'REJECTED' } },
-      ],
+      OR: [...OCCUPYING_BOOKINGS, { reservation: 'REQUESTED', approval: 'PENDING' }],
     },
-    select: { startsAt: true, endsAt: true, reservation: true },
+    select: { startsAt: true, endsAt: true, reservation: true, approval: true },
   });
   const booked = new Set<string>();
   const inquired = new Set<string>();
   for (const row of rows) {
     for (const day of manilaDays(row.startsAt, row.endsAt)) {
-      (row.reservation === 'CONFIRMED' ? booked : inquired).add(day);
+      (occupiesSlot(row) ? booked : inquired).add(day);
     }
   }
   const inRange = (day: string) => day >= from && day <= to;

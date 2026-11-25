@@ -88,6 +88,7 @@ swash capitals). Buy the licenses before using the original fonts on the public 
 Notifications (inquiry alerts and acknowledgements, booking decisions with calendar invitations, event reminders and a daily staff digest) are built in: each is saved to a database outbox with the business change and delivered through Gmail SMTP. Without `SMTP_USER` and `SMTP_PASSWORD` everything stays queued and nothing is reported as sent. See [the automation guide](docs/automation.md) for the Gmail App Password, `CRON_SECRET`, the Vercel and Supabase schedulers, and the admin Automation page.
 
 - `npm run db:automation:check` checks the additive automation schema; add `-- --apply` to install `prisma/automation.sql`.
+- `npm run db:booking-holds:check` checks the booking automation column ([docs/booking-automation.md](docs/booking-automation.md)); add `-- --apply` to install `prisma/booking-holds.sql`.
 - `npm run automation:run` performs one automation run from the command line.
 - `npm run test:automation` tests the outbox, delivery, scheduling, calendar invitations and cron authorization without contacting a mail server.
 

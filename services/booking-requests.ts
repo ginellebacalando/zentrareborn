@@ -9,8 +9,12 @@ import {
   BOOKING_REQUEST_RULES,
   WEBSITE_BOOKING_ACTOR,
 } from '@/config/booking';
+import { paymentDeadline, websiteReviewReasons } from '@/lib/admin/booking-rules';
+import { eventDate } from '@/lib/admin/domain';
+import { readBookingRules } from '@/lib/admin/preferences';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueueWebsiteBookingRequest } from '@/lib/automation/booking-requests';
+import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
 import { prisma } from '@/lib/prisma';
 import { readPublicDateAvailability } from '@/lib/public-availability';
 import { getPublicPackagesForCategory, ServicesPackagesError } from '@/lib/services-packages';
@@ -98,9 +102,16 @@ function bookingReference() {
 async function venuePolicy() {
   const stored = await prisma.adminPolicy.findUnique({
     where: { id: 'venue' },
-    select: { paymentRule: true, version: true },
+    select: { paymentRule: true, version: true, reviewed: true, cashInstructions: true },
   });
-  return stored ?? { paymentRule: 'DEPOSIT_REQUIRED', version: 1 };
+  return (
+    stored ?? {
+      paymentRule: 'DEPOSIT_REQUIRED',
+      version: 1,
+      reviewed: false,
+      cashInstructions: 'Pay the reservation fee in cash at Zion Events Place.',
+    }
+  );
 }
 
 /** The published package the visitor chose, priced the same way the package pages show it. */
@@ -121,10 +132,11 @@ async function chosenPackage(categorySlug: string, packageId: string | null) {
 }
 
 /**
- * Validates and saves a booking request from the public booking page as an admin booking with
- * status Request (approval pending, nothing reserved), together with the audit entry the
- * dashboard reads, an in-app notice and the staff alert and client acknowledgement emails.
- * Returns the outbox ids to deliver once the response is sent.
+ * Validates and saves a booking request from the public booking page as an admin booking,
+ * together with the audit entry the dashboard reads, an in-app notice, the staff alert and the
+ * client acknowledgement. An ordinary request is approved by the system and holds its date until a
+ * payment deadline; one that needs a person (websiteReviewReasons) waits for staff review
+ * (docs/booking-automation.md). Returns the outbox ids to deliver once the response is sent.
  */
 export async function submitBookingRequest(request: Request) {
   const parsed = requestSchema.safeParse(await request.json());
@@ -185,6 +197,21 @@ export async function submitBookingRequest(request: Request) {
   const totalCents = pkg ? Math.round((pkg.price + extraGuests * pkg.excessPaxFee) * 100) : 0;
   const depositCents = pkg ? Math.min(Math.round(pkg.reservationFee * 100), totalCents) : 0;
   const payment = BOOKING_PAYMENT_METHODS.find((method) => method.value === input.paymentMethod);
+  const [policy, rules] = await Promise.all([venuePolicy(), readBookingRules()]);
+  const reviewReasons = websiteReviewReasons({
+    totalCents,
+    depositCents,
+    paymentRule: policy.paymentRule,
+    guests: input.guests,
+    policyReviewed: policy.reviewed,
+    reviewGuestLimit: rules.reviewGuestLimit,
+  });
+  const startsAt = new Date(`${input.date}T${input.startTime}:00+08:00`);
+  const endsAt = new Date(`${input.date}T${input.endTime}:00+08:00`);
+  // An ordinary request is approved by the system and holds its date until the payment deadline.
+  const holdExpiresAt = reviewReasons.length
+    ? null
+    : paymentDeadline(now, startsAt, rules.paymentDeadlineDays);
   const notes = [
     `Sent from the website booking page${input.fromZeni ? ' (opened from a Zeni link)' : ''}.`,
     `Preferred payment: ${payment?.label ?? input.paymentMethod}.`,
@@ -197,15 +224,32 @@ export async function submitBookingRequest(request: Request) {
       : '',
     input.facebook ? `Facebook: ${input.facebook}` : '',
     input.notes ? `Client notes: ${input.notes}` : '',
+    reviewReasons.length ? `Needs review: ${reviewReasons.join('; ')}.` : '',
   ]
     .filter(Boolean)
     .join('\n');
 
-  const policy = await venuePolicy();
   const reference = bookingReference();
   const context = getRequestContext(request);
   const { booking, notificationIds } = await prisma.$transaction(
     async (tx) => {
+      // Serializes with confirmations and other requests for the venue, then rechecks the slot:
+      // two visitors cannot both hold the same date.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${VENUE}))::text`;
+      const taken = await tx.adminBooking.findFirst({
+        where: {
+          venue: VENUE,
+          startsAt: { lt: endsAt },
+          endsAt: { gt: startsAt },
+          OR: OCCUPYING_BOOKINGS,
+        },
+        select: { id: true },
+      });
+      if (taken)
+        throw new BookingRequestError(
+          'This date was just reserved. Please choose another date.',
+          409,
+        );
       const created = await tx.adminBooking.create({
         data: {
           reference,
@@ -215,12 +259,14 @@ export async function submitBookingRequest(request: Request) {
           eventType: category.name,
           packageName: pkg?.packageName || 'Custom proposal',
           venue: VENUE,
-          startsAt: new Date(`${input.date}T${input.startTime}:00+08:00`),
-          endsAt: new Date(`${input.date}T${input.endTime}:00+08:00`),
+          startsAt,
+          endsAt,
           guests: input.guests,
           totalCents,
           depositCents,
           paymentRule: policy.paymentRule,
+          approval: holdExpiresAt ? 'APPROVED' : 'PENDING',
+          holdExpiresAt,
           notes,
           policyVersion: policy.version,
           createdBy: WEBSITE_BOOKING_ACTOR,
@@ -236,7 +282,9 @@ export async function submitBookingRequest(request: Request) {
           userRole: 'PUBLIC',
           action: 'CREATE',
           module: 'Bookings',
-          description: `Website booking request ${reference} received. No date or payment confirmed.`,
+          description: holdExpiresAt
+            ? `Website booking request ${reference} received and approved automatically; the date is held until ${eventDate(holdExpiresAt)} for the payment. Nothing is confirmed yet.`
+            : `Website booking request ${reference} received; it needs staff review (${reviewReasons.join('; ')}). No date or payment confirmed.`,
           status: 'SUCCESS',
           source: 'zion-admin',
           ipAddress: context.ipAddress,
@@ -246,8 +294,10 @@ export async function submitBookingRequest(request: Request) {
       });
       await tx.notification.create({
         data: {
-          title: 'New booking request',
-          message: `${input.fullName} sent a booking request for ${category.name} on ${input.date}.`,
+          title: holdExpiresAt ? 'New booking waiting for payment' : 'Booking request needs review',
+          message: holdExpiresAt
+            ? `${input.fullName} booked ${category.name} on ${input.date}. The date is held until ${eventDate(holdExpiresAt)} for the payment.`
+            : `${input.fullName} sent a booking request for ${category.name} on ${input.date} that needs your review.`,
           type: NotificationType.WORKFLOW,
           priority: NotificationPriority.HIGH,
           relatedModule: 'bookings',
@@ -255,13 +305,23 @@ export async function submitBookingRequest(request: Request) {
           source: WEBSITE_BOOKING_ACTOR,
         },
       });
-      const ids = await enqueueWebsiteBookingRequest(tx, created, now);
+      const ids = await enqueueWebsiteBookingRequest(tx, created, now, {
+        reviewReasons,
+        paymentInstructions: policy.cashInstructions,
+      });
       return { booking: created, notificationIds: ids };
     },
     { maxWait: 10_000, timeout: 15_000 },
   );
 
-  return { id: booking.id, reference: booking.reference, notificationIds };
+  return {
+    id: booking.id,
+    reference: booking.reference,
+    notificationIds,
+    holdExpiresAt: booking.holdExpiresAt,
+    amountDueCents:
+      booking.paymentRule === 'FULL_PAYMENT_REQUIRED' ? booking.totalCents : booking.depositCents,
+  };
 }
 
 export function bookingRequestErrorResponse(error: unknown) {

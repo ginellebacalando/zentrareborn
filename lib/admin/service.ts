@@ -9,7 +9,8 @@ import { deleteTestimonyPhoto } from '@/lib/testimony-photo-storage';
 import { parseRedFlagReasons } from '@/lib/testimony-service';
 import type { AdminActor } from './access';
 import { AdminError } from './errors';
-import { getAdminPreferences, saveAdminPreferences } from './preferences';
+import { getAdminPreferences, readBookingRules, saveAdminPreferences } from './preferences';
+import { paymentDeadline, requiresPayment } from './booking-rules';
 import { readCatalog, saveCatalog } from './catalog';
 import { readDashboardInsights } from './dashboard';
 import { readDashboardKpis } from './dashboard-kpis';
@@ -24,6 +25,7 @@ import {
 import { isMailConfigured } from '@/lib/automation/config';
 import type { CalendarMethod } from '@/lib/automation/ics';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
+import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
 import {
   bookingInput,
   confirmationError,
@@ -87,7 +89,7 @@ async function audit(
 /**
  * How a booking decision changes its event in the staff calendars: pending from the request,
  * confirmed with the reservation, removed when declined or cancelled, and pending again when a
- * declined request is reviewed again.
+ * declined request is approved or reviewed again.
  */
 function staffCalendarChange(
   action: string,
@@ -96,8 +98,63 @@ function staffCalendarChange(
   if (action === 'CONFIRM') return 'CONFIRMED';
   if (action === 'REJECT') return 'DECLINED';
   if (action === 'CANCEL') return 'CANCELLED';
-  if (action === 'REVIEW_POLICY' && before.approval === 'REJECTED') return 'PENDING';
+  if ((action === 'APPROVE' || action === 'REVIEW_POLICY') && before.approval === 'REJECTED')
+    return 'PENDING';
   return undefined;
+}
+/** The client notice each booking decision sends; other decisions send a notice of their name. */
+const DECISION_NOTICES: Record<string, string> = {
+  APPROVE: 'REQUEST_APPROVED',
+  CONFIRM: 'RESERVATION_CONFIRMED',
+  EXTEND_HOLD: 'HOLD_EXTENDED',
+};
+/**
+ * Why a requested booking cannot be confirmed now, or null when it can: the venue policy, the
+ * confirmation rules and no confirmed event in the same slot. Takes the venue lock, so competing
+ * confirmations are serialized without holding a network call.
+ */
+async function confirmationBlock(
+  tx: Tx,
+  b: Awaited<ReturnType<typeof findBooking>>,
+  paid: number,
+): Promise<{ message: string; status: number } | null> {
+  const p = await policy(tx);
+  if (b.policyVersion !== p.version)
+    return {
+      message:
+        'The policy changed. Re-review this request under the current venue policy, then approve it again.',
+      status: 400,
+    };
+  const error = confirmationError(b, paid, p.reviewed);
+  if (error) return { message: error, status: 400 };
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${b.venue}))::text`;
+  const conflict = await tx.adminBooking.findFirst({
+    where: {
+      id: { not: b.id },
+      venue: b.venue,
+      reservation: 'CONFIRMED',
+      startsAt: { lt: b.endsAt },
+      endsAt: { gt: b.startsAt },
+    },
+    select: { reference: true },
+  });
+  return conflict
+    ? { message: `Schedule conflicts with ${conflict.reference}.`, status: 409 }
+    : null;
+}
+/** Another booking that already occupies this slot: confirmed, or held while its client pays. */
+async function occupyingConflict(tx: Tx, b: Awaited<ReturnType<typeof findBooking>>) {
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${b.venue}))::text`;
+  return tx.adminBooking.findFirst({
+    where: {
+      id: { not: b.id },
+      venue: b.venue,
+      startsAt: { lt: b.endsAt },
+      endsAt: { gt: b.startsAt },
+      OR: OCCUPYING_BOOKINGS,
+    },
+    select: { reference: true },
+  });
 }
 async function queue(
   tx: Tx,
@@ -150,6 +207,7 @@ const decisionSchema = z
       'CONFIRM',
       'CANCEL',
       'COMPLETE',
+      'EXTEND_HOLD',
     ]),
     reason: z.string().trim().min(5).max(2000),
   })
@@ -745,8 +803,13 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
           verifiedBy: null,
           verifiedAt: null,
         });
+      // Back to review: the date is no longer held, so its payment deadline no longer applies.
       if (termsChanged && b.approval === 'APPROVED')
-        Object.assign(data, { approval: 'PENDING', decisionReason: input.reason });
+        Object.assign(data, {
+          approval: 'PENDING',
+          decisionReason: input.reason,
+          holdExpiresAt: null,
+        });
       const edited = await tx.adminBooking.update({ where: { id: b.id }, data });
       await audit(tx, actor, 'Bookings', `Edited ${b.reference}: ${input.reason}`, 'UPDATE', {
         bookingId: b.id,
@@ -790,40 +853,51 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
       if (input.action === 'APPROVE' || input.action === 'REJECT') {
         if (b.reservation !== 'REQUESTED')
           throw new AdminError('Only a requested reservation can be reviewed.');
-        if (input.action === 'APPROVE' && b.verification !== 'VERIFIED')
-          throw new AdminError('Verify the client contact before approval.');
         Object.assign(data, {
           approval: input.action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
           decisionReason: input.reason,
         });
       }
-      if (input.action === 'CONFIRM') {
-        const p = await policy(tx);
-        if (b.policyVersion !== p.version)
+      if (input.action === 'APPROVE') {
+        if (b.approval === 'APPROVED') throw new AdminError('This request is already approved.');
+        if (b.verification === 'FLAGGED')
           throw new AdminError(
-            'The policy changed. Re-review this request under the current venue policy, then approve it again.',
+            'This request is flagged as suspicious. Verify the client contact to clear the flag before approving.',
           );
-        const error = confirmationError(b, paidTotal(b.payments), p.reviewed);
-        if (error) throw new AdminError(error);
-        // Transaction-scoped venue lock serializes competing confirmations without holding a network call.
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${b.venue}))::text`;
-        const conflict = await tx.adminBooking.findFirst({
-          where: {
-            id: { not: b.id },
-            venue: b.venue,
-            reservation: 'CONFIRMED',
-            startsAt: { lt: b.endsAt },
-            endsAt: { gt: b.startsAt },
-          },
-          select: { reference: true },
-        });
-        if (conflict) throw new AdminError(`Schedule conflicts with ${conflict.reference}.`, 409);
-        data.reservation = 'CONFIRMED';
+        if (b.totalCents < 1)
+          throw new AdminError('Set the price with Edit details before approving this request.');
+        const taken = await occupyingConflict(tx, b);
+        if (taken)
+          throw new AdminError(
+            `This slot is already held or confirmed for ${taken.reference}.`,
+            409,
+          );
+        // Approval holds the date until the payment deadline (docs/booking-automation.md).
+        const rules = await readBookingRules(tx);
+        data.holdExpiresAt = requiresPayment(b)
+          ? paymentDeadline(new Date(), b.startsAt, rules.paymentDeadlineDays)
+          : null;
+      }
+      if (input.action === 'EXTEND_HOLD') {
+        if (b.reservation !== 'REQUESTED' || b.approval !== 'APPROVED' || !b.holdExpiresAt)
+          throw new AdminError('Only a booking waiting for payment has a deadline to extend.');
+        const rules = await readBookingRules(tx);
+        const extended = paymentDeadline(new Date(), b.startsAt, rules.paymentDeadlineDays);
+        if (extended <= b.holdExpiresAt)
+          throw new AdminError('The deadline cannot move later because the event starts too soon.');
+        Object.assign(data, { holdExpiresAt: extended, decisionReason: input.reason });
+      }
+      if (input.action === 'CONFIRM') {
+        const block = await confirmationBlock(tx, b, paidTotal(b.payments));
+        if (block) throw new AdminError(block.message, block.status);
+        Object.assign(data, { reservation: 'CONFIRMED', holdExpiresAt: null });
       }
       if (input.action === 'REVIEW_POLICY') {
         const p = await policy(tx);
-        if (!p.reviewed || b.reservation !== 'REQUESTED' || b.verification !== 'VERIFIED')
-          throw new AdminError('Review the venue policy and verify this pending request first.');
+        if (!p.reviewed || b.reservation !== 'REQUESTED' || b.verification === 'FLAGGED')
+          throw new AdminError(
+            'Review the venue policy in Settings first, and clear any suspicious flag on this request.',
+          );
         if (p.paymentRule === 'DEPOSIT_REQUIRED' && b.depositCents < 1)
           throw new AdminError(
             'A cash reservation fee must be agreed for a deposit-required booking.',
@@ -833,6 +907,8 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
           paymentRule: p.paymentRule,
           decisionReason: input.reason,
           approval: 'PENDING',
+          // Back to review: the date is no longer held, so no deadline applies until approval.
+          holdExpiresAt: null,
         });
       }
       if (input.action === 'CANCEL')
@@ -869,11 +945,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         await queue(
           tx,
           updated,
-          input.action === 'APPROVE'
-            ? 'REQUEST_APPROVED'
-            : input.action === 'CONFIRM'
-              ? 'RESERVATION_CONFIRMED'
-              : input.action,
+          DECISION_NOTICES[input.action] ?? input.action,
           // Calendar invite on confirmation; a cancel update only if an invite was ever sent.
           input.action === 'CONFIRM'
             ? 'REQUEST'
@@ -905,9 +977,18 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
           note: input.note,
         },
       });
+      // The booking automation: the payment that meets the confirmation rule confirms the
+      // reservation in the same step, so staff never press a separate Confirm button for it.
+      const confirmsNow =
+        b.reservation === 'REQUESTED' &&
+        !(await confirmationBlock(tx, b, paidTotal(b.payments) + input.amountCents));
       const updated = await tx.adminBooking.update({
         where: { id: b.id },
-        data: { revision: { increment: 1 }, updatedBy: actor.id },
+        data: {
+          revision: { increment: 1 },
+          updatedBy: actor.id,
+          ...(confirmsNow ? { reservation: 'CONFIRMED', holdExpiresAt: null } : {}),
+        },
         include: { payments: true, contracts: true },
       });
       await audit(
@@ -918,7 +999,16 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         'CREATE',
       );
       await queue(tx, updated, 'CASH_RECEIPT');
-      return { id: b.id };
+      if (confirmsNow) {
+        await audit(
+          tx,
+          actor,
+          'Bookings',
+          `Confirmed ${b.reference} automatically: the required payment was received.`,
+        );
+        await queue(tx, updated, 'RESERVATION_CONFIRMED', 'REQUEST', 'CONFIRMED');
+      }
+      return { id: b.id, confirmed: confirmsNow };
     });
   }
   if (op === 'void-receipt') {
@@ -985,11 +1075,11 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
       if (
         !p.reviewed ||
         b.approval !== 'APPROVED' ||
-        b.verification !== 'VERIFIED' ||
+        b.verification === 'FLAGGED' ||
         ['CANCELLED', 'COMPLETED'].includes(b.reservation)
       )
         throw new AdminError(
-          'Review the venue policy and approve a verified, open booking before preparing a contract.',
+          'Review the venue policy and approve an open booking that is not flagged as suspicious before preparing a contract.',
         );
       if (b.policyVersion !== p.version)
         throw new AdminError(

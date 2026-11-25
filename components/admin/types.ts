@@ -44,6 +44,8 @@ export type Booking = {
   notes: string;
   revision: number;
   policyVersion: number;
+  /** Payment deadline while an approved request holds its date (booking automation). */
+  holdExpiresAt: string | null;
   payments: Receipt[];
   contracts: Contract[];
 };

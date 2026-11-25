@@ -1,3 +1,4 @@
+import { DEFAULT_BOOKING_RULES, type BookingRules } from '@/lib/admin/booking-rules';
 import { STAFF_RECIPIENT_LIMITS } from '@/lib/automation/catalog';
 import { isEmailAddress } from '@/lib/email-address';
 import {
@@ -30,6 +31,8 @@ export type AdminPreferences = {
      * server default (STAFF_NOTIFICATION_EMAIL, else the sending account).
      */
     staffNotifications: { emails: string[] };
+    /** Payment deadline and review limit of the booking automation (docs/booking-automation.md). */
+    bookingRules: BookingRules;
   };
 };
 export type PreferencesResponse = {
@@ -47,6 +50,7 @@ export const DEFAULT_ADMIN_PREFERENCES: AdminPreferences = {
     security: { sessionTimeoutMinutes: 30 },
     localization: { ...DEFAULT_PUBLIC_SYSTEM_SETTINGS.localization },
     staffNotifications: { emails: [] },
+    bookingRules: { ...DEFAULT_BOOKING_RULES },
   },
 };
 

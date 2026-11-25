@@ -52,9 +52,10 @@ test('the admin calendar source selects only an opaque id or the confirmed time 
     orderBy: { startsAt: 'asc' },
     take: 500,
   });
+  // Confirmed reservations and approved requests holding their date both make a slot unavailable.
   assert.deepEqual(confirmedCalendarOverlapWhere(window), {
     venue: 'Zion Events Place',
-    reservation: 'CONFIRMED',
+    OR: [{ reservation: 'CONFIRMED' }, { reservation: 'REQUESTED', approval: 'APPROVED' }],
     startsAt: { lt: window.endsAt },
     endsAt: { gt: window.startsAt },
   });
