@@ -16,6 +16,7 @@ import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueueWebsiteBookingRequest } from '@/lib/automation/booking-requests';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
 import { bookingScheduleProblem, packageQuote } from '@/lib/booking-quote';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import { prisma } from '@/lib/prisma';
 import { readPublicDateAvailability } from '@/lib/public-availability';
 import { getPublicPackagesForCategory, ServicesPackagesError } from '@/lib/services-packages';
@@ -70,8 +71,8 @@ const requestSchema = z
     ),
     phone: z
       .string()
-      .trim()
-      .regex(/^\+?[\d\s()-]{7,30}$/, 'Enter a valid mobile number.'),
+      .refine((value) => philippineMobile(value) !== null, PHILIPPINE_MOBILE_ERROR)
+      .transform((value) => philippineMobile(value) ?? value),
     facebook: z.string().trim().max(200).default(''),
     notes: z.string().trim().max(2000).default(''),
     paymentMethod: z.enum(paymentMethods),

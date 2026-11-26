@@ -63,11 +63,12 @@ function ProofStatus({ view }: { view: View }) {
   const proof = view.proof;
   if (!view.paying || !proof) return null;
   const method = PAYMENT_METHOD_LABELS[proof.method];
+  // The amount, method, reference and time are listed above as "Waiting to verify".
   if (proof.status === 'SUBMITTED')
     return (
       <p className={styles.status} role="status">
-        We received your {method} screenshot on {moment.format(new Date(proof.submittedAt))}. We
-        will check it with our records and email you.
+        We are checking this {method} payment against our records and will email you. It counts as
+        paid once we verify it.
         {view.paying === 'fee' && ' Your date stays on hold until we decide.'} If you sent the wrong
         file, you can send another one below.
       </p>
@@ -381,6 +382,8 @@ function UploadForm({ view, token }: { view: View; token: string }) {
  * page never confirms a booking by itself.
  */
 export default function PaymentPage({ view, token }: { view: View; token: string }) {
+  // A screenshot staff have not checked yet: listed on its own, never subtracted from what is due.
+  const waitingProof = view.paying && view.proof?.status === 'SUBMITTED' ? view.proof : null;
   const title =
     view.state === 'waiting'
       ? view.proof?.status === 'SUBMITTED'
@@ -437,6 +440,16 @@ export default function PaymentPage({ view, token }: { view: View; token: string
                   </dd>
                 </>
               )}
+            </>
+          )}
+          {waitingProof && (
+            <>
+              <dt>Waiting to verify</dt>
+              <dd>
+                {peso.format(waitingProof.amountCents / 100)} ·{' '}
+                {PAYMENT_METHOD_LABELS[waitingProof.method]} · Ref {waitingProof.referenceNumber} ·
+                sent {moment.format(new Date(waitingProof.submittedAt))}
+              </dd>
             </>
           )}
         </dl>

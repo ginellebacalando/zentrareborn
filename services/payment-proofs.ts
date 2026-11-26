@@ -101,6 +101,7 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
         select: {
           status: true,
           method: true,
+          referenceNumber: true,
           amountCents: true,
           createdAt: true,
           reviewReason: true,
@@ -168,6 +169,7 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
       ? {
           status: latest.status as 'SUBMITTED' | 'VERIFIED' | 'REJECTED',
           method: latest.method as OnlinePaymentMethod,
+          referenceNumber: latest.referenceNumber,
           amountCents: latest.amountCents,
           submittedAt: latest.createdAt.toISOString(),
           reviewReason: latest.reviewReason,

@@ -71,7 +71,11 @@ refused. The client gets "Payment screenshot received"; staff get "Payment scree
 with a link to Bookings, plus a bell notice and a line in the daily digest.
 
 **While a screenshot waits for review** the date stays held, even past the deadline, and no
-reminder is sent. The booking list shows "Screenshot to verify".
+reminder is sent. The booking list shows "Screenshot to verify". The booking's **Payment status**
+card lists it on its own line, "Waiting to verify: ₱30,000.00 · Bank transfer · Ref 1234 · sent
+…", with a link that moves to the screenshot review; the client's payment page shows the same
+line. It is not counted as received and does not lower the balance until staff press **Verify
+payment**, which moves it into the payments received.
 
 **Verify payment** (booking detail): staff see the image (or download the PDF), the client's
 entries and warnings when the payment may not be new: the same reference sent for another booking
@@ -125,6 +129,9 @@ Walk-in bookings at the Front desk follow the same rules and prices ([docs/walk-
 the booking page, its server and the walk-in page share `lib/booking-quote.ts` (the price of a
 package for a guest count, and the date and time limits) and `websiteReviewReasons`.
 
+- **Contact number:** the booking page and the walk-in form take Philippine mobile numbers only,
+  09XXXXXXXXX or +639XXXXXXXXX (`lib/phone-number.ts`, checked in the browser and on the server).
+  Spaces and dashes are allowed and removed before the number is saved.
 - **Payment deadline:** _Settings → Booking Automation → Days to pay the reservation fee_ (1 to 14,
   default 3). The deadline is never after the event starts. New deadlines use the current value;
   existing ones stay until staff extend them.

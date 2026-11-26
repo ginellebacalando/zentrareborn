@@ -15,6 +15,7 @@ import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
 import { bookingScheduleProblem, manilaDateAfter, packageQuote } from '@/lib/booking-quote';
 import { paymentPagePath } from '@/lib/payment-link';
 import { nextAcknowledgmentNumber } from '@/lib/payment-receipts';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import { prisma } from '@/lib/prisma';
 import { readPublicDateAvailability } from '@/lib/public-availability';
 import {
@@ -194,8 +195,8 @@ const walkInSchema = z
         ),
         phone: z
           .string()
-          .trim()
-          .regex(/^\+?[\d\s()-]{7,30}$/, 'Enter a valid mobile number.'),
+          .refine((value) => philippineMobile(value) !== null, PHILIPPINE_MOBILE_ERROR)
+          .transform((value) => philippineMobile(value) ?? value),
       })
       .strict(),
     event: z

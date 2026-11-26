@@ -287,15 +287,19 @@ export default function PaymentProofReview({
   booking: b,
   busy,
   mutate,
+  headingId,
 }: {
   booking: Booking;
   busy: boolean;
   mutate: Mutate;
+  /** Set when the Payment status card links to this section; the link moves focus here. */
+  headingId?: string;
 }) {
   const { canOpen } = useAdminRole();
   const eventDate = useAdminDate();
   const { settings } = useAdminPreferences();
   const id = useId();
+  const heading = headingId ?? `${id}-heading`;
   const proofs = b.paymentProofs ?? [];
   const waitingForPayment = acceptsScreenshots(b);
   // Shown on every booking waiting for payment, so staff always know where a screenshot arrives.
@@ -303,9 +307,17 @@ export default function PaymentProofReview({
   const online = onlinePaymentMethods(settings.admin.paymentAccounts).length > 0;
   const waiting = proofs.find((proof) => proof.status === 'SUBMITTED');
   const reviewed = proofs.filter((proof) => proof.status !== 'SUBMITTED');
+  // Decided screenshots are listed below, so "none yet" would contradict them.
+  const nothingWaiting = reviewed.length
+    ? 'No screenshot is waiting for review.'
+    : 'No screenshot yet.';
   return (
-    <section className={styles.subsection} aria-labelledby={`${id}-heading`}>
-      <h3 id={`${id}-heading`}>
+    <section className={styles.subsection} aria-labelledby={heading}>
+      <h3
+        id={heading}
+        tabIndex={headingId ? -1 : undefined}
+        className={headingId ? review.anchor : undefined}
+      >
         <ImageIcon size={16} aria-hidden="true" />
         Payment screenshots
       </h3>
@@ -315,12 +327,12 @@ export default function PaymentProofReview({
         <p>No screenshot is waiting for review.</p>
       ) : online ? (
         <p>
-          No screenshot yet. When the client sends a GCash or bank transfer screenshot from their
+          {nothingWaiting} When the client sends a GCash or bank transfer screenshot from their
           payment page, it appears here with Verify payment.
         </p>
       ) : (
         <p className={review.note}>
-          No screenshot yet. Clients can send a GCash or bank transfer screenshot only after an
+          {nothingWaiting} Clients can send a GCash or bank transfer screenshot only after an
           account is set up in{' '}
           {canOpen('settings') ? (
             <Link href="/admin/settings" className={review.textLink}>

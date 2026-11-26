@@ -24,6 +24,7 @@ import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDat
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { BRAND } from '@/config/brand';
 import { cheaperTier, packageQuote } from '@/lib/booking-quote';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import {
   BOOKING_EXTRAS,
   BOOKING_PAYMENT_METHODS,
@@ -110,7 +111,6 @@ const PAYMENT_ICONS: Record<BookingPaymentMethod, LucideIcon> = {
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^\+?[\d\s()-]{7,30}$/;
 const TIMES = bookingTimeOptions();
 const NOTES_LIMIT = 2000;
 
@@ -197,8 +197,7 @@ function validate(
     if (form.fullName.trim().length < 2) errors.fullName = 'Enter your full name.';
     if (!EMAIL_PATTERN.test(form.email.trim()))
       errors.email = 'Enter a valid email address, for example name@gmail.com.';
-    if (!PHONE_PATTERN.test(form.phone.trim()))
-      errors.phone = 'Enter a valid mobile number, for example 0917 123 4567.';
+    if (!philippineMobile(form.phone)) errors.phone = PHILIPPINE_MOBILE_ERROR;
   }
   if (step === 3) {
     if (!form.paymentMethod) errors.paymentMethod = 'Choose how you prefer to pay.';
@@ -894,8 +893,11 @@ export default function BookingRequestForm({
                     value={form.phone}
                     onChange={(event) => update('phone', event.target.value)}
                     aria-invalid={Boolean(errors.phone)}
-                    aria-describedby={describedBy('phone')}
+                    aria-describedby={describedBy('phone', 'booking-phone-hint')}
                   />
+                  <p id="booking-phone-hint" className={styles.hint}>
+                    Philippine mobile numbers only.
+                  </p>
                   {fieldError('phone')}
                 </div>
                 <div className={styles.field}>

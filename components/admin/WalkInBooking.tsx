@@ -6,6 +6,7 @@ import { CheckCircle2, CircleAlert, LoaderCircle, Search } from 'lucide-react';
 import { BOOKING_PAYMENT_METHODS, type BookingPaymentMethod } from '@/config/booking';
 import { paymentDeadline, walkInReview } from '@/lib/admin/booking-rules';
 import { bookingScheduleProblem, packageQuote } from '@/lib/booking-quote';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import type { ClientLookup } from '@/lib/visit-types';
 import {
   CONSENT_LABELS,
@@ -22,7 +23,6 @@ import { Button, ButtonAnchor, ButtonLink } from '@/components/shared/Button';
 const ENDPOINT = '/api/admin/front-desk';
 const STEPS = ['Client', 'Event', 'Consent', 'Payment'] as const;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE = /^\+?[\d\s()-]{7,30}$/;
 const peso = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
 const fullDate = new Intl.DateTimeFormat('en-PH', { timeZone: 'UTC', dateStyle: 'full' });
 const moment = new Intl.DateTimeFormat('en-PH', {
@@ -168,7 +168,7 @@ function stepErrors(step: number, draft: Draft, options: WalkInOptions): Errors 
   if (step === 0) {
     if (draft.fullName.trim().length < 2) errors.fullName = 'Enter the client name.';
     if (!EMAIL.test(draft.email.trim())) errors.email = 'Enter a valid email address.';
-    if (!PHONE.test(draft.phone.trim())) errors.phone = 'Enter a valid mobile number.';
+    if (!philippineMobile(draft.phone)) errors.phone = PHILIPPINE_MOBILE_ERROR;
   }
   if (step === 1) {
     if (!info.category) errors.category = 'Choose the event.';

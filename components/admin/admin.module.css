@@ -1668,9 +1668,11 @@
   margin: 0;
   font-weight: var(--weight-semibold);
 }
+/* Up to three panels side by side. The minimum width is in rem, so enlarged text (200%) gets
+   fewer, wider panels instead of values broken mid-number. */
 .detailPanels {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: var(--space-4);
 }
 .detailPanel {
@@ -3050,9 +3052,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .detailPanels {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .monthPanel {

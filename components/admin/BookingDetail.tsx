@@ -157,8 +157,13 @@ export default function BookingDetail({
   const holding = b.reservation === 'REQUESTED' && b.approval === 'APPROVED';
   const deadline = holding && b.holdExpiresAt ? new Date(b.holdExpiresAt) : null;
   const deadlinePassed = deadline !== null && hasPassed(deadline);
-  // While a payment screenshot waits for review, the hold is never released automatically.
-  const screenshotWaiting = (b.paymentProofs ?? []).some((proof) => proof.status === 'SUBMITTED');
+  // A screenshot the client sent that staff have not decided on. It never counts as received or
+  // lowers the balance until Verify payment records it; while it waits, the hold is never
+  // released automatically.
+  const waitingProof = (b.paymentProofs ?? []).find((proof) => proof.status === 'SUBMITTED');
+  const screenshotWaiting = waitingProof !== undefined;
+  const reviewShown = focus === 'payments' || focus === 'bookings';
+  const screenshotsId = `payment-screenshots-${b.id}`;
   // Clients can send screenshots only while a GCash or bank account is set up in Settings.
   const onlinePayment = onlinePaymentMethods(settings.admin.paymentAccounts).length > 0;
   // Zion's terms ask for full payment a set number of days before the event (Settings).
@@ -339,6 +344,22 @@ export default function BookingDetail({
             <span style={{ inlineSize: `${paidShare}%` }} />
           </span>
           <dl>
+            {waitingProof && (
+              <>
+                <dt>Waiting to verify</dt>
+                <dd>
+                  {money(waitingProof.amountCents)} · {PAYMENT_METHOD_LABELS[waitingProof.method]} ·
+                  Ref {waitingProof.referenceNumber} · sent {eventDate(waitingProof.createdAt)}
+                  {reviewShown && (
+                    <span className={styles.detailNote}>
+                      <a href={`#${screenshotsId}`} className={styles.panelLink}>
+                        Review the screenshot below
+                      </a>
+                    </span>
+                  )}
+                </dd>
+              </>
+            )}
             <dt>Balance</dt>
             <dd>{money(b.totalCents - paid)}</dd>
             {deadline && (
@@ -376,8 +397,8 @@ export default function BookingDetail({
         </p>
       )}
       {b.notes && <div className={styles.notice}>Staff notes: {b.notes}</div>}
-      {(focus === 'payments' || focus === 'bookings') && (
-        <PaymentProofReview booking={b} busy={busy} mutate={mutate} />
+      {reviewShown && (
+        <PaymentProofReview booking={b} busy={busy} mutate={mutate} headingId={screenshotsId} />
       )}
       {editing && canEdit && policy && (
         <BookingForm

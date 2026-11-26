@@ -7,6 +7,11 @@
   gap: var(--space-6);
 }
 
+/* The Payment status card links to this heading; keep it clear of the fixed admin header. */
+.anchor {
+  scroll-margin-top: calc(var(--controls-height) + var(--space-4));
+}
+
 /* Side by side only when the booking detail itself has room for both columns, whatever the
    window width (the sidebar takes part of it). */
 .layout {

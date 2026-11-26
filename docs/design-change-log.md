@@ -1,5 +1,41 @@
 # Design change log
 
+## 27 November 2026 (night) — Payment screenshots waiting to verify; Philippine mobile numbers
+
+User task: check the GCash and bank transfer screenshot flow end to end, then show a screenshot
+that waits for staff in the booking's payment status and on the client's payment page (never
+counted as received before **Verify payment**), and accept only Philippine mobile numbers on the
+booking and walk-in forms.
+
+- **Payment status card** (`components/admin/BookingDetail.tsx`, `PaymentProofReview.tsx` and
+  its CSS module): a "Waiting to verify" line, amount · method · Ref · sent time, above Balance,
+  with the underlined link "Review the screenshot below", which moves focus to the Payment
+  screenshots heading (a scroll margin keeps it clear of the fixed header). Received, the Payment
+  chip and the balance change only after Verify payment. Once a screenshot is decided, the Payment
+  screenshots section says "No screenshot is waiting for review." instead of "No screenshot yet."
+  above the decided list.
+- **Client payment page** (`app/booking/pay/[token]/_components/PaymentPage.tsx`,
+  `services/payment-proofs.ts`, `lib/payment-page-types.ts`): the same "Waiting to verify" row in
+  the booking details; the note below says the payment counts as paid once it is verified and no
+  longer repeats the method and time.
+- **Booking detail panels** (`components/admin/admin.module.css`): the panel grid wraps at a
+  rem-based minimum width, so 200% text stacks the panels instead of breaking values mid-number.
+  Normal text keeps three panels at 1440px, two at 1100px and one on phones.
+- **Phone numbers** (`lib/phone-number.ts`; booking form and `services/booking-requests.ts`;
+  walk-in form and `lib/admin/walk-in.ts`): 09XXXXXXXXX or +639XXXXXXXXX, spaces and dashes
+  allowed and removed before saving. The error reads "Enter a Philippine mobile number, for
+  example 0917 123 4567 or +63 917 123 4567."; the booking form adds the hint "Philippine mobile
+  numbers only."
+
+Checked on the local preview in headless Edge, with test accounts and test screenshots: a booking
+held, the payment page from the "Your date is on hold" email, an upload, the waiting line on both
+sides, Verify payment confirming the booking, the "Payment verified" and confirmation emails and
+the receipt PDF; a rejected screenshot; a missed deadline (the release job run with a later clock:
+the unpaid hold released, the one with a screenshot waiting kept); cash. The waiting line at 1440px
+and 320px, in the admin dark theme and with 200% text; keyboard use of the review link; the phone
+error on both forms at 1440px and 320px (no sideways scroll). Not checked: the live site, real
+phones, a screen reader, 400% browser zoom beyond the 320px layout, and Zion's real accounts.
+
 ## 27 November 2026 (evening) — Package catalog matches the booklets; booking page tiers
 
 User task: update the admin package catalog to the package booklets' published rates (approved

@@ -7,6 +7,8 @@ import type { OnlinePaymentMethod, PaymentAccounts } from '@/lib/admin/payment-a
 export type PaymentProofSummary = {
   status: 'SUBMITTED' | 'VERIFIED' | 'REJECTED';
   method: OnlinePaymentMethod;
+  /** The reference the client entered with the screenshot. */
+  referenceNumber: string;
   amountCents: number;
   submittedAt: string;
   reviewReason: string;
