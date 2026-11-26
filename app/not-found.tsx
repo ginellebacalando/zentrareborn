@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { ButtonLink } from '@/components/shared/Button';
 
 export default function NotFound() {
   return (
@@ -12,18 +12,12 @@ export default function NotFound() {
           The link may have changed or the record is no longer available.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/"
-            className="rounded-xl bg-[var(--palette-night-subtle)] px-5 py-3 text-sm font-semibold text-[var(--palette-gold-soft)] transition hover:bg-[var(--palette-night-raised)]"
-          >
+          <ButtonLink href="/" variant="primary">
             Return home
-          </Link>
-          <Link
-            href="/contact"
-            className="rounded-xl border border-[var(--palette-night-subtle)]/20 bg-white px-5 py-3 text-sm font-semibold text-[var(--palette-night-subtle)] transition hover:bg-[var(--palette-pearl)]"
-          >
+          </ButtonLink>
+          <ButtonLink href="/contact" variant="secondary">
             Contact our team
-          </Link>
+          </ButtonLink>
         </div>
       </section>
     </main>

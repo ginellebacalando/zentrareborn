@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { ChevronLeft, ChevronRight, MessageSquareQuote, Star } from 'lucide-react';
 import type { PublicTestimony } from '@/lib/testimony-types';
+import { ButtonLink } from '@/components/shared/Button';
 
 function Stars({ value }: { value: number }) {
   return (
@@ -148,18 +148,9 @@ export default function TestimonialSection() {
           </div>
         )}
 
-        <Link
-          href="/testimonies"
-          className="group relative mt-8 inline-flex items-center justify-center overflow-hidden rounded-full border border-[var(--palette-night-subtle)] bg-transparent px-7 py-3 text-xs font-bold uppercase tracking-[0.16em] text-ink transition-all duration-500 hover:border-[var(--palette-client-button)] hover:shadow-[0_14px_30px_-12px_color-mix(in_srgb,var(--palette-client-button)_50%,transparent)]"
-        >
-          <span
-            aria-hidden="true"
-            className="absolute inset-0 translate-y-full bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out group-hover:translate-y-0"
-          />
-          <span className="relative z-10 transition-colors duration-500 group-hover:text-[var(--text-on-action)]">
-            Read all testimonies
-          </span>
-        </Link>
+        <ButtonLink href="/testimonies" variant="secondary" size="lg" className="mt-8">
+          Read all testimonies
+        </ButtonLink>
       </div>
     </section>
   );

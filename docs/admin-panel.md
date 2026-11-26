@@ -89,6 +89,48 @@ the full drawer, focus handling, and reduced-motion support still apply.
 
 The current public client design, navigation, contact flow, published terms, services, and removed public features are preserved. Only the root chrome bridge hides the public header/background/footer inside `/admin`. No public booking form, online payment gateway, assistant, or public admin link was restored. Prior image organization and branding edits were not repeated or overwritten.
 
+## Roles, team and access — 26 November 2026 (night)
+
+The existing roles stay: **SUPERADMIN** (shown as Super admin) is the top role and **ADMIN** the
+daily-work role; CLIENT never reaches the panel. No second role system was added. What each role
+may open or do is defined once, in `lib/admin/permissions.ts` (`PAGE_ACCESS`, `ACTION_ACCESS`),
+and both the interface and the server read it.
+
+| Area                                                                                      | Admin | Super admin |
+| ----------------------------------------------------------------------------------------- | ----- | ----------- |
+| Dashboard, Bookings, Front desk, Calendar, Contracts, Inquiries, Live chat, Zeni, Reports | Yes   | Yes         |
+| Payments: record cash, verify or reject payment screenshots                               | Yes   | Yes         |
+| Packages: view                                                                            | Yes   | Yes         |
+| Packages: create and edit categories, packages and prices                                 | No    | Yes         |
+| My profile: name, contact number, password                                                | Yes   | Yes         |
+| Team: invite admins, change roles, disable or enable accounts                             | No    | Yes         |
+| Automation (switches, run due jobs, retry), Activity log, Settings                        | No    | Yes         |
+| Void a receipt (refund correction), export data (Reports CSV, activity log CSV)           | No    | Yes         |
+
+- **Hidden and enforced.** An Admin's sidebar, buttons and page sections leave out what the role
+  cannot use (`AdminRoleContext.tsx`). The server checks every page (`lib/admin/page-access.ts`
+  calls `forbidden()`, which shows "You don't have access" with HTTP 403; `experimental.
+authInterrupts` in `next.config.ts`), every API section and operation
+  (`assertSectionAccess`, `assertAccess` in `lib/admin/guards.ts`) and the dedicated routes
+  (automation, settings export, notifications, Zeni, live chat, payment proofs, receipts). Blocked
+  requests return 403.
+- **Team page** (`TeamPanel.tsx`, `lib/admin/team.ts`): a super administrator invites by name,
+  email and role. The invitation email (outbox event `TEAM_INVITATION`, always on) carries a link
+  that works once, for 3 days, for that address (`/admin/invitation/<token>`, a hashed token of
+  type INVITATION); the person sets a password of at least 12 characters there. Invitations can be
+  resent. Roles change from the table after a confirmation; accounts can be disabled and enabled.
+- **Guards.** Nobody changes their own role or disables themself; the last active super
+  administrator can never be demoted or disabled (HTTP 409). A role change or disable ends that
+  person's sessions at once, so the new access applies on their next request.
+- **Audit.** Invitations, resent invitations, activations, role changes and account status changes
+  are recorded in the Activity log (module Team).
+- **Profile.** Admins keep managing their own profile and password from the profile menu.
+  Two-factor sign-in exists only for the developer panel; adding it for admin accounts needs a
+  schema change and is not part of this work.
+- **Tests.** `lib/admin/rbac.test.ts` checks the permission table, that every super-administrator
+  section and operation refuses an Admin, and the invitation, guards, session ending and audit in an
+  isolated PostgreSQL database.
+
 ## Calm redesign — 26 November 2026
 
 The admin now follows [the admin design system](admin-design.md): the calm layout of the Metis

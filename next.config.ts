@@ -26,6 +26,8 @@ const nextConfig: NextConfig = {
           ? '.next/admin-preview'
           : '.next',
   devIndicators: false,
+  // forbidden() for admin pages a role may not open (lib/admin/page-access.ts): a real 403.
+  experimental: { authInterrupts: true },
   poweredByHeader: false,
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'pg'],
   images: {

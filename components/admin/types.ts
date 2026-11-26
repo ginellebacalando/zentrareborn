@@ -1,3 +1,4 @@
+import type { TeamMember } from '@/lib/admin/team';
 import type { CalendarVisit } from '@/lib/visit-types';
 import type { DashboardInsights } from '@/lib/admin/dashboard-types';
 import type { DashboardKpis } from '@/lib/admin/dashboard-kpi-types';
@@ -140,14 +141,9 @@ export type AdminData = {
     reservations: { label: string; count: number }[];
     eventTypes: { label: string; count: number }[];
   };
-  team?: {
-    id: string;
-    fullName: string | null;
-    username: string;
-    email: string;
-    role: string;
-    status: string;
-  }[];
+  /** Team (lib/admin/team.ts); super administrators only. */
+  members?: TeamMember[];
+  canManage?: boolean;
   bookings?: Booking[];
   /** The Calendar month's ocular visits (lib/admin/front-desk.ts). */
   visits?: CalendarVisit[];

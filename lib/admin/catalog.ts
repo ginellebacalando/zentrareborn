@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import type { AdminActor } from './access';
 import { AdminError } from './errors';
+import { canDo } from './permissions';
 
 const slug = z
   .string()
@@ -197,7 +198,7 @@ export async function readCatalog(params: URLSearchParams, actor: AdminActor) {
     packages,
     total,
     page,
-    canEdit: actor.role === 'SUPERADMIN',
+    canEdit: canDo(actor.role, 'edit-packages'),
   };
 }
 function checkRevision(
@@ -212,7 +213,7 @@ function checkRevision(
     throw new AdminError('A new record cannot have an existing revision.');
 }
 export async function saveCatalog(raw: unknown, actor: AdminActor) {
-  if (actor.role !== 'SUPERADMIN')
+  if (!canDo(actor.role, 'edit-packages'))
     throw new AdminError('Only a super administrator may change services and packages.', 403);
   const operation = z.object({ op: z.enum(['catalog-category', 'catalog-package']) }).parse(raw).op;
   try {

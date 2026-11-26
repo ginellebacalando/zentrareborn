@@ -1,5 +1,59 @@
 # Design change log
 
+## 26 November 2026 (night) — One design system for the website and admin; roles and access
+
+User task: a full UI/UX polish across the website, the admin panel and the Super Admin panel (one
+button system and spacing, fade-ins, comfortable dark mode with a smooth switch, the dashboard
+layout, the same page layout on every admin tab, a compact Automation page, one icon set) and
+role-based access with a Team page.
+
+- **Buttons** (`components/shared/Button.tsx`, `Button.module.css`, `button-classes.ts`): one
+  component for both panels: primary, secondary, ghost, destructive; sm 32px, md 40px, lg 48px (44px
+  on phones); hover, press, focus, disabled and a loading state that keeps the width. Every admin
+  button, the website's calls to action (hero, header Book Now, booking, payment, visit, contact,
+  testimonies, FAQ, facilities, event pages, booklets, gallery, error and 404 pages) and Zeni's
+  buttons now use it; the old per-page button styles were removed. Labels are sentence case on the
+  website too. Carousel arrows, date-picker days, choice chips, accordions and the phone menu button
+  stay purpose-built controls.
+- **Spacing and layout:** admin pages use the full width beside the sidebar with 24px padding (16px
+  on phones); fields, filters and toggles share the 40px control height; off-scale spacing moved to
+  the 4px scale; long website text is capped near 70 characters (`--layout-reading-width: 70ch`);
+  page titles fit long words on 320px phones.
+- **Motion:** reveals rise 12px over 360ms and play once (`--motion-rise`, `--motion-reveal`;
+  FadeIn now defaults to once). The admin keeps native scrolling; its cards fade in as they scroll
+  into view, including cards that load later. Lenis is not installed, so the website keeps the
+  browser's smooth scrolling for in-page links.
+- **Dark mode:** charcoal greys for both panels and Zeni (`--palette-charcoal*`: page `#121417`,
+  cards `#1A1D21`, off-white text, mint actions), with new contrast checks in
+  `scripts/check-design-system.mjs`. The switch lag came from 62 colour transitions starting at
+  once and a theme value shared with every admin screen (37–78ms of re-rendering in development);
+  transitions now pause during a switch, the theme has its own context (15ms), and the new theme
+  sweeps in from the top in about 0.5s (`lib/theme-switch.ts`, View Transitions; instant without
+  it or under reduced motion). The admin choice is a cookie read by the panel layout and the
+  website's is applied by a script before the first paint, so neither flashes.
+- **Admin pages:** one header on every page (`AdminPageHeader.tsx`: title, status line, actions
+  with one primary). Dashboard: Trends directly below "Bookings this month"; Website activity and
+  Coming up as five-item widgets with "View all" in a side column on wide screens; the KPI and
+  30-day icon tiles were removed. Automation: a "When … → Do …" list with switches, a badge only for
+  failed or waiting emails, last run, and details in a side panel. Settings and Profile lost their
+  decorative icon circles. Icons: Lucide only at 16/20px with one stroke; the Flaticon and
+  Material Symbols fonts are no longer loaded. Every icon-only button has a label and a tooltip.
+- **Roles:** see docs/admin-panel.md, "Roles, team and access".
+
+Checked on the local demo in headless Edge and Chromium: every admin page and the main website pages
+at 1440px and 320px in light and dark (no sideways scroll, no error alerts, no console errors on
+the checked admin pages); the theme sweep frame by frame, the switch timings, a reload keeping the
+dark theme, reduced motion switching instantly, and the website opening dark without a light frame;
+signed in as an Admin (created through the invitation flow) and as a Super admin: the Admin's
+sidebar showed the 11 Admin pages, the four Super-admin pages answered "You don't have access" with
+HTTP 403 and their APIs 403, while the Super admin opened all 16. Type check, lint, formatting,
+design, client-boundary and hygiene checks and all 149 tests passed.
+
+Not checked: Safari and Firefox (the sweep and `:has()` rules were checked in Chromium only), a real
+phone, a screen reader, 200% text and 400% zoom, and the reduced-motion setting on a real device.
+The team chats live on another computer, so the design handoff is written to
+`.local/TEAM-HANDOFF-overnight-polish.md` and not sent.
+
 ## 26 November 2026 (evening) — Home Contact cards; every page fades in as you scroll
 
 User task: make the Home page's Contact section more professional, and give the whole site a smooth

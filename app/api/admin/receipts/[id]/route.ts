@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 /** A payment's acknowledgment receipt (PDF) for signed-in staff; a voided one is marked voided. */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    await requireAdmin({ page: 'payments' });
     const { id } = await params;
     const receipt = await acknowledgmentReceipt(id, { includeVoided: true });
     if (!receipt) throw new AdminError('Receipt not found.', 404);

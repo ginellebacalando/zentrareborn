@@ -28,39 +28,52 @@ ZENTRA system, aligned with the main website, and set these rules:
 4. **Colour never works alone.** Status appears as a labelled chip or a dot beside its label. Cards,
    panels and notices never carry coloured side stripes, top bars or outlines.
 5. **One primary button per area.** Green filled for the main action; white with a neutral border
-   for the rest; red outline for destructive actions.
+   for the rest; red outline for destructive actions (the shared Button, below).
 6. **Sentence case.** Navigation, buttons, labels, table headers, badges and stored values
    ("PENDING_REVIEW" shows as "Pending review", via `enumLabel` in `components/admin/AdminBadge.tsx`).
    No uppercase transforms or letter-spacing in admin styles.
+7. **Every element earns its place (26 November 2026, night).** No decorative gradients or glows,
+   no icons in coloured tiles or circles for decoration, no filler stats, no heavy shadows, and the
+   page name is not repeated in a card title, tab or table header.
 
 ## Foundations (`styles/tokens.css`, admin block)
 
-| Role                        | Light                                                                  | Dark (ZENTRA night)         | Use                                  |
-| --------------------------- | ---------------------------------------------------------------------- | --------------------------- | ------------------------------------ |
-| `--admin-surface-page`      | mist `#F5F8F6`                                                         | night `#07140F`             | Page background                      |
-| `--admin-surface-card`      | white                                                                  | night card `#0D1D17`        | Cards, header, sidebar               |
-| `--admin-surface-subtle`    | mist                                                                   | night raised `#163026`      | Hover, table header row, count pills |
-| `--admin-surface-highlight` | green soft `#E7F1EC`                                                   | night raised                | Current page, KPI icon tiles         |
-| `--admin-ink` / `-heading`  | ink `#121A17`                                                          | pearl `#EEF4F1`             | Text and headings                    |
-| `--admin-muted`             | `#4D5A54`                                                              | sage `#A9C4B8`              | Secondary text, labels               |
-| `--admin-action`            | ZENTRA green `#03422E`                                                 | glow `#8FD3B0`              | Primary buttons                      |
-| `--admin-accent-ink`        | ZENTRA green                                                           | glow                        | Current page text, links, icons      |
-| `--admin-divider`           | soft line `#E3E8E5`                                                    | `#2A4A3E`                   | Card borders, dividers               |
-| `--admin-control-line`      | `#D9D9D9`                                                              | `#3D5F52`                   | Secondary buttons and toggles        |
-| `--admin-border`            | `#7A8A83` (≥3:1 on white)                                              | `#7A8A83`                   | Inputs, hover borders                |
-| `--admin-status-*`          | Request, pending, confirmed, cancelled hues with soft and ink variants | Night soft and ink variants | Chips, dots, the Bookings banner     |
+| Role                       | Light                                                                  | Dark (charcoal)             | Use                                  |
+| -------------------------- | ---------------------------------------------------------------------- | --------------------------- | ------------------------------------ |
+| `--admin-surface-page`     | mist `#F5F8F6`                                                         | charcoal `#121417`          | Page background                      |
+| `--admin-surface-card`     | white                                                                  | card `#1A1D21`              | Cards, header, sidebar               |
+| `--admin-surface-subtle`   | mist                                                                   | raised `#24282D`            | Hover, table header row, count pills |
+| `--admin-surface-selected` | green soft `#E7F1EC`                                                   | `#1C2A25`                   | Current page, chosen segment         |
+| `--admin-ink` / `-heading` | ink `#121A17`                                                          | off-white `#E6E9E7`         | Text and headings                    |
+| `--admin-muted`            | `#4D5A54`                                                              | cool grey `#A5ABB2`         | Secondary text, labels               |
+| `--admin-action`           | ZENTRA green `#03422E`                                                 | mint `#8FD3B0`              | Primary buttons                      |
+| `--admin-accent-ink`       | ZENTRA green                                                           | mint                        | Current page text, links, icons      |
+| `--admin-divider`          | soft line `#E3E8E5`                                                    | `#2D3237`                   | Card borders, dividers               |
+| `--admin-control-line`     | `#D9D9D9`                                                              | `#4A5058`                   | Secondary buttons and toggles        |
+| `--admin-border`           | `#7A8A83` (≥3:1 on white)                                              | `#7C838B`                   | Inputs, hover borders                |
+| `--admin-status-*`         | Request, pending, confirmed, cancelled hues with soft and ink variants | Night soft and ink variants | Chips, dots, the Bookings banner     |
 
 - **Type:** page titles `--type-panel-title` (22–28px, semibold); card titles 16–18px semibold;
   body 16px; tables and secondary text 14px; captions 12px (never smaller).
 - **Shape:** controls 8px radius, cards 12px; card shadow `0 1px 2px` at 6% of `--admin-shadow`.
-- **Targets:** 44px controls (the project default), including sidebar rows, legend toggles and
-  segmented switches. Buttons in a row share one height, so fields, buttons and toggles line up.
-- **Spacing (generous, 26 November 2026):** page gutters up to 48px (16px on phones), 24px between
-  cards and sections, card padding 20–28px (`--layout-card-padding`, redefined for the admin scope).
-- **Buttons:** one set in `admin.module.css` (`.primary`, `.secondary`, `.dangerAction`): 44px tall,
-  8px corners, 14px semibold text, 16px icons; primary with a soft inner highlight, white secondary
-  with a hairline border; a 1px press. Page stylesheets reuse them with CSS Modules `composes`
-  (Automation, Front desk, Live chat, Zeni), so every page's buttons match.
+- **Targets:** buttons, fields, filters and segmented switches share `--control-height`: 40px on
+  desktop and the 44px touch target on phones and touch screens, so a row of them lines up. Sidebar
+  rows and header icons stay 44px.
+- **Spacing (26 November 2026, night):** every page uses the full width beside the sidebar with
+  24px padding (16px on phones); 24px between cards and sections; card padding 20–28px
+  (`--layout-card-padding`). Gaps, padding and margins come from the 4px scale (`--space-*`).
+- **Buttons:** the shared component (`components/shared/Button.tsx`, also used by the website):
+  `Button`, `IconButton`, `ButtonLink` and `ButtonAnchor` with variants primary, secondary, ghost and
+  destructive, and sizes sm 32px, md 40px (default) and lg 48px. 8px corners, 14px semibold text
+  (16px on lg), 16px icons with an 8px gap; hover, a 1px press, the shared focus ring, disabled at
+  half opacity, and `loading`, which shows a spinner over the label so the button keeps its width.
+  No admin stylesheet defines its own buttons any more.
+- **Page header** (`AdminPageHeader.tsx`, every page): the title, at most one short status line
+  (Team: "3 accounts · 1 invitation waiting"; Settings: "Last saved …"; Automation: email and last
+  run), and the page's actions on the right with at most one primary. Filters or a toolbar follow,
+  then the content.
+- **Icons:** Lucide only (the Flaticon and Material Symbols fonts were removed), 16px beside text
+  and 20px on their own, one stroke weight (1.75) set in `admin.module.css`.
 
 The design check (`scripts/check-design-system.mjs`) verifies the role contrasts in both themes.
 To use Metis' blue instead of ZENTRA green, change the action, accent-ink, focus and highlight roles
@@ -77,7 +90,7 @@ in the admin block of `styles/tokens.css`; no component needs editing.
   drawer scrolls as one column.
 - **Page header:** the visible `h1` equals the sidebar label (the dashboard shows a greeting and
   today's date, with the `h1` visually hidden), then page actions on the right.
-- **KPI cards** (`DashboardKpis`): white, icon tile, label, value, period, change pill, trend line.
+- **KPI cards** (`DashboardKpis`): white, label, value, period, change pill, trend line.
 - **Status summary** (`DashboardStatusCards`): one card, "Bookings this month" with the month once,
   four cells (dot, label, count) that open Bookings filtered by status.
 - **Tables:** quiet header row, 14px cells, row hover. Rows that open a record use the stretched
@@ -94,9 +107,12 @@ in the admin block of `styles/tokens.css`; no component needs editing.
 - **Search:** one slim toolbar row (`.toolbar`, `.searchBox`): a search field about 26rem wide
   with an icon, a Search button that names it (WCAG technique G167) and a Filter button whose fields
   open in a panel below. No card or label above the field. Phones give the field the full row.
-- **Tooltips:** icon-only controls carry `data-tip` (header icons, the menu toggle, collapsed sidebar
-  links, calendar arrows, package editor icons): a dark label on hover after a short pause, at once on
-  keyboard focus, hidden while the control's menu is open. The accessible name stays the aria-label.
+- **Tooltips:** every icon-only control carries `data-tip` (`IconButton` adds it; header icons, the
+  menu toggle, collapsed sidebar links, calendar and report arrows, dialog close buttons): a dark
+  label on hover after a short pause, at once on keyboard focus, hidden while the control's menu is
+  open. The accessible name stays the aria-label. The website's icon buttons get the same tooltip.
+- **Team** (`TeamPanel.tsx`): a table on wide screens; on phones each person is a block with
+  labelled lines (Role, Status, Last sign-in).
 - **Rows and sections:** every table row highlights under the pointer; dashboard "Coming up" rows open
   their booking (`/admin/bookings?booking=<id>`); expandable sections (details) open and close
   smoothly where the browser supports it.
@@ -119,11 +135,12 @@ library, Chart.js (`chart-engine.ts`, `useChartJs.ts`, `ChartPrimitives.tsx`).
   one visible; hovering a bar group or donut slice dims the rest; pointing at a donut slice or its
   legend row lifts the slice and shows its share in the centre. The dashboard's period is a
   segmented switch (6 or 12 months); the charts animate to the new range.
-- **Layout (dashboard, 26 November 2026):** the KPI cards and "Bookings this month"; then Website
-  activity with the testimonies hold below it, beside "Coming up at Zion"; then Trends: Cash
-  collected beside "For the past 30 days", and Bookings trend beside Booking activity (one column
-  on narrower screens). The reservation split lives on Reports ("Reservation status") and new
-  inquiries on the Inquiries page, so the dashboard does not repeat them.
+- **Layout (dashboard, 26 November 2026, night):** the KPI cards and "Bookings this month", then
+  Trends and all the graphs directly below. Website activity and "Coming up at Zion" are compact
+  widgets (the newest five with "View all", the next five with "View calendar") with the testimonies
+  hold, in a side column on wide screens (1536px and up) and below the graphs otherwise. The
+  reservation split lives on Reports and new inquiries on Inquiries, so the dashboard does not
+  repeat them.
 - **Access:** every canvas has `role="img"` and a summary name, and every chart keeps an exact-value
   table for screen readers (`ChartDataTable`). Legends and totals carry the values in text.
 
@@ -135,12 +152,18 @@ the counting figures).
 
 - Page content rises in (fade and 8px rise, about 320ms, children 40ms apart). Backwards fill only,
   so no transform stays behind to affect fixed or sticky elements.
+- Cards further down fade and rise 12px as they scroll into view, once, including cards whose data
+  arrives later (`ScrollReveal` with `watch`, mounted in `AdminShell.tsx`). Scrolling stays the
+  browser's own.
+- The theme switch (`lib/theme-switch.ts`): colour transitions pause so the whole page changes
+  together, and the new theme sweeps in from the top with a soft edge in about half a second (View
+  Transitions API); without it, or under reduced motion, the switch is instant. The choice is a
+  cookie the panel layout reads, so a reload never flashes the other theme.
 - Booking cards and table rows arrive one after another (index in `--i`, capped).
 - KPI and month figures count up to their value (`CountUp.tsx`, framer-motion); the cards' accessible
   names carry the exact values.
 - Charts draw in, sparklines reveal left to right, the donut centre fades between values.
-- Buttons press down 1px; the primary button gains a soft green glow on hover; the filter panel
-  slides open; skeleton bars shimmer while loading.
+- Buttons press down 1px; the filter panel slides open; skeleton bars shimmer while loading.
 
 ## Checks for admin changes
 

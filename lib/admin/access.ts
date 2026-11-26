@@ -3,8 +3,11 @@ import { auth } from './auth';
 import { prisma } from '@/lib/prisma';
 import { canAccessAdmin } from './domain';
 import { AdminError } from './errors';
+import { assertAccess } from './guards';
+import type { AdminAction, AdminPage } from './permissions';
 
 export { AdminError } from './errors';
+export { assertAccess, assertSectionAccess, NO_ACCESS_MESSAGE } from './guards';
 export async function currentAdmin() {
   const session = await auth();
   if (!session?.user?.id) return null;
@@ -51,18 +54,22 @@ export async function currentAdmin() {
   };
 }
 export type AdminActor = NonNullable<Awaited<ReturnType<typeof currentAdmin>>>;
-export async function requireAdmin(options: { owner?: boolean; profile?: boolean } = {}) {
+/**
+ * The signed-in administrator, refused with 401 when signed out and 403 when the role may not open
+ * `page` or take `action` (lib/admin/permissions.ts). `owner` is kept for older callers and means
+ * the super administrator role.
+ */
+export async function requireAdmin(
+  options: { owner?: boolean; profile?: boolean; page?: AdminPage; action?: AdminAction } = {},
+) {
   const actor = await currentAdmin();
   if (!actor) throw new AdminError('Please sign in with an active administrator account.', 401);
   if (actor.mustChangePassword && !options.profile)
     throw new AdminError('Change your password in Profile before using operational features.', 403);
-  if (options.owner && actor.role !== 'SUPERADMIN')
-    throw new AdminError(
-      'Only a super administrator may change policy or void cash receipts.',
-      403,
-    );
+  assertAccess(actor.role, options);
   return actor;
 }
+
 export function checkMutationOrigin(request: Request) {
   const origin = request.headers.get('origin');
   const expected =

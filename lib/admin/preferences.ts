@@ -35,6 +35,7 @@ import {
 } from './preferences-types';
 import type { AdminActor } from './access';
 import { AdminError } from './errors';
+import { canDo } from './permissions';
 
 const defaults = DEFAULT_ADMIN_PREFERENCES;
 export const preferencesSchema = z
@@ -365,7 +366,7 @@ export async function getAdminPreferences() {
   };
 }
 export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
-  if (actor.role !== 'SUPERADMIN')
+  if (!canDo(actor.role, 'change-settings'))
     throw new AdminError('Only a super administrator may change system settings.', 403);
   const input = z
     .object({

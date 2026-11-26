@@ -475,6 +475,40 @@ export function inquiryStaffAlert(input: {
   });
 }
 
+/** An invitation to the admin panel (lib/admin/team.ts): the link lets the person set a password. */
+export function teamInvitationEmail(input: {
+  fullName: string;
+  roleLabel: string;
+  invitedBy: string;
+  link: string;
+  expiresAt: Date;
+}): RenderedEmail {
+  const name = greetingName(input.fullName);
+  const expires = manilaDateTime(input.expiresAt);
+  return renderEmail({
+    subject: `${BRAND.legalName} | Your admin panel invitation`,
+    preheader: `${singleLine(input.invitedBy, 80)} invited you to the ZENTRA admin panel. Set up your account before ${expires}.`,
+    heading: 'You are invited to the admin panel',
+    sections: [
+      {
+        paragraphs: [
+          name ? `Hello ${name},` : 'Hello,',
+          `${singleLine(input.invitedBy, 80)} invited you to manage bookings and visits for ${BRAND.legalName} in the ZENTRA admin panel.`,
+          'Use the button below to choose your password. The link works once and only for you, so please do not forward this email.',
+        ],
+        details: [
+          ['Role', input.roleLabel],
+          ['Invited by', singleLine(input.invitedBy, 80)],
+          ['Link expires', `${expires} (Manila time)`],
+        ],
+      },
+    ],
+    action: { label: 'Set up your account', href: input.link },
+    note: 'If you did not expect this invitation, you can ignore this email; no account opens until the link is used.',
+    emphasis: [expires],
+  });
+}
+
 export function inquiryAcknowledgement(input: {
   reference: string;
   fullName: string;

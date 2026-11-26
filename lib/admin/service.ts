@@ -9,6 +9,9 @@ import { deleteTestimonyPhoto } from '@/lib/testimony-photo-storage';
 import { parseRedFlagReasons } from '@/lib/testimony-service';
 import type { AdminActor } from './access';
 import { AdminError } from './errors';
+import { assertAccess, assertSectionAccess } from './guards';
+import { canDo, requirementFor } from './permissions';
+import { readTeam, teamMutate } from './team';
 import { getAdminPreferences, readBookingRules, saveAdminPreferences } from './preferences';
 import { paymentDeadline, requiresPayment } from './booking-rules';
 import { readCatalog, saveCatalog } from './catalog';
@@ -303,9 +306,11 @@ async function submittedProof(tx: Tx, bookingId: string, proofId: string) {
 }
 
 export async function adminRead(section: string, params: URLSearchParams, actor: AdminActor) {
+  // Every read needs its page in lib/admin/permissions.ts, whatever the route already checked.
+  assertSectionAccess(actor.role, section);
   if (section === 'services') return readCatalog(params, actor);
   if (section === 'preferences')
-    return { ...(await getAdminPreferences()), canEdit: actor.role === 'SUPERADMIN' };
+    return { ...(await getAdminPreferences()), canEdit: canDo(actor.role, 'change-settings') };
   // Polled by the dashboard's Website activity panel; read-only, so it has no POST operations.
   if (section === 'website-activity') return readWebsiteActivity();
   if (section === 'front-desk') return readFrontDesk(params);
@@ -412,18 +417,19 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
               },
             ]
           : []),
-        ...(deliveryIssues
+        // Delivery problems are fixed on Automation, a super administrator page.
+        ...(deliveryIssues && canDo(actor.role, 'run-automation')
           ? [
               {
                 id: 'delivery-issues',
                 kind: 'warning' as const,
                 title: 'Email delivery needs review',
-                message: `${deliveryIssues} ${deliveryIssues === 1 ? 'message needs' : 'messages need'} a delivery check in the Activity log.`,
-                href: '/admin/logs',
+                message: `${deliveryIssues} ${deliveryIssues === 1 ? 'message needs' : 'messages need'} a delivery check on the Automation page.`,
+                href: '/admin/automation',
               },
             ]
           : []),
-        ...(!p.reviewed && actor.role === 'SUPERADMIN'
+        ...(!p.reviewed && canDo(actor.role, 'change-settings')
           ? [
               {
                 id: 'policy-review',
@@ -543,25 +549,11 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       },
     };
   }
-  if (section === 'team') {
-    const page = Math.max(1, Math.min(10000, Math.trunc(Number(params.get('page'))) || 1));
-    const where: Prisma.UserWhereInput = { role: { in: ['ADMIN', 'SUPERADMIN'] } };
-    const [team, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        orderBy: { username: 'asc' },
-        skip: (page - 1) * 50,
-        take: 50,
-        select: { id: true, fullName: true, username: true, email: true, role: true, status: true },
-      }),
-      prisma.user.count({ where }),
-    ]);
-    return { team, total, page };
-  }
+  if (section === 'team') return readTeam(actor);
   if (section === 'settings')
     return {
       policy: await policy(),
-      canEdit: actor.role === 'SUPERADMIN',
+      canEdit: canDo(actor.role, 'change-settings'),
       notificationConfigured: isMailConfigured(),
       timezone: 'Asia/Manila',
     };
@@ -802,6 +794,10 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
 
 export async function adminMutate(raw: unknown, actor: AdminActor) {
   const op = z.object({ op: z.string() }).parse(raw).op;
+  // Sensitive operations need their action in lib/admin/permissions.ts, whatever the route checked.
+  const { action } = requirementFor('', op);
+  if (action) assertAccess(actor.role, { action });
+  if (op.startsWith('team-')) return teamMutate(raw, actor);
   if (op === 'preferences') return saveAdminPreferences(raw, actor);
   if (op === 'catalog-category' || op === 'catalog-package') return saveCatalog(raw, actor);
   if ((FRONT_DESK_OPERATIONS as readonly string[]).includes(op)) return frontDeskMutate(raw, actor);
@@ -1131,8 +1127,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
     });
   }
   if (op === 'void-receipt') {
-    if (actor.role !== 'SUPERADMIN')
-      throw new AdminError('Only a super administrator may void cash receipts.', 403);
+    assertAccess(actor.role, { action: 'void-receipt' });
     const input = z
       .object({
         op: z.literal('void-receipt'),
@@ -1417,8 +1412,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
     });
   }
   if (op === 'settings') {
-    if (actor.role !== 'SUPERADMIN')
-      throw new AdminError('Only a super administrator may update venue policy.', 403);
+    assertAccess(actor.role, { action: 'change-settings' });
     const input = z
       .object({
         op: z.literal('settings'),

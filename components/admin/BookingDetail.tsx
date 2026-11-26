@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
-import Link from 'next/link';
 import { X, Download, FileText, ShieldCheck, ChevronDown, Package, Pencil } from 'lucide-react';
 import { balanceDueDate } from '@/lib/admin/booking-rules';
 import { money, paidTotal, paymentStatus, confirmationError } from '@/lib/admin/domain';
@@ -14,6 +13,7 @@ import { manilaInput } from './datetime';
 import type { Booking, Mutate, Policy } from './types';
 import styles from './admin.module.css';
 import { useAdminDate, useAdminPreferences } from './AdminPreferencesProvider';
+import { Button, ButtonLink } from '@/components/shared/Button';
 
 type BookingAction =
   | 'VERIFY'
@@ -210,21 +210,23 @@ export default function BookingDetail({
   }
   function actionButton(option: ActionOption) {
     return (
-      <button
+      <Button
         key={option.action}
         type="submit"
         name="action"
         value={option.action}
-        className={
+        variant={
           option.tone === 'primary'
-            ? styles.primary
-            : `${styles.secondary} ${option.tone === 'danger' ? styles.dangerAction : ''}`
+            ? 'primary'
+            : option.tone === 'danger'
+              ? 'destructive'
+              : 'secondary'
         }
         disabled={busy || !!option.blocked}
         aria-describedby={option.blocked ? `${id}-${option.action}` : undefined}
       >
         {option.label}
-      </button>
+      </Button>
     );
   }
   return (
@@ -248,15 +250,15 @@ export default function BookingDetail({
             {b.eventType} · {b.packageName}
           </p>
         </div>
-        <button
+        <Button
           type="button"
-          className={styles.secondary}
+          variant="secondary"
+          icon={<X aria-hidden="true" />}
           onClick={onClose}
           aria-label="Close booking detail"
         >
-          <X size={18} aria-hidden="true" />
           Close
-        </button>
+        </Button>
       </div>
       <div className={styles.statusGrid}>
         <div>
@@ -393,7 +395,7 @@ export default function BookingDetail({
       {!closed && !(editing && canEdit) && focus !== 'contracts' && focus !== 'payments' && (
         <form className={styles.subsection} onSubmit={submitAction}>
           <h3>
-            <ShieldCheck size={17} strokeWidth={1.5} aria-hidden="true" />
+            <ShieldCheck size={16} aria-hidden="true" />
             Actions
           </h3>
           <p>
@@ -414,20 +416,20 @@ export default function BookingDetail({
           </label>
           <div className={styles.detailActions}>
             {actions.main.map(actionButton)}
-            <Link href="/admin/services" className={styles.secondary}>
-              <Package size={16} strokeWidth={1.5} aria-hidden="true" />
+            <ButtonLink href="/admin/services" variant="secondary">
+              <Package size={16} aria-hidden="true" />
               View packages
-            </Link>
+            </ButtonLink>
             {canEdit && (
-              <button
+              <Button
                 type="button"
                 ref={editButtonRef}
-                className={styles.secondary}
+                variant="secondary"
                 onClick={() => setEditing(true)}
               >
-                <Pencil size={16} strokeWidth={1.5} aria-hidden="true" />
+                <Pencil size={16} aria-hidden="true" />
                 Edit details
-              </button>
+              </Button>
             )}
           </div>
           {actions.more.length > 0 && (
@@ -472,7 +474,7 @@ export default function BookingDetail({
                 {b.payments.length} recorded · {money(paid)} received
               </small>
             </span>
-            <ChevronDown size={18} aria-hidden="true" />
+            <ChevronDown size={20} aria-hidden="true" />
           </summary>
           <p>
             Only money actually received is recorded here: cash at the venue, and GCash or bank
@@ -549,12 +551,9 @@ export default function BookingDetail({
                           minLength={5}
                         />
                       </label>
-                      <button
-                        className={`${styles.secondary} ${styles.dangerAction}`}
-                        disabled={busy}
-                      >
+                      <Button variant="destructive" disabled={busy}>
                         Void receipt
-                      </button>
+                      </Button>
                     </form>{' '}
                   </details>
                 )}
@@ -592,9 +591,9 @@ export default function BookingDetail({
                 Note
                 <input name="note" maxLength={1000} />
               </label>
-              <button className={styles.primary} disabled={busy}>
+              <Button variant="primary" disabled={busy}>
                 Record cash
-              </button>
+              </Button>
             </form>
           )}
         </details>
@@ -609,7 +608,7 @@ export default function BookingDetail({
                 and download
               </small>
             </span>
-            <ChevronDown size={18} aria-hidden="true" />
+            <ChevronDown size={20} aria-hidden="true" />
           </summary>
           <div className={styles.cardHeading}>
             <div>
@@ -618,8 +617,8 @@ export default function BookingDetail({
                 contract details.
               </p>
             </div>
-            <button
-              className={styles.secondary}
+            <Button
+              variant="secondary"
               disabled={busy || closed || b.approval !== 'APPROVED'}
               onClick={() =>
                 void mutate('contracts', {
@@ -630,7 +629,7 @@ export default function BookingDetail({
               }
             >
               Prepare review draft
-            </button>
+            </Button>
           </div>
           {b.contracts.map((c) => (
             <details className={styles.contract} key={c.id}>
@@ -643,8 +642,8 @@ export default function BookingDetail({
               </summary>
               <pre className={styles.preview}>{c.body}</pre>
               <div className={styles.actions}>
-                <button
-                  className={styles.secondary}
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     const url = URL.createObjectURL(
                       new Blob([c.body], { type: 'text/plain;charset=utf-8' }),
@@ -658,10 +657,10 @@ export default function BookingDetail({
                 >
                   <Download size={16} aria-hidden="true" />
                   Download agreement (.txt)
-                </button>
+                </Button>
                 {c.status === 'DRAFT' && (
-                  <button
-                    className={styles.primary}
+                  <Button
+                    variant="primary"
                     disabled={busy || closed || c.bookingRevision !== b.revision}
                     onClick={() => {
                       if (
@@ -679,7 +678,7 @@ export default function BookingDetail({
                     }}
                   >
                     Issue reviewed agreement
-                  </button>
+                  </Button>
                 )}
               </div>
               {c.status === 'ISSUED' && !closed && (
@@ -715,12 +714,9 @@ export default function BookingDetail({
                       placeholder="Filed document / record reference"
                     />
                   </label>
-                  <button
-                    className={styles.primary}
-                    disabled={busy || c.bookingRevision !== b.revision}
-                  >
+                  <Button variant="primary" disabled={busy || c.bookingRevision !== b.revision}>
                     Record physical signature
-                  </button>
+                  </Button>
                 </form>
               )}
               {c.signedAt && (

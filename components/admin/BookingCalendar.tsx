@@ -12,6 +12,7 @@ import { visitStatusLabel, type CalendarVisit } from '@/lib/visit-types';
 import { StatusDot, statusTone } from './BookingStatus';
 import type { Booking } from './types';
 import styles from './admin.module.css';
+import { Button, IconButton } from '@/components/shared/Button';
 
 const TIME_ZONE = 'Asia/Manila';
 const weekdays = [
@@ -120,31 +121,23 @@ export default function BookingCalendar({
         <div className={styles.monthHeading}>
           <h2 id={titleId}>{monthLabel}</h2>
           <div className={styles.monthNav}>
-            <button
+            <IconButton
               type="button"
-              className={styles.iconButton}
-              aria-label="Previous month"
-              data-tip="Previous month"
+              variant="secondary"
+              label="Previous month"
+              icon={<ChevronLeft aria-hidden="true" />}
               onClick={() => shift(-1)}
-            >
-              <ChevronLeft size={18} strokeWidth={1.5} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className={styles.secondary}
-              onClick={() => setMonth(manilaMonth())}
-            >
+            />
+            <Button type="button" variant="secondary" onClick={() => setMonth(manilaMonth())}>
               Today
-            </button>
-            <button
+            </Button>
+            <IconButton
               type="button"
-              className={styles.iconButton}
-              aria-label="Next month"
-              data-tip="Next month"
+              variant="secondary"
+              label="Next month"
+              icon={<ChevronRight aria-hidden="true" />}
               onClick={() => shift(1)}
-            >
-              <ChevronRight size={18} strokeWidth={1.5} aria-hidden="true" />
-            </button>
+            />
           </div>
         </div>
         <table className={styles.monthGrid}>

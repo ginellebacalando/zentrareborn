@@ -3,6 +3,7 @@ import { AdminError, adminResponse, checkMutationOrigin, requireAdmin } from '@/
 import { AUTOMATION_STATUSES } from '@/lib/automation/catalog';
 import { readAutomationOverview, retryAutomationJob } from '@/lib/automation/overview';
 import { runAutomation } from '@/lib/automation/run';
+import { setAutomationSwitch } from '@/lib/automation/switches';
 import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,13 @@ const filterSchema = z.enum(AUTOMATION_STATUSES).nullable();
 const actionSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('retry'), id: z.string().trim().min(1).max(100) }).strict(),
   z.object({ op: z.literal('run') }).strict(),
+  z
+    .object({
+      op: z.literal('switch'),
+      key: z.string().trim().min(1).max(60),
+      enabled: z.boolean(),
+    })
+    .strict(),
 ]);
 
 function failure(error: unknown) {
@@ -35,7 +43,7 @@ function failure(error: unknown) {
 
 export async function GET(request: Request) {
   try {
-    await requireAdmin();
+    await requireAdmin({ page: 'automation' });
     const filter = filterSchema.parse(new URL(request.url).searchParams.get('status') || null);
     return adminResponse(await readAutomationOverview(filter));
   } catch (error) {
@@ -46,7 +54,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     checkMutationOrigin(request);
-    const actor = await requireAdmin();
+    const actor = await requireAdmin({ page: 'automation', action: 'run-automation' });
     if (Number(request.headers.get('content-length') ?? 0) > BODY_LIMIT)
       throw new AdminError('Request is too large.', 413);
     const text = await request.text();
@@ -71,6 +79,19 @@ export async function POST(request: Request) {
           source: 'zion-admin',
         },
       });
+    if (input.op === 'switch') {
+      const outcome = await setAutomationSwitch(input.key, input.enabled);
+      if (!outcome.ok) throw new AdminError(outcome.reason, 409);
+      await audit(
+        `${input.enabled ? 'Turned on' : 'Turned off'} the automation "When ${outcome.automation.when.toLowerCase()}, ${outcome.automation.action.toLowerCase()}".`,
+      );
+      return adminResponse({
+        status: 'switched',
+        message: input.enabled
+          ? `${outcome.automation.action} is on again.`
+          : `${outcome.automation.action} is off. Its emails are skipped until you turn it on.`,
+      });
+    }
     if (input.op === 'retry') {
       const outcome = await retryAutomationJob(input.id);
       if (!outcome)

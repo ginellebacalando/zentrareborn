@@ -286,6 +286,44 @@ html[data-public-menu-open='true'] .public-smart-guide {
   background-color: var(--palette-gold);
 }
 
+.dark::-webkit-scrollbar-thumb,
+.dark ::-webkit-scrollbar-thumb,
+:root:has([data-admin-theme='dark'])::-webkit-scrollbar-thumb,
+[data-admin-theme='dark'] ::-webkit-scrollbar-thumb {
+  background-color: var(--palette-charcoal-control);
+}
+
+/* Theme switches (lib/theme-switch.ts): every colour changes at once, and the new theme sweeps in
+   from the top with a soft edge. Without View Transitions, or with reduced motion, it is instant. */
+[data-theme-switching] *,
+[data-theme-switching] *::before,
+[data-theme-switching] *::after {
+  transition: none !important;
+}
+
+:root[data-theme-switching]::view-transition-old(root),
+:root[data-theme-switching]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+:root[data-theme-switching]::view-transition-new(root) {
+  mask-image: linear-gradient(to bottom, black 45%, transparent 55%);
+  mask-size: 100% 225%;
+  mask-repeat: no-repeat;
+  animation: theme-sweep var(--motion-theme) var(--motion-ease) both;
+}
+
+@keyframes theme-sweep {
+  from {
+    mask-position: 0 100%;
+  }
+
+  to {
+    mask-position: 0 0;
+  }
+}
+
 .team-reason-textarea::-webkit-resizer {
   background: transparent;
 }
@@ -506,7 +544,8 @@ html[data-public-menu-open='true'] .public-smart-guide {
     opacity: 0;
   }
 
-  [data-scroll-reveal='shown'] {
+  /* :root raises the rule over the admin panel's arrival animation (admin.module.css). */
+  :root [data-scroll-reveal='shown'] {
     animation: scroll-reveal-in var(--motion-reveal) var(--motion-ease) both;
   }
 }
@@ -520,7 +559,7 @@ html[data-public-menu-open='true'] .public-smart-guide {
 @keyframes scroll-reveal-in {
   from {
     opacity: 0;
-    translate: 0 1.5rem;
+    translate: 0 var(--motion-rise);
   }
 }
 

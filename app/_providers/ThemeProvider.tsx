@@ -5,9 +5,12 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useSyncExternalStore,
 } from 'react';
 import { MotionConfig } from 'framer-motion';
+import { switchTheme } from '@/lib/theme-switch';
+import { DEFAULT_THEME_STORAGE_KEY, THEME_STORAGE_KEY } from './theme-script';
 
 type Theme = 'light' | 'dark';
 
@@ -17,8 +20,6 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-const THEME_STORAGE_KEY = 'zion-theme';
-const DEFAULT_THEME_STORAGE_KEY = 'zion-default-theme';
 const themeSubscribers = new Set<() => void>();
 
 function getStoredTheme(): Theme {
@@ -76,8 +77,11 @@ function applyDocumentTheme(theme: Theme) {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useSyncExternalStore(subscribeToTheme, getStoredTheme, getServerTheme);
 
-  useEffect(() => {
-    applyDocumentTheme(theme);
+  // The <head> script (theme-script.ts) set the class before the first paint. This keeps it in
+  // step afterwards, before paint, and reads storage rather than `theme`, which is still the
+  // server's 'light' while hydrating; that avoids a brief light frame on dark pages.
+  useLayoutEffect(() => {
+    applyDocumentTheme(getStoredTheme());
   }, [theme]);
 
   useEffect(() => {
@@ -119,8 +123,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTheme = useCallback((newTheme: Theme) => {
     window.localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-    applyDocumentTheme(newTheme);
-    notifyThemeSubscribers();
+    switchTheme(() => {
+      applyDocumentTheme(newTheme);
+      notifyThemeSubscribers();
+    });
   }, []);
 
   return (

@@ -9,6 +9,7 @@ import GlobalHeader from '@/components/layout/GlobalHeader';
 import Footer from '@/components/layout/Footer';
 import { BRAND } from '@/config/brand';
 import { ThemeProvider } from './_providers/ThemeProvider';
+import ThemeScript from './_providers/ThemeScript';
 import PanelChrome from '@/components/layout/PanelChrome';
 import SkipLink from '@/components/layout/SkipLink';
 import RouteTransition from '@/components/layout/RouteTransition';
@@ -50,18 +51,11 @@ export default function RootLayout({
       lang="en"
       data-scroll-behavior="smooth"
       className={`${archivo.variable} ${archivoExtended.variable} ${cinzelDecorative.variable} antialiased`}
+      // The theme script below may add the dark class before React hydrates.
+      suppressHydrationWarning
     >
       <head>
-        <link
-          rel="stylesheet"
-          href="https://cdn-uicons.flaticon.com/2.1.0/uicons-regular-rounded/css/uicons-regular-rounded.css"
-        />
-        {/* Material Symbols is an icon font and is not available through next/font. */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=optional"
-        />
+        <ThemeScript />
         {hasLicensedFonts ? (
           // Local preview of trial / personal-use fonts; deliberately outside the bundle and Git.
           // eslint-disable-next-line @next/next/no-css-tags

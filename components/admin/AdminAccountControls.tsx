@@ -27,7 +27,8 @@ import {
 import type { AdminNotificationSummary } from './types';
 import styles from './admin.module.css';
 import AdminAvatar from './AdminAvatar';
-import { useAdminPreferences } from './AdminPreferencesProvider';
+import { useAdminTheme } from './AdminPreferencesProvider';
+import { Button, IconButton } from '@/components/shared/Button';
 
 export type AdminHeaderUser = {
   fullName: string | null;
@@ -57,7 +58,7 @@ export default function AdminAccountControls({
   onNavigate: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const pathname = usePathname();
-  const { theme, toggleTheme } = useAdminPreferences();
+  const { theme, toggleTheme } = useAdminTheme();
   const [panel, setPanel] = useState<'notifications' | 'profile' | null>(null);
   const controlsRef = useRef<HTMLElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -130,9 +131,9 @@ export default function AdminAccountControls({
         onClick={toggleTheme}
       >
         {theme === 'dark' ? (
-          <Sun size={20} strokeWidth={1.5} aria-hidden="true" />
+          <Sun size={20} aria-hidden="true" />
         ) : (
-          <Moon size={20} strokeWidth={1.5} aria-hidden="true" />
+          <Moon size={20} aria-hidden="true" />
         )}
       </button>
       <div className={styles.accountPopoverAnchor}>
@@ -149,7 +150,7 @@ export default function AdminAccountControls({
             if (!user.mustChangePassword) void mutate();
           }}
         >
-          <Bell size={20} strokeWidth={1.5} aria-hidden="true" />
+          <Bell size={20} aria-hidden="true" />
           {notifications.length > 0 && !error && (
             <span className={styles.notificationCount} aria-hidden="true">
               {notifications.length}
@@ -167,40 +168,39 @@ export default function AdminAccountControls({
                 <h2>Notifications</h2>
                 <p>Items needing your attention</p>
               </div>
-              <button
+              <IconButton
                 type="button"
-                className={styles.popoverClose}
-                aria-label="Close notifications"
+                label="Close notifications"
+                tooltipAlign="end"
+                icon={<X aria-hidden="true" />}
                 onClick={() => {
                   setPanel(null);
                   bellRef.current?.focus();
                 }}
-              >
-                <X size={17} aria-hidden="true" />
-              </button>
+              />
             </div>
             <div className={styles.notificationList} aria-live="polite" aria-busy={isLoading}>
               {user.mustChangePassword ? (
                 <div className={styles.notificationEmpty}>
-                  <ShieldCheck size={25} aria-hidden="true" />
+                  <ShieldCheck size={20} aria-hidden="true" />
                   <strong>Secure your account</strong>
                   <p>Change your password in your profile to view operational updates.</p>
                   <Link href="/admin/profile" onClick={navigate}>
-                    Open my profile <ArrowUpRight size={14} aria-hidden="true" />
+                    Open my profile <ArrowUpRight size={16} aria-hidden="true" />
                   </Link>
                 </div>
               ) : error ? (
                 <div className={styles.notificationEmpty} role="status">
-                  <TriangleAlert size={25} aria-hidden="true" />
+                  <TriangleAlert size={20} aria-hidden="true" />
                   <strong>Notifications are unavailable</strong>
                   <p>{error.message}</p>
-                  <button type="button" className={styles.linkButton} onClick={() => void mutate()}>
-                    <RefreshCw size={14} aria-hidden="true" /> Try again
-                  </button>
+                  <Button type="button" variant="ghost" onClick={() => void mutate()}>
+                    <RefreshCw size={16} aria-hidden="true" /> Try again
+                  </Button>
                 </div>
               ) : isLoading ? (
                 <div className={styles.notificationEmpty} role="status">
-                  <RefreshCw size={24} aria-hidden="true" />
+                  <RefreshCw size={20} aria-hidden="true" />
                   <p>Loading notifications…</p>
                 </div>
               ) : notifications.length ? (
@@ -216,14 +216,14 @@ export default function AdminAccountControls({
                       <span
                         className={`${styles.notificationIcon} ${notice.kind === 'warning' ? styles.notificationWarning : ''}`}
                       >
-                        <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
+                        <Icon size={20} aria-hidden="true" />
                       </span>
                       <span className={styles.notificationText}>
                         <strong>{notice.title}</strong>
                         <span>{notice.message}</span>
                       </span>
                       <ArrowUpRight
-                        size={15}
+                        size={16}
                         className={styles.notificationArrow}
                         aria-hidden="true"
                       />
@@ -232,7 +232,7 @@ export default function AdminAccountControls({
                 })
               ) : (
                 <div className={styles.notificationEmpty}>
-                  <CheckCheck size={27} aria-hidden="true" />
+                  <CheckCheck size={20} aria-hidden="true" />
                   <strong>You’re all caught up</strong>
                   <p>No items need your attention right now.</p>
                 </div>
@@ -250,7 +250,7 @@ export default function AdminAccountControls({
         data-tip="Messages"
         aria-current={pathname === '/admin/inquiries' ? 'page' : undefined}
       >
-        <Mail size={20} strokeWidth={1.5} aria-hidden="true" />
+        <Mail size={20} aria-hidden="true" />
         {newInquiries && <span className={styles.headerDot} aria-hidden="true" />}
       </Link>
 
@@ -298,7 +298,7 @@ export default function AdminAccountControls({
                 onClick={navigate}
                 aria-current={pathname === '/admin/profile' ? 'page' : undefined}
               >
-                <CircleUserRound size={18} strokeWidth={1.5} aria-hidden="true" />
+                <CircleUserRound size={20} aria-hidden="true" />
                 <span>My profile</span>
               </Link>
             </div>
@@ -308,7 +308,7 @@ export default function AdminAccountControls({
                 className={`${styles.profileMenuLink} ${styles.profileSignOut}`}
                 onClick={() => void signOut({ callbackUrl: '/admin?signed-out=1' })}
               >
-                <LogOut size={18} strokeWidth={1.5} aria-hidden="true" />
+                <LogOut size={20} aria-hidden="true" />
                 <span>Sign out</span>
               </button>
             </div>

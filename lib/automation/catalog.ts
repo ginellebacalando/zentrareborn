@@ -1,3 +1,4 @@
+import type { AutomationSummary } from './automations';
 /**
  * Browser-safe automation vocabulary shared by the outbox, the admin panel and the developer
  * status view. Status values match the existing `zion_admin_outbox` contract, so the admin
@@ -115,6 +116,7 @@ export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   COMPLETE: 'Event completed',
   CASH_RECEIPT: 'Cash receipt recorded',
   RECEIPT_VOIDED: 'Cash receipt voided',
+  TEAM_INVITATION: 'Admin panel invitation',
 };
 
 export function automationJobLabel(event: string) {
@@ -143,6 +145,8 @@ export type AutomationJobView = {
 };
 
 export type AutomationOverview = {
+  /** Each automation as "When … → Do …", with its switch and results (lib/automation/automations.ts). */
+  automations: AutomationSummary[];
   emailConfigured: boolean;
   cronConfigured: boolean;
   /** The current staff inboxes, masked, and where they come from. */

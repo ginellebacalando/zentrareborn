@@ -11,7 +11,9 @@ import type {
 } from '@/lib/chatbot/admin-types';
 import type { ZeniLanguage } from '@/lib/chatbot/language';
 import { ZeniText } from '@/components/chatbot/ZeniText';
+import AdminPageHeader from './AdminPageHeader';
 import styles from './ZeniPanel.module.css';
+import { Button } from '@/components/shared/Button';
 
 const REASON_LABELS: Record<ZeniGapReasonLabel, string> = {
   no_source: 'No published source',
@@ -154,20 +156,21 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
   const ai = data?.ai;
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeading}>
-        <div>
-          <h1>Zeni</h1>
-        </div>
-        <button
-          type="button"
-          className={styles.secondary}
-          disabled={loading}
-          onClick={() => void refresh()}
-        >
-          <RefreshCw size={16} aria-hidden="true" />
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
-      </div>
+      <AdminPageHeader
+        title="Zeni"
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            icon={<RefreshCw aria-hidden="true" />}
+            loading={loading}
+            loadingLabel="Refreshing…"
+            onClick={() => void refresh()}
+          >
+            Refresh
+          </Button>
+        }
+      />
 
       <p className={styles.notice} role="status" aria-live="polite">
         {notice}
@@ -176,9 +179,14 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
       {loadError && (
         <div className={styles.alert} role="alert">
           <p>{loadError}</p>
-          <button type="button" className={styles.secondary} onClick={() => void refresh()}>
+          <Button
+            type="button"
+            variant="secondary"
+            className={styles.fit}
+            onClick={() => void refresh()}
+          >
             Try again
-          </button>
+          </Button>
         </div>
       )}
 
@@ -320,7 +328,7 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
               </p>
             ) : data.gaps.open.length === 0 ? (
               <p className={styles.empty}>
-                <CheckCircle2 size={18} aria-hidden="true" />
+                <CheckCircle2 size={20} aria-hidden="true" />
                 No open questions. {data.gaps.resolvedLast30Days} resolved in the last 30 days.
               </p>
             ) : (
@@ -328,7 +336,7 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
                 {data.gaps.open.map((group) => (
                   <li key={group.hash} className={styles.gap}>
                     <p className={styles.gapQuestion}>
-                      <MessageSquareText size={18} aria-hidden="true" />
+                      <MessageSquareText size={20} aria-hidden="true" />
                       <span>“{group.question}”</span>
                     </p>
                     <ul className={styles.tags} aria-label="Details">
@@ -346,16 +354,18 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
                         Last asked: <DateText value={group.lastAsked} />
                       </li>
                     </ul>
-                    <button
+                    <Button
                       type="button"
-                      className={styles.secondary}
-                      disabled={resolving === group.hash}
+                      variant="secondary"
+                      className={styles.fit}
+                      icon={<CheckCircle2 aria-hidden="true" />}
+                      loading={resolving === group.hash}
+                      loadingLabel="Saving…"
                       aria-label={`Mark resolved: ${group.question}`}
                       onClick={() => void resolve(group)}
                     >
-                      <CheckCircle2 size={16} aria-hidden="true" />
-                      {resolving === group.hash ? 'Saving…' : 'Mark resolved'}
-                    </button>
+                      Mark resolved
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -382,10 +392,16 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
             aria-describedby={previewError ? 'zeni-test-error' : undefined}
             onChange={(event) => setQuestion(event.target.value)}
           />
-          <button type="submit" className={styles.primary} disabled={previewing}>
-            <Send size={16} aria-hidden="true" />
-            {previewing ? 'Asking…' : 'Ask Zeni'}
-          </button>
+          <Button
+            type="submit"
+            variant="primary"
+            className={styles.fit}
+            icon={<Send aria-hidden="true" />}
+            loading={previewing}
+            loadingLabel="Asking…"
+          >
+            Ask Zeni
+          </Button>
         </form>
         {previewError && (
           <p id="zeni-test-error" className={styles.alert} role="alert">

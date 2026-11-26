@@ -1,0 +1,270 @@
+/*
+ * One button system for the website and the admin panel (components/shared/Button.tsx). Colours
+ * come from the semantic roles in styles/tokens.css, which the admin root maps to its own roles,
+ * so a button fits either panel and theme. Variants: primary (the one main action of an area),
+ * secondary, ghost (low-priority actions) and destructive. Sizes: sm 32px for tables and toolbars,
+ * md 40px by default, lg 48px for the website's main calls to action; phones raise sm and md to
+ * the 44px touch target. Rules use two classes so they win over page-level element rules.
+ */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--button-padding, var(--space-4));
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-family: var(--font-zion-sans);
+  font-size: var(--button-font-size, var(--type-small));
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  letter-spacing: normal;
+  text-align: center;
+  text-decoration: none;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.button.sm,
+.button.md,
+.button.lg {
+  min-height: var(--button-height);
+}
+
+.button.sm {
+  --button-height: var(--control-height-sm);
+  --button-padding: var(--space-3);
+}
+
+.button.md {
+  --button-height: var(--control-height);
+  --button-padding: var(--space-4);
+}
+
+.button.lg {
+  --button-height: var(--control-height-lg);
+  --button-padding: var(--space-6);
+  --button-font-size: var(--type-body);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  min-width: 0;
+}
+
+.button svg {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
+.button.iconOnly {
+  min-width: var(--button-height);
+  padding: 0;
+}
+
+.button.block {
+  width: 100%;
+}
+
+.button:not(:disabled, [aria-disabled='true']):active {
+  transform: translateY(1px);
+}
+
+.button:is(:disabled, [aria-disabled='true']):not([aria-busy='true']) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Variants ---------- */
+.button.primary {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+.button.primary:not(:disabled, [aria-disabled='true']):hover {
+  border-color: var(--action-primary-hover);
+  background: var(--action-primary-hover);
+}
+
+.button.secondary {
+  border-color: var(--line-control);
+  background: var(--surface-input);
+  color: var(--text-primary);
+}
+
+.button.secondary:not(:disabled, [aria-disabled='true']):hover {
+  border-color: var(--border-control);
+  background: var(--surface-subtle);
+}
+
+.button.ghost {
+  background: transparent;
+  color: var(--text-accent);
+}
+
+.button.ghost:not(:disabled, [aria-disabled='true']):hover {
+  background: var(--surface-subtle);
+}
+
+/* Icon-only ghost buttons (close, previous, next) take the text colour, not the link green. */
+.button.ghost.iconOnly {
+  color: var(--text-primary);
+}
+
+.button.destructive {
+  border-color: color-mix(in srgb, var(--feedback-error-ink) 55%, var(--line-control));
+  background: var(--surface-input);
+  color: var(--feedback-error-ink);
+}
+
+.button.destructive:not(:disabled, [aria-disabled='true']):hover {
+  border-color: var(--feedback-error-ink);
+  background: var(--feedback-error-surface);
+}
+
+/* On photographs and the dark brand panels: white instead of the green. */
+.button.inverse.primary {
+  border-color: var(--palette-white);
+  background: var(--palette-white);
+  color: var(--palette-zentra-green);
+}
+
+.button.inverse.primary:not(:disabled, [aria-disabled='true']):hover {
+  border-color: var(--palette-zentra-green-soft);
+  background: var(--palette-zentra-green-soft);
+}
+
+.button.inverse:is(.secondary, .ghost) {
+  border-color: var(--palette-white);
+  background: transparent;
+  color: var(--palette-white);
+}
+
+.button.inverse.ghost {
+  border-color: transparent;
+}
+
+.button.inverse:is(.secondary, .ghost):not(:disabled, [aria-disabled='true']):hover {
+  background: color-mix(in srgb, var(--palette-white) 16%, transparent);
+}
+
+/* ---------- Tooltips for icon-only buttons on the website ----------
+ * Shown on hover after a pause and at once on keyboard focus; the accessible name stays the
+ * aria-label. The admin panel draws the same tooltip for every [data-tip] (admin.module.css).
+ */
+.button.iconOnly[data-tip]:not([data-admin-theme] *)::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  z-index: 70;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--text-primary);
+  color: var(--surface-page);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, calc(var(--space-1) * -1));
+  transition:
+    opacity var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
+.button.iconOnly[data-tip]:not([data-admin-theme] *):hover::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  transition-delay: 350ms;
+}
+
+.button.iconOnly[data-tip]:not([data-admin-theme] *):focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.button.iconOnly[data-tip][data-tip-align='end']:not([data-admin-theme] *)::after {
+  left: auto;
+  right: 0;
+  transform: translateY(calc(var(--space-1) * -1));
+}
+
+.button.iconOnly[data-tip][data-tip-align='end']:not([data-admin-theme] *):hover::after,
+.button.iconOnly[data-tip][data-tip-align='end']:not([data-admin-theme] *):focus-visible::after {
+  transform: translateY(0);
+}
+
+.button.iconOnly[data-tip][aria-expanded='true']::after {
+  display: none;
+}
+
+/* ---------- Loading: a spinner over the label, which keeps the button's width ---------- */
+.button[aria-busy='true'] {
+  cursor: progress;
+}
+
+.button[aria-busy='true'] .label {
+  opacity: 0;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  width: 1rem;
+  height: 1rem;
+  margin: auto;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The narrowest phones: a long label wraps instead of pushing the page sideways. */
+@media (max-width: 22.5rem) {
+  .button {
+    white-space: normal;
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button {
+    transition: none;
+  }
+
+  .button:not(:disabled, [aria-disabled='true']):active {
+    transform: none;
+  }
+}

@@ -3,8 +3,7 @@
  * white cards with soft hairlines and a faint shadow, ink headings, sentence-case labels, and deep
  * green kept for the wordmark, actions, the current page and focus. Status colour appears only in
  * labelled chips and dots, never as card outlines or side stripes. Colours come only from the
- * --admin-* roles in styles/tokens.css, which [data-admin-theme='dark'] re-tints to the ZENTRA
- * night palette.
+ * --admin-* roles in styles/tokens.css, which [data-admin-theme='dark'] re-tints to charcoal.
  */
 .root {
   position: relative;
@@ -44,11 +43,29 @@
   --brand-wordmark: var(--admin-wordmark);
   --focus-ring: var(--admin-focus);
   --focus-halo: var(--admin-focus-halo);
+  --action-primary-hover: var(--admin-action-hover);
+  --surface-subtle: var(--admin-surface-subtle);
+  --line-control: var(--admin-control-line);
+  --feedback-error-ink: var(--admin-danger);
+  --feedback-error-surface: var(--admin-danger-soft);
 }
 :global(html):has(.root),
 .root {
   scrollbar-color: var(--admin-control-line) transparent;
   scrollbar-width: thin;
+}
+/* The admin theme, not the website's, decides native controls, scrollbars and the page behind. */
+:global(html):has(.root[data-admin-theme='light']),
+.root[data-admin-theme='light'] {
+  color-scheme: light;
+}
+:global(html):has(.root[data-admin-theme='dark']),
+.root[data-admin-theme='dark'] {
+  color-scheme: dark;
+}
+:global(html):has(.root[data-admin-theme='dark']) {
+  background-color: var(--palette-charcoal);
+  scrollbar-color: var(--palette-charcoal-control) transparent;
 }
 :global(html):has(.content) {
   scroll-padding-top: calc(4.5rem + var(--space-6));
@@ -139,6 +156,17 @@
   width: 100%;
   min-height: var(--layout-touch-target);
 }
+/* Fields share the buttons' height (40px, 44px on phones), so a row of fields and buttons lines up. */
+.root
+  :is(
+    input:not([type='checkbox'], [type='radio'], [type='file'], [type='range'], [type='color']),
+    select
+  ) {
+  min-height: var(--control-height);
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  line-height: var(--line-heading);
+}
 .root input::placeholder,
 .root textarea::placeholder {
   color: var(--admin-muted);
@@ -175,10 +203,10 @@
   min-height: 52px;
 }
 .root details[open] summary {
-  margin-bottom: 15px;
+  margin-bottom: var(--space-4);
 }
 .root dd {
-  margin: 3px 0 16px;
+  margin: var(--space-1) 0 var(--space-4);
 }
 .root dt {
   font-size: var(--type-caption);
@@ -194,8 +222,9 @@
 .root input:is([type='checkbox'], [type='radio']) {
   accent-color: var(--admin-action);
 }
-.adminDark {
-  color-scheme: dark;
+/* Icons: Lucide only, 16px beside text and 20px on their own, one stroke weight. */
+.root :global(svg.lucide) {
+  stroke-width: 1.75;
 }
 
 /* ---------- Header: wordmark left, theme / notifications / messages / account right ---------- */
@@ -319,7 +348,7 @@
   align-items: center;
   gap: var(--space-2);
   margin-left: var(--space-2);
-  padding: 0.1875rem var(--space-3) 0.1875rem 0.1875rem;
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   border: 1px solid var(--admin-divider);
   border-radius: 999px;
   background: var(--admin-surface-card);
@@ -404,19 +433,6 @@
   font-size: var(--type-caption);
   margin: var(--space-1) 0 0;
 }
-.popoverClose {
-  display: grid;
-  place-items: center;
-  width: var(--layout-touch-target);
-  height: var(--layout-touch-target);
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--admin-muted);
-}
-.popoverClose:hover {
-  background: var(--admin-surface-subtle);
-}
 .notificationList {
   max-height: min(380px, calc(100dvh - 205px));
   overflow-y: auto;
@@ -468,7 +484,7 @@
 }
 .notificationArrow {
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: var(--space-1);
   margin-left: auto;
   color: var(--admin-muted);
 }
@@ -709,11 +725,10 @@
   min-width: 0;
   transition: margin-left var(--sidebar-duration) var(--sidebar-ease);
 }
+/* Every admin page uses the full width beside the sidebar: 24px padding, 16px on phones. */
 .main {
-  padding: var(--space-8) clamp(var(--space-4), 2.5vw, var(--space-12)) var(--space-12);
-  max-width: 1600px;
+  padding: var(--space-6) var(--space-6) var(--space-12);
   width: 100%;
-  margin: 0 auto;
   flex: 1;
   min-width: 0;
 }
@@ -886,129 +901,7 @@
   flex-wrap: wrap;
 }
 
-/*
- * ---------- Buttons (docs/admin-design.md): one set for every page ----------
- * Primary: deep green with a soft inner highlight, a green glow on hover. Secondary: white with a
- * hairline border and a faint shadow. One height (the 44px target), 8px corners, 16px icons, a 1px
- * press. Page stylesheets reuse these classes through `composes`, so every button matches.
- */
-.primary,
-.secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: var(--layout-touch-target);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-control);
-  font: inherit;
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  line-height: var(--line-heading);
-  text-align: center;
-  text-decoration: none;
-  white-space: normal;
-  cursor: pointer;
-  transition:
-    background var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease),
-    box-shadow var(--motion-fast) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease);
-}
-.primary > svg,
-.secondary > svg {
-  flex-shrink: 0;
-}
-.primary:not(:disabled, [aria-disabled='true']):hover {
-  box-shadow: 0 var(--space-1) var(--space-3)
-    color-mix(in srgb, var(--admin-action) 22%, transparent);
-}
-.primary:not(:disabled, [aria-disabled='true']):active,
-.secondary:not(:disabled, [aria-disabled='true']):active {
-  transform: translateY(1px);
-}
-.primary > svg,
-.secondary > svg {
-  width: 1rem;
-  height: 1rem;
-}
-.primary {
-  background: var(--admin-action);
-  color: var(--admin-on-action);
-  border: 1px solid var(--admin-action);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--admin-shadow) 16%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--admin-on-action) 16%, transparent);
-}
-.primary:not(:disabled, [aria-disabled='true']):hover {
-  background: var(--admin-action-hover);
-  border-color: var(--admin-action-hover);
-}
-/* Links drawn as buttons keep the button colours over the root's plain-link rule. */
-.root a.primary {
-  color: var(--admin-on-action);
-}
-.root a.secondary {
-  color: var(--admin-ink);
-}
-.secondary {
-  background: var(--admin-surface-card);
-  color: var(--admin-ink);
-  border: 1px solid var(--admin-control-line);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--admin-shadow) 6%, transparent);
-}
-.secondary:not(:disabled, [aria-disabled='true']):hover {
-  background: var(--admin-surface-subtle);
-  border-color: var(--admin-border);
-}
-.root .quiet {
-  border-color: transparent;
-}
-.root .quiet:not(:disabled, [aria-disabled='true']):hover {
-  border-color: var(--admin-divider);
-  background: var(--admin-surface-subtle);
-}
-.root .dangerAction {
-  color: var(--admin-danger);
-  border-color: color-mix(in srgb, var(--admin-danger) 55%, var(--admin-control-line));
-}
-.root .dangerAction:not(:disabled, [aria-disabled='true']):hover {
-  background: var(--admin-danger-soft);
-}
-.linkButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: var(--layout-touch-target);
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-radius: var(--radius-control);
-  background: none;
-  color: var(--admin-action);
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-}
-.linkButton:not(:disabled, [aria-disabled='true']):hover {
-  background: var(--admin-surface-subtle);
-  text-decoration: underline;
-}
-.iconButton {
-  display: grid;
-  place-items: center;
-  width: var(--layout-touch-target);
-  height: var(--layout-touch-target);
-  padding: 0;
-  border: 1px solid var(--admin-control-line);
-  border-radius: var(--radius-control);
-  background: var(--admin-surface-card);
-  color: var(--admin-ink);
-}
-.iconButton:hover {
-  background: var(--admin-surface-subtle);
-  border-color: var(--admin-border);
-}
+/* Buttons: every admin button is the shared one (components/shared/Button.tsx). */
 
 /* ---------- Cards, rows, lists ---------- */
 .card {
@@ -1064,22 +957,39 @@
   background: var(--admin-surface-card);
   box-shadow: var(--card-shadow);
 }
+/* Dashboard (docs/admin-design.md, Layout): Trends directly under Bookings this month, the compact
+   widgets beside them on wide screens and in a row below them elsewhere. */
 .dashboardGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: var(--space-6);
   margin-bottom: var(--space-8);
+}
+.dashboardMain {
+  min-width: 0;
+}
+.dashboardMain > section {
+  margin-bottom: 0;
 }
 .dashboardGrid > .card,
 .dashboardColumn > .card {
   margin-bottom: 0;
 }
-/* The dashboard's left column: website activity, then the testimonies hold. */
 .dashboardColumn {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
   gap: var(--space-6);
   min-width: 0;
+}
+@media (min-width: 96rem) {
+  .dashboardGrid {
+    grid-template-columns: minmax(0, 2fr) minmax(22rem, 1fr);
+  }
+  .dashboardColumn {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 /* A one-line explanation where an empty state would otherwise take a whole card. */
 .quietNote {
@@ -1278,10 +1188,10 @@
   border-color: var(--admin-action);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-action) 14%, transparent);
 }
-.filterToggle > svg:last-child {
+.filterToggle svg:last-child {
   transition: transform var(--motion-normal) var(--motion-ease);
 }
-.filterToggle[aria-expanded='true'] > svg:last-child {
+.filterToggle[aria-expanded='true'] svg:last-child {
   transform: rotate(180deg);
 }
 .filterCount {
@@ -1327,10 +1237,6 @@
 .root .filterSummary p {
   margin: 0;
   font-size: var(--type-small);
-}
-.root .filterSummary .linkButton {
-  min-height: 0;
-  padding: var(--space-1) var(--space-2);
 }
 .filters {
   display: flex;
@@ -1528,6 +1434,12 @@
 .statusFilter:hover {
   background: var(--admin-surface-subtle);
 }
+/* Filters and toggles share the buttons' height; .root wins over the panel's button defaults. */
+.root .statusFilter,
+.root .viewToggle button {
+  min-height: var(--control-height);
+  font-size: var(--type-small);
+}
 /* The chosen status: a soft fill in its hue, a heavier label and aria-pressed. */
 .statusFilter[aria-pressed='true'] {
   border-color: var(--status, var(--admin-accent-ink));
@@ -1706,7 +1618,7 @@
 .root .attentionText span {
   font-size: var(--type-small);
 }
-.root .attention :is(.primary, .secondary) {
+.root .attention :is(a, button) {
   flex-shrink: 0;
 }
 
@@ -2057,7 +1969,7 @@
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: var(--space-1);
   margin-top: var(--space-1);
 }
 .dayDots .statusDot {
@@ -2241,9 +2153,6 @@
   gap: var(--space-6);
   margin: var(--space-6) 0;
 }
-.loginCard form .primary {
-  width: 100%;
-}
 .root .loginNote {
   display: flex;
   align-items: flex-start;
@@ -2339,16 +2248,6 @@
   align-items: center;
   gap: var(--space-3);
 }
-.profileSectionHeading > span {
-  display: grid;
-  place-items: center;
-  width: 2.625rem;
-  height: 2.625rem;
-  border-radius: var(--radius-control);
-  background: var(--admin-accent-soft);
-  color: var(--admin-accent-ink);
-  flex-shrink: 0;
-}
 .profileSectionHeading h2 {
   font-size: var(--type-body);
 }
@@ -2359,7 +2258,7 @@
 
 /* ---------- Packages (catalog) ---------- */
 .systemSettings {
-  margin-bottom: 28px;
+  margin-bottom: var(--space-8);
 }
 .catalogLayout {
   display: grid;
@@ -2425,17 +2324,173 @@
   margin-bottom: var(--space-4);
 }
 .catalogInclusions {
-  padding-left: 18px;
+  padding-left: var(--space-4);
   margin: var(--space-3) 0;
   font-size: var(--type-small);
 }
 .catalogInclusions li {
-  padding: 6px 0;
+  padding: var(--space-2) 0;
 }
 .catalogInclusions p {
   font-size: var(--type-caption);
   margin: var(--space-1) 0 0;
 }
+/* ---------- Team (components/admin/TeamPanel.tsx) ---------- */
+.inlineSelect {
+  min-height: var(--layout-touch-target);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--admin-control-line);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-card);
+  color: var(--admin-ink);
+  font-size: var(--type-small);
+}
+/* Team: a table on wide screens; on phones each person is a block with labelled lines. */
+.cellLabel {
+  display: none;
+}
+@media (max-width: 47.99rem) {
+  .teamTable,
+  .teamTable tbody,
+  .teamTable tr,
+  .teamTable td {
+    display: block;
+  }
+  .teamTable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .root .teamTable tr {
+    padding-block: var(--space-3);
+    border-bottom: 1px solid var(--line);
+  }
+  .root .teamTable td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-1) 0;
+    border: 0;
+  }
+  .root .teamTable td:first-child {
+    display: block;
+  }
+  .cellLabel {
+    display: inline;
+    min-width: 6rem;
+    color: var(--muted);
+    font-size: var(--type-caption);
+  }
+}
+.root td.rowActions {
+  text-align: right;
+  white-space: nowrap;
+}
+.rowActions > * + * {
+  margin-left: var(--space-2);
+}
+.inviteLink {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-subtle);
+  font-size: var(--type-small);
+}
+.inviteLink p {
+  margin: 0;
+}
+.inviteLink div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.inviteLink code {
+  flex: 1 1 18rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--type-caption);
+}
+.accessSummary {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+.accessSummary div {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) 1fr;
+  gap: var(--space-4);
+}
+.accessSummary dt {
+  font-weight: var(--weight-semibold);
+}
+.accessSummary dd {
+  margin: 0;
+  color: var(--admin-muted);
+}
+.roleChoice {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.roleChoice legend {
+  margin-bottom: var(--space-2);
+  font-weight: var(--weight-semibold);
+}
+.roleChoice label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--admin-control-line);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.roleChoice label:has(input:checked) {
+  border-color: var(--admin-action);
+  background: var(--admin-surface-subtle);
+}
+.roleChoice input {
+  grid-row: span 2;
+  margin-top: var(--space-1);
+}
+.roleChoice small {
+  grid-column: 2;
+  margin: 0;
+  color: var(--admin-muted);
+}
+.confirmDialog {
+  width: min(480px, calc(100vw - 32px));
+}
+.confirmText {
+  margin: 0;
+  padding: var(--space-6);
+}
+.noAccessTitle {
+  font-size: var(--type-card-title);
+}
+.loginHint {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+}
+@media (max-width: 47.99rem) {
+  .accessSummary div {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}
+
 .catalogDialog {
   position: fixed;
   inset: 0;
@@ -2516,20 +2571,6 @@
 }
 
 /* ---------- Settings ---------- */
-.settingsSaveBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-6);
-  margin-bottom: var(--space-6);
-}
-.settingsSaveBar h2 {
-  font-size: var(--type-body);
-}
-.settingsSaveBar p {
-  font-size: var(--type-caption);
-  margin: var(--space-1) 0 0;
-}
 .settingsColumns {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
@@ -2555,21 +2596,7 @@
   background: var(--admin-surface-card);
   color: var(--admin-heading);
 }
-.settingsSectionTitle > span {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background: var(--admin-accent-soft);
-  color: var(--admin-accent-ink);
-  flex-shrink: 0;
-}
 .settingsSectionTitle h2 {
-  font-size: var(--type-body);
-}
-.settingsSectionTitle i {
-  line-height: 1;
   font-size: var(--type-body);
 }
 .settingsCardBody {
@@ -2633,16 +2660,9 @@
 .themeChoice:not(:disabled):hover {
   border-color: var(--admin-action);
 }
-.themeChoice > i {
-  display: grid;
-  place-items: center;
-  width: 2.625rem;
-  height: 2.625rem;
-  background: var(--admin-accent-soft);
+.themeChoice > svg {
+  margin-bottom: var(--space-1);
   color: var(--admin-accent-ink);
-  border-radius: 50%;
-  margin-bottom: var(--space-2);
-  font-size: var(--type-card-title);
 }
 .themeChoice > strong {
   font-size: var(--type-small);
@@ -2670,7 +2690,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: var(--space-4);
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--admin-divider);
   transition: background var(--motion-fast) var(--motion-ease);
@@ -2684,7 +2704,7 @@
 .settingsToggleRow p {
   font-size: var(--type-small);
   line-height: 1.7;
-  margin: 3px 0 0;
+  margin: var(--space-1) 0 0;
 }
 .settingsSwitch {
   position: relative;
@@ -2752,7 +2772,7 @@
   font-size: var(--type-small);
 }
 .settingsUnavailable .badge {
-  margin-left: 10px;
+  margin-left: var(--space-2);
 }
 .settingsUnavailable p {
   font-size: var(--type-caption);
@@ -2761,7 +2781,7 @@
 }
 .settingsCaption {
   font-size: var(--type-caption);
-  margin: 0 0 6px !important;
+  margin: 0 0 var(--space-2) !important;
 }
 .settingsExport {
   display: flex;
@@ -2816,7 +2836,7 @@
   width: 17px !important;
   min-height: 17px !important;
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: var(--space-1);
 }
 .termsEditor {
   min-height: 320px !important;
@@ -2877,7 +2897,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px 9px;
+  padding: var(--space-1) var(--space-2);
   border-radius: 999px;
   background: var(--admin-danger-soft);
   color: var(--admin-danger);
@@ -2887,7 +2907,7 @@
 .testimonyRatingInline {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--space-1);
   vertical-align: middle;
 }
 .testimonyReasonRow {
@@ -2898,7 +2918,7 @@
 .testimonyReasonChip {
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
+  padding: var(--space-1) var(--space-3);
   border-radius: 999px;
   border: 1px solid var(--admin-danger);
   background: var(--admin-surface-card);
@@ -2952,7 +2972,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-control);
   font-size: var(--type-small);
@@ -3007,11 +3027,6 @@
     color: transparent;
   }
 }
-@media (min-width: 1500px) {
-  .main {
-    padding-inline: var(--space-12);
-  }
-}
 /* Short screens or large browser text: the sidebar scrolls as one column, so the pinned footer
    never leaves the groups a sliver of space. */
 @media (min-width: 781px) and (max-height: 50em) {
@@ -3031,7 +3046,6 @@
   .catalogLayout,
   .settingsColumns,
   .profileWorkspace,
-  .dashboardGrid,
   .calendarLayout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3054,7 +3068,7 @@
     scroll-padding-top: calc(4rem + var(--space-4));
   }
   .header {
-    gap: 0.125rem;
+    gap: var(--space-1);
     padding-inline: var(--space-2);
   }
   .sidebar {
@@ -3111,7 +3125,7 @@
     width: min(16rem, calc(100vw - var(--space-4)));
   }
   .main {
-    padding: var(--space-6) var(--space-4) var(--space-8);
+    padding: var(--space-4) var(--space-4) var(--space-8);
   }
   .card {
     padding: var(--space-4);
@@ -3171,10 +3185,6 @@
   .root .mobileRecordTags small {
     margin: 0;
   }
-  .settingsSaveBar {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
   .settingsCardBody {
     padding: var(--space-4);
   }
@@ -3220,7 +3230,7 @@
   }
   .accountButton {
     margin-left: 0;
-    padding: 0.1875rem;
+    padding: var(--space-1);
     border-color: transparent;
   }
   .detailActions > * {

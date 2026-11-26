@@ -7,6 +7,7 @@ import type { PanInfo } from 'framer-motion';
 import { containDialogFocus } from '@/lib/dialog-focus';
 import { Heart, X, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { eventPublicMediaPath, optimizedPublicMediaPath } from '@/lib/public-media';
+import { Button } from '@/components/shared/Button';
 
 const categories = [
   'All',
@@ -476,12 +477,9 @@ export default function CategorizedGallery() {
               <p className="text-muted mb-8 text-sm max-w-[250px]">
                 You&apos;ve viewed all the breathtaking moments in this category.
               </p>
-              <button
-                onClick={restartGallery}
-                className="flex items-center gap-2 px-8 py-3.5 bg-[var(--palette-client-button)] text-[var(--text-on-action)] rounded-full font-bold uppercase tracking-widest text-sm hover:bg-[var(--palette-client-button-hover)] hover:shadow-lg transition-all active:scale-95"
-              >
-                Restart Gallery
-              </button>
+              <Button type="button" variant="primary" onClick={restartGallery}>
+                Restart gallery
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>

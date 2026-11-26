@@ -71,51 +71,6 @@
   margin-top: var(--space-8);
 }
 
-.buttonPrimary,
-.buttonOutline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: var(--layout-touch-target);
-  padding: var(--space-3) var(--space-6);
-  border: 1px solid var(--action-primary);
-  cursor: pointer;
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-label);
-  text-decoration: none;
-  text-transform: uppercase;
-  transition:
-    background-color var(--motion-normal) var(--motion-ease),
-    color var(--motion-normal) var(--motion-ease),
-    box-shadow var(--motion-normal) var(--motion-ease);
-}
-
-.buttonPrimary:hover,
-.buttonOutline:hover {
-  box-shadow: var(--shadow-card);
-}
-
-.buttonPrimary {
-  background: var(--action-primary);
-  color: var(--text-on-action);
-}
-
-.buttonPrimary:hover {
-  background: var(--action-primary-hover);
-}
-
-.buttonOutline {
-  background: transparent;
-  color: var(--text-accent);
-}
-
-.buttonOutline:hover {
-  background: var(--action-primary);
-  color: var(--text-on-action);
-}
-
 /* The Archive: captioned photographs. Phones and tablets keep the page gutters; desktops run the
    row almost edge to edge. */
 .archiveBleed {
@@ -699,7 +654,7 @@
 
   :global(.reveal[data-visible='false']:not(:focus-within)) .stagger > * {
     opacity: 0;
-    translate: 0 var(--space-4);
+    translate: 0 var(--motion-rise);
   }
 
   /* Section titles arrive first: the title, then the rule drawing outward, then the subtitle. */
@@ -752,9 +707,7 @@
   .visitArrow,
   .timelineMarker,
   .contactIcon,
-  .contactAction svg,
-  .buttonPrimary,
-  .buttonOutline {
+  .contactAction svg {
     transition: none;
   }
 }

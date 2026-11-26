@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { redirect } from 'next/navigation';
 import AdminWorkspace from '@/components/admin/AdminWorkspace';
 import { adminPageLabel } from '@/components/admin/navigation';
-import { currentAdmin } from '@/lib/admin/access';
+import { adminPageActor } from '@/lib/admin/page-access';
+import { isAdminPage } from '@/lib/admin/permissions';
 
 const sections = [
   'dashboard',
@@ -31,14 +31,13 @@ export async function generateMetadata({
 
 export default async function Page({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
-  if (!sections.includes(section)) notFound();
-  const actor = await currentAdmin();
-  if (!actor) redirect('/admin');
-  if (actor.mustChangePassword && section !== 'profile') redirect('/admin/profile');
+  if (!sections.includes(section) || !isAdminPage(section)) notFound();
+  // Signed out, password change pending or a page this role may not open (403): see page-access.
+  const actor = await adminPageActor(section);
   return (
     <AdminWorkspace
       section={section}
-      owner={actor.role === 'SUPERADMIN'}
+      role={actor.role}
       adminName={section === 'dashboard' ? actor.fullName?.trim() || actor.username : undefined}
     />
   );

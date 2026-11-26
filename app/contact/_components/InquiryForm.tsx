@@ -5,7 +5,6 @@ import { createPortal } from 'react-dom';
 import {
   AlertCircle,
   CheckCircle2,
-  Loader2,
   Mail,
   MessageSquare,
   Phone,
@@ -16,6 +15,7 @@ import {
 import ZionSelectPopover from '@/components/client/ZionSelectPopover';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { parseVisitPrefill } from './visitPrefill';
+import { Button } from '@/components/shared/Button';
 
 const COUNTRIES = [
   {
@@ -885,27 +885,18 @@ export default function InquiryForm({
 
         {/* Submit Row */}
         <div className="flex flex-col items-start justify-between gap-4 pt-2 sm:flex-row sm:items-center">
-          <button
+          <Button
             type="submit"
-            disabled={isSubmitting || !enabled}
-            className="group/submit relative z-0 inline-flex min-h-12 w-full items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-10 py-3.5 font-sans text-sm font-bold uppercase tracking-[0.18em] text-[var(--text-on-action)] shadow-sm transition-all duration-500 hover:shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] focus:outline-none focus:ring-4 focus:ring-[var(--palette-client-button)]/30 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+            variant="primary"
+            size="lg"
+            className="w-full sm:w-auto"
+            icon={<Send aria-hidden="true" />}
+            loading={isSubmitting}
+            loadingLabel="Sending…"
+            disabled={!enabled}
           >
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 translate-y-full bg-[var(--palette-client-button-hover)] transition-transform duration-500 ease-in-out group-hover/submit:translate-y-0 motion-reduce:hidden"
-            />
-            <span className="relative z-10 flex items-center justify-center gap-2.5">
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Send
-                  className="h-4 w-4 transition-transform duration-300 group-hover/submit:-translate-y-0.5 group-hover/submit:translate-x-0.5 motion-reduce:transform-none"
-                  aria-hidden="true"
-                />
-              )}
-              {isSubmitting ? 'Sending...' : 'Send Message'}
-            </span>
-          </button>
+            Send message
+          </Button>
 
           <p className="font-serif text-xs leading-relaxed text-muted">
             We typically respond within 24 hours.

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarCheck2, CircleAlert, MapPin } from 'lucide-react';
 import { BRAND } from '@/config/brand';
@@ -9,6 +8,7 @@ import type { VisitManageView } from '@/lib/visit-types';
 import shared from '../../booking/_components/BookingRequest.module.css';
 import styles from './Visit.module.css';
 import VisitSlotPicker, { visitClock, visitDateKey, visitDayLabel } from './VisitSlotPicker';
+import { Button, ButtonLink } from '@/components/shared/Button';
 
 type View = Exclude<VisitManageView, { state: 'invalid' }>;
 type OpenView = Extract<VisitManageView, { state: 'open' }>;
@@ -147,9 +147,16 @@ function ChangeVisit({
           emptyMessage="No other visit times are open in the coming weeks. Please call or email us to arrange a time."
         />
         <div className={shared.actions}>
-          <button type="submit" className={shared.primaryButton} disabled={busy}>
-            {busy && !confirming ? 'Moving…' : 'Move my visit'}
-          </button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            loading={busy && !confirming}
+            loadingLabel="Moving…"
+            disabled={busy && confirming}
+          >
+            Move my visit
+          </Button>
         </div>
       </form>
 
@@ -171,33 +178,37 @@ function ChangeVisit({
               {visitClock(view.startsAt)}? The time opens for other visitors.
             </p>
             <div className={shared.actions}>
-              <button
+              <Button
                 type="button"
-                className={shared.secondaryButton}
+                variant="secondary"
+                size="lg"
                 onClick={() => setConfirming(false)}
                 disabled={busy}
               >
                 Keep my visit
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={`${shared.secondaryButton} ${styles.dangerButton}`}
+                variant="destructive"
+                size="lg"
+                loading={busy}
+                loadingLabel="Cancelling…"
                 onClick={() => void act({ action: 'cancel' })}
-                disabled={busy}
               >
-                {busy ? 'Cancelling…' : 'Yes, cancel my visit'}
-              </button>
+                Yes, cancel my visit
+              </Button>
             </div>
           </div>
         ) : (
           <div>
-            <button
+            <Button
               type="button"
-              className={`${shared.secondaryButton} ${styles.dangerButton}`}
+              variant="destructive"
+              size="lg"
               onClick={() => setConfirming(true)}
             >
               Cancel my visit
-            </button>
+            </Button>
           </div>
         )}
       </section>
@@ -258,12 +269,12 @@ export default function VisitManage({ view, token }: { view: View; token: string
               {changed || CLOSED_NOTES[view.status] || 'This visit can no longer be changed here.'}
             </p>
             <div className={shared.actions}>
-              <Link href="/visit" className={shared.secondaryButton}>
+              <ButtonLink href="/visit" variant="secondary" size="lg">
                 Schedule a new visit
-              </Link>
-              <Link href="/booking" className={shared.primaryButton}>
+              </ButtonLink>
+              <ButtonLink href="/booking" variant="primary" size="lg">
                 Book your event
-              </Link>
+              </ButtonLink>
             </div>
           </>
         )}

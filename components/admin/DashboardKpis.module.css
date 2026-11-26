@@ -34,16 +34,6 @@
   gap: var(--space-3);
   margin-bottom: var(--space-2);
 }
-.icon {
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  flex-shrink: 0;
-  border-radius: var(--radius-control);
-  background: var(--admin-surface-highlight);
-  color: var(--admin-accent-ink);
-}
 .label {
   color: var(--admin-muted);
   font-size: var(--type-small);

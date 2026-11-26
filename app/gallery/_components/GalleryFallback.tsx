@@ -6,6 +6,7 @@ import { motion, useMotionValue, useTransform, AnimatePresence, type PanInfo } f
 import PublicSubpageShell from '@/components/client/PublicSubpageShell';
 import FadeIn from '@/components/shared/FadeIn';
 import { X, Heart, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { Button } from '@/components/shared/Button';
 
 type Category =
   'All' | 'Weddings' | 'Birthdays' | 'Debuts' | 'Gender Reveal' | 'Christmas Party' | 'Christening';
@@ -285,13 +286,14 @@ export default function GalleryFallback() {
                 <p className="text-muted mb-8 text-sm max-w-[250px]">
                   You&apos;ve viewed all the breathtaking moments in this category.
                 </p>
-                <button
+                <Button
+                  type="button"
+                  variant="primary"
+                  icon={<RotateCcw aria-hidden="true" />}
                   onClick={restartGallery}
-                  className="flex items-center gap-2 px-8 py-3.5 bg-zion-accent text-white rounded-full font-bold uppercase tracking-widest text-sm hover:bg-[var(--palette-gold-border)] hover:shadow-lg transition-all active:scale-95"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  Restart Gallery
-                </button>
+                  Restart gallery
+                </Button>
               </motion.div>
             )}
           </AnimatePresence>

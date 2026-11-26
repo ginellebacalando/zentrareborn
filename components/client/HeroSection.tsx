@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { homeHeroSlides } from '@/config/home';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
+import { ButtonAnchor } from '@/components/shared/Button';
 import styles from './HeroSection.module.css';
 
 /**
@@ -96,12 +97,12 @@ export default function HeroSection() {
                     Plain links: the browser scrolls to the section on every click, while Next's
                     Link skipped the scroll once the address already ended in the same #section. */}
                 <div className={styles.actions}>
-                  <a href="#event-packages" className={styles.primary}>
+                  <ButtonAnchor href="#event-packages" variant="primary" size="lg" inverse>
                     See packages
-                  </a>
-                  <a href="#available-dates" className={styles.secondary}>
+                  </ButtonAnchor>
+                  <ButtonAnchor href="#available-dates" variant="secondary" size="lg" inverse>
                     Check a date
-                  </a>
+                  </ButtonAnchor>
                 </div>
               </div>
             </div>

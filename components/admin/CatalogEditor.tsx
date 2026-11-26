@@ -5,6 +5,7 @@ import type { CatalogCategory, CatalogInclusion, CatalogPackage } from '@/lib/ad
 import { enumLabel } from './AdminBadge';
 import styles from './admin.module.css';
 import { containDialogFocus } from '@/lib/dialog-focus';
+import { Button, IconButton } from '@/components/shared/Button';
 
 export type CatalogEditing =
   | { type: 'category'; item: CatalogCategory | null }
@@ -150,16 +151,14 @@ export default function CatalogEditor({
           <h2 id="catalog-editor-title">{title}</h2>
           {!isCategory && <p>{category?.name}</p>}
         </div>
-        <button
+        <IconButton
           type="button"
-          className={styles.popoverClose}
-          aria-label="Close editor"
-          data-tip="Close"
+          label="Close editor"
+          tooltipAlign="end"
+          icon={<X aria-hidden="true" />}
           disabled={busy}
           onClick={onClose}
-        >
-          <X size={18} />
-        </button>
+        />
       </div>
       <form onSubmit={submit}>
         {error && (
@@ -318,9 +317,9 @@ export default function CatalogEditor({
                 <div className={styles.full}>
                   <div className={styles.catalogInclusionHeading}>
                     <h3>Package inclusions</h3>
-                    <button
+                    <Button
                       type="button"
-                      className={styles.secondary}
+                      variant="secondary"
                       disabled={inclusions.length >= 80}
                       onClick={() =>
                         setInclusions((current) => [
@@ -336,17 +335,17 @@ export default function CatalogEditor({
                         ])
                       }
                     >
-                      <Plus size={14} />
+                      <Plus size={16} />
                       Add inclusion
-                    </button>
+                    </Button>
                   </div>
                   {inclusions.map((item, index) => (
                     <div key={item.key} className={styles.catalogInclusionEditor}>
                       <div className={styles.catalogInclusionHeading}>
                         <strong>Inclusion {index + 1}</strong>
-                        <button
+                        <Button
                           type="button"
-                          className={styles.linkButton}
+                          variant="ghost"
                           aria-label={`Remove inclusion ${index + 1}`}
                           onClick={() =>
                             setInclusions((current) =>
@@ -354,9 +353,9 @@ export default function CatalogEditor({
                             )
                           }
                         >
-                          <X size={15} />
+                          <X size={16} />
                           Remove
-                        </button>
+                        </Button>
                       </div>
                       <label>
                         Name
@@ -410,13 +409,18 @@ export default function CatalogEditor({
           </div>
         </fieldset>
         <div className={styles.catalogDialogActions}>
-          <button type="button" className={styles.secondary} disabled={busy} onClick={onClose}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
             Cancel
-          </button>
-          <button type="submit" className={styles.primary} disabled={busy}>
-            <Save size={15} />
-            {busy ? 'Saving…' : isCategory ? 'Save category' : 'Save package'}
-          </button>
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            icon={<Save aria-hidden="true" />}
+            loading={busy}
+            loadingLabel="Saving…"
+          >
+            {isCategory ? 'Save category' : 'Save package'}
+          </Button>
         </div>
       </form>
     </dialog>

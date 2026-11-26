@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ArrowUpRight, FileText } from 'lucide-react';
+import { Button, ButtonAnchor, ButtonLink } from '@/components/shared/Button';
 import { chatbotReceptionist } from '@/config/chatbot-receptionist';
 import type { ChatReply, ReceptionistAction } from '@/lib/chatbot/types';
 import { ChatAvatar } from './ChatAvatar';
@@ -108,36 +109,36 @@ export function ZeniMessage({
         <div className={styles.actions} role="group" aria-label={chatbotReceptionist.nextSteps}>
           {links.map((link) =>
             link.kind === 'page' ? (
-              <Link
+              <ButtonLink
                 key={link.href}
                 href={link.href}
-                className={link.primary ? styles.primaryAction : styles.secondaryAction}
+                variant={link.primary ? 'primary' : 'secondary'}
                 onClick={onNavigate}
               >
                 {link.label}
-              </Link>
+              </ButtonLink>
             ) : (
               // A full page load lets the booking and contact forms read the pre-filled values.
-              <a
+              <ButtonAnchor
                 key={link.href}
                 href={link.href}
-                className={link.primary ? styles.primaryAction : styles.secondaryAction}
+                variant={link.primary ? 'primary' : 'secondary'}
                 onClick={onNavigate}
               >
                 {link.label}
-              </a>
+              </ButtonAnchor>
             ),
           )}
           {actions.map((action) => (
-            <button
+            <Button
               key={`${action.type}-${action.value ?? ''}`}
               type="button"
-              className={styles.secondaryAction}
+              variant="secondary"
               disabled={!active}
               onClick={() => onAction(action)}
             >
               {action.label}
-            </button>
+            </Button>
           ))}
         </div>
       )}

@@ -113,12 +113,12 @@ test(
         },
       });
       const directory = await adminRead('team', new URLSearchParams(), actor);
-      assert.ok('team' in directory && directory.team);
+      assert.ok('members' in directory && directory.members);
       assert.deepEqual(
-        directory.team.map((member) => member.id),
+        directory.members.map((member) => member.id),
         [actor.id],
       );
-      assert.ok(directory.team.every((member) => !('passwordHash' in member)));
+      assert.ok(directory.members.every((member) => !('passwordHash' in member)));
       const inbox = await adminRead('inquiries', new URLSearchParams(), actor);
       assert.ok('inquiries' in inbox && inbox.inquiries);
       assert.equal(inbox.inquiries.length, 1);

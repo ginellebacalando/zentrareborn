@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { BRAND } from '@/config/brand';
+import { ButtonLink } from '@/components/shared/Button';
 import { BOOK_LINK, MAIN_NAV, type NavGroup } from '@/config/navigation';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import { isGroupCurrent, isNavGroup } from '@/lib/navigation';
@@ -176,13 +177,14 @@ export default function GlobalHeader() {
               )}
             </ul>
           </nav>
-          <Link
+          <ButtonLink
             href={BOOK_LINK.href}
+            variant="primary"
             className={styles.book}
             aria-current={BOOK_LINK.href === pathname ? 'page' : undefined}
           >
             {BOOK_LINK.label}
-          </Link>
+          </ButtonLink>
         </div>
       </header>
     </>

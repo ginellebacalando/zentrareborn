@@ -58,8 +58,8 @@
 
 @media (max-width: 767px) {
   .galleryGroup {
-    gap: 0.625rem;
-    padding-right: 0.625rem;
+    gap: var(--space-3);
+    padding-right: var(--space-3);
   }
 
   .galleryTile {

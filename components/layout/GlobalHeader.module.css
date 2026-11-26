@@ -72,31 +72,11 @@
   }
 }
 
+/* Book Now is the shared primary button (components/shared/Button.tsx); this only places it. */
 .book {
-  display: inline-flex;
   grid-area: book;
   justify-self: end;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--layout-touch-target);
-  padding: var(--space-2);
-  border: 1px solid var(--action-primary);
-  color: var(--action-primary);
-  font-size: var(--type-caption);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-display);
-  text-decoration: none;
-  text-transform: uppercase;
   white-space: nowrap;
-  transition:
-    background-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease);
-}
-
-.book:hover,
-.book[aria-current='page'] {
-  background: var(--action-primary);
-  color: var(--text-on-action);
 }
 
 /* The desktop menu row; phones and tablets use the menu button's drawer instead. The nav is the
@@ -251,10 +231,6 @@
   .brand {
     justify-self: center;
   }
-
-  .book {
-    padding-inline: var(--space-4);
-  }
 }
 
 /* Desktop before scrolling: the full Figma header with the wordmark row and the menu row. */
@@ -307,7 +283,6 @@
 @media (prefers-reduced-motion: reduce) {
   .header,
   .brand :global(.zentra-wordmark__name),
-  .book,
   .link,
   .chevron {
     transition: none;

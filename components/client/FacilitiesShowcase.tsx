@@ -22,6 +22,7 @@ import {
   type PublicFacilitySpace,
   type FacilityIcon,
 } from '@/config/public-facilities';
+import { buttonClassName } from '@/components/shared/button-classes';
 export type FacilitySpace = Omit<PublicFacilitySpace, 'features'> & {
   features: readonly { icon: LucideIcon; label: string }[];
 };
@@ -155,7 +156,7 @@ export default function FacilitiesShowcase({
 
                   <OpenChatbotButton
                     prompt={`Tell me about ${space.name}`}
-                    className="mt-9 inline-flex min-h-11 w-fit items-center gap-3 rounded-full border border-[var(--palette-night-subtle)]/15 px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] text-[var(--palette-night-subtle)] transition-all duration-300 hover:border-[var(--palette-gold-border)] hover:bg-[var(--palette-night-subtle)] hover:text-[var(--palette-gold-soft)] motion-reduce:transition-none"
+                    className={buttonClassName({ variant: 'secondary' }, 'mt-9 w-fit')}
                   >
                     Ask about this space
                     <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
@@ -169,7 +170,7 @@ export default function FacilitiesShowcase({
 
       <section className="relative mx-auto w-full max-w-7xl px-[var(--layout-gutter)] py-20 md:py-28">
         <FadeIn>
-          <div className="relative overflow-hidden rounded-[2rem] bg-[var(--palette-night-subtle)] px-6 py-14 text-center text-white shadow-[0_30px_80px_-35px_color-mix(in_srgb,var(--palette-night)_80%,transparent)] sm:px-10 md:py-20">
+          <div className="relative overflow-hidden rounded-[2rem] bg-[var(--palette-night-subtle)] px-6 py-14 text-center text-white sm:px-10 md:py-20">
             <div className="relative mx-auto max-w-3xl">
               <p className="mb-5 text-xs font-bold uppercase tracking-[0.28em] text-[var(--palette-gold)]">
                 Your celebration starts here
@@ -184,13 +185,13 @@ export default function FacilitiesShowcase({
               <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <OpenChatbotButton
                   prompt="What are your visiting hours and how do I arrange a site visit?"
-                  className="group relative inline-flex min-h-12 w-full items-center justify-center px-8 py-3.5 bg-[var(--palette-night-subtle)] text-white font-sans text-xs font-bold uppercase tracking-[0.18em] overflow-hidden rounded-full transition-all shadow-[0_15px_30px_-10px_color-mix(in_srgb,var(--palette-night)_40%,transparent)] sm:w-auto"
+                  className={buttonClassName(
+                    { variant: 'primary', size: 'lg', inverse: true },
+                    'w-full sm:w-auto',
+                  )}
                 >
-                  <div className="absolute inset-0 bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out translate-y-full group-hover:translate-y-0" />
-                  <span className="relative z-10 flex items-center gap-3 transition-colors duration-500 group-hover:text-[var(--text-on-action)]">
-                    Arrange a site visit
-                    <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                  </span>
+                  Arrange a site visit
+                  <ArrowUpRight aria-hidden="true" />
                 </OpenChatbotButton>
               </div>
             </div>

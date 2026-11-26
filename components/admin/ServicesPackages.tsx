@@ -8,6 +8,7 @@ import CatalogEditor, { type CatalogEditing } from './CatalogEditor';
 import { enumLabel } from './AdminBadge';
 import LoadingSkeleton from './LoadingSkeleton';
 import styles from './admin.module.css';
+import { Button } from '@/components/shared/Button';
 
 function price(value: number, currency: string) {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency }).format(value);
@@ -87,9 +88,9 @@ export default function ServicesPackages() {
     return (
       <div className={styles.error} role="alert">
         {error.message}{' '}
-        <button className={styles.linkButton} onClick={() => void mutate()}>
+        <Button variant="ghost" onClick={() => void mutate()}>
           Try again
-        </button>
+        </Button>
       </div>
     );
   if (!data) return <LoadingSkeleton label="Loading services and packages…" />;
@@ -121,7 +122,7 @@ export default function ServicesPackages() {
                 ref={createCategoryRef}
                 onClick={() => open({ type: 'category', item: null })}
               >
-                <Plus size={18} />
+                <Plus size={20} />
               </button>
             )}
           </div>
@@ -151,14 +152,14 @@ export default function ServicesPackages() {
               <h3>No event categories yet</h3>
               <p>Create a category to start adding packages.</p>
               {data.canEdit && (
-                <button
-                  className={styles.secondary}
+                <Button
+                  variant="secondary"
                   ref={createCategoryRef}
                   onClick={() => open({ type: 'category', item: null })}
                 >
-                  <Plus size={15} />
+                  <Plus size={16} />
                   New event category
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -178,14 +179,14 @@ export default function ServicesPackages() {
                     </p>
                   </div>
                   {data.canEdit && (
-                    <button
+                    <Button
                       type="button"
-                      className={styles.secondary}
+                      variant="secondary"
                       onClick={() => open({ type: 'category', item: data.category })}
                     >
-                      <Pencil size={14} />
+                      <Pencil size={16} />
                       Edit category
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <div className={styles.actions}>
@@ -204,15 +205,15 @@ export default function ServicesPackages() {
               <div className={styles.catalogPackagesHeading}>
                 <h2>In this category</h2>
                 {data.canEdit && (
-                  <button
+                  <Button
                     type="button"
-                    className={styles.primary}
+                    variant="primary"
                     disabled={isLoading}
                     onClick={() => open({ type: 'package', item: null })}
                   >
-                    <Plus size={15} />
+                    <Plus size={16} />
                     New package
-                  </button>
+                  </Button>
                 )}
               </div>
               <form
@@ -235,9 +236,9 @@ export default function ServicesPackages() {
                     onChange={(event) => setQuery(event.target.value)}
                   />
                 </label>
-                <button type="submit" className={styles.secondary}>
+                <Button type="submit" variant="secondary">
                   Search
-                </button>
+                </Button>
               </form>
               {data.packages.map((item) => (
                 <section key={item.id} className={styles.card}>
@@ -249,14 +250,14 @@ export default function ServicesPackages() {
                       </p>
                     </div>
                     {data.canEdit && (
-                      <button
+                      <Button
                         type="button"
-                        className={styles.secondary}
+                        variant="secondary"
                         onClick={() => open({ type: 'package', item })}
                       >
-                        <Pencil size={14} />
+                        <Pencil size={16} />
                         Edit package
-                      </button>
+                      </Button>
                     )}
                   </div>
                   <div className={styles.actions}>
@@ -329,20 +330,20 @@ export default function ServicesPackages() {
                 <span>
                   {data.total} packages · page {data.page}
                 </span>
-                <button
-                  className={styles.secondary}
+                <Button
+                  variant="secondary"
                   disabled={data.page <= 1}
                   onClick={() => setPage((current) => current - 1)}
                 >
                   Previous
-                </button>
-                <button
-                  className={styles.secondary}
+                </Button>
+                <Button
+                  variant="secondary"
                   disabled={data.page * 25 >= data.total}
                   onClick={() => setPage((current) => current + 1)}
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </>
           ) : (

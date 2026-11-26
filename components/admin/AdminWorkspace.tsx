@@ -16,9 +16,11 @@ import { displayStatuses } from '@/lib/admin/dashboard-status';
 import BookingDetail from './BookingDetail';
 import { Badge, enumLabel } from './AdminBadge';
 import AdminOverviewSections from './AdminOverviewSections';
+import TeamPanel from './TeamPanel';
 import LoadingSkeleton from './LoadingSkeleton';
 import AnalyticsOverview from './AnalyticsOverview';
 import SystemSettingsForm from './SystemSettingsForm';
+import AdminPageHeader from './AdminPageHeader';
 import ServicesPackages from './ServicesPackages';
 import DashboardGreeting from './DashboardGreeting';
 import DashboardOverview from './DashboardOverview';
@@ -28,7 +30,9 @@ import { useAdminDate } from './AdminPreferencesProvider';
 import { BookingForm, SettingsForm, ProfileForm } from './Forms';
 import { adminPageLabel } from './navigation';
 import type { AdminData, Booking, Notice } from './types';
+import { canDo } from '@/lib/admin/permissions';
 import styles from './admin.module.css';
+import { Button } from '@/components/shared/Button';
 
 /*
  * Page headers (docs/admin-design.md): every page shows its title, equal to the sidebar label. A
@@ -42,13 +46,17 @@ const PAGE_SIZE = 50;
 
 export default function AdminWorkspace({
   section,
-  owner,
+  role,
   adminName = '',
 }: {
   section: string;
-  owner: boolean;
+  /** The signed-in role; what it may do comes from lib/admin/permissions.ts. */
+  role: string;
   adminName?: string;
 }) {
+  const canVoid = canDo(role, 'void-receipt');
+  const canChangeSettings = canDo(role, 'change-settings');
+  const canRunAutomation = canDo(role, 'run-automation');
   const router = useRouter();
   const eventDate = useAdminDate();
   const filterFieldsId = useId();
@@ -208,54 +216,54 @@ export default function AdminWorkspace({
   const advancedFilterCount = ['approval', 'reservation', 'from', 'to'].filter(
     (key) => filters[key],
   ).length;
-  const context = contexts[section];
+  const refreshButton = (
+    <Button
+      type="button"
+      variant="secondary"
+      icon={<RefreshCw aria-hidden="true" />}
+      onClick={() => {
+        if (section === 'services')
+          void refreshCache(
+            (key) => typeof key === 'string' && key.startsWith('/api/admin/services?'),
+          );
+        else void load();
+        if (section === 'settings') void refreshCache('/api/admin/preferences');
+      }}
+      disabled={loading}
+    >
+      Refresh
+    </Button>
+  );
+  // Team and Settings put their status and main action in the header themselves.
+  const ownHeader = section === 'settings' || (section === 'team' && Boolean(data));
   return (
     <>
-      <div className={styles.pageHeading}>
-        <div className={styles.pageIntro}>
-          <h1 className={section === 'dashboard' ? styles.srOnly : styles.pageTitle}>
-            {adminPageLabel(section)}
-          </h1>
-          {section === 'dashboard' ? (
-            <DashboardGreeting name={adminName} />
-          ) : (
-            context && <p className={styles.pageContext}>{context}</p>
-          )}
-        </div>
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={() => {
-              if (section === 'services')
-                void refreshCache(
-                  (key) => typeof key === 'string' && key.startsWith('/api/admin/services?'),
-                );
-              else void load();
-              if (section === 'settings') void refreshCache('/api/admin/preferences');
-            }}
-            disabled={loading}
-            aria-label="Refresh current data"
-          >
-            <RefreshCw size={16} aria-hidden="true" />
-            Refresh
-          </button>
-          {section === 'bookings' && (
-            <button
-              type="button"
-              className={create ? styles.secondary : styles.primary}
-              onClick={(event) => {
-                detailOpener.current = event.currentTarget;
-                setCreate(!create);
-                setSelected(null);
-              }}
-            >
-              {create ? <X size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
-              {create ? 'Close form' : 'New request'}
-            </button>
-          )}
-        </div>
-      </div>
+      {!ownHeader && (
+        <AdminPageHeader
+          title={adminPageLabel(section)}
+          intro={section === 'dashboard' ? <DashboardGreeting name={adminName} /> : undefined}
+          status={contexts[section]}
+          actions={
+            <>
+              {refreshButton}
+              {section === 'bookings' && (
+                <Button
+                  type="button"
+                  variant={create ? 'secondary' : 'primary'}
+                  icon={create ? <X aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                  onClick={(event) => {
+                    detailOpener.current = event.currentTarget;
+                    setCreate(!create);
+                    setSelected(null);
+                  }}
+                >
+                  {create ? 'Close form' : 'New request'}
+                </Button>
+              )}
+            </>
+          }
+        />
+      )}
       {visibleError && (
         <div className={styles.error} role="alert">
           {visibleError}
@@ -280,7 +288,7 @@ export default function AdminWorkspace({
         <BookingDetail
           key={selected.id}
           booking={selected}
-          owner={owner}
+          owner={canVoid}
           busy={busy}
           focus={section}
           policy={data?.policy}
@@ -334,12 +342,13 @@ export default function AdminWorkspace({
                   placeholder="Search reference, client or event"
                 />
               </label>
-              <button type="submit" className={styles.secondary}>
+              <Button type="submit" variant="secondary">
                 Search
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={`${styles.secondary} ${styles.filterToggle}`}
+                variant="secondary"
+                className={styles.filterToggle}
                 aria-expanded={filtersOpen}
                 aria-controls={filterFieldsId}
                 onClick={() => setFiltersOpen((open) => !open)}
@@ -353,7 +362,7 @@ export default function AdminWorkspace({
                   </span>
                 )}
                 <ChevronDown size={16} aria-hidden="true" />
-              </button>
+              </Button>
             </div>
             <div id={filterFieldsId} className={styles.filterFields} hidden={!filtersOpen}>
               <label>
@@ -410,16 +419,17 @@ export default function AdminWorkspace({
                   {filters.from ? ` · from ${filters.from}` : ''}
                   {filters.to ? ` · through ${filters.to}` : ''}.
                 </p>
-                <button
+                <Button
                   type="button"
-                  className={styles.linkButton}
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setFilters({});
                     setQuery('');
                   }}
                 >
                   Clear search and filters
-                </button>
+                </Button>
               </div>
             )}
           </form>
@@ -448,9 +458,9 @@ export default function AdminWorkspace({
               <span>
                 Page {data.page} · {data.total} records · {PAGE_SIZE} per page
               </span>
-              <button
+              <Button
                 type="button"
-                className={styles.secondary}
+                variant="secondary"
                 disabled={(data.page ?? 1) <= 1 || loading}
                 onClick={() =>
                   setFilters((v) => ({
@@ -460,10 +470,10 @@ export default function AdminWorkspace({
                 }
               >
                 Previous
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={styles.secondary}
+                variant="secondary"
                 disabled={(data.page ?? 1) * PAGE_SIZE >= data.total || loading}
                 onClick={() =>
                   setFilters((v) => ({
@@ -473,7 +483,7 @@ export default function AdminWorkspace({
                 }
               >
                 Next
-              </button>
+              </Button>
             </div>
           )}
         </>
@@ -490,7 +500,15 @@ export default function AdminWorkspace({
           onChange={(period, date) => setFilters({ period, date })}
         />
       )}
-      {data && ['inquiries', 'team'].includes(section) && (
+      {data && section === 'team' && (
+        <TeamPanel
+          members={data.members ?? []}
+          canManage={Boolean(data.canManage)}
+          onChanged={load}
+          refresh={refreshButton}
+        />
+      )}
+      {data && section === 'inquiries' && (
         <AdminOverviewSections
           section={section}
           data={data}
@@ -498,12 +516,12 @@ export default function AdminWorkspace({
           onPage={(page) => filter('page', String(page))}
         />
       )}
-      {section === 'settings' && <SystemSettingsForm />}
+      {section === 'settings' && <SystemSettingsForm refresh={refreshButton} />}
       {section === 'services' && <ServicesPackages />}
       {data && section === 'settings' && data.policy && (
         <SettingsForm
           policy={data.policy}
-          owner={owner}
+          owner={canChangeSettings}
           configured={!!data.notificationConfigured}
           busy={busy}
           mutate={mutate}
@@ -561,9 +579,9 @@ export default function AdminWorkspace({
                   ))}
                 </select>
               </label>
-              <button type="submit" className={styles.secondary}>
+              <Button type="submit" variant="secondary">
                 Apply
-              </button>
+              </Button>
             </form>
             <div className={styles.tableWrap} role="region" aria-label="Log entries">
               <table>
@@ -607,17 +625,17 @@ export default function AdminWorkspace({
               <span>
                 {data.total} entries · page {data.page}
               </span>
-              <button
+              <Button
                 type="button"
-                className={styles.secondary}
+                variant="secondary"
                 disabled={(data.page ?? 1) <= 1}
                 onClick={() => filter('page', String((data.page ?? 1) - 1))}
               >
                 Previous
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={styles.secondary}
+                variant="secondary"
                 disabled={(data.page ?? 1) * PAGE_SIZE >= (data.total ?? 0)}
                 onClick={() =>
                   setFilters((v) => ({
@@ -627,7 +645,7 @@ export default function AdminWorkspace({
                 }
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
           <div className={styles.card}>
@@ -639,15 +657,15 @@ export default function AdminWorkspace({
                   review.
                 </p>
               </div>
-              {owner && (
-                <button
+              {canRunAutomation && (
+                <Button
                   type="button"
-                  className={styles.secondary}
+                  variant="secondary"
                   disabled={busy}
                   onClick={() => void mutate('notifications', {}).catch(() => {})}
                 >
                   Process queued notices
-                </button>
+                </Button>
               )}
             </div>
             {(data.outbox as Notice[] | undefined)?.map((n) => (
@@ -681,7 +699,7 @@ export default function AdminWorkspace({
                 <p>Built-in emails, reminders and digests, with their actual status.</p>
               </div>
               <Link href="/admin/automation">
-                Open Automation <ArrowUpRight size={14} aria-hidden="true" />
+                Open Automation <ArrowUpRight size={16} aria-hidden="true" />
               </Link>
             </div>
             {/* The API keeps its earlier field names (workflows / workflowName) for compatibility. */}

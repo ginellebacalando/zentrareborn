@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { CircleAlert } from 'lucide-react';
+import { Button } from '@/components/shared/Button';
 import type { VisitDay } from '@/lib/visit-rules';
 import shared from '../../booking/_components/BookingRequest.module.css';
 import styles from './Visit.module.css';
@@ -97,13 +98,14 @@ export default function VisitSlotPicker({
               ))}
             </ul>
             {shown < open.length && (
-              <button
+              <Button
                 type="button"
-                className={`${shared.secondaryButton} ${styles.more}`}
+                variant="secondary"
+                className={styles.more}
                 onClick={() => setShown((count) => count + DAYS_PER_PAGE)}
               >
                 Show more days
-              </button>
+              </Button>
             )}
           </>
         ) : (

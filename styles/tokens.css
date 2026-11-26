@@ -22,6 +22,21 @@
   --palette-zentra-pearl: #eef4f1;
   --palette-zentra-sage: #a9c4b8;
   --palette-zentra-glow: #8fd3b0;
+  /*
+   * Dark theme greys for the admin panel and the website: a charcoal page, cards one step
+   * lighter, off-white text and cool grey secondary text, with the brand mint (glow) for actions,
+   * links and focus. The night colours above stay for sections that are dark in both themes.
+   */
+  --palette-charcoal: #121417;
+  --palette-charcoal-card: #1a1d21;
+  --palette-charcoal-raised: #24282d;
+  --palette-charcoal-selected: #1c2a25;
+  --palette-charcoal-line: #2d3237;
+  --palette-charcoal-control: #4a5058;
+  --palette-charcoal-border: #7c838b;
+  --palette-charcoal-ink: #e6e9e7;
+  --palette-charcoal-muted: #a5abb2;
+  --palette-charcoal-shadow: #08090b;
 
   /*
    * Booking status hues from Figma (request yellow, pending orange, confirmed green, cancelled
@@ -224,6 +239,8 @@
   --action-primary: var(--palette-forest);
   --action-primary-hover: var(--palette-zentra-green-hover);
   --border-control: var(--palette-border);
+  /* Outlines of secondary buttons and toggles, whose text labels identify them. */
+  --line-control: var(--palette-divider);
   --line-hairline: var(--palette-divider);
   --brand-wordmark: var(--palette-zentra-green);
   --focus-ring: var(--palette-forest);
@@ -258,7 +275,8 @@
   --type-lead: 1.125rem;
   --type-card-title: 1.25rem;
   --type-section-title: clamp(1.75rem, 1.25rem + 2vw, 3rem);
-  --type-page-title: clamp(2.25rem, 1.5rem + 3vw, 4.5rem);
+  /* Uppercase, tracked page titles: long words such as EXPERIENCES still fit a 320px phone. */
+  --type-page-title: clamp(1.75rem, 1.25rem + 3.5vw, 4.5rem);
   --type-display: clamp(2.5rem, 1.4rem + 4.6vw, 5.5rem);
   --type-wordmark: clamp(2.25rem, 1.6rem + 2.4vw, 3.5rem);
   --type-wordmark-compact: 1.75rem;
@@ -290,19 +308,32 @@
   --motion-slow: 320ms;
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
   /* Scroll reveals, the hero text entrance and slow photo zooms; each stays off under reduced
-     motion. The stagger is the gap between items revealed together, such as a row of cards. */
-  --motion-reveal: 640ms;
+     motion. Content fades in and rises 12px, once. The stagger is the gap between items revealed
+     together, such as a row of cards. */
+  --motion-reveal: 360ms;
+  --motion-rise: 0.75rem;
   --motion-stagger: 80ms;
+  /* The light/dark switch: the new theme sweeps in from the top (lib/theme-switch.ts). */
+  --motion-theme: 500ms;
 
   --layout-min-width: 20rem;
   --layout-max-width: 80rem;
   /* Home page sections on wide screens: more room for photography than the standard width. */
   --layout-wide-width: 96rem;
-  --layout-reading-width: 48rem;
+  /* Long text: about 70 characters per line. */
+  --layout-reading-width: 70ch;
   --layout-gutter: clamp(1rem, 0.72rem + 1.4vw, 2.5rem);
   --layout-section-space: clamp(3rem, 2.15rem + 4.25vw, 6rem);
   --layout-card-padding: clamp(1rem, 0.82rem + 0.9vw, 1.75rem);
   --layout-touch-target: 2.75rem;
+  /*
+   * Buttons and fields that sit in a row share one height (components/shared/Button.tsx): 40px by
+   * default, 32px for small buttons in tables and toolbars and 48px for the website's main calls to
+   * action. Phones and touch screens raise the smaller two to the 44px touch target.
+   */
+  --control-height: 2.5rem;
+  --control-height-sm: 2rem;
+  --control-height-lg: 3rem;
   /* Public header: the single row on phones and tablets (menu button, wordmark, Book Now) and
      the slim row on wide desktops after scrolling, the desktop menu row, and the full desktop
      header with the large wordmark. The offset is the space the fixed header covers at the top of
@@ -322,44 +353,53 @@
 }
 
 /* Desktop shows the full Figma header (wordmark row plus links row) before the page scrolls. */
+/* Phones and touch screens: every button and field keeps the 44px touch target. */
+@media (max-width: 48rem), (pointer: coarse) {
+  :root {
+    --control-height: var(--layout-touch-target);
+    --control-height-sm: var(--layout-touch-target);
+  }
+}
+
 @media (min-width: 64rem) {
   :root {
     --layout-header-offset: var(--layout-header-expanded-height);
   }
 }
 
+/* Admin dark theme: charcoal surfaces, off-white text, brand mint for actions and focus. */
 [data-admin-theme='dark'] {
-  --admin-surface-page: var(--palette-zentra-night);
-  --admin-surface-sidebar: var(--palette-zentra-night-card);
-  --admin-surface-card: var(--palette-zentra-night-card);
-  --admin-surface-input: var(--palette-zentra-night-card);
-  --admin-surface-subtle: var(--palette-zentra-night-raised);
-  --admin-surface-highlight: var(--palette-zentra-night-raised);
-  --admin-surface-selected: var(--palette-zentra-night-raised);
-  --admin-ink: var(--palette-zentra-pearl);
-  --admin-muted: var(--palette-zentra-sage);
-  --admin-heading: var(--palette-zentra-pearl);
-  --admin-wordmark: var(--palette-zentra-pearl);
+  --admin-surface-page: var(--palette-charcoal);
+  --admin-surface-sidebar: var(--palette-charcoal-card);
+  --admin-surface-card: var(--palette-charcoal-card);
+  --admin-surface-input: var(--palette-charcoal-card);
+  --admin-surface-subtle: var(--palette-charcoal-raised);
+  --admin-surface-highlight: var(--palette-charcoal-raised);
+  --admin-surface-selected: var(--palette-charcoal-selected);
+  --admin-ink: var(--palette-charcoal-ink);
+  --admin-muted: var(--palette-charcoal-muted);
+  --admin-heading: var(--palette-charcoal-ink);
+  --admin-wordmark: var(--palette-charcoal-ink);
   --admin-action: var(--palette-zentra-glow);
-  --admin-action-hover: var(--palette-zentra-pearl);
-  --admin-on-action: var(--palette-zentra-night);
-  --admin-border: var(--palette-zentra-line-strong);
-  --admin-control-line: var(--palette-admin-night-control);
-  --admin-divider: var(--palette-admin-night-line);
+  --admin-action-hover: var(--palette-mint);
+  --admin-on-action: var(--palette-charcoal);
+  --admin-border: var(--palette-charcoal-border);
+  --admin-control-line: var(--palette-charcoal-control);
+  --admin-divider: var(--palette-charcoal-line);
   --admin-focus: var(--palette-zentra-glow);
-  --admin-focus-halo: var(--palette-zentra-night);
+  --admin-focus-halo: var(--palette-charcoal);
   --admin-accent: var(--palette-zentra-glow);
   --admin-accent-ink: var(--palette-zentra-glow);
-  --admin-accent-soft: var(--palette-zentra-night-raised);
+  --admin-accent-soft: var(--palette-charcoal-selected);
   --admin-danger: var(--palette-admin-night-cancelled-ink);
   --admin-danger-soft: var(--palette-admin-night-cancelled);
   --admin-success: var(--palette-admin-night-confirmed-ink);
   --admin-success-soft: var(--palette-admin-night-confirmed);
   --admin-info: var(--palette-zentra-glow);
-  --admin-info-soft: var(--palette-zentra-night-raised);
+  --admin-info-soft: var(--palette-charcoal-raised);
   --admin-on-color: var(--palette-zentra-pearl);
-  --admin-shadow: var(--palette-zentra-night);
-  --admin-teal-soft: var(--palette-zentra-night-raised);
+  --admin-shadow: var(--palette-charcoal-shadow);
+  --admin-teal-soft: var(--palette-charcoal-raised);
   --admin-teal-ink: var(--palette-zentra-glow);
   --admin-chart-line: var(--palette-zentra-glow);
   --admin-series-1: var(--palette-zentra-glow);
@@ -367,7 +407,7 @@
   --admin-series-3: var(--palette-zentra-sage);
   --admin-series-4: var(--palette-zentra-teal);
   --admin-series-5: var(--palette-zentra-line-strong);
-  --admin-night-panel: var(--palette-zentra-night-raised);
+  --admin-night-panel: var(--palette-charcoal-raised);
   --admin-status-request-soft: var(--palette-admin-night-request);
   --admin-status-request-ink: var(--palette-admin-night-request-ink);
   --admin-status-pending-soft: var(--palette-admin-night-pending);
@@ -376,31 +416,33 @@
   --admin-status-confirmed-ink: var(--palette-admin-night-confirmed-ink);
   --admin-status-cancelled-soft: var(--palette-admin-night-cancelled);
   --admin-status-cancelled-ink: var(--palette-admin-night-cancelled-ink);
-  --admin-ivory: var(--palette-zentra-night-card);
-  --admin-oak: var(--palette-zentra-night-raised);
+  --admin-ivory: var(--palette-charcoal-card);
+  --admin-oak: var(--palette-charcoal-raised);
   --admin-peach: var(--palette-zentra-green);
   --admin-taupe: var(--palette-zentra-teal);
-  --admin-rose: var(--palette-zentra-night-card);
+  --admin-rose: var(--palette-charcoal-card);
 }
 
 .dark {
-  --surface-page: var(--palette-night);
-  --surface-card: var(--palette-night-card);
-  --surface-subtle: var(--palette-night-subtle);
-  --surface-input: var(--palette-night-card);
-  --text-primary: var(--palette-pearl);
-  --text-muted: var(--palette-sage);
+  color-scheme: dark;
+  --surface-page: var(--palette-charcoal);
+  --surface-card: var(--palette-charcoal-card);
+  --surface-subtle: var(--palette-charcoal-raised);
+  --surface-input: var(--palette-charcoal-card);
+  --text-primary: var(--palette-charcoal-ink);
+  --text-muted: var(--palette-charcoal-muted);
   --text-accent: var(--palette-gold);
-  --text-on-action: var(--palette-night);
+  --text-on-action: var(--palette-charcoal);
   --action-primary: var(--palette-gold);
-  --action-primary-hover: var(--palette-zentra-pearl);
-  --border-control: var(--palette-night-border);
-  --line-hairline: var(--palette-night-raised);
-  --brand-wordmark: var(--palette-zentra-pearl);
+  --action-primary-hover: var(--palette-mint);
+  --border-control: var(--palette-charcoal-border);
+  --line-control: var(--palette-charcoal-control);
+  --line-hairline: var(--palette-charcoal-line);
+  --brand-wordmark: var(--palette-charcoal-ink);
   --focus-ring: var(--palette-gold);
-  --focus-halo: var(--palette-night);
+  --focus-halo: var(--palette-charcoal);
   --feedback-error-ink: var(--palette-status-cancelled-soft);
-  --feedback-error-surface: var(--palette-night-card);
+  --feedback-error-surface: var(--palette-charcoal-card);
   --feedback-success-ink: var(--palette-status-confirmed-soft);
-  --feedback-success-surface: var(--palette-night-card);
+  --feedback-success-surface: var(--palette-charcoal-card);
 }

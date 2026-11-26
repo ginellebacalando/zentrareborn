@@ -18,6 +18,8 @@ import {
 import { maskEmail, maskRecipients, sanitizeErrorMessage } from './privacy';
 import { processDueJobs } from './processor';
 import { resolveStaffRecipients } from './recipients';
+import { AUTOMATIONS, type AutomationSummary } from './automations';
+import { readSwitchedOff } from './switches';
 import type { MailTransport } from './transport';
 
 async function statusCounts() {
@@ -45,12 +47,47 @@ function lastRunView(state: { at: Date; detail: unknown } | null) {
   };
 }
 
+/** One row per automation: its switch, last run and how its emails fared. */
+function summarize(
+  rows: {
+    event: string;
+    status: string;
+    _count: { _all: number };
+    _max: { createdAt: Date | null };
+  }[],
+  switchedOff: Set<string>,
+): AutomationSummary[] {
+  return AUTOMATIONS.map((automation) => {
+    const mine = rows.filter((row) => automation.events.includes(row.event));
+    const count = (statuses: string[]) =>
+      mine
+        .filter((row) => statuses.includes(row.status))
+        .reduce((sum, row) => sum + row._count._all, 0);
+    const last = mine.reduce<Date | null>(
+      (latest, row) =>
+        row._max.createdAt && (!latest || row._max.createdAt > latest)
+          ? row._max.createdAt
+          : latest,
+      null,
+    );
+    return {
+      ...automation,
+      events: [...automation.events],
+      enabled: !switchedOff.has(automation.key),
+      lastRanAt: last?.toISOString() ?? null,
+      sent: count(['ACCEPTED']),
+      failed: count(['REVIEW_REQUIRED']),
+      waiting: count(['QUEUED', 'PROCESSING']),
+    };
+  });
+}
+
 /** Admin panel data. Recipients are masked and errors sanitized before leaving the server. */
 export async function readAutomationOverview(
   filter: AutomationStatus | null,
   now = new Date(),
 ): Promise<AutomationOverview> {
-  const [counts, dueNow, lastRun, jobs, staff] = await Promise.all([
+  const [counts, dueNow, lastRun, jobs, staff, byEvent, switchedOff] = await Promise.all([
     statusCounts(),
     prisma.adminOutbox.count({ where: { status: 'QUEUED', nextAttemptAt: { lte: now } } }),
     prisma.automationState.findUnique({ where: { key: LAST_RUN_STATE_KEY } }),
@@ -73,8 +110,15 @@ export async function readAutomationOverview(
       },
     }),
     resolveStaffRecipients(),
+    prisma.adminOutbox.groupBy({
+      by: ['event', 'status'],
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
+    readSwitchedOff(),
   ]);
   return {
+    automations: summarize(byEvent, switchedOff),
     emailConfigured: isMailConfigured(),
     cronConfigured: isCronConfigured(),
     staffRecipients: { source: staff.source, masked: staff.emails.map(maskEmail) },

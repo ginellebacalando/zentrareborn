@@ -15,6 +15,7 @@ import {
   type MailTransport,
   type OutgoingMail,
 } from './transport';
+import { SWITCHED_OFF_MESSAGE, switchedOffEvents } from './switches';
 
 export type DeliveryRunResult = {
   mailConfigured: boolean;
@@ -238,6 +239,8 @@ export async function processDueJobs(
   });
   if (!candidates.length) return result;
   const staff = await resolveStaffRecipients();
+  // Automations a super administrator switched off are skipped, not sent (lib/automation/switches.ts).
+  const switchedOff = await switchedOffEvents();
   const transport = options.transport ?? createSmtpTransport(settings);
   const started = Date.now();
   const budget = options.timeBudgetMs ?? AUTOMATION_POLICY.scheduledTimeBudgetMs;
@@ -252,6 +255,11 @@ export async function processDueJobs(
       result.claimed++;
       if (job.expiresAt && job.expiresAt <= now) {
         await finish(job, 'EXPIRED', EXPIRED_MESSAGE);
+        result.skipped++;
+        continue;
+      }
+      if (switchedOff.has(job.event)) {
+        await finish(job, 'EXPIRED', SWITCHED_OFF_MESSAGE);
         result.skipped++;
         continue;
       }

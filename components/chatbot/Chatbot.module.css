@@ -108,36 +108,10 @@
   align-items: center;
 }
 
-.iconButton {
-  display: grid;
-  place-items: center;
-  width: var(--layout-touch-target);
-  height: var(--layout-touch-target);
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--chat-muted);
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease);
-}
-
-.iconButton:hover:not(:disabled),
-.iconButton[aria-expanded='true'] {
+/* Header buttons are the shared icon buttons; "How Zeni works" stays highlighted while open. */
+.headerActions .headerToggle[aria-expanded='true'] {
   background: var(--chat-surface-subtle);
   color: var(--chat-accent);
-}
-
-.iconButton:focus-visible {
-  outline: 2px solid var(--chat-focus);
-  outline-offset: -2px;
-}
-
-.iconButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -511,56 +485,6 @@
   gap: var(--space-2);
 }
 
-.primaryAction,
-.secondaryAction {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  min-height: var(--layout-touch-target);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--chat-action);
-  border-radius: var(--radius-control);
-  font: inherit;
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  line-height: 1.25;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease);
-}
-
-.primaryAction {
-  background: var(--chat-action);
-  color: var(--chat-on-action);
-}
-
-.primaryAction:hover:not(:disabled) {
-  border-color: var(--chat-action-hover);
-  background: var(--chat-action-hover);
-}
-
-.secondaryAction {
-  background: var(--chat-surface-card);
-  color: var(--chat-action);
-}
-
-.secondaryAction:hover:not(:disabled) {
-  background: var(--chat-surface-subtle);
-}
-
-.primaryAction:disabled,
-.secondaryAction:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.primaryAction:focus-visible,
-.secondaryAction:focus-visible,
 .detailLink:focus-visible,
 .sourceLink:focus-visible,
 .chip:focus-visible {
@@ -717,7 +641,7 @@
   color: var(--chat-ink);
 }
 
-.info .secondaryAction {
+.info .backToChat {
   width: fit-content;
 }
 
@@ -834,27 +758,27 @@
 }
 
 /* ---------------------------------------------------------------------------------------------
-   Dark theme: the same structure on the ZENTRA night palette
+   Dark theme: the same structure on the charcoal palette
    --------------------------------------------------------------------------------------------- */
 :global(.dark) .dialog {
-  --chat-surface-page: var(--palette-zentra-night-card);
-  --chat-surface-card: var(--palette-zentra-night-card);
-  --chat-surface-zeni: var(--palette-zentra-night-raised);
+  --chat-surface-page: var(--palette-charcoal-card);
+  --chat-surface-card: var(--palette-charcoal-card);
+  --chat-surface-zeni: var(--palette-charcoal-raised);
   --chat-surface-guest: var(--palette-zentra-glow);
-  --chat-on-guest: var(--palette-zentra-night);
-  --chat-surface-input: var(--palette-zentra-night);
-  --chat-surface-subtle: var(--palette-zentra-night-raised);
+  --chat-on-guest: var(--palette-charcoal);
+  --chat-surface-input: var(--palette-charcoal);
+  --chat-surface-subtle: var(--palette-charcoal-raised);
   --chat-action: var(--palette-zentra-glow);
-  --chat-action-hover: var(--palette-zentra-pearl);
-  --chat-on-action: var(--palette-zentra-night);
+  --chat-action-hover: var(--palette-mint);
+  --chat-on-action: var(--palette-charcoal);
   --chat-border: var(--palette-zentra-glow);
-  --chat-line: var(--palette-zentra-night-raised);
-  --chat-control-border: var(--palette-zentra-sage);
-  --chat-ink: var(--palette-zentra-pearl);
-  --chat-muted: var(--palette-zentra-sage);
+  --chat-line: var(--palette-charcoal-line);
+  --chat-control-border: var(--palette-charcoal-border);
+  --chat-ink: var(--palette-charcoal-ink);
+  --chat-muted: var(--palette-charcoal-muted);
   --chat-accent: var(--palette-zentra-glow);
   --chat-focus: var(--palette-zentra-glow);
-  --chat-shadow: var(--palette-zentra-night);
+  --chat-shadow: var(--palette-charcoal-shadow);
 }
 
 /* ---------------------------------------------------------------------------------------------
@@ -894,10 +818,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dialog,
-  .iconButton,
   .calendarDay,
-  .primaryAction,
-  .secondaryAction,
   .chip,
   .inputBar textarea,
   .send {

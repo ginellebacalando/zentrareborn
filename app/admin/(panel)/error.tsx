@@ -1,5 +1,6 @@
 'use client';
 import styles from '@/components/admin/admin.module.css';
+import { Button } from '@/components/shared/Button';
 
 export default function AdminError({ reset }: { reset: () => void }) {
   return (
@@ -9,9 +10,9 @@ export default function AdminError({ reset }: { reset: () => void }) {
         Check the database connection and administrator authentication configuration. No client data
         was changed.
       </p>
-      <button type="button" className={styles.primary} onClick={reset}>
+      <Button type="button" variant="primary" onClick={reset}>
         Try again
-      </button>
+      </Button>
     </section>
   );
 }

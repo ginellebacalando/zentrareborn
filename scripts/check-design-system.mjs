@@ -33,6 +33,12 @@ const pairs = [
   ['--palette-night', '--palette-gold', 4.5],
   ['--palette-border', '--palette-white', 3],
   ['--palette-night-border', '--palette-night-card', 3],
+  ['--palette-charcoal-ink', '--palette-charcoal', 4.5],
+  ['--palette-charcoal-ink', '--palette-charcoal-raised', 4.5],
+  ['--palette-charcoal-muted', '--palette-charcoal-raised', 4.5],
+  ['--palette-charcoal-border', '--palette-charcoal-card', 3],
+  ['--palette-zentra-glow', '--palette-charcoal-raised', 4.5],
+  ['--palette-charcoal', '--palette-zentra-glow', 4.5],
 ];
 
 for (const [foreground, background, minimum] of pairs) {
@@ -101,6 +107,8 @@ const adminRoles = [
   ['--admin-focus', '--admin-surface-page', 3],
   ['--admin-ink', '--admin-surface-sidebar', 4.5],
   ['--admin-muted', '--admin-surface-sidebar', 4.5],
+  ['--admin-muted', '--admin-surface-subtle', 4.5],
+  ['--admin-accent-ink', '--admin-surface-selected', 4.5],
   ['--admin-danger', '--admin-danger-soft', 4.5],
   ['--admin-success', '--admin-success-soft', 4.5],
   ['--admin-on-color', '--admin-oak', 4.5],

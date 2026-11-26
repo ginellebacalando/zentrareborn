@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useId, useRef, useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Check, ChevronDown, Download, Moon, Save, Sun } from 'lucide-react';
 import useSWR, { mutate as refreshCache } from 'swr';
 import {
   DATE_FORMAT_OPTIONS,
@@ -29,9 +29,12 @@ import {
   type PaymentAccountField,
   type PaymentAccounts,
 } from '@/lib/admin/payment-accounts';
+import { switchTheme } from '@/lib/theme-switch';
 import { useAdminPreferences } from './AdminPreferencesProvider';
+import AdminPageHeader from './AdminPageHeader';
 import VisitRulesSettings, { type VisitRulesHandle } from './VisitRulesSettings';
 import styles from './admin.module.css';
+import { Button, ButtonAnchor } from '@/components/shared/Button';
 
 /** The Online Payments fields, in the order a problem is reported. */
 const paymentAccountFields: {
@@ -79,12 +82,9 @@ const clientControls = [
   ],
 ] as const;
 
-function SectionTitle({ title, icon }: { title: string; icon: string }) {
+function SectionTitle({ title }: { title: string }) {
   return (
     <div className={styles.settingsSectionTitle}>
-      <span>
-        <i className={`fi ${icon}`} aria-hidden="true" />
-      </span>
       <h2>{title}</h2>
     </div>
   );
@@ -115,7 +115,7 @@ function Toggle({
   );
 }
 
-export default function SystemSettingsForm() {
+export default function SystemSettingsForm({ refresh }: { refresh?: ReactNode }) {
   const [savedNotice, setSavedNotice] = useState('');
   const { data, error, mutate } = useSWR<PreferencesResponse>(
     '/api/admin/preferences',
@@ -129,18 +129,24 @@ export default function SystemSettingsForm() {
   );
   if (error)
     return (
-      <div role="alert" className={styles.error}>
-        {error.message}{' '}
-        <button type="button" className={styles.linkButton} onClick={() => void mutate()}>
-          Try again
-        </button>
-      </div>
+      <>
+        <AdminPageHeader title="Settings" actions={refresh} />
+        <div role="alert" className={styles.error}>
+          {error.message}{' '}
+          <Button type="button" variant="ghost" onClick={() => void mutate()}>
+            Try again
+          </Button>
+        </div>
+      </>
     );
   if (!data)
     return (
-      <div className={styles.card} role="status">
-        Loading settings…
-      </div>
+      <>
+        <AdminPageHeader title="Settings" actions={refresh} />
+        <div className={styles.card} role="status">
+          Loading settings…
+        </div>
+      </>
     );
   return (
     <>
@@ -152,6 +158,7 @@ export default function SystemSettingsForm() {
       <PreferencesEditor
         key={data.updatedAt || 'defaults'}
         initial={data}
+        refresh={refresh}
         onSaved={async (saved) => {
           await mutate(saved, { revalidate: false });
           setSavedNotice('Settings saved.');
@@ -163,9 +170,11 @@ export default function SystemSettingsForm() {
 
 function PreferencesEditor({
   initial,
+  refresh,
   onSaved,
 }: {
   initial: PreferencesResponse;
+  refresh?: ReactNode;
   onSaved: (saved: PreferencesResponse) => Promise<void>;
 }) {
   const [settings, setSettings] = useState<AdminPreferences>(initial.settings);
@@ -337,26 +346,32 @@ function PreferencesEditor({
   }
   return (
     <form onSubmit={save} className={styles.systemSettings}>
-      <div className={styles.settingsSaveBar}>
-        <div>
-          <h2>System preferences</h2>
-          <p>
-            {initial.updatedAt
+      <AdminPageHeader
+        title="Settings"
+        status={
+          initial.canEdit
+            ? initial.updatedAt
               ? `Last saved ${formatPreferenceDate(initial.updatedAt, settings.admin.localization)}`
-              : 'Your current system preferences'}
-          </p>
-        </div>
-        {initial.canEdit ? (
-          <button type="submit" className={styles.primary} disabled={busy}>
-            <i className="fi fi-rr-disk" aria-hidden="true" />
-            {busy ? 'Saving…' : 'Save changes'}
-          </button>
-        ) : (
-          <span className={styles.help}>
-            Read-only · Super administrator access required to save
-          </span>
-        )}
-      </div>
+              : 'Not saved yet'
+            : 'Read-only: only a super administrator can save these settings.'
+        }
+        actions={
+          <>
+            {refresh}
+            {initial.canEdit && (
+              <Button
+                type="submit"
+                variant="primary"
+                icon={<Save aria-hidden="true" />}
+                loading={busy}
+                loadingLabel="Saving…"
+              >
+                Save changes
+              </Button>
+            )}
+          </>
+        }
+      />
       {initial.updatedAt && (
         <p className={styles.srOnly} role="status">
           Settings loaded. Last saved{' '}
@@ -371,7 +386,7 @@ function PreferencesEditor({
       <div className={styles.settingsColumns}>
         <div>
           <section className={styles.settingsCard}>
-            <SectionTitle icon="fi-rr-palette" title="Appearance and theme" />
+            <SectionTitle title="Appearance and theme" />
             <div className={styles.settingsCardBody}>
               <div className={styles.themeChoices} role="group" aria-label="Default theme">
                 {(['light', 'dark'] as const).map((theme) => (
@@ -386,20 +401,21 @@ function PreferencesEditor({
                         ...current,
                         appearance: { defaultTheme: theme },
                       }));
-                      previewTheme(theme);
+                      switchTheme(() => previewTheme(theme));
                     }}
                   >
-                    <i
-                      className={`fi ${theme === 'light' ? 'fi-rr-brightness' : 'fi-rr-moon'}`}
-                      aria-hidden="true"
-                    />
+                    {theme === 'light' ? (
+                      <Sun size={20} aria-hidden="true" />
+                    ) : (
+                      <Moon size={20} aria-hidden="true" />
+                    )}
                     <strong>{theme === 'light' ? 'Light mode' : 'Dark mode'}</strong>
                     <span>
                       {theme === 'light' ? 'Default bright interface.' : 'Rich, dark interface.'}
                     </span>
                     {settings.appearance.defaultTheme === theme && (
                       <span className={styles.themeSelection}>
-                        <Check size={14} aria-hidden="true" />
+                        <Check size={16} aria-hidden="true" />
                         Selected
                       </span>
                     )}
@@ -411,11 +427,8 @@ function PreferencesEditor({
           <details className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>
             <summary>
               <h2 className={styles.settingsSectionTitle}>
-                <span>
-                  <i className="fi fi-rr-shield-check" aria-hidden="true" />
-                </span>
                 Session and security
-                <ChevronDown size={18} aria-hidden="true" />
+                <ChevronDown size={20} aria-hidden="true" />
               </h2>
             </summary>
             <div className={styles.settingsCardBody}>
@@ -462,7 +475,7 @@ function PreferencesEditor({
             </div>
           </details>
           <section className={styles.settingsCard}>
-            <SectionTitle icon="fi-rr-globe" title="Client website controls" />
+            <SectionTitle title="Client website controls" />
             <div className={styles.settingsCardBody}>
               {clientControls.map(([key, label, detail]) => (
                 <div key={key} className={styles.settingsToggleRow}>
@@ -508,11 +521,8 @@ function PreferencesEditor({
           >
             <summary>
               <h2 className={styles.settingsSectionTitle}>
-                <span>
-                  <i className="fi fi-rr-bell" aria-hidden="true" />
-                </span>
                 Communications
-                <ChevronDown size={18} aria-hidden="true" />
+                <ChevronDown size={20} aria-hidden="true" />
               </h2>
             </summary>
             <div className={styles.settingsCardBody}>
@@ -587,11 +597,8 @@ function PreferencesEditor({
           >
             <summary>
               <h2 className={styles.settingsSectionTitle}>
-                <span>
-                  <i className="fi fi-rr-calendar" aria-hidden="true" />
-                </span>
                 Booking automation
-                <ChevronDown size={18} aria-hidden="true" />
+                <ChevronDown size={20} aria-hidden="true" />
               </h2>
             </summary>
             <div className={styles.settingsCardBody}>
@@ -691,11 +698,8 @@ function PreferencesEditor({
           >
             <summary>
               <h2 className={styles.settingsSectionTitle}>
-                <span>
-                  <i className="fi fi-rr-wallet" aria-hidden="true" />
-                </span>
                 Online payments
-                <ChevronDown size={18} aria-hidden="true" />
+                <ChevronDown size={20} aria-hidden="true" />
               </h2>
             </summary>
             <div className={styles.settingsCardBody}>
@@ -770,11 +774,8 @@ function PreferencesEditor({
           <details className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>
             <summary>
               <h2 className={styles.settingsSectionTitle}>
-                <span>
-                  <i className="fi fi-rr-settings-sliders" aria-hidden="true" />
-                </span>
                 Localization and data
-                <ChevronDown size={18} aria-hidden="true" />
+                <ChevronDown size={20} aria-hidden="true" />
               </h2>
             </summary>
             <div className={styles.settingsCardBody}>
@@ -825,13 +826,13 @@ function PreferencesEditor({
                   <strong>Export data</strong>
                   <p>Download up to 10,000 activity logs.</p>
                 </div>
-                <a
-                  className={styles.secondary}
+                <ButtonAnchor
+                  variant="secondary"
+                  icon={<Download aria-hidden="true" />}
                   href={`/api/admin/settings-export?${new URLSearchParams({ timeZone: settings.admin.localization.timezone })}`}
                 >
-                  <i className="fi fi-rr-download" aria-hidden="true" />
                   Export CSV
-                </a>
+                </ButtonAnchor>
               </div>
             </div>
           </details>

@@ -9,6 +9,17 @@ import {
 } from '@/lib/system-settings-types';
 
 export const SESSION_TIMEOUT_OPTIONS = [15, 30, 60, 240] as const;
+
+/**
+ * Each administrator's own light/dark choice from the header toggle. It is kept in a cookie so the
+ * panel layout renders that theme from the first paint; without one, the saved default
+ * (Settings > Appearance) applies.
+ */
+export const ADMIN_THEME_COOKIE = 'zentra-admin-theme';
+export type AdminTheme = 'light' | 'dark';
+export function adminThemeValue(value: unknown): AdminTheme | null {
+  return value === 'light' || value === 'dark' ? value : null;
+}
 export const notificationLabels = {
   newBookingRequests: 'New Booking Requests',
   bookingConfirmations: 'Booking Confirmations',

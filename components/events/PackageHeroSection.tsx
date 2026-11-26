@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { EventPackageHeroSlide } from '@/config/event-package-pages';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { MediaPlaybackControl } from '@/components/client/MediaPlaybackControl';
+import { ButtonAnchor } from '@/components/shared/Button';
 
 const SLIDE_INTERVAL_MS = 5_500;
 
@@ -122,12 +123,15 @@ export default function PackageHeroSection({
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/95 sm:text-lg">
             {subtitle}
           </p>
-          <a
+          <ButtonAnchor
             href="#packages-booklet"
-            className="mt-8 inline-flex min-h-11 items-center justify-center border border-[var(--palette-white)] bg-transparent px-8 py-3 font-sans text-sm font-semibold uppercase tracking-[0.16em] text-white transition-colors duration-200 hover:bg-[var(--palette-white)] hover:text-zentra-green focus-visible:bg-[var(--palette-white)] focus-visible:text-zentra-green"
+            variant="primary"
+            size="lg"
+            inverse
+            className="mt-8"
           >
             Explore packages
-          </a>
+          </ButtonAnchor>
         </div>
 
         {!prefersReducedMotion && (

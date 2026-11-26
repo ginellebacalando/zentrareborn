@@ -11,35 +11,6 @@
   font-family: var(--font-zion-sans);
 }
 
-.pageHeading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.page .pageHeading h1 {
-  margin: 0;
-  color: var(--admin-heading);
-  font-size: var(--type-panel-title);
-  font-weight: var(--weight-semibold);
-  line-height: var(--line-heading);
-}
-
-.page .pageHeading p {
-  max-width: var(--layout-reading-width);
-  margin: var(--space-2) 0 0;
-  color: var(--admin-muted);
-  line-height: var(--line-body);
-}
-
-.headingActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 .srOnly {
   position: absolute;
   width: 1px;
@@ -425,17 +396,6 @@
   gap: var(--space-2);
 }
 
-/* Buttons come from the shared admin set, so every page matches (docs/admin-design.md). */
-.primary {
-  composes: primary from './admin.module.css';
-}
-
-.secondary {
-  composes: secondary from './admin.module.css';
-}
-
-.primary:focus-visible,
-.secondary:focus-visible,
 .chip:focus-visible,
 .chatButton:focus-visible {
   outline: 2px solid var(--admin-focus);

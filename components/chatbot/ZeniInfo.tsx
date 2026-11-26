@@ -2,6 +2,7 @@
 
 import type { RefObject } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/shared/Button';
 import { chatbotReceptionist } from '@/config/chatbot-receptionist';
 import type { ConversationSummary } from '@/lib/chatbot/types';
 import styles from './Chatbot.module.css';
@@ -54,10 +55,15 @@ export function ZeniInfo({ id, context, headingRef, onBack }: ZeniInfoProps) {
           </dl>
         </>
       )}
-      <button type="button" className={styles.secondaryAction} onClick={onBack}>
-        <ArrowLeft size={16} aria-hidden="true" />
+      <Button
+        type="button"
+        variant="secondary"
+        className={styles.backToChat}
+        icon={<ArrowLeft aria-hidden="true" />}
+        onClick={onBack}
+      >
         {chatbotReceptionist.backToChat}
-      </button>
+      </Button>
     </section>
   );
 }

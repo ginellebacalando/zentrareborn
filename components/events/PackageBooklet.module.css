@@ -232,40 +232,6 @@
   margin-top: var(--space-6);
 }
 
-.book,
-.secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--layout-touch-target);
-  padding: var(--space-2) var(--space-6);
-  border: 1px solid var(--action-primary);
-  border-radius: var(--radius-control);
-  font-weight: var(--weight-semibold);
-  text-decoration: none;
-  transition:
-    background-color var(--motion-normal) var(--motion-ease),
-    color var(--motion-normal) var(--motion-ease);
-}
-
-.book {
-  background: var(--action-primary);
-  color: var(--text-on-action);
-}
-
-.book:hover {
-  background: var(--action-primary-hover);
-}
-
-.secondary {
-  background: transparent;
-  color: var(--action-primary);
-}
-
-.secondary:hover {
-  background: var(--surface-subtle);
-}
-
 /* Below desktop width the cover would only push the packages down, so the pages stand alone. */
 @media (max-width: 63.99rem) {
   .booklet {

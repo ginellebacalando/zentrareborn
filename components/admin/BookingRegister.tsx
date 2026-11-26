@@ -16,6 +16,7 @@ import MobileBookingRegister from './MobileBookingRegister';
 import { useAdminDate } from './AdminPreferencesProvider';
 import type { Booking } from './types';
 import styles from './admin.module.css';
+import { Button } from '@/components/shared/Button';
 
 type View = 'cards' | 'table';
 export type StatusView = DisplayStatus | 'all';
@@ -74,12 +75,7 @@ export function AttentionCallout({
   ].filter(Boolean);
   return (
     <section className={styles.attention} aria-labelledby="bookings-attention">
-      <CircleAlert
-        size={22}
-        strokeWidth={1.75}
-        className={styles.attentionIcon}
-        aria-hidden="true"
-      />
+      <CircleAlert size={20} className={styles.attentionIcon} aria-hidden="true" />
       <p className={styles.attentionText}>
         <strong id="bookings-attention">
           {counts.request} {counts.request === 1 ? 'request needs' : 'requests need'} your decision
@@ -88,13 +84,13 @@ export function AttentionCallout({
         {others.length > 0 && <span>Also: {others.join(' · ')}.</span>}
       </p>
       {/* One button that stays in place, so keyboard focus is kept when the view changes. */}
-      <button
+      <Button
         type="button"
-        className={statusView === 'request' ? styles.secondary : styles.primary}
+        variant={statusView === 'request' ? 'secondary' : 'primary'}
         onClick={() => onStatusView(statusView === 'request' ? 'all' : 'request')}
       >
         {statusView === 'request' ? 'Show all bookings' : 'Review requests'}
-      </button>
+      </Button>
     </section>
   );
 }
@@ -186,7 +182,7 @@ export default function BookingRegister({
                   setAnnouncement(`${label} layout`);
                 }}
               >
-                <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
+                <Icon size={16} aria-hidden="true" />
                 {label}
               </button>
             ))}
@@ -215,13 +211,13 @@ export default function BookingRegister({
                   <StatusChip status={status} />
                   {booking.verification === 'FLAGGED' && (
                     <span className={styles.flagged}>
-                      <ShieldAlert size={14} strokeWidth={1.5} aria-hidden="true" />
+                      <ShieldAlert size={16} aria-hidden="true" />
                       Flagged
                     </span>
                   )}
                   {!!booking.proofsToVerify && (
                     <span className={styles.proofWaiting}>
-                      <ImageIcon size={14} strokeWidth={1.5} aria-hidden="true" />
+                      <ImageIcon size={16} aria-hidden="true" />
                       Screenshot to verify
                     </span>
                   )}
@@ -242,7 +238,7 @@ export default function BookingRegister({
                 </p>
                 <div className={styles.bookingCardFooter}>
                   <span className={styles.bookingCardDate}>
-                    <CalendarDays size={16} strokeWidth={1.75} aria-hidden="true" />
+                    <CalendarDays size={16} aria-hidden="true" />
                     {date(booking.startsAt)}
                   </span>
                   <span className={styles.bookingCardRef}>{booking.reference}</span>

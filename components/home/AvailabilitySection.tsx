@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import OpenChatbotButton from '@/components/chatbot/OpenChatbotButton';
+import { ButtonLink } from '@/components/shared/Button';
+import { buttonClassName } from '@/components/shared/button-classes';
 import SectionHeading from './SectionHeading';
 import styles from './HomeSections.module.css';
 
@@ -49,13 +51,13 @@ export default function AvailabilitySection() {
             <div className={styles.actions}>
               <OpenChatbotButton
                 prompt="Is my preferred date available?"
-                className={styles.buttonPrimary}
+                className={buttonClassName({ variant: 'primary', size: 'lg' })}
               >
                 Ask Zeni about a date
               </OpenChatbotButton>
-              <Link href="/booking" className={styles.buttonOutline}>
+              <ButtonLink href="/booking" variant="secondary" size="lg">
                 Start a booking
-              </Link>
+              </ButtonLink>
             </div>
             {/* The public visit page (docs/visits.md): a time to see the venue before booking. */}
             <p className={styles.visitPrompt}>

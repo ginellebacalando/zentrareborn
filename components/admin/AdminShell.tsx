@@ -4,16 +4,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import AdminNavIcon from './AdminNavIcon';
-import { useAdminPreferences } from './AdminPreferencesProvider';
+import { useAdminTheme } from './AdminPreferencesProvider';
 import {
   adminFooterModules,
   adminModuleGroups,
   isActiveModule,
   type AdminModuleKey,
 } from './navigation';
+import { canOpenPage } from '@/lib/admin/permissions';
+import { AdminRoleProvider } from './AdminRoleContext';
 import styles from './admin.module.css';
 import AdminAccountControls, { type AdminHeaderUser } from './AdminAccountControls';
 import { useLiveChatAlerts } from './useLiveChatAlerts';
+import ScrollReveal from '@/components/layout/ScrollReveal';
+
+/** Admin cards fade in as they scroll into view, once, including cards that load later. */
+const REVEAL_TARGETS = '#admin-content section, #admin-content article';
 
 const mobileQuery = '(max-width: 780px)';
 function subscribeToViewport(onChange: () => void) {
@@ -36,7 +42,7 @@ export default function AdminShell({
   user: AdminHeaderUser;
 }) {
   const pathname = usePathname();
-  const { theme } = useAdminPreferences();
+  const { theme } = useAdminTheme();
   const liveChat = useLiveChatAlerts(!user.mustChangePassword);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -146,7 +152,7 @@ export default function AdminShell({
   return (
     <div
       data-admin-theme={theme}
-      className={`${styles.root} ${theme === 'dark' ? styles.adminDark : ''} ${collapsed ? styles.sidebarCollapsed : ''}`}
+      className={`${styles.root} ${collapsed ? styles.sidebarCollapsed : ''}`}
     >
       <p className={styles.srOnly} role="status" aria-live="polite">
         {liveChat.announcement}
@@ -180,7 +186,7 @@ export default function AdminShell({
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.5"
+            strokeWidth="1.75"
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
@@ -217,6 +223,9 @@ export default function AdminShell({
       >
         <nav aria-label="Workspace" className={styles.sidebarNav}>
           {adminModuleGroups.map((group) => {
+            // Only the pages this role may open (lib/admin/permissions.ts); empty groups vanish.
+            const modules = group.modules.filter((module) => canOpenPage(user.role, module.key));
+            if (!modules.length) return null;
             const labelId = group.label ? `admin-nav-${group.label.toLowerCase()}` : undefined;
             return (
               <div key={group.label || 'overview'} className={styles.navGroup}>
@@ -226,24 +235,31 @@ export default function AdminShell({
                   </p>
                 )}
                 <ul className={styles.navList} aria-labelledby={labelId}>
-                  {group.modules.map(navLink)}
+                  {modules.map(navLink)}
                 </ul>
               </div>
             );
           })}
         </nav>
-        <nav aria-label="System" className={styles.sidebarBottom}>
-          <ul className={styles.navList}>{adminFooterModules.map(navLink)}</ul>
-        </nav>
+        {adminFooterModules.some((module) => canOpenPage(user.role, module.key)) && (
+          <nav aria-label="System" className={styles.sidebarBottom}>
+            <ul className={styles.navList}>
+              {adminFooterModules
+                .filter((module) => canOpenPage(user.role, module.key))
+                .map(navLink)}
+            </ul>
+          </nav>
+        )}
       </aside>
       <div className={styles.content}>
+        <ScrollReveal targets={REVEAL_TARGETS} watch />
         <main id="admin-content" className={styles.main} inert={mobileOverlay}>
           {user.mustChangePassword && (
             <div className={styles.notice}>
               Your account requires a password change. Open My profile to continue.
             </div>
           )}
-          {children}
+          <AdminRoleProvider role={user.role}>{children}</AdminRoleProvider>
         </main>
       </div>
     </div>

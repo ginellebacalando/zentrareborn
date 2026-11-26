@@ -11,6 +11,8 @@ import { useAdminDate, useAdminPreferences } from './AdminPreferencesProvider';
 import type { Booking, Mutate, PaymentProof } from './types';
 import styles from './admin.module.css';
 import review from './PaymentProofReview.module.css';
+import { useAdminRole } from './AdminRoleContext';
+import { Button, ButtonAnchor } from '@/components/shared/Button';
 
 /** Staff wording for each reason; the client reads the matching sentence in PAYMENT_REJECTION_REASONS. */
 const REJECTION_LABELS: Record<PaymentRejectionReason, string> = {
@@ -119,10 +121,10 @@ function WaitingProof({
       <div className={review.layout}>
         <figure className={review.figure}>
           {pdf ? (
-            <a className={styles.secondary} href={url} download>
+            <ButtonAnchor variant="secondary" href={url} download>
               <Download size={16} aria-hidden="true" />
               Download the PDF receipt
-            </a>
+            </ButtonAnchor>
           ) : (
             <a href={url} target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element -- A private file for signed-in staff: the image optimizer must not fetch or cache it. */}
@@ -219,9 +221,9 @@ function WaitingProof({
               : `The payment is recorded with the booking, and the client gets an acknowledgment receipt by email. When it covers the ${b.paymentRule === 'FULL_PAYMENT_REQUIRED' ? 'full amount' : 'reservation fee'}, the booking is confirmed and the client gets the confirmation and calendar invitation.`}
           </p>
           <div className={styles.detailActions}>
-            <button className={styles.primary} disabled={busy}>
+            <Button variant="primary" disabled={busy}>
               Verify payment
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
@@ -267,9 +269,9 @@ function WaitingProof({
               : 'The client is emailed the reason and asked for a clearer or the correct screenshot.'}
         </p>
         <div className={styles.detailActions}>
-          <button className={`${styles.secondary} ${styles.dangerAction}`} disabled={busy}>
+          <Button variant="destructive" disabled={busy}>
             Reject screenshot
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -290,6 +292,7 @@ export default function PaymentProofReview({
   busy: boolean;
   mutate: Mutate;
 }) {
+  const { canOpen } = useAdminRole();
   const eventDate = useAdminDate();
   const { settings } = useAdminPreferences();
   const id = useId();
@@ -303,7 +306,7 @@ export default function PaymentProofReview({
   return (
     <section className={styles.subsection} aria-labelledby={`${id}-heading`}>
       <h3 id={`${id}-heading`}>
-        <ImageIcon size={17} strokeWidth={1.5} aria-hidden="true" />
+        <ImageIcon size={16} aria-hidden="true" />
         Payment screenshots
       </h3>
       {waiting ? (
@@ -319,9 +322,13 @@ export default function PaymentProofReview({
         <p className={review.note}>
           No screenshot yet. Clients can send a GCash or bank transfer screenshot only after an
           account is set up in{' '}
-          <Link href="/admin/settings" className={review.textLink}>
-            Settings → Online payments
-          </Link>
+          {canOpen('settings') ? (
+            <Link href="/admin/settings" className={review.textLink}>
+              Settings → Online payments
+            </Link>
+          ) : (
+            'Settings → Online payments (a super administrator page)'
+          )}
           ; until then their payment page shows how to pay in cash.
         </p>
       )}

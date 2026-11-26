@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import Link from 'next/link';
 import useSWR from 'swr';
 import { CalendarPlus, LoaderCircle, RefreshCw, Search, UserPlus } from 'lucide-react';
 import { displayStatus } from '@/lib/admin/dashboard-status';
@@ -16,7 +15,9 @@ import {
   type VisitStatus,
 } from '@/lib/visit-types';
 import { StatusChip } from './BookingStatus';
+import AdminPageHeader from './AdminPageHeader';
 import styles from './FrontDesk.module.css';
+import { Button, ButtonLink } from '@/components/shared/Button';
 
 const ENDPOINT = '/api/admin/front-desk';
 /** Walk-in bookings at the desk (components/admin/WalkInBooking.tsx). */
@@ -290,12 +291,12 @@ function ScheduleVisitForm({
         </label>
         <FormError message={error} />
         <div className={styles.actions}>
-          <button type="submit" className={styles.primary} disabled={busy}>
+          <Button type="submit" variant="primary" disabled={busy}>
             Schedule visit
-          </button>
-          <button type="button" className={styles.secondary} onClick={onClose}>
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Close
-          </button>
+          </Button>
         </div>
       </form>
     </section>
@@ -412,21 +413,21 @@ function VisitCard({
       )}
       <div className={styles.actions} role="group" aria-labelledby={`${id}-name`}>
         {scheduled && isToday && (
-          <button
+          <Button
             type="button"
-            className={styles.primary}
+            variant="primary"
             disabled={busy}
             onClick={() =>
               void run({ op: 'visit-outcome', outcome: 'CHECK_IN' }, `${name} is checked in.`)
             }
           >
             Check in
-          </button>
+          </Button>
         )}
         {((scheduled && started) || status === 'CHECKED_IN') && (
-          <button
+          <Button
             type="button"
-            className={status === 'CHECKED_IN' ? styles.primary : styles.secondary}
+            variant={status === 'CHECKED_IN' ? 'primary' : 'secondary'}
             disabled={busy}
             onClick={() =>
               void run(
@@ -436,12 +437,12 @@ function VisitCard({
             }
           >
             Mark completed
-          </button>
+          </Button>
         )}
         {scheduled && started && (
-          <button
+          <Button
             type="button"
-            className={styles.secondary}
+            variant="secondary"
             disabled={busy}
             onClick={() =>
               void run(
@@ -451,41 +452,41 @@ function VisitCard({
             }
           >
             No-show
-          </button>
+          </Button>
         )}
         {scheduled && (
-          <button
+          <Button
             type="button"
-            className={styles.secondary}
+            variant="secondary"
             aria-expanded={panel === 'reschedule'}
             onClick={() => open('reschedule')}
           >
             Reschedule
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="button"
-          className={styles.secondary}
+          variant="secondary"
           aria-expanded={panel === 'notes'}
           onClick={() => open('notes')}
         >
           Notes
-        </button>
+        </Button>
         {status !== 'CANCELLED' && status !== 'NO_SHOW' && (
-          <Link className={styles.secondary} href={`${WALK_IN_PATH}?visit=${visit.id}`}>
+          <ButtonLink variant="secondary" href={`${WALK_IN_PATH}?visit=${visit.id}`}>
             Start booking
             <span className={styles.visuallyHidden}> for {name}</span>
-          </Link>
+          </ButtonLink>
         )}
         {scheduled && (
-          <button
+          <Button
             type="button"
-            className={styles.danger}
+            variant="destructive"
             aria-expanded={panel === 'cancel'}
             onClick={() => open('cancel')}
           >
             Cancel visit
-          </button>
+          </Button>
         )}
       </div>
       {panel && (
@@ -508,12 +509,12 @@ function VisitCard({
               </div>
               <FormError message={error} />
               <div className={styles.actions}>
-                <button type="submit" className={styles.primary} disabled={busy}>
+                <Button type="submit" variant="primary" disabled={busy}>
                   Move visit
-                </button>
-                <button type="button" className={styles.secondary} onClick={() => open(null)}>
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => open(null)}>
                   Close
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -547,12 +548,12 @@ function VisitCard({
               </label>
               <FormError message={error} />
               <div className={styles.actions}>
-                <button type="submit" className={styles.danger} disabled={busy}>
+                <Button type="submit" variant="destructive" disabled={busy}>
                   Cancel visit
-                </button>
-                <button type="button" className={styles.secondary} onClick={() => open(null)}>
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => open(null)}>
                   Keep visit
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -580,12 +581,12 @@ function VisitCard({
               </label>
               <FormError message={error} />
               <div className={styles.actions}>
-                <button type="submit" className={styles.primary} disabled={busy}>
+                <Button type="submit" variant="primary" disabled={busy}>
                   Save notes
-                </button>
-                <button type="button" className={styles.secondary} onClick={() => open(null)}>
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => open(null)}>
                   Close
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -690,10 +691,10 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
-        <button type="submit" className={styles.primary}>
+        <Button type="submit" variant="primary">
           <Search size={16} aria-hidden="true" />
           Search
-        </button>
+        </Button>
       </form>
       <div aria-live="polite">
         {isLoading && <p className={styles.loading}>Searching…</p>}
@@ -750,9 +751,9 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
             )}
             {latest && (
               <div className={styles.actions}>
-                <button
+                <Button
                   type="button"
-                  className={styles.secondary}
+                  variant="secondary"
                   onClick={() =>
                     onSchedule({
                       clientName: latest.clientName,
@@ -763,12 +764,12 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
                 >
                   <CalendarPlus size={16} aria-hidden="true" />
                   Schedule a visit for {latest.clientName}
-                </button>
+                </Button>
                 {bookFrom && (
-                  <Link className={styles.secondary} href={`${WALK_IN_PATH}?${bookFrom}`}>
+                  <ButtonLink variant="secondary" href={`${WALK_IN_PATH}?${bookFrom}`}>
                     <UserPlus size={16} aria-hidden="true" />
                     Book for {latest.clientName}
-                  </Link>
+                  </ButtonLink>
                 )}
               </div>
             )}
@@ -822,38 +823,39 @@ export default function FrontDesk() {
   const today = data?.today ?? '';
   return (
     <section className={styles.panel} aria-labelledby="front-desk-title" aria-busy={busy}>
-      <header className={styles.header}>
-        <div>
-          <h1 id="front-desk-title">Front desk</h1>
-        </div>
-        <div className={styles.headerActions}>
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={() => void mutate()}
-            disabled={isValidating}
-          >
-            <RefreshCw
-              size={16}
-              aria-hidden="true"
-              className={isValidating ? styles.spin : undefined}
-            />
-            Refresh
-          </button>
-          <button
-            type="button"
-            className={styles.primary}
-            onClick={() => setScheduling({ clientName: '', email: '', phone: '' })}
-          >
-            <CalendarPlus size={16} aria-hidden="true" />
-            Schedule a visit
-          </button>
-          <Link className={styles.secondary} href={WALK_IN_PATH}>
-            <UserPlus size={16} aria-hidden="true" />
-            Walk-in booking
-          </Link>
-        </div>
-      </header>
+      <AdminPageHeader
+        title="Front desk"
+        titleId="front-desk-title"
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              icon={<RefreshCw aria-hidden="true" />}
+              loading={isValidating}
+              loadingLabel="Refreshing…"
+              onClick={() => void mutate()}
+            >
+              Refresh
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              icon={<CalendarPlus aria-hidden="true" />}
+              onClick={() => setScheduling({ clientName: '', email: '', phone: '' })}
+            >
+              Schedule a visit
+            </Button>
+            <ButtonLink
+              variant="secondary"
+              href={WALK_IN_PATH}
+              icon={<UserPlus aria-hidden="true" />}
+            >
+              Walk-in booking
+            </ButtonLink>
+          </>
+        }
+      />
 
       <div role="status" aria-live="polite">
         {notice && (
@@ -880,7 +882,7 @@ export default function FrontDesk() {
 
       {!data && isLoading && (
         <p className={styles.loading} role="status">
-          <LoaderCircle size={18} aria-hidden="true" className={styles.spin} />
+          <LoaderCircle size={20} aria-hidden="true" className={styles.spin} />
           Loading the front desk…
         </p>
       )}

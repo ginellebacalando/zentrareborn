@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   MessageSquareQuote,
   Package,
   Send,
@@ -24,6 +23,7 @@ import ZionDatePicker from '@/components/client/ZionDatePicker';
 import ZionSelectPopover from '@/components/client/ZionSelectPopover';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import type { PublicTestimoniesResponse, PublicTestimony } from '@/lib/testimony-types';
+import { Button, IconButton } from '@/components/shared/Button';
 
 const FALLBACK_EVENT_TYPES = [
   'Wedding Reception',
@@ -577,8 +577,11 @@ export default function TestimoniesClient({
               Experiences worth sharing
             </h1>
           </div>
-          <button
+          <Button
             type="button"
+            variant="primary"
+            size="lg"
+            icon={<MessageSquareQuote aria-hidden="true" />}
             onClick={() => {
               if (allowSubmissions) {
                 setIsFormOpen(true);
@@ -588,17 +591,9 @@ export default function TestimoniesClient({
               }
             }}
             disabled={!allowSubmissions}
-            className="group relative inline-flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-7 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-[var(--text-on-action)] shadow-lg transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 translate-y-full bg-[var(--palette-client-button-hover)] transition-transform duration-500 ease-in-out group-hover:translate-y-0 motion-reduce:hidden"
-            />
-            <span className="relative z-10 inline-flex items-center gap-2">
-              <MessageSquareQuote className="h-5 w-5" aria-hidden="true" />
-              Share Your Experience
-            </span>
-          </button>
+            Share your experience
+          </Button>
         </div>
 
         {!allowSubmissions && (
@@ -644,14 +639,13 @@ export default function TestimoniesClient({
                 )}
               </div>
             </div>
-            <button
+            <IconButton
               type="button"
-              aria-label="Dismiss status indicator"
+              size="sm"
+              label="Dismiss"
+              icon={<X aria-hidden="true" />}
               onClick={() => setSubmissionNotice(null)}
-              className="rounded-full p-1 text-muted transition-colors hover:bg-black/5 hover:text-ink"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
+            />
           </div>
         )}
 
@@ -713,13 +707,14 @@ export default function TestimoniesClient({
           <div className="rounded-3xl border border-red-200 bg-red-50 p-10 text-center">
             <p className="font-bold text-red-700">Unable to load testimonies.</p>
             <p className="mt-1 text-sm text-red-600">Please try again later.</p>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              className="mt-5"
               onClick={() => void loadTestimonies()}
-              className="mt-5 rounded-full bg-red-700 px-5 py-2 text-sm font-bold text-white"
             >
               Try again
-            </button>
+            </Button>
           </div>
         ) : isLoading ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -819,14 +814,13 @@ export default function TestimoniesClient({
                     </p>
                   </div>
                 </div>
-                <button
+                <IconButton
                   type="button"
-                  aria-label="Close share experience dialog"
+                  label="Close"
+                  tooltipAlign="end"
+                  icon={<X aria-hidden="true" />}
                   onClick={() => setIsFormOpen(false)}
-                  className="touch-target flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-zion-accent/25 bg-surface text-muted transition-all duration-300 hover:border-[var(--palette-client-button)] hover:bg-[var(--palette-client-button)] hover:text-ink"
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                </button>
+                />
               </div>
             </div>
 
@@ -1066,15 +1060,17 @@ export default function TestimoniesClient({
                     />
                   </label>
                   {photo && (
-                    <button
+                    <Button
                       type="button"
-                      onClick={() => setPhoto(null)}
+                      variant="secondary"
+                      size="sm"
+                      className="self-start sm:self-center"
+                      icon={<X aria-hidden="true" />}
                       aria-label="Remove selected photo"
-                      className="inline-flex items-center gap-1.5 self-start rounded-full border border-zion-accent/25 bg-surface px-3 py-1.5 font-sans text-xs font-semibold text-muted transition-colors hover:border-zion-accent hover:text-ink sm:self-center"
+                      onClick={() => setPhoto(null)}
                     >
-                      <X className="h-3.5 w-3.5" aria-hidden="true" />
                       Remove
-                    </button>
+                    </Button>
                   )}
                 </div>
 
@@ -1105,34 +1101,24 @@ export default function TestimoniesClient({
               )}
 
               <div className="flex flex-col-reverse gap-3 border-t border-zion-accent/15 pt-6 sm:flex-row sm:items-center sm:justify-end">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="lg"
                   onClick={() => setIsFormOpen(false)}
-                  className="inline-flex min-h-12 items-center justify-center rounded-full border border-zion-accent/30 bg-transparent px-7 py-3 font-sans text-xs font-bold uppercase tracking-[0.16em] text-muted transition-colors duration-300 hover:border-zion-accent hover:bg-surface hover:text-ink"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="group/submit relative inline-flex min-h-12 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-8 py-3 font-sans text-xs font-bold uppercase tracking-[0.18em] text-[var(--text-on-action)] shadow-sm transition-all duration-500 hover:shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--palette-client-button)_65%,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+                  variant="primary"
+                  size="lg"
+                  icon={<Send aria-hidden="true" />}
+                  loading={isSubmitting}
+                  loadingLabel="Submitting…"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0 translate-y-full bg-[var(--palette-client-button-hover)] transition-transform duration-500 ease-in-out group-hover/submit:translate-y-0 motion-reduce:hidden"
-                  />
-                  <span className="relative z-10 inline-flex items-center gap-2">
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Send
-                        className="h-4 w-4 transition-transform duration-300 group-hover/submit:-translate-y-0.5 group-hover/submit:translate-x-0.5 motion-reduce:transform-none"
-                        aria-hidden="true"
-                      />
-                    )}
-                    {isSubmitting ? 'Submitting...' : 'Submit Testimony'}
-                  </span>
-                </button>
+                  Submit testimony
+                </Button>
               </div>
             </form>
           </div>

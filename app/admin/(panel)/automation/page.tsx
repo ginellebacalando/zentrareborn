@@ -1,14 +1,11 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import AutomationPanel from '@/components/admin/AutomationPanel';
-import { currentAdmin } from '@/lib/admin/access';
+import { adminPageActor } from '@/lib/admin/page-access';
 
 export const metadata: Metadata = { title: 'Automation' };
 
-/** Email automation status and recovery for ADMIN and SUPERADMIN accounts. */
+/** Email automation status and recovery; super administrators only (lib/admin/permissions.ts). */
 export default async function AutomationPage() {
-  const actor = await currentAdmin();
-  if (!actor) redirect('/admin');
-  if (actor.mustChangePassword) redirect('/admin/profile');
+  await adminPageActor('automation');
   return <AutomationPanel />;
 }

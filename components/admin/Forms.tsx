@@ -4,10 +4,11 @@ import { money, paymentRules } from '@/lib/admin/domain';
 import { manilaInput } from './datetime';
 import type { AdminData, Booking, Inquiry, Mutate, Policy } from './types';
 import styles from './admin.module.css';
-import { LockKeyhole, Mail, Phone, Save, ShieldCheck, UserRound, ChevronDown } from 'lucide-react';
+import { Mail, Phone, Save, ShieldCheck, UserRound, ChevronDown } from 'lucide-react';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import AdminAvatar from './AdminAvatar';
 import { enumLabel } from './AdminBadge';
+import { Button } from '@/components/shared/Button';
 const eventTypes = [
   'Wedding',
   'Birthday',
@@ -302,13 +303,13 @@ export function BookingForm({
           </label>
         )}
         <div className={`${styles.full} ${styles.actions}`}>
-          <button type="submit" className={styles.primary} disabled={busy}>
-            {booking ? (busy ? 'Saving…' : 'Save changes') : 'Create pending request'}
-          </button>
+          <Button type="submit" variant="primary" loading={busy} loadingLabel="Saving…">
+            {booking ? 'Save changes' : 'Create pending request'}
+          </Button>
           {booking && onClose && (
-            <button type="button" className={styles.secondary} onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancel
-            </button>
+            </Button>
           )}
         </div>
       </form>
@@ -333,7 +334,7 @@ export function SettingsForm({
       <details className={`${styles.card} ${styles.policyDisclosure}`} open={!p.reviewed}>
         <summary>
           <h2>
-            Reservation & cash policy <ChevronDown size={18} aria-hidden="true" />
+            Reservation & cash policy <ChevronDown size={20} aria-hidden="true" />
             <small>
               {p.reviewed ? 'Reviewed policy' : 'Owner review required before confirmation'}
             </small>
@@ -407,7 +408,7 @@ export function SettingsForm({
               The venue has reviewed this reservation rule and the cash instructions and contract
               terms are accurate.
             </label>
-            {owner && <button className={styles.primary}>Save reviewed policy</button>}
+            {owner && <Button variant="primary">Save reviewed policy</Button>}
           </fieldset>
         </form>
       </details>
@@ -421,7 +422,7 @@ export function SettingsForm({
         <details className={styles.sectionDisclosure}>
           <summary>
             <span>How notices are processed</span>
-            <ChevronDown size={18} aria-hidden="true" />
+            <ChevronDown size={20} aria-hidden="true" />
           </summary>
           <p>
             Every request, decision, and cash receipt creates a standardized notice containing
@@ -463,34 +464,34 @@ export function ProfileForm({
           <AdminAvatar user={user} size="profile" />
           <h2>{displayName}</h2>
           <span className={styles.profileRoleBadge}>
-            <ShieldCheck size={13} />
+            <ShieldCheck size={16} />
             {roleLabel}
           </span>
           <dl>
             <div>
               <dt>
-                <Mail size={14} />
+                <Mail size={16} />
                 Email address
               </dt>
               <dd>{user.email}</dd>
             </div>
             <div>
               <dt>
-                <Phone size={14} />
+                <Phone size={16} />
                 Contact number
               </dt>
               <dd>{user.contactNumber || 'Not provided'}</dd>
             </div>
             <div>
               <dt>
-                <UserRound size={14} />
+                <UserRound size={16} />
                 Username
               </dt>
               <dd>{user.username}</dd>
             </div>
             <div>
               <dt>
-                <ShieldCheck size={14} />
+                <ShieldCheck size={16} />
                 Account status
               </dt>
               <dd>
@@ -522,9 +523,6 @@ export function ProfileForm({
       >
         <section className={`${styles.card} ${styles.profileEditCard}`}>
           <div className={styles.profileSectionHeading}>
-            <span>
-              <UserRound size={20} strokeWidth={1.65} />
-            </span>
             <div>
               <h2>Contact details</h2>
               <p>Keep your name and contact number up to date.</p>
@@ -554,9 +552,6 @@ export function ProfileForm({
         </section>
         <section className={`${styles.card} ${styles.profileEditCard}`}>
           <div className={styles.profileSectionHeading}>
-            <span>
-              <LockKeyhole size={20} strokeWidth={1.65} />
-            </span>
             <div>
               <h2>Account security</h2>
               <p>Choose a strong password to protect your account.</p>
@@ -587,10 +582,15 @@ export function ProfileForm({
               at least 12 characters. Changing it signs you out of existing sessions.
             </p>
             <div className={styles.full}>
-              <button className={styles.primary} disabled={busy}>
-                <Save size={15} />
-                {busy ? 'Saving…' : 'Save my profile'}
-              </button>
+              <Button
+                type="submit"
+                variant="primary"
+                icon={<Save aria-hidden="true" />}
+                loading={busy}
+                loadingLabel="Saving…"
+              >
+                Save my profile
+              </Button>
             </div>
           </div>
         </section>

@@ -315,8 +315,7 @@
 }
 
 .labelIcon,
-.inlineIcon,
-.buttonIcon {
+.inlineIcon {
   flex-shrink: 0;
   width: 1.125rem;
   height: 1.125rem;
@@ -749,26 +748,6 @@
   }
 }
 
-.linkButton {
-  min-height: var(--layout-touch-target);
-  padding: 0 var(--space-3);
-  border: 0;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--action-primary);
-  font: inherit;
-  font-size: var(--type-small);
-  font-weight: var(--weight-semibold);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-  cursor: pointer;
-  transition: background-color var(--motion-fast) var(--motion-ease);
-}
-
-.linkButton:hover {
-  background: var(--tint);
-}
-
 .nextBox {
   padding: var(--space-4) var(--space-6);
   border-radius: var(--radius-control);
@@ -804,80 +783,6 @@
   gap: var(--space-3);
   padding-top: var(--space-4);
   border-top: 1px solid var(--line-hairline);
-}
-
-.primaryButton,
-.secondaryButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  min-height: 3rem;
-  padding: var(--space-2) var(--space-6);
-  border: 1px solid var(--action-primary);
-  border-radius: var(--radius-control);
-  font: inherit;
-  font-size: var(--type-body);
-  font-weight: var(--weight-semibold);
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-fast) var(--motion-ease),
-    color var(--motion-fast) var(--motion-ease),
-    box-shadow var(--motion-normal) var(--motion-ease),
-    transform var(--motion-fast) var(--motion-ease);
-}
-
-.primaryButton {
-  background: var(--action-primary);
-  color: var(--text-on-action);
-}
-
-.primaryButton:hover:not(:disabled) {
-  border-color: var(--action-primary-hover);
-  background: var(--action-primary-hover);
-  box-shadow: 0 var(--space-2) var(--space-6) var(--glow);
-}
-
-.primaryButton:disabled {
-  cursor: progress;
-  opacity: 0.8;
-}
-
-.secondaryButton {
-  background: var(--surface-input);
-  color: var(--action-primary);
-}
-
-.secondaryButton:hover {
-  background: var(--tint);
-}
-
-.primaryButton:active:not(:disabled),
-.secondaryButton:active {
-  transform: translateY(1px);
-}
-
-.buttonIcon {
-  transition: transform var(--motion-normal) var(--motion-ease);
-}
-
-.primaryButton:hover .buttonIcon {
-  transform: translateX(3px);
-}
-
-.secondaryButton:hover .buttonIcon {
-  transform: translateX(-3px);
-}
-
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid color-mix(in srgb, var(--text-on-action) 35%, transparent);
-  border-top-color: var(--text-on-action);
-  border-radius: 50%;
-  animation: spin 800ms linear infinite;
 }
 
 /* ---------- Summary ---------- */
@@ -1078,7 +983,7 @@
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(var(--space-3));
+    transform: translateY(var(--motion-rise));
   }
 }
 
@@ -1129,12 +1034,6 @@
   }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* Phones: the four steps stay in one row, each number above its label. */
 @media (max-width: 39.99rem) {
   .stepperItem {
@@ -1167,9 +1066,6 @@
   .eventOption,
   .packageOption,
   .paymentOption,
-  .primaryButton,
-  .secondaryButton,
-  .buttonIcon,
   .howItem,
   .stepperItem::before,
   .stepperNumber,

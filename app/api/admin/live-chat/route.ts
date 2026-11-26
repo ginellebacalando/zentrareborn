@@ -60,7 +60,7 @@ function failure(error: unknown) {
  */
 export async function GET(request: Request) {
   try {
-    const actor = await requireAdmin();
+    const actor = await requireAdmin({ page: 'live-chat' });
     const params = new URL(request.url).searchParams;
     // Every admin page checks the count, so an available staff member anywhere in the admin
     // stays counted as online.
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     checkMutationOrigin(request);
-    const actor = await requireAdmin();
+    const actor = await requireAdmin({ page: 'live-chat' });
     const body = await request.text();
     if (body.length > BODY_LIMIT) throw new AdminError('Request is too large.', 413);
     let raw: unknown;

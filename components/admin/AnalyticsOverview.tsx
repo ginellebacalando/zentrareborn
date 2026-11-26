@@ -29,6 +29,8 @@ import { enumLabel } from './AdminBadge';
 import styles from './AnalyticsOverview.module.css';
 import admin from './admin.module.css';
 import type { AdminData } from './types';
+import { useAdminRole } from './AdminRoleContext';
+import { Button, IconButton } from '@/components/shared/Button';
 
 const periodNames: Record<ReportKind, string> = {
   week: 'Weekly',
@@ -83,36 +85,35 @@ function ReportControls({
           onChange={(event) => setAnchor(event.target.value)}
         />
       </label>
-      <button className={admin.primary} aria-disabled={busy} type="submit">
+      <Button variant="primary" aria-disabled={busy} type="submit">
         Apply period
-      </button>
+      </Button>
       <div className={styles.navigation}>
-        <button
-          className={admin.secondary}
+        <IconButton
+          variant="secondary"
           type="button"
-          aria-label="Previous report period"
+          label="Previous report period"
+          icon={<ChevronLeft aria-hidden="true" />}
           aria-disabled={busy || report.range.previousAnchor < '1900-01-01'}
           onClick={() => navigate(report.range.previousAnchor)}
-        >
-          <ChevronLeft size={18} aria-hidden="true" />
-        </button>
-        <button
-          className={admin.secondary}
+        />
+        <Button
+          variant="secondary"
           type="button"
           aria-disabled={busy}
           onClick={() => navigate(report.range.today)}
         >
           Current period
-        </button>
-        <button
-          className={admin.secondary}
+        </Button>
+        <IconButton
+          variant="secondary"
           type="button"
-          aria-label="Next report period"
+          label="Next report period"
+          tooltipAlign="end"
+          icon={<ChevronRight aria-hidden="true" />}
           aria-disabled={busy || !report.range.canNext}
           onClick={() => navigate(report.range.nextAnchor)}
-        >
-          <ChevronRight size={18} aria-hidden="true" />
-        </button>
+        />
       </div>
     </form>
   );
@@ -140,7 +141,7 @@ function Delta({
           : `${value > 0 ? 'Up' : value < 0 ? 'Down' : 'No change'} ${cash ? money(Math.abs(value)) : count(Math.abs(value))}; ${percent === null ? 'no prior baseline' : `${percent.toFixed(1)} percent`}`
       }
     >
-      <Icon size={18} aria-hidden="true" />
+      <Icon size={20} aria-hidden="true" />
       {limited ? '—' : percent === null ? 'New' : `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%`}
     </span>
   );
@@ -160,6 +161,7 @@ export default function AnalyticsOverview({
   portfolio?: AdminData['analytics'];
 }) {
   const reduced = useReducedMotion();
+  const { can } = useAdminRole();
   const [exported, setExported] = useState('');
   const { range, current: c, comparison: p, snapshot: s, trajectory: t, quality: q } = report;
   const rate = conversionRate(c, q.currentAttributionComplete);
@@ -244,10 +246,13 @@ export default function AnalyticsOverview({
             {range.partial ? ' (equivalent elapsed period)' : ''}
           </p>
         </div>
-        <button className={admin.secondary} onClick={download} disabled={busy || failed}>
-          <Download size={16} aria-hidden="true" />
-          Export CSV
-        </button>
+        {/* Data exports are a super administrator action (lib/admin/permissions.ts). */}
+        {can('export-data') && (
+          <Button variant="secondary" onClick={download} disabled={busy || failed}>
+            <Download size={16} aria-hidden="true" />
+            Export CSV
+          </Button>
+        )}
       </div>
       <p className={admin.srOnly}>
         As of {reportTimestamp(report.asOf)} Manila. Balances and booking outcomes reflect current
@@ -272,7 +277,7 @@ export default function AnalyticsOverview({
               <p className={styles.overline}>Business trend</p>
               <h2 id="analytics-health-title">{t.label}</h2>
             </div>
-            <HealthIcon size={36} className={styles.healthMark} aria-hidden="true" />
+            <HealthIcon size={20} className={styles.healthMark} aria-hidden="true" />
           </div>
           <p className={admin.srOnly}>{t.detail}</p>
           <div className={styles.comparisons}>

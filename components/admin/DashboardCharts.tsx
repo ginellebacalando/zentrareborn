@@ -1,7 +1,6 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { CalendarCheck, CalendarX, Inbox, MessageSquareText, Wallet } from 'lucide-react';
 import {
   ChartDataTable as DataTable,
   BarChart,
@@ -59,24 +58,19 @@ function CashChart({ months }: { months: DashboardMonth[] }) {
 function PastThirtyDays({ activity }: { activity: DashboardInsights['last30'] }) {
   const titleId = useId();
   const rows = [
-    { label: 'Booking requests', value: count(activity.requests), Icon: Inbox },
-    { label: 'Confirmations', value: count(activity.confirmed), Icon: CalendarCheck },
-    { label: 'Cancellations', value: count(activity.cancelled), Icon: CalendarX },
-    { label: 'Inquiries', value: count(activity.inquiries), Icon: MessageSquareText },
-    { label: 'Cash received', value: money(activity.cashCents), Icon: Wallet },
+    { label: 'Booking requests', value: count(activity.requests) },
+    { label: 'Confirmations', value: count(activity.confirmed) },
+    { label: 'Cancellations', value: count(activity.cancelled) },
+    { label: 'Inquiries', value: count(activity.inquiries) },
+    { label: 'Cash received', value: money(activity.cashCents) },
   ];
   return (
     <article className={styles.recent} aria-labelledby={titleId}>
       <h3 id={titleId}>For the past 30 days</h3>
       <dl>
-        {rows.map(({ label, value, Icon }) => (
+        {rows.map(({ label, value }) => (
           <div key={label}>
-            <dt>
-              <span className={styles.recentIcon} aria-hidden="true">
-                <Icon size={16} strokeWidth={1.75} />
-              </span>
-              {label}
-            </dt>
+            <dt>{label}</dt>
             <dd>{value}</dd>
           </div>
         ))}

@@ -1,9 +1,9 @@
 'use client';
 
 import { useId, useRef, useState, type FormEvent } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CircleAlert, FileText } from 'lucide-react';
+import { Button, ButtonLink } from '@/components/shared/Button';
 import { BRAND } from '@/config/brand';
 import { PAYMENT_METHOD_LABELS, type OnlinePaymentMethod } from '@/lib/admin/payment-accounts';
 import type { PaymentPageView } from '@/lib/payment-page-types';
@@ -245,9 +245,9 @@ function UploadForm({ view, token }: { view: View; token: string }) {
         </p>
         <div className={shared.actions}>
           {/* A newer screenshot replaces the one waiting for review. */}
-          <button type="button" className={shared.secondaryButton} onClick={() => setSent(false)}>
+          <Button type="button" variant="secondary" size="lg" onClick={() => setSent(false)}>
             Send a different screenshot
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -367,9 +367,9 @@ function UploadForm({ view, token }: { view: View; token: string }) {
         </p>
       )}
       <div className={shared.actions}>
-        <button type="submit" className={shared.primaryButton} disabled={sending}>
-          {sending ? 'Sending…' : 'Send screenshot'}
-        </button>
+        <Button type="submit" variant="primary" size="lg" loading={sending} loadingLabel="Sending…">
+          Send screenshot
+        </Button>
       </div>
     </form>
   );
@@ -473,9 +473,9 @@ export default function PaymentPage({ view, token }: { view: View; token: string
           booking reference.
         </p>
         <div className={shared.actions}>
-          <Link href="/" className={shared.secondaryButton}>
+          <ButtonLink href="/" variant="secondary" size="lg">
             Back to home
-          </Link>
+          </ButtonLink>
         </div>
       </section>
     </div>

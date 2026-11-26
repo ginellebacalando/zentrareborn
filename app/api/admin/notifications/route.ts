@@ -23,7 +23,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     checkMutationOrigin(request);
-    const actor = await requireAdmin({ owner: true });
+    const actor = await requireAdmin({ page: 'automation', action: 'run-automation' });
     const result = await processAdminNotifications();
     await prisma.auditLog.create({
       data: {

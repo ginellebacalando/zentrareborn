@@ -21,6 +21,10 @@ import { useAdminDate } from './AdminPreferencesProvider';
 import type { AdminData, Mutate } from './types';
 import styles from './admin.module.css';
 
+/** The compact widgets show the newest few items; each links to its full list. */
+const ACTIVITY_LIMIT = 5;
+const UPCOMING_LIMIT = 5;
+
 export default function DashboardOverview({
   data,
   busy,
@@ -56,9 +60,53 @@ export default function DashboardOverview({
         <DashboardKpis summary={data.dashboardKpis} months={insights?.months} />
         {insights && <DashboardStatusCards month={insights.thisMonth} />}
       </section>
+      {/* Trends follow Bookings this month directly; the widgets sit beside them on wide screens
+          and below them on narrower ones (docs/admin-design.md, Layout). */}
       <div className={styles.dashboardGrid}>
-        <div className={styles.dashboardColumn}>
-          <WebsiteActivity />
+        <div className={styles.dashboardMain}>
+          {insights && <DashboardCharts insights={insights} />}
+        </div>
+        <aside className={styles.dashboardColumn} aria-label="At a glance">
+          <WebsiteActivity limit={ACTIVITY_LIMIT} />
+          <div className={styles.card}>
+            <div className={styles.cardHeading}>
+              <h2>Coming up at Zion</h2>
+              <Link href="/admin/calendar">
+                View calendar <ArrowUpRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+            {data.upcoming?.slice(0, UPCOMING_LIMIT).map((b) => (
+              <Link
+                className={`${styles.row} ${styles.rowInteractive}`}
+                key={b.id}
+                href={`/admin/bookings?booking=${encodeURIComponent(b.id)}`}
+              >
+                <div className={styles.dateBlock}>
+                  {new Date(b.startsAt).toLocaleDateString('en-PH', {
+                    timeZone: 'Asia/Manila',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </div>
+                <div className={styles.grow}>
+                  <strong>
+                    {b.eventType} · {b.clientName}
+                  </strong>
+                  <small>
+                    {eventDate(b.startsAt)} · {b.guests} guests
+                  </small>
+                </div>
+                <StatusChip status={displayStatus(b)} />
+                <ChevronRight size={16} className={styles.rowArrow} aria-hidden="true" />
+              </Link>
+            ))}
+            {!data.upcoming?.length && (
+              <div className={styles.empty}>
+                <h3>No upcoming events</h3>
+                <p>Confirmed reservations appear here.</p>
+              </div>
+            )}
+          </div>
           <div className={styles.card}>
             <div className={styles.cardHeading}>
               {/* Target of the Website activity links; focusable so keyboard focus can land here. */}
@@ -88,14 +136,14 @@ export default function DashboardOverview({
                           <div className={styles.testimonyHoldTitleRow}>
                             <strong>{item.clientName}</strong>
                             <span className={styles.testimonyRedTag}>
-                              <ShieldAlert size={13} aria-hidden="true" />
+                              <ShieldAlert size={16} aria-hidden="true" />
                               Red · On Hold
                             </span>
                           </div>
                           <small>
                             {item.eventType} · {eventDate(item.eventDate)} ·{' '}
                             <span className={styles.testimonyRatingInline}>
-                              <Star size={12} aria-hidden="true" />
+                              <Star size={16} aria-hidden="true" />
                               {item.overallRating}/5
                             </span>
                           </small>
@@ -127,7 +175,7 @@ export default function DashboardOverview({
                             className={styles.testimonyPhotoLink}
                           >
                             Inspect attached image
-                            <ArrowUpRight size={13} aria-hidden="true" />
+                            <ArrowUpRight size={16} aria-hidden="true" />
                           </a>
                         </div>
                       )}
@@ -140,7 +188,7 @@ export default function DashboardOverview({
                           aria-label={`Allow and publish testimony from ${item.clientName}`}
                           onClick={() => void handleTestimonyDecision(item.id, 'ALLOW')}
                         >
-                          <CheckCircle2 size={15} aria-hidden="true" />
+                          <CheckCircle2 size={16} aria-hidden="true" />
                           Allow &amp; Publish
                         </button>
                         <button
@@ -150,7 +198,7 @@ export default function DashboardOverview({
                           aria-label={`Delete testimony from ${item.clientName}`}
                           onClick={() => void handleTestimonyDecision(item.id, 'DELETE')}
                         >
-                          <Trash2 size={15} aria-hidden="true" />
+                          <Trash2 size={16} aria-hidden="true" />
                           Delete
                         </button>
                       </div>
@@ -165,48 +213,8 @@ export default function DashboardOverview({
               </p>
             )}
           </div>
-        </div>
-        <div className={styles.card}>
-          <div className={styles.cardHeading}>
-            <h2>Coming up at Zion</h2>
-            <Link href="/admin/calendar">
-              View calendar <ArrowUpRight size={14} aria-hidden="true" />
-            </Link>
-          </div>
-          {data.upcoming?.map((b) => (
-            <Link
-              className={`${styles.row} ${styles.rowInteractive}`}
-              key={b.id}
-              href={`/admin/bookings?booking=${encodeURIComponent(b.id)}`}
-            >
-              <div className={styles.dateBlock}>
-                {new Date(b.startsAt).toLocaleDateString('en-PH', {
-                  timeZone: 'Asia/Manila',
-                  month: 'short',
-                  day: 'numeric',
-                })}
-              </div>
-              <div className={styles.grow}>
-                <strong>
-                  {b.eventType} · {b.clientName}
-                </strong>
-                <small>
-                  {eventDate(b.startsAt)} · {b.guests} guests
-                </small>
-              </div>
-              <StatusChip status={displayStatus(b)} />
-              <ChevronRight size={16} className={styles.rowArrow} aria-hidden="true" />
-            </Link>
-          ))}
-          {!data.upcoming?.length && (
-            <div className={styles.empty}>
-              <h3>No upcoming events</h3>
-              <p>Confirmed reservations appear here.</p>
-            </div>
-          )}
-        </div>
+        </aside>
       </div>
-      {insights && <DashboardCharts insights={insights} />}
     </>
   );
 }

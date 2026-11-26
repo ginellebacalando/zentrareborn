@@ -9,6 +9,7 @@ import { VISIT_FIELD_LIMITS, type ScheduledVisit } from '@/lib/visit-types';
 import shared from '../../booking/_components/BookingRequest.module.css';
 import styles from './Visit.module.css';
 import VisitSlotPicker, { visitClock, visitDateKey, visitDayLabel } from './VisitSlotPicker';
+import { Button, ButtonAnchor, ButtonLink } from '@/components/shared/Button';
 
 type Field =
   'date' | 'time' | 'fullName' | 'email' | 'phone' | 'eventDate' | 'guests' | 'message' | 'consent';
@@ -161,24 +162,25 @@ function Confirmation({ visit, email }: { visit: ScheduledVisit; email: string }
         </p>
         <div className={shared.actions}>
           {visit.managePath ? (
-            <Link href={visit.managePath} className={shared.secondaryButton}>
+            <ButtonLink href={visit.managePath} variant="secondary" size="lg">
               Reschedule or cancel
-            </Link>
+            </ButtonLink>
           ) : (
-            <Link href="/" className={shared.secondaryButton}>
+            <ButtonLink href="/" variant="secondary" size="lg">
               Back to home
-            </Link>
+            </ButtonLink>
           )}
-          <a
+          <ButtonAnchor
             href={BRAND.maps.directionsUrl}
-            className={shared.primaryButton}
+            variant="primary"
+            size="lg"
+            icon={<MapPin aria-hidden="true" />}
             target="_blank"
             rel="noopener noreferrer"
           >
-            <MapPin aria-hidden="true" className={shared.buttonIcon} />
             Get directions
             <span className={shared.visuallyHidden}> (opens in a new tab)</span>
-          </a>
+          </ButtonAnchor>
         </div>
       </section>
     </div>
@@ -570,12 +572,18 @@ export default function VisitScheduler(props: VisitSchedulerProps) {
           ) : null}
 
           <div className={shared.actions}>
-            <Link href="/booking" className={shared.secondaryButton}>
+            <ButtonLink href="/booking" variant="secondary" size="lg">
               Ready to book instead?
-            </Link>
-            <button type="submit" className={shared.primaryButton} disabled={sending}>
-              {sending ? 'Scheduling…' : 'Schedule my visit'}
-            </button>
+            </ButtonLink>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              loading={sending}
+              loadingLabel="Scheduling…"
+            >
+              Schedule my visit
+            </Button>
           </div>
         </form>
         <VisitInfo />

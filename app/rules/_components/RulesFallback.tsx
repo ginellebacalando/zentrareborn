@@ -1,7 +1,7 @@
 import React from 'react';
-import Link from 'next/link';
 
 import PublicSubpageShell from '@/components/client/PublicSubpageShell';
+import { ButtonLink } from '@/components/shared/Button';
 
 export default function RulesFallback() {
   return (
@@ -64,12 +64,9 @@ export default function RulesFallback() {
               Contact the Zion team before finalizing suppliers, equipment, or special effects so
               the correct event-specific guidance can be documented.
             </p>
-            <Link
-              href="/contact"
-              className="inline-flex rounded-full border border-[var(--palette-gold-soft)] px-8 py-3 text-sm font-bold uppercase tracking-[0.18em] text-[var(--palette-gold-soft)] transition-colors hover:bg-[var(--palette-gold-soft)] hover:text-ink"
-            >
+            <ButtonLink href="/contact" variant="secondary" inverse>
               Contact Zion
-            </Link>
+            </ButtonLink>
           </div>
         </div>
       </div>

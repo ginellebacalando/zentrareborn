@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { ChevronDown, Search } from 'lucide-react';
 import FadeIn from '@/components/shared/FadeIn';
 import { termsData } from '@/config/terms';
+import { ButtonLink } from '@/components/shared/Button';
 
 export default function TermsClient() {
   const [search, setSearch] = useState('');
@@ -69,12 +69,9 @@ export default function TermsClient() {
                     We couldn&apos;t find anything matching &ldquo;{search}&rdquo;.
                   </p>
                   <div className="mt-8 flex flex-wrap justify-center gap-4">
-                    <Link
-                      href="/contact"
-                      className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
-                    >
-                      Contact Us
-                    </Link>
+                    <ButtonLink href="/contact" variant="primary">
+                      Contact us
+                    </ButtonLink>
                   </div>
                 </div>
               </FadeIn>

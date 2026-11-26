@@ -29,6 +29,7 @@ import { StatusChip } from './BookingStatus';
 import { useAdminDate, useAdminPreferences } from './AdminPreferencesProvider';
 import admin from './admin.module.css';
 import styles from './WebsiteActivity.module.css';
+import { Button } from '@/components/shared/Button';
 
 const WEBSITE_ACTIVITY_ENDPOINT = '/api/admin/website-activity';
 const CLOCK_STEP_MS = 30_000;
@@ -141,7 +142,7 @@ function ActivityRow({
   return (
     <li className={styles.item}>
       <span className={styles.icon} aria-hidden="true">
-        <Icon size={18} strokeWidth={1.75} />
+        <Icon size={20} />
       </span>
       <div className={styles.body}>
         {item.href.startsWith('#') ? (
@@ -172,7 +173,12 @@ type Announcement = { shownNewest: string | null; failed: boolean; message: stri
  * Dashboard panel listing what visitors did on the public site, newest first. It polls the admin
  * API every minute while the tab is visible (no realtime service) and never moves focus.
  */
-export default function WebsiteActivity() {
+/**
+ * `limit` keeps the dashboard widget compact: the newest items, with "View all" to show the rest
+ * in place (the feed has no separate page).
+ */
+export default function WebsiteActivity({ limit }: { limit?: number } = {}) {
+  const [showAll, setShowAll] = useState(false);
   const formatExactTime = useAdminDate();
   const { settings } = useAdminPreferences();
   const timeZone = settings.admin.localization.timezone;
@@ -242,15 +248,15 @@ export default function WebsiteActivity() {
         <div>
           <h2 id="website-activity-title">Website activity</h2>
         </div>
-        <button
+        <Button
           type="button"
-          className={admin.secondary}
+          variant="secondary"
           aria-disabled={refreshing || undefined}
           onClick={() => void refresh()}
         >
           <RefreshCw size={16} aria-hidden="true" />
           Refresh<span className={admin.srOnly}> website activity</span>
-        </button>
+        </Button>
       </div>
       <p className={admin.srOnly} role="status">
         {announcement.message}
@@ -269,7 +275,7 @@ export default function WebsiteActivity() {
       {!data && !error && <p className={admin.help}>Loading website activity…</p>}
       {data && rows.length === 0 && (
         <div className={admin.empty}>
-          <Globe size={28} aria-hidden="true" />
+          <Globe size={20} aria-hidden="true" />
           <h3>No website activity yet</h3>
           <p>
             Booking requests, inquiries, testimonies to review and questions Zeni could not answer
@@ -279,7 +285,7 @@ export default function WebsiteActivity() {
       )}
       {rows.length > 0 && (
         <ul className={styles.list} onFocus={holdRows} onBlur={releaseRows}>
-          {rows.map((item) => (
+          {(limit && !showAll ? rows.slice(0, limit) : rows).map((item) => (
             <ActivityRow
               key={item.id}
               item={item}
@@ -288,6 +294,16 @@ export default function WebsiteActivity() {
             />
           ))}
         </ul>
+      )}
+      {limit && rows.length > limit && (
+        <Button
+          type="button"
+          variant="ghost"
+          aria-expanded={showAll}
+          onClick={() => setShowAll((value) => !value)}
+        >
+          {showAll ? 'Show fewer' : `View all ${rows.length}`}
+        </Button>
       )}
       {data && (
         <p className={`${admin.help} ${styles.footnote}`}>

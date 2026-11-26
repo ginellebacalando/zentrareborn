@@ -190,11 +190,6 @@
   margin: 0;
 }
 
-.dangerButton {
-  border-color: var(--feedback-error-ink);
-  color: var(--feedback-error-ink);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .choice {
     transition: none;

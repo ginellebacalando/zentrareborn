@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Button, ButtonLink } from '@/components/shared/Button';
 import {
   ArrowLeft,
   ArrowRight,
@@ -496,17 +497,17 @@ export default function BookingRequestForm({
               : 'Your date is not reserved until Zion confirms it. Keep your booking reference for any questions.'}
           </p>
           <div className={styles.actions}>
-            <Link href="/" className={styles.secondaryButton}>
+            <ButtonLink href="/" variant="secondary" size="lg">
               Back to home
-            </Link>
+            </ButtonLink>
             {hold?.paymentPath ? (
-              <Link href={hold.paymentPath} className={styles.primaryButton}>
+              <ButtonLink href={hold.paymentPath} variant="primary" size="lg">
                 See how to pay
-              </Link>
+              </ButtonLink>
             ) : (
-              <Link href="/contact" className={styles.primaryButton}>
+              <ButtonLink href="/contact" variant="primary" size="lg">
                 Contact us
-              </Link>
+              </ButtonLink>
             )}
           </div>
         </section>
@@ -1076,40 +1077,28 @@ export default function BookingRequestForm({
 
           <div className={styles.actions}>
             {step > 0 ? (
-              <button
+              <Button
                 type="button"
-                className={styles.secondaryButton}
+                variant="secondary"
+                size="lg"
+                icon={<ArrowLeft aria-hidden="true" />}
                 onClick={() => goTo(step - 1)}
               >
-                <ArrowLeft aria-hidden="true" className={styles.buttonIcon} />
                 Back
-              </button>
+              </Button>
             ) : (
               <span />
             )}
-            <button
+            <Button
               type="submit"
-              className={styles.primaryButton}
-              disabled={submitting}
-              aria-busy={submitting || undefined}
+              variant="primary"
+              size="lg"
+              iconEnd={<ArrowRight aria-hidden="true" />}
+              loading={submitting}
+              loadingLabel="Sending…"
             >
-              {step < STEPS.length - 1 ? (
-                <>
-                  Continue
-                  <ArrowRight aria-hidden="true" className={styles.buttonIcon} />
-                </>
-              ) : submitting ? (
-                <>
-                  <span className={styles.spinner} aria-hidden="true" />
-                  Sending…
-                </>
-              ) : (
-                <>
-                  Send booking request
-                  <ArrowRight aria-hidden="true" className={styles.buttonIcon} />
-                </>
-              )}
-            </button>
+              {step < STEPS.length - 1 ? 'Continue' : 'Send booking request'}
+            </Button>
           </div>
         </form>
 
@@ -1179,9 +1168,9 @@ function ReviewRow({ label, value, onEdit }: { label: string; value: string; onE
       <dt>{label}</dt>
       <dd>{value}</dd>
       <dd className={styles.reviewEdit}>
-        <button type="button" className={styles.linkButton} onClick={onEdit}>
+        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
           Edit <span className={styles.visuallyHidden}>{label.toLowerCase()}</span>
-        </button>
+        </Button>
       </dd>
     </div>
   );

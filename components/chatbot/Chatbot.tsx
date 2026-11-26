@@ -7,6 +7,7 @@ import { chatbotReceptionist, zeniCopyFor } from '@/config/chatbot-receptionist'
 import { detectLanguage, type ZeniLanguage } from '@/lib/chatbot/language';
 import { containDialogFocus } from '@/lib/dialog-focus';
 import type { ChatReply, ConversationSummary, ReceptionistAction } from '@/lib/chatbot/types';
+import { Button, IconButton } from '@/components/shared/Button';
 import { ChatAvatar } from './ChatAvatar';
 import { ChatLauncher } from './ChatLauncher';
 import {
@@ -437,37 +438,30 @@ export default function Chatbot() {
             </p>
           </div>
           <div className={styles.headerActions}>
-            <button
+            <IconButton
               ref={infoButton}
               type="button"
-              className={styles.iconButton}
-              aria-label={chatbotReceptionist.howItWorks}
-              title={chatbotReceptionist.howItWorks}
+              className={styles.headerToggle}
+              label={chatbotReceptionist.howItWorks}
+              icon={<Info aria-hidden="true" />}
               aria-expanded={infoOpen}
               aria-controls={INFO_ID}
               onClick={() => setInfoOpen((value) => !value)}
-            >
-              <Info size={20} aria-hidden="true" />
-            </button>
-            <button
+            />
+            <IconButton
               type="button"
-              className={styles.iconButton}
-              aria-label={chatbotReceptionist.newConversation}
-              title={chatbotReceptionist.newConversation}
+              label={chatbotReceptionist.newConversation}
+              icon={<RotateCcw aria-hidden="true" />}
               disabled={busy}
               onClick={() => void clearConversation()}
-            >
-              <RotateCcw size={19} aria-hidden="true" />
-            </button>
-            <button
+            />
+            <IconButton
               type="button"
-              className={styles.iconButton}
-              aria-label={chatbotReceptionist.close}
-              title={chatbotReceptionist.close}
+              label={chatbotReceptionist.close}
+              tooltipAlign="end"
+              icon={<X aria-hidden="true" />}
               onClick={closeChat}
-            >
-              <X size={20} aria-hidden="true" />
-            </button>
+            />
           </div>
         </header>
 
@@ -526,9 +520,9 @@ export default function Chatbot() {
               <p className={styles.recoveryTitle}>{chatbotReceptionist.interruptedTitle}</p>
               <p className={styles.recoveryHelp}>{chatbotReceptionist.interruptedHelp}</p>
               <div className={styles.actions}>
-                <button
+                <Button
                   type="button"
-                  className={styles.primaryAction}
+                  variant="primary"
                   disabled={busy}
                   onClick={() =>
                     void sendQuestion(
@@ -541,15 +535,15 @@ export default function Chatbot() {
                   }
                 >
                   {chatbotReceptionist.retry}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className={styles.secondaryAction}
+                  variant="secondary"
                   disabled={busy}
                   onClick={() => void clearConversation()}
                 >
                   {chatbotReceptionist.newConversation}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -580,9 +574,9 @@ export default function Chatbot() {
 
           {offerMessageAfterMiss && (
             <div className={styles.actions}>
-              <button
+              <Button
                 type="button"
-                className={styles.primaryAction}
+                variant="primary"
                 disabled={blocked}
                 onClick={() =>
                   void sendQuestion(copy.live.leaveMessage, {
@@ -592,7 +586,7 @@ export default function Chatbot() {
                 }
               >
                 {copy.live.leaveMessage}
-              </button>
+              </Button>
             </div>
           )}
 

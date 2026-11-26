@@ -19,42 +19,10 @@
 .panel ul {
   margin: 0;
 }
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-/* The page title, as on every admin page (docs/admin-design.md). */
-.header h1 {
-  color: var(--admin-heading);
-  font-size: var(--type-panel-title);
-  font-weight: var(--weight-semibold);
-  line-height: var(--line-heading);
-}
-.header p {
-  max-width: 70ch;
-  margin-top: var(--space-2);
-  color: var(--admin-muted);
-  font-size: var(--type-body);
-  line-height: var(--line-body);
-}
-.headerActions,
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-/* Buttons come from the shared admin set, so every page matches (docs/admin-design.md). */
-.primary {
-  composes: primary from './admin.module.css';
-}
-.secondary {
-  composes: secondary from './admin.module.css';
-}
-.danger {
-  composes: secondary dangerAction from './admin.module.css';
 }
 .panel a:focus-visible,
 .panel button:focus-visible,
@@ -339,11 +307,6 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .primary,
-  .secondary,
-  .danger {
-    transition: none;
-  }
   .spin {
     animation: none;
   }

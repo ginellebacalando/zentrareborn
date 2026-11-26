@@ -51,6 +51,8 @@ for (const asset of starterAssets) {
 const routeFileNames = new Set([
   'default.tsx',
   'error.tsx',
+  // The "You don't have access" page for forbidden() (experimental.authInterrupts).
+  'forbidden.tsx',
   'global-error.tsx',
   'layout.tsx',
   'loading.tsx',

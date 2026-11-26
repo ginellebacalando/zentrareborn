@@ -41,5 +41,5 @@ export type AdminNavIconName = AdminModuleKey;
 
 export default function AdminNavIcon({ name }: { name: AdminNavIconName }) {
   const Icon = icons[name];
-  return <Icon className={styles.sidebarIcon} size={20} strokeWidth={1.5} aria-hidden="true" />;
+  return <Icon className={styles.sidebarIcon} size={20} aria-hidden="true" />;
 }

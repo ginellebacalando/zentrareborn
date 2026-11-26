@@ -19,7 +19,7 @@ const EXTENSIONS: Record<string, string> = {
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireAdmin();
+    await requireAdmin({ page: 'payments' });
     const { id } = await params;
     if (!/^[a-z0-9]{10,40}$/i.test(id)) throw new AdminError('Screenshot not found.', 404);
     const proof = await prisma.adminPaymentProof.findUnique({

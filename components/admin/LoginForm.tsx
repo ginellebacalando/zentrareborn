@@ -6,6 +6,7 @@ import { signIn } from 'next-auth/react';
 import { ShieldCheck, ArrowRight } from 'lucide-react';
 import ZentraWordmark from '@/components/shared/ZentraWordmark';
 import styles from './admin.module.css';
+import { Button } from '@/components/shared/Button';
 export default function LoginForm({
   localAccessToken = null,
 }: {
@@ -55,13 +56,9 @@ export default function LoginForm({
             {error || 'Your workspace will be ready in a moment.'}
           </p>
           {error && (
-            <button
-              type="button"
-              className={styles.primary}
-              onClick={() => window.location.reload()}
-            >
+            <Button type="button" variant="primary" onClick={() => window.location.reload()}>
               Try again
-            </button>
+            </Button>
           )}
         </div>
       </main>
@@ -128,13 +125,19 @@ export default function LoginForm({
               {error}
             </p>
           )}
-          <button className={styles.primary} disabled={busy}>
-            {busy ? 'Signing in…' : 'Sign in securely'}
-            <ArrowRight size={16} aria-hidden="true" />
-          </button>
+          <Button
+            type="submit"
+            variant="primary"
+            block
+            loading={busy}
+            loadingLabel="Signing in…"
+            iconEnd={<ArrowRight aria-hidden="true" />}
+          >
+            Sign in securely
+          </Button>
         </form>
         <p className={styles.loginNote}>
-          <ShieldCheck size={16} strokeWidth={1.5} aria-hidden="true" />
+          <ShieldCheck size={16} aria-hidden="true" />
           Authorized venue staff only. No public registration; ask the venue owner for access.
         </p>
         <Link href="/" className={styles.loginBack}>

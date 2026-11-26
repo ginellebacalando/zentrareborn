@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element -- Published content may reference approved external media hosts that are not known at build time. */
 import React from 'react';
+import { ButtonAnchor } from '@/components/shared/Button';
 
 type PolicyBlock = {
   type?: string;
@@ -65,7 +66,7 @@ export function PolicyBlocksRenderer({ payload }: { payload: unknown }) {
             return (
               <p
                 key={index}
-                className="whitespace-pre-line text-base leading-8 text-gray-700 dark:text-[var(--palette-divider)]"
+                className="max-w-[70ch] whitespace-pre-line text-base leading-8 text-gray-700 dark:text-[var(--palette-divider)]"
               >
                 {block.text}
               </p>
@@ -86,7 +87,7 @@ export function PolicyBlocksRenderer({ payload }: { payload: unknown }) {
             return (
               <List
                 key={index}
-                className={`space-y-2 pl-6 leading-7 ${block.ordered ? 'list-decimal' : 'list-disc'}`}
+                className={`max-w-[70ch] space-y-2 pl-6 leading-7 ${block.ordered ? 'list-decimal' : 'list-disc'}`}
               >
                 {stringList(block.items).map((item, itemIndex) => (
                   <li key={itemIndex}>{item}</li>
@@ -197,12 +198,9 @@ export default function StructuredContentRenderer({
             </aside>
           ) : null}
           {cta.href ? (
-            <a
-              href={stringValue(cta.href)}
-              className="mt-6 inline-flex rounded-xl bg-[var(--palette-night-subtle)] px-5 py-3 font-bold text-[var(--palette-gold-soft)]"
-            >
+            <ButtonAnchor href={stringValue(cta.href)} variant="primary" className="mt-6">
               {stringValue(cta.label) || 'Learn more'}
-            </a>
+            </ButtonAnchor>
           ) : null}
         </div>
       </article>

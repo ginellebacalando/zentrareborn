@@ -11,7 +11,9 @@ import {
   type StaffLiveOverview,
 } from '@/lib/chatbot/live-chat';
 import { LIVE_CHAT_SOUND_KEY, liveChatSoundOn, playLiveChatChime } from './useLiveChatAlerts';
+import AdminPageHeader from './AdminPageHeader';
 import styles from './LiveChatPanel.module.css';
+import { Button } from '@/components/shared/Button';
 
 const OVERVIEW_MS = 5_000;
 
@@ -275,30 +277,30 @@ export default function LiveChatPanel({
 
   return (
     <div className={styles.page}>
-      <div className={styles.pageHeading}>
-        <div>
-          <h1>Live chat</h1>
-        </div>
-        <div className={styles.headingActions}>
-          <button
-            type="button"
-            className={styles.secondary}
-            onClick={toggleSound}
-            aria-pressed={sound}
-          >
-            {sound ? (
-              <Volume2 size={16} aria-hidden="true" />
-            ) : (
-              <VolumeX size={16} aria-hidden="true" />
-            )}
-            Sound alerts
-          </button>
-          <button type="button" className={styles.secondary} onClick={() => void loadOverview()}>
-            <RefreshCw size={16} aria-hidden="true" />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Live chat"
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              icon={sound ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+              onClick={toggleSound}
+              aria-pressed={sound}
+            >
+              Sound alerts
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              icon={<RefreshCw aria-hidden="true" />}
+              onClick={() => void loadOverview()}
+            >
+              Refresh
+            </Button>
+          </>
+        }
+      />
 
       <section className={styles.presence} aria-labelledby="live-presence-title">
         <h2 id="live-presence-title" className={styles.srOnly}>
@@ -384,7 +386,7 @@ export default function LiveChatPanel({
         <section className={styles.detail} aria-label="Conversation">
           {!selectedId ? (
             <div className={styles.empty}>
-              <Headset size={28} aria-hidden="true" />
+              <Headset size={20} aria-hidden="true" />
               <p>Choose a chat to read it. New visitors appear under Waiting.</p>
             </div>
           ) : !chat ? (
@@ -448,15 +450,15 @@ export default function LiveChatPanel({
               ) : null}
 
               {chat.status === 'WAITING' ? (
-                <button
+                <Button
                   type="button"
-                  className={styles.primary}
+                  variant="primary"
                   disabled={working}
                   onClick={() => void take(chat.id)}
                 >
-                  <Headset size={18} aria-hidden="true" />
+                  <Headset size={20} aria-hidden="true" />
                   Take this chat
-                </button>
+                </Button>
               ) : null}
 
               {chat.status === 'ACTIVE' && !mine ? (
@@ -488,14 +490,10 @@ export default function LiveChatPanel({
                           }
                         }}
                       />
-                      <button
-                        type="submit"
-                        className={styles.primary}
-                        disabled={working || !draft.trim()}
-                      >
-                        <SendHorizontal size={18} aria-hidden="true" />
+                      <Button type="submit" variant="primary" disabled={working || !draft.trim()}>
+                        <SendHorizontal size={20} aria-hidden="true" />
                         Send
-                      </button>
+                      </Button>
                     </div>
                     <div className={styles.quickReplies} role="group" aria-label="Quick replies">
                       {quickReplies.map((reply) => (
@@ -526,24 +524,24 @@ export default function LiveChatPanel({
                       onChange={(event) => setOutcome(event.target.value)}
                     />
                     <div className={styles.finishActions}>
-                      <button
+                      <Button
                         type="button"
-                        className={styles.primary}
+                        variant="primary"
                         disabled={working}
                         onClick={() => void finish('return')}
                       >
-                        <Undo2 size={18} aria-hidden="true" />
+                        <Undo2 size={20} aria-hidden="true" />
                         Return to Zeni
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className={styles.secondary}
+                        variant="secondary"
                         disabled={working}
                         onClick={() => void finish('close')}
                       >
-                        <X size={18} aria-hidden="true" />
+                        <X size={20} aria-hidden="true" />
                         Close chat
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </>

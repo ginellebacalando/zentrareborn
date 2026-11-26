@@ -1,11 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 
 import type { EventPackageMediaKey } from '@/config/event-package-pages';
 import { packageBooklets, type BookletPackage } from '@/config/package-booklets';
+import { ButtonLink } from '@/components/shared/Button';
 import styles from './PackageBooklet.module.css';
 
 const peso = new Intl.NumberFormat('en-PH', {
@@ -168,12 +168,12 @@ export default function PackageBooklet({ eventType }: { eventType: EventPackageM
           ) : null}
 
           <div className={styles.actions}>
-            <Link href={`/booking?event=${booklet.bookingEvent}`} className={styles.book}>
+            <ButtonLink href={`/booking?event=${booklet.bookingEvent}`} variant="primary" size="lg">
               Start a booking
-            </Link>
-            <Link href="/visit" className={styles.secondary}>
+            </ButtonLink>
+            <ButtonLink href="/visit" variant="secondary" size="lg">
               Schedule an ocular visit
-            </Link>
+            </ButtonLink>
           </div>
         </article>
       </div>

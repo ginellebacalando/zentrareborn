@@ -8,28 +8,6 @@
   font-family: var(--font-zion-sans);
 }
 
-.pageHeading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.pageHeading h1 {
-  margin: 0;
-  color: var(--admin-heading, var(--admin-ink));
-  font-size: var(--type-panel-title);
-  font-weight: var(--weight-semibold);
-  line-height: var(--line-heading);
-}
-
-.pageHeading p {
-  max-width: var(--layout-reading-width);
-  margin: var(--space-2) 0 0;
-  color: var(--admin-muted);
-}
-
 .notice:empty {
   display: none;
 }
@@ -245,7 +223,7 @@
 
 .gapQuestion svg {
   flex: none;
-  margin-top: 3px;
+  margin-top: var(--space-1);
   color: var(--admin-muted);
 }
 
@@ -295,19 +273,11 @@
   margin: 0;
 }
 
-/* Buttons come from the shared admin set, so every page matches (docs/admin-design.md). */
-.primary {
-  composes: primary from './admin.module.css';
+/* Buttons are the shared ones (components/shared/Button.tsx); in grids they keep their width. */
+.fit {
   width: fit-content;
 }
 
-.secondary {
-  composes: secondary from './admin.module.css';
-  width: fit-content;
-}
-
-.primary:focus-visible,
-.secondary:focus-visible,
 .link:focus-visible,
 .testForm textarea:focus-visible {
   outline: 2px solid var(--admin-focus);
@@ -386,12 +356,5 @@
 
   .stats {
     grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .primary,
-  .secondary {
-    transition: none;
   }
 }

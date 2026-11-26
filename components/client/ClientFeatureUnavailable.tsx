@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { ButtonLink } from '@/components/shared/Button';
 
 export default function ClientFeatureUnavailable({
   title = 'Temporarily Unavailable',
@@ -19,12 +19,9 @@ export default function ClientFeatureUnavailable({
         </p>
         <h2 className="mt-3 font-sahitya text-4xl font-bold text-ink">{title}</h2>
         <p className="mx-auto mt-4 max-w-xl font-serif text-lg leading-8 text-muted">{message}</p>
-        <Link
-          href={actionHref}
-          className="mt-8 inline-flex rounded-full bg-[var(--palette-night-subtle)] px-7 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white transition hover:bg-zion-accent hover:text-ink"
-        >
+        <ButtonLink href={actionHref} variant="primary" className="mt-8">
           {actionLabel}
-        </Link>
+        </ButtonLink>
       </div>
     </section>
   );

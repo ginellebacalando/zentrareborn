@@ -79,7 +79,7 @@
   background: var(--admin-surface-subtle);
 }
 .segmented button[type='button'] {
-  min-height: var(--layout-touch-target);
+  min-height: var(--control-height);
   padding: 0 var(--space-4);
   border: 0;
   border-radius: 0;
@@ -271,7 +271,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* "For the past 30 days" side card: a white card, an icon tile per figure. */
+/* "For the past 30 days" side card: a white card, one row per figure. */
 .recent {
   min-width: 0;
   display: flex;
@@ -308,16 +308,6 @@
   gap: var(--space-3);
   color: var(--admin-muted);
   font-size: var(--type-small);
-}
-.recentIcon {
-  display: inline-grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  border-radius: var(--radius-control);
-  background: var(--admin-surface-highlight);
-  color: var(--admin-accent-ink);
 }
 .recent dd {
   margin: 0;

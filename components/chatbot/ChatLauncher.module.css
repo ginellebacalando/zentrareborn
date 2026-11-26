@@ -61,14 +61,14 @@
 }
 
 :global(.dark) .dock {
-  --chat-surface-card: var(--palette-zentra-night-card);
+  --chat-surface-card: var(--palette-charcoal-card);
   --chat-action: var(--palette-zentra-glow);
-  --chat-action-hover: var(--palette-zentra-pearl);
-  --chat-on-action: var(--palette-zentra-night);
+  --chat-action-hover: var(--palette-mint);
+  --chat-on-action: var(--palette-charcoal);
   --chat-focus: var(--palette-zentra-glow);
-  --chat-ink: var(--palette-zentra-pearl);
-  --chat-line: var(--palette-zentra-night-raised);
-  --chat-shadow: var(--palette-zentra-night);
+  --chat-ink: var(--palette-charcoal-ink);
+  --chat-line: var(--palette-charcoal-line);
+  --chat-shadow: var(--palette-charcoal-shadow);
 }
 
 @media (prefers-reduced-motion: reduce) {

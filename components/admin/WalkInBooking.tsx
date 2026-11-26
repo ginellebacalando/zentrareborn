@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import Link from 'next/link';
 import useSWR from 'swr';
 import { CheckCircle2, CircleAlert, LoaderCircle, Search } from 'lucide-react';
 import { BOOKING_PAYMENT_METHODS, type BookingPaymentMethod } from '@/config/booking';
@@ -18,6 +17,7 @@ import {
 } from '@/lib/walk-in-types';
 import desk from './FrontDesk.module.css';
 import styles from './WalkInBooking.module.css';
+import { Button, ButtonAnchor, ButtonLink } from '@/components/shared/Button';
 
 const ENDPOINT = '/api/admin/front-desk';
 const STEPS = ['Client', 'Event', 'Consent', 'Payment'] as const;
@@ -266,10 +266,10 @@ function ClientSearch({
             }}
           />
         </label>
-        <button type="button" className={desk.secondary} onClick={search}>
+        <Button type="button" variant="secondary" onClick={search}>
           <Search size={16} aria-hidden="true" />
           Search
-        </button>
+        </Button>
       </div>
       <div aria-live="polite">
         {isLoading && <p className={desk.loading}>Searching…</p>}
@@ -287,10 +287,10 @@ function ClientSearch({
               <li key={`${client.email}${client.phone}`} className={desk.item}>
                 <div className={desk.itemTop}>
                   <h4>{client.name}</h4>
-                  <button type="button" className={desk.secondary} onClick={() => onUse(client)}>
+                  <Button type="button" variant="secondary" onClick={() => onUse(client)}>
                     Use these details
                     <span className={desk.visuallyHidden}> for {client.name}</span>
-                  </button>
+                  </Button>
                 </div>
                 <p className={desk.intro}>
                   {[client.email, client.phone].filter(Boolean).join(' · ')} ·{' '}
@@ -402,7 +402,7 @@ function Outcome({
   }[result.outcome];
   return (
     <section className={`${desk.card} ${styles.result}`} aria-labelledby="walk-in-result">
-      <CheckCircle2 size={40} aria-hidden="true" />
+      <CheckCircle2 size={20} aria-hidden="true" />
       <h2 id="walk-in-result" ref={titleRef} tabIndex={-1} className={desk.focusTarget}>
         {title}: {result.reference}
       </h2>
@@ -429,25 +429,30 @@ function Outcome({
       </p>
       <div className={desk.actions}>
         {result.receiptPath && (
-          <a className={desk.secondary} href={result.receiptPath} download>
+          <ButtonAnchor variant="secondary" href={result.receiptPath} download>
             Download receipt (PDF)
-          </a>
+          </ButtonAnchor>
         )}
         {uploadHere && result.paymentPath && (
-          <a className={desk.secondary} href={result.paymentPath} target="_blank" rel="noreferrer">
+          <ButtonAnchor
+            variant="secondary"
+            href={result.paymentPath}
+            target="_blank"
+            rel="noreferrer"
+          >
             Open the payment page
             <span className={desk.visuallyHidden}> (opens in a new tab)</span>
-          </a>
+          </ButtonAnchor>
         )}
-        <Link
-          className={desk.secondary}
+        <ButtonLink
+          variant="secondary"
           href={`/admin/bookings?status=${result.outcome === 'CONFIRMED' ? 'confirmed' : result.outcome === 'HELD' ? 'pending' : 'request'}`}
         >
           Open Bookings
-        </Link>
-        <button type="button" className={desk.primary} onClick={onAnother}>
+        </ButtonLink>
+        <Button type="button" variant="primary" onClick={onAnother}>
           New walk-in booking
-        </button>
+        </Button>
       </div>
       {uploadHere && (
         <p className={desk.intro}>
@@ -1041,14 +1046,13 @@ function WalkInForm({
 
         <div className={desk.actions}>
           {step > 0 && (
-            <button type="button" className={desk.secondary} onClick={() => goTo(step - 1)}>
+            <Button type="button" variant="secondary" onClick={() => goTo(step - 1)}>
               Back
-            </button>
+            </Button>
           )}
-          <button type="submit" className={desk.primary} disabled={sending}>
-            {sending && <LoaderCircle size={16} aria-hidden="true" className={desk.spin} />}
-            {step < STEPS.length - 1 ? 'Continue' : sending ? 'Saving…' : 'Save the booking'}
-          </button>
+          <Button type="submit" variant="primary" loading={sending} loadingLabel="Saving…">
+            {step < STEPS.length - 1 ? 'Continue' : 'Save the booking'}
+          </Button>
         </div>
       </form>
       <Summary options={options} draft={draft} />
@@ -1092,9 +1096,9 @@ export default function WalkInBooking({
           <h1 id="walk-in-title">Walk-in booking</h1>
         </div>
         <div className={desk.headerActions}>
-          <Link className={desk.secondary} href="/admin/front-desk">
+          <ButtonLink variant="secondary" href="/admin/front-desk">
             Back to the Front desk
-          </Link>
+          </ButtonLink>
         </div>
       </header>
       {loadError instanceof Error && (
@@ -1104,7 +1108,7 @@ export default function WalkInBooking({
       )}
       {!ready && !loadError && (
         <p className={desk.loading} role="status">
-          <LoaderCircle size={18} aria-hidden="true" className={desk.spin} />
+          <LoaderCircle size={20} aria-hidden="true" className={desk.spin} />
           Loading packages and dates…
         </p>
       )}

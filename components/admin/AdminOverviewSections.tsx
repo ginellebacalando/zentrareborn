@@ -1,9 +1,9 @@
-import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import type { AdminData } from './types';
 import styles from './admin.module.css';
-import { Badge, enumLabel } from './AdminBadge';
+import { enumLabel } from './AdminBadge';
 import { useAdminDate } from './AdminPreferencesProvider';
+import { Button, ButtonLink } from '@/components/shared/Button';
 
 export default function AdminOverviewSections({
   section,
@@ -19,18 +19,11 @@ export default function AdminOverviewSections({
   const eventDate = useAdminDate();
   const page = data.page ?? 1;
   const total = data.total ?? 0;
-  const recordLabel =
-    section === 'team'
-      ? total === 1
-        ? 'member'
-        : 'members'
-      : total === 1
-        ? 'inquiry'
-        : 'inquiries';
+  const recordLabel = total === 1 ? 'inquiry' : 'inquiries';
   return (
     <div className={styles.card}>
       <div className={styles.cardHeading}>
-        <h2>{section === 'team' ? 'Admin directory' : 'Inbox'}</h2>
+        <h2>Inbox</h2>
         <span>
           {total} {recordLabel}
         </span>
@@ -75,13 +68,13 @@ export default function AdminOverviewSections({
                 )}
               </dl>
               <p>{inquiry.message}</p>
-              <Link
-                className={styles.secondary}
+              <ButtonLink
+                variant="secondary"
                 href={`/admin/bookings?inquiry=${encodeURIComponent(inquiry.id || '')}`}
               >
                 Review as booking request
-                <ArrowUpRight size={15} aria-hidden="true" />
-              </Link>
+                <ArrowUpRight size={16} aria-hidden="true" />
+              </ButtonLink>
             </details>
           ))}
           {!data.inquiries?.length && (
@@ -92,49 +85,27 @@ export default function AdminOverviewSections({
           )}
         </>
       )}
-      {section === 'team' && (
-        <>
-          <ul className={styles.directoryGrid}>
-            {data.team?.map((member) => (
-              <li key={member.id}>
-                <h3>{member.fullName || member.username}</h3>
-                <small>{member.username}</small>
-                <p>{member.email}</p>
-                <dl>
-                  <dt>Role</dt>
-                  <dd>{member.role === 'SUPERADMIN' ? 'Super administrator' : 'Administrator'}</dd>
-                  <dt>Status</dt>
-                  <dd>
-                    <Badge value={member.status} />
-                  </dd>
-                </dl>
-              </li>
-            ))}
-          </ul>
-          {!data.team?.length && <p>No administrators found.</p>}
-        </>
-      )}
       {total > 50 && (
         <div className={styles.pagination}>
           <span>
             Page {page} of {Math.ceil(total / 50)}
           </span>
-          <button
+          <Button
             type="button"
-            className={styles.secondary}
+            variant="secondary"
             disabled={page <= 1 || loading}
             onClick={() => onPage(page - 1)}
           >
             Previous
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={styles.secondary}
+            variant="secondary"
             disabled={page * 50 >= total || loading}
             onClick={() => onPage(page + 1)}
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
     </div>

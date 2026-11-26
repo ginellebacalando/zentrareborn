@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
+import { Button, ButtonLink } from '@/components/shared/Button';
 
 export default function ApplicationError({
   error,
@@ -37,19 +37,12 @@ export default function ApplicationError({
           <p className="mt-3 text-xs text-gray-500">Reference: {error.digest}</p>
         ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => unstable_retry()}
-            className="rounded-xl bg-[var(--palette-night-subtle)] px-5 py-3 text-sm font-semibold text-[var(--palette-gold-soft)] transition hover:bg-[var(--palette-night-raised)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--palette-night-subtle)]"
-          >
+          <Button type="button" variant="primary" onClick={() => unstable_retry()}>
             Try again
-          </button>
-          <Link
-            href="/"
-            className="rounded-xl border border-[var(--palette-night-subtle)]/20 bg-white px-5 py-3 text-sm font-semibold text-[var(--palette-night-subtle)] transition hover:bg-[var(--palette-pearl)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--palette-night-subtle)]"
-          >
+          </Button>
+          <ButtonLink href="/" variant="secondary">
             Return home
-          </Link>
+          </ButtonLink>
         </div>
       </section>
     </main>

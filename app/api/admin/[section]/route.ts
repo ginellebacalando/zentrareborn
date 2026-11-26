@@ -1,7 +1,13 @@
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
-import { AdminError, adminResponse, checkMutationOrigin, requireAdmin } from '@/lib/admin/access';
+import {
+  AdminError,
+  adminResponse,
+  assertSectionAccess,
+  checkMutationOrigin,
+  requireAdmin,
+} from '@/lib/admin/access';
 import { FRONT_DESK_OPERATIONS } from '@/lib/admin/front-desk';
 import { adminRead, adminMutate } from '@/lib/admin/service';
 
@@ -37,6 +43,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ sect
   try {
     const { section } = await params;
     const actor = await requireAdmin({ profile: section === 'profile' });
+    // Role check (lib/admin/permissions.ts): 403 for a page this role may not open.
+    assertSectionAccess(actor.role, section);
     return adminResponse(await adminRead(section, new URL(request.url).searchParams, actor));
   } catch (e) {
     return failure(e);
@@ -69,9 +77,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
       preferences: ['preferences'],
       services: ['catalog-category', 'catalog-package'],
       'front-desk': [...FRONT_DESK_OPERATIONS],
+      team: ['team-invite', 'team-resend', 'team-role', 'team-status'],
     };
     if (typeof op !== 'string' || !allowed[section]?.includes(op))
       throw new AdminError('Operation is not allowed in this module.', 400);
+    // Role check (lib/admin/permissions.ts): 403 when the page or the operation is not allowed.
+    assertSectionAccess(actor.role, section, op);
     const result = await adminMutate(raw, actor);
     if (op === 'preferences' || op === 'catalog-category' || op === 'catalog-package')
       revalidatePath('/', 'layout');

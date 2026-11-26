@@ -10,6 +10,7 @@ import AnimatedNumber from '@/components/shared/AnimatedNumber';
 import AnimatedDivider from '@/components/shared/AnimatedDivider';
 import PublishedManagedContentSection from '@/components/public-content/PublishedManagedContentSection';
 import { publicPageHeroes } from '@/config/public-page-heroes';
+import { ButtonLink } from '@/components/shared/Button';
 
 /** Concrete reasons to choose Zion, worded from the venue's published FAQ and Zeni's venue topic. */
 const VENUE_FACTS = [
@@ -219,15 +220,9 @@ export default function AboutPage() {
               Discover a breathtaking setting where your special moments become lasting,
               unforgettable memories.
             </p>
-            <Link
-              href="/contact"
-              className="group relative inline-flex items-center justify-center px-12 py-5 bg-[var(--palette-night-subtle)] text-white font-sans text-sm font-bold uppercase tracking-[0.2em] overflow-hidden rounded-full transition-all shadow-[0_15px_30px_-10px_color-mix(in_srgb,var(--palette-night)_40%,transparent)]"
-            >
-              <div className="absolute inset-0 bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out translate-y-full group-hover:translate-y-0" />
-              <span className="relative z-10 transition-colors duration-500 group-hover:text-[var(--text-on-action)]">
-                CONTACT OUR TEAM
-              </span>
-            </Link>
+            <ButtonLink href="/contact" variant="primary" size="lg">
+              Contact our team
+            </ButtonLink>
           </FadeIn>
         </section>
       </div>

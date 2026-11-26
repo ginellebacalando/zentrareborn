@@ -14,6 +14,7 @@ import {
 } from '@/lib/visit-rules';
 import styles from './admin.module.css';
 import local from './VisitRulesSettings.module.css';
+import { Button } from '@/components/shared/Button';
 
 /** Lets the Settings form check these rules on save, before anything is sent. */
 export type VisitRulesHandle = {
@@ -130,11 +131,8 @@ export default function VisitRulesSettings({
     <details ref={detailsRef} className={`${styles.settingsCard} ${styles.settingsDisclosure}`}>
       <summary>
         <h2 className={styles.settingsSectionTitle}>
-          <span>
-            <i className="fi fi-rr-calendar-clock" aria-hidden="true" />
-          </span>
           Ocular visits
-          <ChevronDown size={18} aria-hidden="true" />
+          <ChevronDown size={20} aria-hidden="true" />
         </h2>
       </summary>
       <div className={styles.settingsCardBody}>
@@ -284,9 +282,9 @@ export default function VisitRulesSettings({
                 onChange={(event) => setNewDate(event.target.value)}
               />
             </label>
-            <button
+            <Button
               type="button"
-              className={styles.secondary}
+              variant="secondary"
               disabled={
                 disabled ||
                 !newDate ||
@@ -299,7 +297,7 @@ export default function VisitRulesSettings({
               }}
             >
               Add date
-            </button>
+            </Button>
           </div>
           <p id={`${id}-dates-help`} className={styles.help}>
             Holidays or private days: the website offers no visit times on these dates. Up to{' '}
@@ -312,9 +310,9 @@ export default function VisitRulesSettings({
                 return (
                   <li key={date}>
                     <span>{label}</span>
-                    <button
+                    <Button
                       type="button"
-                      className={styles.secondary}
+                      variant="secondary"
                       disabled={disabled}
                       aria-label={`Remove ${label}`}
                       onClick={() =>
@@ -325,7 +323,7 @@ export default function VisitRulesSettings({
                       }
                     >
                       Remove
-                    </button>
+                    </Button>
                   </li>
                 );
               })}

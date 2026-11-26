@@ -4,7 +4,7 @@ import { activityCsv } from '@/lib/admin/preferences';
 export const runtime = 'nodejs';
 export async function GET(request: Request) {
   try {
-    const actor = await requireAdmin();
+    const actor = await requireAdmin({ page: 'settings', action: 'export-data' });
     const csv = await activityCsv(actor, new URL(request.url).searchParams.get('timeZone'));
     return new Response(csv, {
       headers: {

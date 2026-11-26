@@ -13,15 +13,15 @@ interface FadeInProps {
 
 /**
  * Scroll reveal. Content renders visible (server, no script, reduced motion); once the observer
- * runs, a block that starts below the fold is hidden until it scrolls into view. With `once` it
- * stays revealed after that; without it, it hides again when it leaves the viewport.
+ * runs, a block that starts below the fold is hidden until it scrolls into view, then fades in and
+ * rises --motion-rise. It animates once; `once={false}` hides it again when it leaves the view.
  */
 export default function FadeIn({
   children,
   delay = 0,
   className = '',
   direction = 'up',
-  once = false,
+  once = true,
 }: FadeInProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [exitEdge, setExitEdge] = useState<'top' | 'bottom'>('bottom');
@@ -55,8 +55,10 @@ export default function FadeIn({
     return () => observer.disconnect();
   }, [once, reducedMotion]);
 
+  const rise = 'var(--motion-rise)';
+  const fall = 'calc(var(--motion-rise) * -1)';
   const verticalOffset =
-    direction === 'up' || direction === 'down' ? (exitEdge === 'top' ? '-1.5rem' : '1.5rem') : '0';
+    direction === 'up' || direction === 'down' ? (exitEdge === 'top' ? fall : rise) : '0';
 
   return (
     <div
@@ -66,7 +68,7 @@ export default function FadeIn({
       style={
         {
           '--reveal-delay': `${Math.min(Math.max(delay, 0), 220)}ms`,
-          '--reveal-x': direction === 'left' ? '1.25rem' : direction === 'right' ? '-1.25rem' : '0',
+          '--reveal-x': direction === 'left' ? rise : direction === 'right' ? fall : '0',
           '--reveal-y': verticalOffset,
         } as CSSProperties
       }

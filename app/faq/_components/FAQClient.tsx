@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ChevronDown, List, MessageCircle, Search } from 'lucide-react';
+import { ArrowRight, ChevronDown, List, MessageCircle, Search } from 'lucide-react';
 import OpenChatbotButton from '@/components/chatbot/OpenChatbotButton';
 import type { PublicFaq } from '@/lib/chatbot/types';
+import { buttonClassName } from '@/components/shared/button-classes';
+import { ButtonLink } from '@/components/shared/Button';
 
 type FaqGroupDefinition = {
   id: string;
@@ -227,13 +228,13 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
                   We couldn&apos;t find anything matching &ldquo;{search}&rdquo;.
                 </p>
                 <div className="mt-8 flex flex-wrap justify-center gap-4">
-                  <Link
+                  <ButtonLink
                     href="/contact"
-                    className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3 text-sm font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
+                    variant="primary"
+                    icon={<MessageCircle aria-hidden="true" />}
                   >
-                    <MessageCircle className="h-4 w-4" />
-                    Contact Us
-                  </Link>
+                    Contact us
+                  </ButtonLink>
                 </div>
               </div>
             ) : (
@@ -338,13 +339,14 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
             </p>
 
             <div className="relative z-10 flex flex-col gap-4">
-              <Link
+              <ButtonLink
                 href="/contact"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-[var(--palette-client-button)] bg-[var(--palette-client-button)] px-6 py-3.5 text-sm font-bold uppercase tracking-[0.16em] text-[var(--text-on-action)] transition-colors duration-300 hover:bg-[var(--palette-client-button-hover)]"
+                variant="primary"
+                block
+                icon={<MessageCircle aria-hidden="true" />}
               >
-                <MessageCircle className="h-4 w-4" />
-                Contact Us
-              </Link>
+                Contact us
+              </ButtonLink>
             </div>
           </section>
 
@@ -359,10 +361,10 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
             </p>
             <OpenChatbotButton
               prompt="What are your visiting hours and how do I arrange a site visit?"
-              className="relative z-10 inline-flex items-center border-b-[1.5px] border-zion-accent/40 pb-1 text-sm font-bold uppercase tracking-[0.2em] text-accent-ink transition-colors duration-300 hover:border-zion-accent hover:text-ink"
+              className={buttonClassName({ variant: 'secondary' }, 'relative z-10')}
             >
-              Arrange a Visit{' '}
-              <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
+              Arrange a visit
+              <ArrowRight aria-hidden="true" />
             </OpenChatbotButton>
           </section>
         </aside>

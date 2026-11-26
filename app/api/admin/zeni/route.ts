@@ -46,7 +46,7 @@ function failure(error: unknown) {
 
 export async function GET() {
   try {
-    await requireAdmin();
+    await requireAdmin({ page: 'zeni' });
     return adminResponse(await zeniAdminOverview());
   } catch (error) {
     return failure(error);
@@ -56,7 +56,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     checkMutationOrigin(request);
-    const actor = await requireAdmin();
+    const actor = await requireAdmin({ page: 'zeni' });
     if (Number(request.headers.get('content-length') ?? 0) > BODY_LIMIT)
       throw new AdminError('Request is too large.', 413);
     const body = await request.text();
