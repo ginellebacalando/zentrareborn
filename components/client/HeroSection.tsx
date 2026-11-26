@@ -2,13 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { homeHeroSlides } from '@/config/home';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import styles from './HeroSection.module.css';
 
-/** Figma home hero: a full-width photo carousel with a centered headline and an outlined CTA. */
+/**
+ * Figma home hero: a full-width photo carousel with a centered headline and an outlined CTA.
+ * The slides advance on their own, pausing while the pointer or keyboard focus is inside and
+ * staying still under reduced motion. At the group's request (QA, 26 November 2026) there is no
+ * pause button; docs/design-change-log.md records this exception to WCAG 2.2.2.
+ */
 const SLIDE_INTERVAL_MS = 7000;
 const SWIPE_THRESHOLD_PX = 40;
 
@@ -16,11 +20,10 @@ export default function HeroSection() {
   const slides = homeHeroSlides;
   const reducedMotion = useReducedMotion();
   const [active, setActive] = useState(0);
-  const [userPaused, setUserPaused] = useState(false);
   const [interacting, setInteracting] = useState(false);
   const [announce, setAnnounce] = useState(false);
   const pointerStart = useRef<number | null>(null);
-  const autoplay = !reducedMotion && !userPaused && !interacting;
+  const autoplay = !reducedMotion && !interacting;
 
   const goTo = useCallback(
     (index: number, fromUser = true) => {
@@ -89,14 +92,16 @@ export default function HeroSection() {
               <div className={styles.content}>
                 <p className={styles.title}>{slide.title}</p>
                 <p className={styles.subtitle}>{slide.subtitle}</p>
-                {/* Book Now stays in the header on every page, so the hero offers the next steps. */}
+                {/* Book Now stays in the header on every page, so the hero offers the next steps.
+                    Plain links: the browser scrolls to the section on every click, while Next's
+                    Link skipped the scroll once the address already ended in the same #section. */}
                 <div className={styles.actions}>
-                  <Link href="#event-packages" className={styles.primary}>
+                  <a href="#event-packages" className={styles.primary}>
                     See packages
-                  </Link>
-                  <Link href="#available-dates" className={styles.secondary}>
+                  </a>
+                  <a href="#available-dates" className={styles.secondary}>
                     Check a date
-                  </Link>
+                  </a>
                 </div>
               </div>
             </div>
@@ -136,17 +141,6 @@ export default function HeroSection() {
             </button>
           ))}
         </div>
-        {reducedMotion ? null : (
-          <button
-            type="button"
-            className={styles.pause}
-            onClick={() => setUserPaused((paused) => !paused)}
-            aria-label={userPaused ? 'Play slideshow' : 'Pause slideshow'}
-            aria-pressed={userPaused}
-          >
-            {userPaused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
-          </button>
-        )}
       </div>
     </section>
   );

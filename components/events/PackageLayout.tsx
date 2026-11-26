@@ -1,6 +1,5 @@
 import React from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { connection } from 'next/server';
 
 import ClientFeatureUnavailable from '@/components/client/ClientFeatureUnavailable';
@@ -10,7 +9,7 @@ import TestimonialSection from '@/components/client/TestimonialSection';
 import { eventPackagePages, type EventPackageMediaKey } from '@/config/event-package-pages';
 import { getClientFeatureAvailability } from '@/lib/system-settings';
 import { optimizedPublicMediaPath } from '@/lib/public-media';
-import PackageFlipbook from './PackageFlipbook';
+import PackageBooklet from './PackageBooklet';
 import PackageHeroSection from './PackageHeroSection';
 import FadeIn from '@/components/shared/FadeIn';
 
@@ -157,7 +156,7 @@ export default async function PackageLayout({ eventType }: PackageLayoutProps) {
             <SpacesSection />
           </FadeIn>
 
-          {/* Our Packages & Interactive Magazine */}
+          {/* Our Packages: the event's booklet */}
           <FadeIn direction="up">
             <section
               id="packages"
@@ -171,35 +170,12 @@ export default async function PackageLayout({ eventType }: PackageLayoutProps) {
                   subtitle="Curated inclusions tailored for your celebration at Zion."
                 />
 
-                <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-6">
-                  <div className="relative z-10 flex flex-col items-start text-left lg:col-span-6 lg:pr-4">
-                    <span
-                      aria-hidden="true"
-                      className="mb-5 block h-px w-12 bg-[var(--palette-client-section)]"
-                    />
-                    <p className="mb-8 font-serif text-xl leading-relaxed text-ink md:text-2xl lg:text-3xl">
-                      {page.packageText}
-                    </p>
-                    <Link
-                      href="/booking"
-                      className="group pointer-events-auto relative mt-2 inline-flex min-h-12 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[var(--palette-client-button)] bg-transparent px-9 py-3.5 transition-all duration-500 ease-out hover:shadow-[0_14px_30px_-12px_color-mix(in_srgb,var(--palette-client-button)_50%,transparent)]"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="absolute inset-0 translate-y-full bg-[var(--palette-client-button)] transition-transform duration-500 ease-in-out group-hover:translate-y-0"
-                      />
-                      <span className="relative z-10 font-sans text-xs font-bold uppercase tracking-[0.2em] text-ink transition-colors duration-500 md:text-sm">
-                        Book Now
-                      </span>
-                    </Link>
-                  </div>
-
-                  <div
-                    id="packages-booklet"
-                    className="relative z-20 flex w-full scroll-mt-28 justify-center lg:col-span-6 lg:justify-center"
-                  >
-                    <PackageFlipbook eventType={eventType} />
-                  </div>
+                <p className="mx-auto mb-10 max-w-3xl text-center font-serif text-xl leading-relaxed text-ink md:text-2xl">
+                  {page.packageText}
+                </p>
+                {/* This event's packages only, as readable text (QA, 26 November 2026). */}
+                <div id="packages-booklet" className="mx-auto max-w-6xl scroll-mt-28">
+                  <PackageBooklet eventType={eventType} />
                 </div>
               </div>
             </section>

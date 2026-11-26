@@ -200,22 +200,6 @@
   transform: scale(1.25);
 }
 
-.pause {
-  display: inline-grid;
-  place-items: center;
-  width: var(--layout-touch-target);
-  height: var(--layout-touch-target);
-  border: 0;
-  background: transparent;
-  color: var(--palette-white);
-  cursor: pointer;
-}
-
-.pause svg {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
 /* Desktops: the hero fills the first screen below the header. */
 @media (min-width: 64rem) {
   .hero {

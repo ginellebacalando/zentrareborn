@@ -1,5 +1,49 @@
 # Design change log
 
+## 26 November 2026 (afternoon) — Group QA: hero links, FAQ arrows, one booklet per event
+
+User task: fix what the group noticed while evaluating the public site. The hero's "See packages"
+and "Check a date" scrolled only on the first click; the hero's pause/play button felt unnecessary
+(remove the button, keep the slideshow); the FAQ's plus sign read as "add something"; the package
+booklet's text was too small and blurry even when zoomed, and every event page showed every
+event's packages. Each event should have its own booklet, and its packages must be right.
+
+- Hero (`components/client/HeroSection.tsx`, `HeroSection.module.css`): the two buttons are plain
+  in-page links, so the browser scrolls to the section on every click; Next's `Link` skipped the
+  scroll once the address already ended in the same `#section`. The pause/play button is gone; the
+  slides still pause while the pointer or keyboard focus is inside the hero and stay still under
+  reduced motion. **Exception, the user's decision:** without a pause control the home slideshow
+  no longer meets WCAG 2.2.2 (Pause, Stop, Hide), although the manuscript targets WCAG 2.2 AA. The
+  user chose this after being shown the trade-off and a compliant alternative (stop auto-sliding).
+- Home FAQ (`components/home/FaqSection.tsx`, `HomeSections.module.css`): a down arrow that turns
+  over when a question is open replaces the plus and minus signs, as on the FAQ page.
+- Package booklets (`config/package-booklets.ts`, `components/events/PackageBooklet.tsx`,
+  `PackageBooklet.module.css`, `components/events/PackageLayout.tsx`; `PackageFlipbook.tsx` and its
+  stylesheet removed): the embedded Heyzine flipbook, one 13-page PDF of low-resolution page images
+  shown on every event page, is replaced by the same booklet retyped as text. Each event page shows
+  only its own packages: Weddings (Zion Classic, Zion Premium, Zion Ultimate, Intimate Wedding),
+  Debuts (Zion Essential, Zion Premium Hassle-Free), Birthdays (Zion Essential "The elegant
+  celebration", Zion Prestige), Christening (Christening, Zion Essential), Gender Reveal (Classic,
+  Premium, Zion Essential) and Christmas Party (Starry Night). Zion Essential is listed where its
+  "Ideal for" line names the event; the "Venue Only" rental belongs to no event and is not shown.
+  On desktop the event's booklet cover sits beside the pages; each package has a tab with its
+  starting price (arrow keys move between tabs); rates read as a guests-and-price list; inclusions
+  are grouped by section; notes and "rates effective" dates close the page, followed by "Start a
+  booking" (with the event chosen) and "Schedule an ocular visit". Every price was checked against
+  the booklet at full zoom; only obvious typing slips and capitals were changed.
+
+Checked in Chromium on the local demo: the Weddings booklet at 1280px (cover, four tabs, arrow-key
+tab changes, the Intimate Wedding's weekday condition), all six event pages' tabs, prices, cover
+and booking link, the Gender Reveal booklet at 320px (tabs wrap, compact rates, no sideways scroll)
+and its "Explore packages" jump; on Home, "See packages" and "Check a date" each scrolled again on
+a second click, the hero has no pause button, and the FAQ arrow turns when a question opens. `npm run verify` passed: formatting, design and client-boundary checks, type check, 144 tests, lint and the production build.
+
+Not checked: real phones, a screen reader, and the dark theme of the new booklet. Open with the
+group: Zion Premium's "rates effective" date reads May 10, 2026 while Classic and Ultimate read
+May 30, 2026; the Venue Only page's electricity fee reads "PHP 1,500K/cart"; Starry Night lists
+corkage for lechon, chopper and outside drinks as inclusions (all copied as printed). The booking
+form still offers the admin catalog's packages, which are demo data and differ from the booklet.
+
 ## 26 November 2026 (morning) — Emails: centered logo, modern finish
 
 User task: make the automated emails look modern and professional, with the logo centered. Only
