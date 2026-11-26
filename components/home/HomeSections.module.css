@@ -238,16 +238,24 @@
   translate: var(--space-1) 0;
 }
 
-/* Available dates: explanation, actions and the booking steps. */
-.split {
+/* Available dates: the invitation and its actions beside the booking journey as a timeline. */
+.datesLayout {
   display: grid;
-  gap: var(--space-8);
-  align-items: start;
+  gap: var(--space-12);
+  align-items: center;
 }
 
-.lead {
-  color: var(--text-muted);
+/* The invitation sits on a quiet panel, so the two columns carry equal weight. */
+.datesIntro {
+  padding: clamp(var(--space-6), 3.5vw, var(--space-12));
+  background: var(--surface-subtle);
+}
+
+.datesLead {
+  max-width: 34rem;
+  color: var(--text-primary);
   font-size: var(--type-lead);
+  line-height: var(--line-relaxed);
 }
 
 .actions {
@@ -257,49 +265,161 @@
   margin-top: var(--space-6);
 }
 
-.steps {
+/* On phones the two main actions share one full width each, so they line up. */
+@media (max-width: 39.99rem) {
+  .datesIntro .actions > * {
+    flex: 1 1 100%;
+  }
+}
+
+.visitPrompt {
+  margin-top: var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+.visitLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--layout-touch-target);
+  color: var(--text-accent);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
+}
+
+.visitLink:hover {
+  text-decoration-thickness: 2px;
+}
+
+.visitArrow {
+  width: var(--space-4);
+  height: var(--space-4);
+  transition: translate var(--motion-normal) var(--motion-ease);
+}
+
+.visitLink:hover .visitArrow,
+.visitLink:focus-visible .visitArrow {
+  translate: var(--space-1) 0;
+}
+
+/* The four steps: numbered markers joined by a thin line, each step's text beside its marker. */
+.timeline {
+  --marker-size: var(--layout-touch-target);
+  --timeline-gap: var(--space-8);
+
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-  gap: var(--space-4);
+  gap: var(--timeline-gap);
   margin: 0;
   padding: 0;
   list-style: none;
-  counter-reset: step;
 }
 
-.step {
+.timelineStep {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  border: 1px solid var(--line-hairline);
+  grid-template-columns: var(--marker-size) minmax(0, 1fr);
+  gap: var(--space-6);
+}
+
+/* The line from this marker down to the next one, through the gap between the steps. */
+.timelineStep:not(:last-child)::after {
+  position: absolute;
+  top: var(--marker-size);
+  bottom: calc(-1 * var(--timeline-gap));
+  left: calc(var(--marker-size) / 2);
+  width: 1px;
+  background: color-mix(in srgb, var(--text-accent) 40%, var(--line-hairline));
+  content: '';
+  transform-origin: top;
+}
+
+.timelineMarker {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: var(--marker-size);
+  height: var(--marker-size);
+  border: 1px solid var(--text-accent);
+  border-radius: 50%;
   background: var(--surface-page);
-  counter-increment: step;
-  transition: border-color var(--motion-normal) var(--motion-ease);
-}
-
-.step:hover {
-  border-color: color-mix(in srgb, var(--text-accent) 45%, var(--line-hairline));
-}
-
-.step::before {
-  content: counter(step, decimal-leading-zero);
   color: var(--text-accent);
-  font-size: var(--type-card-title);
-  font-weight: var(--weight-medium);
-  letter-spacing: 0.06em;
-}
-
-.stepTitle {
+  font-size: var(--type-small);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--weight-semibold);
   letter-spacing: 0.04em;
+  transition:
+    background-color var(--motion-normal) var(--motion-ease),
+    color var(--motion-normal) var(--motion-ease);
+}
+
+/* The journey ends at a confirmed date, so the last marker is filled. */
+.timelineStep:last-child .timelineMarker,
+.timelineStep:hover .timelineMarker {
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+/* The title's first line sits level with the middle of its marker. */
+.timelineBody {
+  padding-top: calc(var(--marker-size) / 2 - 0.7em);
+}
+
+.timelineTitle {
+  color: var(--text-primary);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
   text-transform: uppercase;
 }
 
-.stepText {
+.timelineText {
+  max-width: 34rem;
   margin-top: var(--space-1);
   color: var(--text-muted);
   font-size: var(--type-small);
+  line-height: var(--line-body);
+}
+
+/* When the section scrolls into view (FadeIn), the markers appear one after another, each step's
+   text follows its marker, and the line to the next marker draws downward. The whole journey
+   settles in a little over a second; with reduced motion nothing moves and all of it shows. */
+@media (prefers-reduced-motion: no-preference) {
+  .timelineMarker {
+    transition:
+      background-color var(--motion-normal) var(--motion-ease),
+      color var(--motion-normal) var(--motion-ease),
+      opacity var(--motion-slow) var(--motion-ease) calc(var(--step) * 180ms + 160ms),
+      scale var(--motion-slow) var(--motion-ease) calc(var(--step) * 180ms + 160ms);
+  }
+
+  .timelineBody {
+    transition:
+      opacity var(--motion-reveal) var(--motion-ease) calc(var(--step) * 180ms + 240ms),
+      translate var(--motion-reveal) var(--motion-ease) calc(var(--step) * 180ms + 240ms);
+  }
+
+  .timelineStep:not(:last-child)::after {
+    transition: scale var(--motion-slow) var(--motion-ease) calc(var(--step) * 180ms + 360ms);
+  }
+
+  :global(.reveal[data-visible='false']:not(:focus-within)) .timelineMarker {
+    opacity: 0;
+    scale: 0.6;
+  }
+
+  :global(.reveal[data-visible='false']:not(:focus-within)) .timelineBody {
+    opacity: 0;
+    translate: var(--space-4) 0;
+  }
+
+  :global(.reveal[data-visible='false']:not(:focus-within)) .timelineStep::after {
+    scale: 1 0;
+  }
 }
 
 /* Reviews */
@@ -464,9 +584,9 @@
     aspect-ratio: 4 / 5;
   }
 
-  .split {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-    gap: var(--space-12);
+  .datesLayout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: clamp(var(--space-12), 6vw, 6rem);
   }
 }
 
@@ -511,7 +631,8 @@
   .cardMedia img,
   .cardTitle,
   .cardArrow,
-  .step,
+  .visitArrow,
+  .timelineMarker,
   .buttonPrimary,
   .buttonOutline {
     transition: none;

@@ -1,5 +1,30 @@
 # Design change log
 
+## 26 November 2026 (late afternoon) — Home: Available Dates, a clearer path to booking
+
+User task: make the Home page's Available Dates section look professional and modern, with
+animation.
+
+- `components/home/AvailabilitySection.tsx`, `components/home/HomeSections.module.css`: the
+  invitation and its two main actions ("Ask Zeni about a date", "Start a booking") sit on a quiet
+  mist panel; the ocular visit becomes a link beneath them ("Prefer to see the venue first?") so
+  the third button no longer wraps alone, and on phones the two buttons share the full width. The
+  four boxed steps became a timeline: numbered markers joined by a thin green line, each step's
+  title level with its marker, the last marker ("Confirmed") filled. Step titles are now `h3`
+  headings inside the ordered list.
+- Motion: when the section scrolls into view (FadeIn), the left panel's lines arrive in a short
+  cascade, the markers appear one after another, each step's text follows its marker and the line
+  to the next marker draws downward; all of it settles in about a second. Hovering a step fills
+  its marker; the visit link's arrow nudges on hover and focus. Under reduced motion nothing moves
+  and everything shows.
+
+Checked in Chromium on the local demo: 1440px, 1280px (both buttons on one row), 1024px, 375px and
+320px (no sideways scroll); the hidden and revealed states of the markers, text and line, and
+their delays. `npm run verify` passed: formatting, design and client-boundary checks, type check, 144 tests, lint and the production build.
+
+Not checked: the animation on a real phone (the browser pane throttles motion), a screen reader,
+and the reduced-motion setting itself (handled in CSS, not emulated).
+
 ## 26 November 2026 (afternoon) — Group QA: hero links, FAQ arrows, one booklet per event
 
 User task: fix what the group noticed while evaluating the public site. The hero's "See packages"

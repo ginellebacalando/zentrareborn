@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import OpenChatbotButton from '@/components/chatbot/OpenChatbotButton';
 import SectionHeading from './SectionHeading';
 import styles from './HomeSections.module.css';
@@ -22,7 +24,13 @@ const BOOKING_STEPS = [
   },
 ] as const;
 
-/** "Available dates" from Figma, with the plan's "How booking works" steps. */
+/**
+ * "Available dates" from Figma, with the plan's "How booking works" steps (redesigned 26 November
+ * 2026): the invitation and its two main actions on the left, the ocular visit as a quieter link,
+ * and the four steps as a connected timeline. When the section scrolls into view the markers
+ * appear one after another and the line between them draws downward (see HomeSections.module.css);
+ * under reduced motion everything is simply shown.
+ */
 export default function AvailabilitySection() {
   return (
     <section id="available-dates" className={styles.section} aria-labelledby="home-dates-title">
@@ -32,12 +40,11 @@ export default function AvailabilitySection() {
           title="Available Dates"
           subtitle="Find your date first, then book in a few steps"
         />
-        <div className={styles.split}>
-          <div>
-            <p className={styles.lead}>
+        <div className={styles.datesLayout}>
+          <div className={`${styles.datesIntro} ${styles.stagger}`}>
+            <p className={styles.datesLead}>
               Popular weekends fill up months ahead. Ask Zeni, our virtual concierge, whether a date
-              is open, start a booking and choose from the dates the calendar allows, or see the
-              venue in person first on an ocular visit.
+              is open, or start a booking and choose from the dates the calendar allows.
             </p>
             <div className={styles.actions}>
               <OpenChatbotButton
@@ -49,18 +56,30 @@ export default function AvailabilitySection() {
               <Link href="/booking" className={styles.buttonOutline}>
                 Start a booking
               </Link>
-              {/* The public visit page (docs/visits.md): a time to see the venue before booking. */}
-              <Link href="/visit" className={styles.buttonOutline}>
-                Schedule an ocular visit
-              </Link>
             </div>
+            {/* The public visit page (docs/visits.md): a time to see the venue before booking. */}
+            <p className={styles.visitPrompt}>
+              Prefer to see the venue first?{' '}
+              <Link href="/visit" className={styles.visitLink}>
+                Schedule an ocular visit
+                <ArrowRight className={styles.visitArrow} aria-hidden="true" />
+              </Link>
+            </p>
           </div>
-          <ol className={`${styles.steps} ${styles.stagger}`} aria-label="How booking works">
-            {BOOKING_STEPS.map((step) => (
-              <li key={step.title} className={styles.step}>
-                <div>
-                  <p className={styles.stepTitle}>{step.title}</p>
-                  <p className={styles.stepText}>{step.text}</p>
+
+          <ol className={styles.timeline} aria-label="How booking works">
+            {BOOKING_STEPS.map((step, index) => (
+              <li
+                key={step.title}
+                className={styles.timelineStep}
+                style={{ '--step': index } as CSSProperties}
+              >
+                <span className={styles.timelineMarker} aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div className={styles.timelineBody}>
+                  <h3 className={styles.timelineTitle}>{step.title}</h3>
+                  <p className={styles.timelineText}>{step.text}</p>
                 </div>
               </li>
             ))}
