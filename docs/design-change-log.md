@@ -1,5 +1,27 @@
 # Design change log
 
+## 26 November 2026 (night, later) — Phones no longer load the site slightly zoomed out
+
+User task: find why 320px phones loaded some pages about 2% zoomed out (found while checking the
+deploy above).
+
+- Cause: the site-wide custom scrollbar (`::-webkit-scrollbar` in `app/globals.css`, from the
+  original System Logs design). A styled scrollbar is always drawn as a classic 7px one that takes
+  room, even where the browser would otherwise overlay its scrollbar, so on a 320px phone the page
+  became 327px wide and loaded zoomed out to fit. Booking, Visit, FAQ and the event pages showed it
+  most; it predates this redesign.
+- Fix: the custom scrollbar now applies only where a mouse or trackpad scrolls
+  (`@media (hover: hover) and (pointer: fine)`); phones and tablets keep the browser's overlay
+  scrollbars. Desktop scrollbars look the same as before.
+
+Checked against the live site in headless Edge as a touch phone at 320px, with the site's scripts
+held back to reproduce the zoom every time: the deployed CSS zoomed out on all 12 loads (Booking,
+Visit, FAQ, Weddings, three each); the same CSS with the scrollbar limited to mouse pointers loaded
+at exactly 320px on all 12. Locally the eight main pages stayed at 320px as a touch phone, though
+the development server did not reproduce the original zoom.
+
+Not checked: a real phone.
+
 ## 26 November 2026 (night) — One design system for the website and admin; roles and access
 
 User task: a full UI/UX polish across the website, the admin panel and the Super Admin panel (one
