@@ -120,6 +120,26 @@ test('notifications consistently distinguish approval from paid or confirmed', (
     'HOLD_EXPIRED',
   );
   assert.match(expired.body, /The payment deadline passed/);
+  // A closed booking asks for no payment; a confirmed one no longer for the reservation fee.
+  assert.doesNotMatch(expired.body, /A reservation fee of|Cash at the venue/);
+  assert.equal(expired.parts.requirement, '');
+  assert.equal(expired.parts.instructions, '');
+  const confirmed = bookingEmail(
+    {
+      reference: 'ZION-TEST',
+      clientName: 'Client',
+      approval: 'APPROVED',
+      reservation: 'CONFIRMED',
+      totalCents: 100000,
+      depositCents: 30000,
+      paymentRule: 'DEPOSIT_REQUIRED',
+    },
+    30000,
+    'Cash at the venue after approval.',
+    'RESERVATION_CONFIRMED',
+  );
+  assert.doesNotMatch(confirmed.body, /required before confirmation/);
+  assert.match(confirmed.body, /Cash at the venue after approval\./, 'the balance is still due');
 });
 test('booking automation rules: deadlines, review reasons and the Settings fields', () => {
   const from = new Date('2030-03-01T00:00:00Z');

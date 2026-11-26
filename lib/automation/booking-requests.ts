@@ -32,7 +32,10 @@ export async function enqueueWebsiteBookingRequest(
     holdExpiresAt?: Date | null;
   },
   now = new Date(),
-  decision: { reviewReasons: string[]; paymentInstructions: string } = {
+  decision: Pick<
+    BookingRequestOutcome,
+    'reviewReasons' | 'paymentInstructions' | 'onlineMethod'
+  > = {
     reviewReasons: [],
     paymentInstructions: '',
   },

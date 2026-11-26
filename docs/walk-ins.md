@@ -52,7 +52,8 @@ travel in its address (`?visit=<id>`, `?booking=<id>`), never contact details.
   reservation, as for website bookings.
 - **GCash or bank transfer at the desk**: save with "Pay later", then open the client's payment page
   from the result and upload the transfer screenshot there; it waits for verification like any
-  other. The link is offered when Settings has GCash or bank details.
+  other. "Pay later" offers GCash and bank transfer only while that account is set up in Settings
+  → Online payments, and the link appears then.
 - **From a visit**: a checked-in visit is marked completed, and its staff notes name the booking.
 - **Activity log**: a Bookings CREATE entry with `channel: walk-in`, the consent method and time and
   the source visit; an APPROVAL entry when staff approved at the desk; the payment and the automatic

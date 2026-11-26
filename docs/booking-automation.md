@@ -48,6 +48,17 @@ with neither, clients see the cash instructions only. The accounts are stored in
 JSON and shown only on payment pages; the public settings API never returns them, and the audit
 log records only that they changed.
 
+**The client's way to pay.** The booking page and the Front desk offer GCash and bank transfer
+only while that account is set up (cash always), and the server refuses a method that is not.
+Bookings have no column for the choice: it is saved in the notes as "Preferred payment: Bank
+transfer." (`lib/booking-payment-choice.ts` writes and reads that line). A client who chose GCash
+or bank transfer is asked, on the confirmation screen and in every payment email, to transfer and
+attach the receipt on the payment page, without the cash instructions; a cash client gets the cash
+instructions; anyone else gets both. The payment page lists the client's method first and selects
+it in the upload form, and Payments received reminds staff to verify that client's receipt instead
+of recording the transfer as cash. If staff remove the notes line, the emails name every method
+Zion offers.
+
 **The payment page** is `/booking/pay/<booking id>.<signature>`. The signature is an HMAC of the
 booking id with `AUTH_SECRET`, so the link cannot be guessed or altered and needs no stored token.
 It appears as a button and a plain link in "Your date is on hold", the deadline reminder,
@@ -161,6 +172,10 @@ Phase 2 client notices: `PAYMENT_PROOF_RECEIVED` (Payment screenshot received), 
 Phase 3: `BALANCE_REMINDER` (Balance payment reminder). `CASH_RECEIPT` and `PAYMENT_VERIFIED` link
 the acknowledgment receipt, and `RESERVATION_CONFIRMED` links the payment page while a balance
 remains. See [docs/automation.md](automation.md) for the outbox, keys and delivery rules.
+
+Booking emails carry payment lines only while something is due: cancelled, declined, expired and
+completed bookings have none, and a confirmed booking no longer repeats "required before
+confirmation" (its balance instructions stay). How to pay follows the client's choice (above).
 
 ## Database
 

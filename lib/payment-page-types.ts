@@ -47,7 +47,10 @@ export type PaymentPageView =
       totalCents: number;
       paidCents: number;
       cashInstructions: string;
+      /** The online methods offered, the client's own choice first. */
       methods: OnlinePaymentMethod[];
+      /** The GCash or bank transfer choice the client made when booking, when it is offered. */
+      chosenMethod: OnlinePaymentMethod | null;
       accounts: PaymentAccounts;
       proof: PaymentProofSummary | null;
       payments: RecordedPayment[];

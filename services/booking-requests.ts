@@ -11,10 +11,17 @@ import {
 } from '@/config/booking';
 import { paymentDeadline, websiteReviewReasons } from '@/lib/admin/booking-rules';
 import { eventDate } from '@/lib/admin/domain';
-import { readBookingRules } from '@/lib/admin/preferences';
+import { onlinePaymentMethods } from '@/lib/admin/payment-accounts';
+import { readBookingRules, readPaymentAccounts } from '@/lib/admin/preferences';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueueWebsiteBookingRequest } from '@/lib/automation/booking-requests';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
+import {
+  chosenOnlineMethod,
+  howToPay,
+  offeredBookingPaymentMethods,
+  preferredPaymentNote,
+} from '@/lib/booking-payment-choice';
 import { bookingScheduleProblem, packageQuote } from '@/lib/booking-quote';
 import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import { prisma } from '@/lib/prisma';
@@ -177,8 +184,18 @@ export async function submitBookingRequest(request: Request) {
   const { extraGuests, totalCents, depositCents } = pkg
     ? packageQuote(pkg, input.guests)
     : { extraGuests: 0, totalCents: 0, depositCents: 0 };
-  const payment = BOOKING_PAYMENT_METHODS.find((method) => method.value === input.paymentMethod);
-  const [policy, rules] = await Promise.all([venuePolicy(), readBookingRules()]);
+  const [policy, rules, accounts] = await Promise.all([
+    venuePolicy(),
+    readBookingRules(),
+    readPaymentAccounts(),
+  ]);
+  const online = onlinePaymentMethods(accounts);
+  // GCash and bank transfer need Zion's account on the client's payment page to attach a receipt.
+  if (!offeredBookingPaymentMethods(online).includes(input.paymentMethod))
+    throw new BookingRequestError(
+      'That way to pay is not available right now. Please choose another one.',
+      409,
+    );
   const reviewReasons = websiteReviewReasons({
     totalCents,
     depositCents,
@@ -195,7 +212,7 @@ export async function submitBookingRequest(request: Request) {
     : paymentDeadline(now, startsAt, rules.paymentDeadlineDays);
   const notes = [
     `Sent from the website booking page${input.fromZeni ? ' (opened from a Zeni link)' : ''}.`,
-    `Preferred payment: ${payment?.label ?? input.paymentMethod}.`,
+    preferredPaymentNote(input.paymentMethod),
     input.extras.length ? `Asked about: ${input.extras.join(', ')}.` : '',
     pkg && extraGuests > 0
       ? `Estimate includes ${extraGuests} guests above the package's ${pkg.paxIncluded}.`
@@ -288,7 +305,8 @@ export async function submitBookingRequest(request: Request) {
       });
       const ids = await enqueueWebsiteBookingRequest(tx, created, now, {
         reviewReasons,
-        paymentInstructions: policy.cashInstructions,
+        paymentInstructions: howToPay(policy.cashInstructions, input.paymentMethod, online),
+        onlineMethod: chosenOnlineMethod(input.paymentMethod, online),
       });
       return { booking: created, notificationIds: ids };
     },
@@ -303,6 +321,11 @@ export async function submitBookingRequest(request: Request) {
     amountDueCents:
       booking.paymentRule === 'FULL_PAYMENT_REQUIRED' ? booking.totalCents : booking.depositCents,
   };
+}
+
+/** The ways to pay the booking page offers now; GCash and bank transfer need their account. */
+export async function bookingPaymentChoices() {
+  return offeredBookingPaymentMethods(onlinePaymentMethods(await readPaymentAccounts()));
 }
 
 export function bookingRequestErrorResponse(error: unknown) {

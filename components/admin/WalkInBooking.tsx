@@ -1027,7 +1027,9 @@ function WalkInForm({
                     update('laterMethod', event.target.value as BookingPaymentMethod)
                   }
                 >
-                  {BOOKING_PAYMENT_METHODS.map((method) => (
+                  {BOOKING_PAYMENT_METHODS.filter((method) =>
+                    options.paymentMethods.includes(method.value),
+                  ).map((method) => (
                     <option key={method.value} value={method.value}>
                       {method.label}
                     </option>

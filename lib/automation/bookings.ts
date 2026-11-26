@@ -2,12 +2,13 @@ import 'server-only';
 
 import { BRAND } from '@/config/brand';
 import { bookingEmail } from '@/lib/admin/domain';
+import { howToPay, preferredPaymentMethod } from '@/lib/booking-payment-choice';
 import { isEmailAddress } from '@/lib/email-address';
 import { automationJobLabel, STAFF_RECIPIENT_LIMITS } from './catalog';
 import { applicationUrl } from './config';
 import { buildCalendarInvite, type CalendarInvite, type CalendarMethod } from './ics';
 import { enqueueJobs, type NewAutomationJob, type OutboxDb } from './outbox';
-import { onlinePaymentsOffered, paymentPageAction, receiptDownloadAction } from './payment-proofs';
+import { offeredPaymentMethods, paymentPageAction, receiptDownloadAction } from './payment-proofs';
 import { resolveStaffRecipients } from './recipients';
 import {
   renderBookingNotice,
@@ -35,6 +36,8 @@ export type BookingNoticeSource = {
   paymentRule: string;
   /** Payment deadline while an approved request holds its date (booking automation). */
   holdExpiresAt?: Date | null;
+  /** The booking notes, whose "Preferred payment" line tells the email how the client pays. */
+  notes?: string;
 };
 
 /** The booking fields the staff copy of its calendar event needs. */
@@ -359,6 +362,7 @@ export async function enqueueBookingNotice(
     booking: BookingNoticeSource;
     event: string;
     paid: number;
+    /** Zion's cash instructions (venue policy); a GCash or bank client gets transfer steps. */
     instructions: string;
     /** The client's calendar update: an invitation on confirmation, a cancellation after one. */
     calendar?: CalendarMethod;
@@ -389,7 +393,10 @@ export async function enqueueBookingNotice(
         lastError: 'Not sent: the reservation was cancelled before this message went out.',
       },
     });
-  const notice = bookingEmail(booking, input.paid, input.instructions, event, input.note);
+  const online = await offeredPaymentMethods(db);
+  // Zion's cash instructions, or the transfer-and-attach steps for a GCash or bank client.
+  const instructions = howToPay(input.instructions, preferredPaymentMethod(booking.notes), online);
+  const notice = bookingEmail(booking, input.paid, instructions, event, input.note);
   // The page takes a payment while the date is held, and for the balance after confirmation.
   const acceptsPayment =
     (booking.reservation === 'REQUESTED' && booking.approval === 'APPROVED') ||
@@ -397,7 +404,7 @@ export async function enqueueBookingNotice(
   const paymentAction = input.receiptPaymentId
     ? receiptDownloadAction(booking.id, input.receiptPaymentId)
     : acceptsPayment && PAYMENT_LINK_EVENTS.has(event)
-      ? paymentPageAction(booking.id, await onlinePaymentsOffered(db))
+      ? paymentPageAction(booking.id, online.length > 0)
       : null;
   const rendered = renderBookingNotice({
     subject: notice.subject,

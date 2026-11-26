@@ -158,19 +158,27 @@ export function bookingEmail(
   const due = b.holdExpiresAt ? eventDate(b.holdExpiresAt) : null;
   const lead = noticeLead(event, amount, due, note);
   const asksForFee = !['NO_PAYMENT_REQUIRED', 'FULL_PAYMENT_REQUIRED'].includes(b.paymentRule);
+  // A closed booking asks for nothing; a confirmed one only for its balance, through the
+  // instructions, since the confirmation rule is already met.
+  const closed = ['CANCELLED', 'COMPLETED'].includes(b.reservation) || b.approval === 'REJECTED';
+  const confirmed = b.reservation === 'CONFIRMED';
   const requirement =
-    b.paymentRule === 'NO_PAYMENT_REQUIRED'
-      ? 'No payment is required to secure this reservation.'
-      : b.paymentRule === 'FULL_PAYMENT_REQUIRED'
-        ? `Full payment of ${money(b.totalCents)} is required before confirmation.`
-        : `A reservation fee of ${money(b.depositCents)} is required before confirmation.`;
+    closed || confirmed
+      ? ''
+      : b.paymentRule === 'NO_PAYMENT_REQUIRED'
+        ? 'No payment is required to secure this reservation.'
+        : b.paymentRule === 'FULL_PAYMENT_REQUIRED'
+          ? `Full payment of ${money(b.totalCents)} is required before confirmation.`
+          : `A reservation fee of ${money(b.depositCents)} is required before confirmation.`;
+  const howToPay = closed || (confirmed && paid >= b.totalCents) ? '' : instructions;
+  const paymentLines = [requirement, howToPay].filter(Boolean).join('\n');
   const payment = paymentStatus(b.totalCents, paid);
   const closing =
     'Approval alone does not confirm a reservation or indicate payment. Only a CONFIRMED reservation secures the event schedule.';
   return {
     // The notice's name in sentence case ("Payment deadline extended"), never the raw event code.
     subject: `Zion Events Place | ${automationJobLabel(event)} | ${b.reference}`,
-    body: `Hello ${b.clientName},\n\n${lead ? `${lead}\n\n` : ''}Booking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${payment} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${requirement}\n${instructions}\n\n${closing}\n\nZion Events Place`,
+    body: `Hello ${b.clientName},\n\n${lead ? `${lead}\n\n` : ''}Booking reference: ${b.reference}\nApproval: ${b.approval}\nReservation: ${b.reservation}\nPayment: ${payment} (${money(paid)} received / ${money(b.totalCents)} total)\n\n${paymentLines ? `${paymentLines}\n\n` : ''}${closing}\n\nZion Events Place`,
     /** The same notice in parts, for the email's booking summary (lib/automation/templates.ts). */
     parts: {
       greeting: `Hello ${b.clientName},`,
@@ -184,7 +192,7 @@ export function bookingEmail(
       received: money(paid),
       balance: money(Math.max(0, b.totalCents - paid)),
       requirement,
-      instructions,
+      instructions: howToPay,
       closing,
       emphasis: [dueNow, ...(due ? [due] : [])],
     },

@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import { BRAND } from '@/config/brand';
-import { BOOKING_REQUEST_RULES } from '@/config/booking';
+import { BOOKING_REQUEST_RULES, type BookingPaymentMethod } from '@/config/booking';
 import { errorMetadata } from '@/lib/audit';
 import { readPublicDateAvailability } from '@/lib/public-availability';
 import { getPublicEventCategories, getPublicPackagesForCategory } from '@/lib/services-packages';
 import { getClientFeatureAvailability } from '@/lib/system-settings';
+import { bookingPaymentChoices } from '@/services/booking-requests';
 import BookingRequestForm from './_components/BookingRequestForm';
 import { bookingInitialChoices } from './_components/bookingInitial';
 import { parseBookingPrefill } from './_components/bookingPrefill';
@@ -77,6 +78,7 @@ export default async function BookingPage({
 
   let categories: BookingCategory[] = [];
   let availability: BookingAvailability = { booked: [], inquired: [] };
+  let paymentMethods: BookingPaymentMethod[] = ['CASH'];
   let loadFailed = false;
   try {
     const listed = (await getPublicEventCategories()).filter((category) => category !== null);
@@ -90,6 +92,7 @@ export default async function BookingPage({
       })),
     );
     availability = await readPublicDateAvailability(today, latest);
+    paymentMethods = await bookingPaymentChoices();
   } catch (error) {
     console.error('Unable to load the booking page.', errorMetadata(error));
     loadFailed = true;
@@ -104,6 +107,7 @@ export default async function BookingPage({
         latest={latest}
         pausedMessage={feature.enabled ? null : feature.message}
         loadFailed={loadFailed}
+        paymentMethods={paymentMethods}
         initial={bookingInitialChoices(parseBookingPrefill(params, earliest), categories)}
       />
     </main>

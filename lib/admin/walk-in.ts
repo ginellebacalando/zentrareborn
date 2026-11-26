@@ -9,7 +9,8 @@ import {
   bookingTimeOptions,
 } from '@/config/booking';
 import { enqueueBookingNotice } from '@/lib/automation/bookings';
-import { onlinePaymentsOffered } from '@/lib/automation/payment-proofs';
+import { offeredPaymentMethods } from '@/lib/automation/payment-proofs';
+import { offeredBookingPaymentMethods, preferredPaymentNote } from '@/lib/booking-payment-choice';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
 import { bookingScheduleProblem, manilaDateAfter, packageQuote } from '@/lib/booking-quote';
@@ -49,9 +50,6 @@ import { readBookingRules } from './preferences';
 const VENUE = 'Zion Events Place';
 const identifier = z.string().min(1).max(64);
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Choose a valid time.');
-const PAYMENT_LABELS = Object.fromEntries(
-  BOOKING_PAYMENT_METHODS.map((method) => [method.value, method.label]),
-) as Record<(typeof BOOKING_PAYMENT_METHODS)[number]['value'], string>;
 const paymentMethods = BOOKING_PAYMENT_METHODS.map((method) => method.value) as [
   (typeof BOOKING_PAYMENT_METHODS)[number]['value'],
   ...(typeof BOOKING_PAYMENT_METHODS)[number]['value'][],
@@ -100,12 +98,12 @@ export async function readWalkInOptions(): Promise<WalkInOptions> {
   const today = manilaDateAfter(0);
   const earliest = manilaDateAfter(BOOKING_REQUEST_RULES.minLeadDays);
   const latest = manilaDateAfter(BOOKING_REQUEST_RULES.maxDaysAhead);
-  const [categories, availability, policy, rules, onlinePayments] = await Promise.all([
+  const [categories, availability, policy, rules, online] = await Promise.all([
     publishedCategories(),
     readPublicDateAvailability(today, latest),
     venuePolicy(),
     readBookingRules(),
-    onlinePaymentsOffered(prisma),
+    offeredPaymentMethods(prisma),
   ]);
   return {
     categories,
@@ -124,7 +122,8 @@ export async function readWalkInOptions(): Promise<WalkInOptions> {
       reviewed: policy.reviewed,
       cashInstructions: policy.cashInstructions,
     },
-    onlinePayments,
+    onlinePayments: online.length > 0,
+    paymentMethods: offeredBookingPaymentMethods(online),
   };
 }
 
@@ -271,7 +270,16 @@ export async function createWalkInBooking(raw: unknown, actor: AdminActor): Prom
   const quote = pkg
     ? packageQuote(pkg, event.guests)
     : { extraGuests: 0, extraCents: 0, totalCents: 0, depositCents: 0 };
-  const [policy, rules] = await Promise.all([venuePolicy(), readBookingRules()]);
+  const [policy, rules, online] = await Promise.all([
+    venuePolicy(),
+    readBookingRules(),
+    offeredPaymentMethods(prisma),
+  ]);
+  // GCash and bank transfer need Zion's account on the client's payment page for the receipt.
+  if (payment.kind === 'LATER' && !offeredBookingPaymentMethods(online).includes(payment.method))
+    throw new AdminError(
+      'That way to pay is not set up. Add the account in Settings → Online payments, or choose another way.',
+    );
   const review = walkInReview({
     totalCents: quote.totalCents,
     depositCents: quote.depositCents,
@@ -323,7 +331,7 @@ export async function createWalkInBooking(raw: unknown, actor: AdminActor): Prom
   const notes = [
     `Walk-in booking at the front desk with ${staffName}.`,
     `Consent: ${consent} (${eventDate(now)}).`,
-    payment.kind === 'LATER' ? `Preferred payment: ${PAYMENT_LABELS[payment.method]}.` : '',
+    payment.kind === 'LATER' ? preferredPaymentNote(payment.method) : '',
     event.extras.length ? `Asked about: ${event.extras.join(', ')}.` : '',
     pkg && quote.extraGuests > 0
       ? `Price includes ${quote.extraGuests} guests above the package's ${pkg.paxIncluded}.`

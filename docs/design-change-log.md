@@ -1,5 +1,33 @@
 # Design change log
 
+## 27 November 2026 (late night) — The client's way to pay decides what they are told
+
+User task: a client who chose bank transfer was told to "pay cash at Zion Events Place" and had
+nothing to attach. The team rule: a GCash or bank payment needs its receipt attached, and the
+booking goes ahead only after staff check it.
+
+- **Booking page** (`app/booking/page.tsx`, `BookingRequestForm.tsx`, `services/booking-requests.ts`):
+  GCash and bank transfer are offered only while their account is set up in Settings → Online
+  payments; with neither, "Cash at the venue" is the only option and already chosen. The server
+  refuses a method that is not offered. A GCash or bank client's confirmation screen reads "Pay the
+  ₱… reservation fee by bank transfer before …, then attach your receipt on your payment page",
+  with the button "Pay and attach your receipt".
+- **Emails** (`lib/booking-payment-choice.ts`, `lib/admin/domain.ts`, `lib/automation/`): "Your date
+  is on hold", the payment reminders and every booking notice tell a GCash or bank client to
+  transfer and attach the receipt, without the cash instructions; cash clients keep them.
+  Cancelled, declined, expired and completed bookings no longer ask for payment.
+- **Payment page**: the client's method is listed first and already selected in the upload form.
+- **Admin**: Payments received says "… chose to pay by bank transfer. Record cash only for cash
+  received at the venue; a bank transfer payment is recorded when you verify the client's receipt
+  under Payment screenshots." The Front desk's "Pay later" follows the same offer rule.
+
+The choice is read from the booking notes' "Preferred payment" line (no database change).
+Checked on the local preview in headless Edge with test accounts: the form with no accounts (cash
+only, chosen) and with both, a bank-transfer booking (confirmation screen, hold email, payment page
+order and selection, the staff reminder, the payment reminder from the scheduled job, the
+cancellation email without payment lines) and a cash booking (cash instructions kept). Not checked
+on the live site, at 320px for these text changes, or with a screen reader.
+
 ## 27 November 2026 (night) — Payment screenshots waiting to verify; Philippine mobile numbers
 
 User task: check the GCash and bank transfer screenshot flow end to end, then show a screenshot

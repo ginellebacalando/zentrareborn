@@ -138,6 +138,8 @@ test(
         actor,
       )) as WalkInOptions;
       assert.equal(options.policy.reviewed, true);
+      // No GCash or bank account is set up yet, so paying later can only be in cash.
+      assert.deepEqual(options.paymentMethods, ['CASH']);
       const weddings = options.categories.find((candidate) => candidate.slug === 'weddings');
       assert.ok(weddings?.packages[0], 'The published package is offered at the desk');
       const packageId = weddings.packages[0].id;
@@ -256,7 +258,30 @@ test(
       );
       assert.equal(await prisma.adminBooking.count(), before);
 
-      // Pay later: the date is held until the payment deadline.
+      // Pay later: the date is held until the payment deadline. GCash needs Zion's GCash account,
+      // where the client attaches the receipt.
+      await assert.rejects(
+        walkIn({ payment: { kind: 'LATER', method: 'GCASH' } }, { date: day(30) }),
+        /not set up/,
+      );
+      const beforeAccounts = await getAdminPreferences();
+      await adminMutate(
+        {
+          op: 'preferences',
+          settings: {
+            ...beforeAccounts.settings,
+            admin: {
+              ...beforeAccounts.settings.admin,
+              paymentAccounts: {
+                gcash: { accountName: 'Zion Events Place', number: '0917 123 4567' },
+                bank: { bankName: '', accountName: '', accountNumber: '' },
+              },
+            },
+          },
+          updatedAt: beforeAccounts.updatedAt,
+        },
+        actor,
+      );
       const held = await walkIn({ payment: { kind: 'LATER', method: 'GCASH' } }, { date: day(30) });
       assert.equal(held.outcome, 'HELD');
       assert.equal(held.amountDueCents, 500000);
@@ -270,6 +295,12 @@ test(
         ),
         ['REQUEST_APPROVED'],
       );
+      // A GCash client is asked to transfer and attach the receipt, not to pay in cash.
+      const heldEmail = await prisma.adminOutbox.findFirstOrThrow({
+        where: { bookingId: held.id, event: 'REQUEST_APPROVED' },
+      });
+      assert.match(heldEmail.body, /Pay by GCash .* then attach your receipt there\./);
+      assert.doesNotMatch(heldEmail.body, /in cash/);
 
       // Part of the fee now: still held, and the email asks for the rest.
       const partial = await walkIn(

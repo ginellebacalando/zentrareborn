@@ -129,30 +129,32 @@ function HowToPay({ view }: { view: View }) {
         How to pay
       </h2>
       <div className={styles.accounts}>
-        {methods.includes('GCASH') && (
-          <div className={styles.account}>
-            <h3>GCash</h3>
-            <p>
-              Account name: <strong>{accounts.gcash.accountName}</strong>
-            </p>
-            <p>
-              Number: <strong>{accounts.gcash.number}</strong>
-            </p>
-          </div>
-        )}
-        {methods.includes('BANK_TRANSFER') && (
-          <div className={styles.account}>
-            <h3>Bank transfer</h3>
-            <p>
-              Bank: <strong>{accounts.bank.bankName}</strong>
-            </p>
-            <p>
-              Account name: <strong>{accounts.bank.accountName}</strong>
-            </p>
-            <p>
-              Account number: <strong>{accounts.bank.accountNumber}</strong>
-            </p>
-          </div>
+        {/* In the order of `methods`: the way the client chose when booking comes first. */}
+        {methods.map((method) =>
+          method === 'GCASH' ? (
+            <div key={method} className={styles.account}>
+              <h3>GCash</h3>
+              <p>
+                Account name: <strong>{accounts.gcash.accountName}</strong>
+              </p>
+              <p>
+                Number: <strong>{accounts.gcash.number}</strong>
+              </p>
+            </div>
+          ) : (
+            <div key={method} className={styles.account}>
+              <h3>Bank transfer</h3>
+              <p>
+                Bank: <strong>{accounts.bank.bankName}</strong>
+              </p>
+              <p>
+                Account name: <strong>{accounts.bank.accountName}</strong>
+              </p>
+              <p>
+                Account number: <strong>{accounts.bank.accountNumber}</strong>
+              </p>
+            </div>
+          ),
         )}
         <div className={styles.account}>
           <h3>Cash at the venue</h3>
@@ -175,7 +177,7 @@ function UploadForm({ view, token }: { view: View; token: string }) {
   const router = useRouter();
   const id = useId();
   const [method, setMethod] = useState<OnlinePaymentMethod | ''>(
-    view.methods.length === 1 ? view.methods[0] : '',
+    view.chosenMethod ?? (view.methods.length === 1 ? view.methods[0] : ''),
   );
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<{ field: Field | null; message: string } | null>(null);

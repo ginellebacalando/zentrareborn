@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { BRAND } from '@/config/brand';
+import type { OnlinePaymentMethod } from '@/lib/admin/payment-accounts';
+import { onlineMethodName } from '@/lib/booking-payment-choice';
 import { EMAIL_SPAM_NOTICE } from '@/lib/email-delivery';
 import { applicationUrl } from './config';
 import { EMAIL_THEME, type EmailTone } from './email-theme';
@@ -581,6 +583,8 @@ export type BookingRequestOutcome = {
   holdExpiresAt: Date | null;
   amountDueCents: number;
   paymentInstructions: string;
+  /** GCash or bank transfer, when the client chose it and Zion offers it: they attach the receipt. */
+  onlineMethod?: OnlinePaymentMethod | null;
   reviewReasons: string[];
   /** The button to the client's private payment page (phase 2), when the site's address is known. */
   paymentAction?: { label: string; href: string } | null;
@@ -653,8 +657,15 @@ function heldBookingAcknowledgement(
       {
         heading: 'What happens next',
         paragraphs: [
-          `1. Pay ${amount} by ${deadline}.`,
-          '2. We record your payment and confirm your date right away.',
+          ...(outcome.onlineMethod
+            ? [
+                `1. Pay ${amount} by ${onlineMethodName(outcome.onlineMethod)} before ${deadline}, then attach your receipt on your payment page.`,
+                '2. We check your receipt against our records and confirm your date.',
+              ]
+            : [
+                `1. Pay ${amount} by ${deadline}.`,
+                '2. We record your payment and confirm your date right away.',
+              ]),
           '3. You receive a confirmation email with a calendar invitation.',
           `Questions? Call ${BRAND.contact.phone} or email ${BRAND.contact.email} and mention your booking reference.`,
         ],

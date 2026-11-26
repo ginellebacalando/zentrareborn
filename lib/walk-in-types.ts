@@ -2,6 +2,7 @@
  * Browser-safe vocabulary for walk-in bookings at the Front desk (docs/walk-ins.md), shared by
  * the walk-in page and the server.
  */
+import type { BookingPaymentMethod } from '@/config/booking';
 
 export const CONSENT_METHODS = ['PRINTED_FORM', 'ON_SCREEN'] as const;
 export type ConsentMethod = (typeof CONSENT_METHODS)[number];
@@ -40,6 +41,8 @@ export type WalkInOptions = {
   policy: { paymentRule: string; reviewed: boolean; cashInstructions: string };
   /** Whether the client's payment page takes GCash or bank transfer screenshots. */
   onlinePayments: boolean;
+  /** The ways to pay later offered now: GCash and bank transfer only while their account is set up. */
+  paymentMethods: BookingPaymentMethod[];
 };
 
 /** A client's details carried into the walk-in page from a visit or an earlier booking. */

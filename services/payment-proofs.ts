@@ -14,6 +14,7 @@ import {
 import { readBookingRules, readPaymentAccounts } from '@/lib/admin/preferences';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueuePaymentProofReceived } from '@/lib/automation/payment-proofs';
+import { chosenOnlineMethod, preferredPaymentMethod } from '@/lib/booking-payment-choice';
 import { bookingIdFromPaymentToken } from '@/lib/payment-link';
 import type { PaymentPageView, RecordedPayment } from '@/lib/payment-page-types';
 import {
@@ -115,7 +116,12 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
     prisma.adminPolicy.findUnique({ where: { id: 'venue' }, select: { cashInstructions: true } }),
     readBookingRules(),
   ]);
-  const methods = onlinePaymentMethods(accounts);
+  const offered = onlinePaymentMethods(accounts);
+  // The way the client chose when booking comes first and is already selected for the upload.
+  const chosenMethod = chosenOnlineMethod(preferredPaymentMethod(booking.notes), offered);
+  const methods = chosenMethod
+    ? [chosenMethod, ...offered.filter((method) => method !== chosenMethod)]
+    : offered;
   const required =
     booking.paymentRule === 'FULL_PAYMENT_REQUIRED' ? booking.totalCents : booking.depositCents;
   const paid = paidTotal(booking.payments);
@@ -164,6 +170,7 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
     paidCents: paid,
     cashInstructions: venuePolicy?.cashInstructions ?? '',
     methods,
+    chosenMethod,
     accounts: offeredAccounts(accounts, methods),
     proof: latest
       ? {

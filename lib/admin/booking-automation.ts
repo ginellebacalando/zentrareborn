@@ -5,7 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { enqueueBookingNotice } from '@/lib/automation/bookings';
 import { AUTOMATION_POLICY, applicationUrl } from '@/lib/automation/config';
 import { enqueueJobs, type NewAutomationJob } from '@/lib/automation/outbox';
-import { onlinePaymentsOffered, paymentPageAction } from '@/lib/automation/payment-proofs';
+import { offeredPaymentMethods, paymentPageAction } from '@/lib/automation/payment-proofs';
+import { howToPay, preferredPaymentMethod } from '@/lib/booking-payment-choice';
 import { resolveStaffRecipients } from '@/lib/automation/recipients';
 import { balanceAfterEventAlert, balanceReminder, holdReminder } from '@/lib/automation/templates';
 import { manilaDay, manilaDayStart, manilaHour, ONE_DAY_MS } from '@/lib/automation/time';
@@ -159,6 +160,7 @@ export async function scheduleHoldReminders(now = new Date()) {
       totalCents: true,
       depositCents: true,
       paymentRule: true,
+      notes: true,
       payments: { select: { amountCents: true, voidedAt: true } },
     },
   });
@@ -172,7 +174,7 @@ export async function scheduleHoldReminders(now = new Date()) {
     notices.map((row) => [row.bookingId, row._max.createdAt?.getTime() ?? 0]),
   );
   const { cashInstructions } = await policy();
-  const online = await onlinePaymentsOffered(prisma);
+  const online = await offeredPaymentMethods(prisma);
   const jobs: NewAutomationJob[] = [];
   for (const b of held) {
     if (!b.holdExpiresAt) continue;
@@ -189,8 +191,8 @@ export async function scheduleHoldReminders(now = new Date()) {
         ...b,
         holdExpiresAt: b.holdExpiresAt,
         amountDueCents: due,
-        instructions: cashInstructions,
-        paymentAction: paymentPageAction(b.id, online),
+        instructions: howToPay(cashInstructions, preferredPaymentMethod(b.notes), online),
+        paymentAction: paymentPageAction(b.id, online.length > 0),
       }),
       expiresAt: b.holdExpiresAt,
     });
@@ -230,6 +232,7 @@ export async function scheduleBalanceReminders(now = new Date()) {
       startsAt: true,
       endsAt: true,
       totalCents: true,
+      notes: true,
       payments: { select: { amountCents: true, voidedAt: true } },
     },
   });
@@ -255,7 +258,7 @@ export async function scheduleBalanceReminders(now = new Date()) {
     notices.map((row) => [row.bookingId, row._max.createdAt?.getTime() ?? 0]),
   );
   const { cashInstructions } = await policy();
-  const online = await onlinePaymentsOffered(prisma);
+  const online = await offeredPaymentMethods(prisma);
   const jobs: NewAutomationJob[] = [];
   for (const b of owing) {
     if ((lastNotice.get(b.id) ?? 0) > now.getTime() - QUIET_AFTER_NOTICE_MS) continue;
@@ -269,8 +272,8 @@ export async function scheduleBalanceReminders(now = new Date()) {
         ...b,
         dueAt: b.dueAt,
         balanceCents: b.balance,
-        instructions: cashInstructions,
-        paymentAction: paymentPageAction(b.id, online),
+        instructions: howToPay(cashInstructions, preferredPaymentMethod(b.notes), online),
+        paymentAction: paymentPageAction(b.id, online.length > 0),
       }),
       expiresAt: b.dueAt,
     });

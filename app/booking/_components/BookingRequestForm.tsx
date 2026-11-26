@@ -23,6 +23,7 @@ import {
 import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDatePicker';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { BRAND } from '@/config/brand';
+import { onlineMethodName } from '@/lib/booking-payment-choice';
 import { cheaperTier, packageQuote } from '@/lib/booking-quote';
 import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import {
@@ -213,6 +214,8 @@ type BookingRequestFormProps = {
   latest: string;
   pausedMessage: string | null;
   loadFailed: boolean;
+  /** The ways to pay offered now: GCash and bank transfer only while their account is set up. */
+  paymentMethods: BookingPaymentMethod[];
   /** Choices pre-filled from the link (for example a Zeni "Book this date" button). */
   initial: BookingInitialChoices;
 };
@@ -229,10 +232,13 @@ export default function BookingRequestForm({
   latest,
   pausedMessage,
   loadFailed,
+  paymentMethods,
   initial,
 }: BookingRequestFormProps) {
   const [form, setForm] = useState<FormState>(() => ({
     ...EMPTY_FORM,
+    // With cash the only way offered, the choice is already made.
+    paymentMethod: paymentMethods.length === 1 ? paymentMethods[0] : '',
     category: initial.category,
     packageId: initial.packageId,
     date: initial.date,
@@ -442,6 +448,12 @@ export default function BookingRequestForm({
 
   if (reference) {
     const firstName = form.fullName.trim().split(/\s+/)[0];
+    // A GCash or bank transfer client pays, then attaches the receipt on the payment page.
+    const transfer =
+      hold?.onlinePayment &&
+      (form.paymentMethod === 'BANK_TRANSFER' || form.paymentMethod === 'GCASH')
+        ? form.paymentMethod
+        : null;
     return (
       <div className={styles.page}>
         <section className={styles.done} aria-labelledby="booking-done-title">
@@ -468,14 +480,21 @@ export default function BookingRequestForm({
                 {hold.amountDueCents
                   ? `the ${peso.format(hold.amountDueCents / 100)} reservation fee`
                   : 'the reservation fee'}{' '}
-                by {deadlineLabel(hold.expiresAt)}.{' '}
+                {transfer
+                  ? `by ${onlineMethodName(transfer)} before ${deadlineLabel(hold.expiresAt)}, then attach your receipt on your payment page.`
+                  : `by ${deadlineLabel(hold.expiresAt)}.`}{' '}
                 {hold.paymentPath
-                  ? `See how to pay on your payment page below; the link is also in the email we sent to ${form.email.trim()}.`
+                  ? transfer
+                    ? `It is linked below and in the email we sent to ${form.email.trim()}.`
+                    : `See how to pay on your payment page below; the link is also in the email we sent to ${form.email.trim()}.`
                   : `How to pay is in the email we sent to ${form.email.trim()}.`}
               </li>
               <li>
-                We check your payment with our records and confirm your date.
+                {transfer
+                  ? 'We check your receipt against our records and confirm your date.'
+                  : 'We check your payment with our records and confirm your date.'}
                 {hold.onlinePayment &&
+                  !transfer &&
                   ' For GCash or bank transfers, send the screenshot on your payment page.'}
               </li>
               <li>You receive a confirmation email with a calendar invitation.</li>
@@ -501,7 +520,7 @@ export default function BookingRequestForm({
             </ButtonLink>
             {hold?.paymentPath ? (
               <ButtonLink href={hold.paymentPath} variant="primary" size="lg">
-                See how to pay
+                {transfer ? 'Pay and attach your receipt' : 'See how to pay'}
               </ButtonLink>
             ) : (
               <ButtonLink href="/contact" variant="primary" size="lg">
@@ -1005,7 +1024,9 @@ export default function BookingRequestForm({
                     details.
                   </p>
                   <div className={styles.paymentGrid}>
-                    {BOOKING_PAYMENT_METHODS.map((method, index) => {
+                    {BOOKING_PAYMENT_METHODS.filter((method) =>
+                      paymentMethods.includes(method.value),
+                    ).map((method, index) => {
                       const Icon = PAYMENT_ICONS[method.value];
                       return (
                         <label key={method.value} className={styles.paymentOption}>

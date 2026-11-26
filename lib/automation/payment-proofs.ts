@@ -12,9 +12,14 @@ import { enqueueJobs, type OutboxDb } from './outbox';
 import { resolveStaffRecipients } from './recipients';
 import { paymentProofReceived, paymentProofStaffAlert } from './templates';
 
+/** The online methods clients can use now: those whose account is set up in Settings. */
+export async function offeredPaymentMethods(db: OutboxDb) {
+  return onlinePaymentMethods(await readPaymentAccounts(db));
+}
+
 /** Whether clients can pay online now: a GCash or bank account is set up in Settings. */
 export async function onlinePaymentsOffered(db: OutboxDb) {
-  return onlinePaymentMethods(await readPaymentAccounts(db)).length > 0;
+  return (await offeredPaymentMethods(db)).length > 0;
 }
 
 /**

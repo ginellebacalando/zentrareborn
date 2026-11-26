@@ -5,6 +5,11 @@ import { balanceDueDate } from '@/lib/admin/booking-rules';
 import { money, paidTotal, paymentStatus, confirmationError } from '@/lib/admin/domain';
 import { displayStatus, displayStatusLabels } from '@/lib/admin/dashboard-status';
 import { onlinePaymentMethods, PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
+import {
+  chosenOnlineMethod,
+  onlineMethodName,
+  preferredPaymentMethod,
+} from '@/lib/booking-payment-choice';
 import { Badge } from './AdminBadge';
 import { StatusDot, statusTone } from './BookingStatus';
 import { BookingForm } from './Forms';
@@ -165,7 +170,10 @@ export default function BookingDetail({
   const reviewShown = focus === 'payments' || focus === 'bookings';
   const screenshotsId = `payment-screenshots-${b.id}`;
   // Clients can send screenshots only while a GCash or bank account is set up in Settings.
-  const onlinePayment = onlinePaymentMethods(settings.admin.paymentAccounts).length > 0;
+  const onlineMethods = onlinePaymentMethods(settings.admin.paymentAccounts);
+  const onlinePayment = onlineMethods.length > 0;
+  // A client who chose GCash or bank transfer pays by attaching the receipt, not in cash.
+  const transferChoice = chosenOnlineMethod(preferredPaymentMethod(b.notes), onlineMethods);
   // Zion's terms ask for full payment a set number of days before the event (Settings).
   const balanceDue =
     b.reservation === 'CONFIRMED' && paid < b.totalCents
@@ -582,6 +590,17 @@ export default function BookingDetail({
             ))}
           </ul>
           {!b.payments.length && <p>No payment received.</p>}
+          {b.approval === 'APPROVED' && !closed && paid < b.totalCents && transferChoice && (
+            <p className={styles.help}>
+              {b.clientName} chose to pay by {onlineMethodName(transferChoice)}. Record cash only
+              for cash received at the venue; a {onlineMethodName(transferChoice)} payment is
+              recorded when you verify the client&apos;s receipt under{' '}
+              <a href={`#${screenshotsId}`} className={styles.panelLink}>
+                Payment screenshots
+              </a>
+              .
+            </p>
+          )}
           {b.approval === 'APPROVED' && !closed && paid < b.totalCents && (
             <form className={styles.inlineForm} onSubmit={submitReceipt}>
               <label>
