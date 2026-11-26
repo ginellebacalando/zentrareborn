@@ -495,25 +495,29 @@ html[data-public-menu-open='true'] .public-smart-guide {
 }
 
 /*
- * Sections fade and rise in as they scroll into view on public pages. Pure CSS and progressive:
- * only browsers with scroll-driven animations run it; others simply show the content. Sections that
- * already reveal (FadeIn's .reveal), contain a reveal or sit inside another section are left alone,
- * and the rule lives in a low cascade layer, so a component's own animation always wins. The fade
- * completes within the first 12rem of the section entering, so text is never read half-faded.
+ * Scroll reveal (components/layout/ScrollReveal.tsx): a page section or the footer that is still
+ * below the first screen fades and rises into place as it scrolls into view. Only that script hides
+ * anything, and only when motion is welcome; keyboard focus inside a waiting block shows it at
+ * once, and printing shows everything. The fade finishes in under a second, so text is never read
+ * half-faded.
  */
-@layer base {
-  @media screen and (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .public-page :where(section):where(:not(.reveal, .reveal *, section section, :has(.reveal))) {
-        animation: section-in linear both;
-        animation-timeline: view();
-        animation-range: entry 0 entry 12rem;
-      }
-    }
+@media (prefers-reduced-motion: no-preference) {
+  [data-scroll-reveal='hidden']:not(:focus-within) {
+    opacity: 0;
+  }
+
+  [data-scroll-reveal='shown'] {
+    animation: scroll-reveal-in var(--motion-reveal) var(--motion-ease) both;
   }
 }
 
-@keyframes section-in {
+@media print {
+  [data-scroll-reveal='hidden'] {
+    opacity: 1;
+  }
+}
+
+@keyframes scroll-reveal-in {
   from {
     opacity: 0;
     translate: 0 1.5rem;

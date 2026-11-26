@@ -12,6 +12,7 @@ import { ThemeProvider } from './_providers/ThemeProvider';
 import PanelChrome from '@/components/layout/PanelChrome';
 import SkipLink from '@/components/layout/SkipLink';
 import RouteTransition from '@/components/layout/RouteTransition';
+import ScrollReveal from '@/components/layout/ScrollReveal';
 import { archivo, archivoExtended, cinzelDecorative } from './_fonts';
 import Chatbot from '@/components/chatbot/Chatbot';
 
@@ -74,6 +75,7 @@ export default function RootLayout({
             <GlobalBackground />
             <GlobalHeader />
             <RouteTransition />
+            <ScrollReveal />
           </PanelChrome>
           {children}
           <PanelChrome>

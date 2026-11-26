@@ -525,15 +525,52 @@
   color: var(--text-muted);
 }
 
-/* Contact */
-.contactGrid {
+/* Contact: three cards (find us, visiting hours, reach us), each ending in one next step. */
+.contactCards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-  gap: var(--space-8);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: var(--space-6);
+}
+
+.contactCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: clamp(var(--space-6), 3vw, var(--space-8));
+  border: 1px solid var(--line-hairline);
+  background: var(--surface-page);
+}
+
+.contactCard:hover {
+  border-color: color-mix(in srgb, var(--text-accent) 45%, var(--line-hairline));
+}
+
+.contactIcon {
+  display: grid;
+  place-items: center;
+  width: var(--layout-touch-target);
+  height: var(--layout-touch-target);
+  margin-bottom: var(--space-1);
+  border: 1px solid var(--text-accent);
+  border-radius: 50%;
+  background: var(--surface-page);
+  color: var(--text-accent);
+  transition:
+    background-color var(--motion-normal) var(--motion-ease),
+    color var(--motion-normal) var(--motion-ease);
+}
+
+.contactIcon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.contactCard:hover .contactIcon {
+  background: var(--action-primary);
+  color: var(--text-on-action);
 }
 
 .contactLabel {
-  margin-bottom: var(--space-2);
   color: var(--text-accent);
   font-size: var(--type-small);
   font-weight: var(--weight-semibold);
@@ -545,13 +582,53 @@
   display: grid;
   gap: var(--space-1);
   font-style: normal;
+  line-height: var(--line-body);
 }
 
 .contactText a {
   width: fit-content;
   color: inherit;
   text-decoration: underline;
+  text-decoration-color: var(--line-hairline);
   text-underline-offset: 0.25em;
+}
+
+.contactText a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* The card's next step sits at its foot, so the three links line up across the row. */
+.contactAction {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  min-height: var(--layout-touch-target);
+  margin-top: auto;
+  padding-top: var(--space-2);
+  color: var(--text-accent);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-transform: uppercase;
+  text-underline-offset: 0.4em;
+}
+
+.contactAction:hover {
+  text-decoration-thickness: 2px;
+}
+
+.contactAction svg {
+  width: var(--space-4);
+  height: var(--space-4);
+  transition: translate var(--motion-normal) var(--motion-ease);
+}
+
+.contactAction:hover svg,
+.contactAction:focus-visible svg {
+  translate: var(--space-1) 0;
 }
 
 .muted {
@@ -624,6 +701,47 @@
     opacity: 0;
     translate: 0 var(--space-4);
   }
+
+  /* Section titles arrive first: the title, then the rule drawing outward, then the subtitle. */
+  .heading > * {
+    transition:
+      opacity var(--motion-reveal) var(--motion-ease),
+      translate var(--motion-reveal) var(--motion-ease),
+      scale var(--motion-reveal) var(--motion-ease);
+  }
+
+  .heading > :nth-child(2) {
+    transition-delay: var(--motion-stagger);
+  }
+
+  .heading > :nth-child(3) {
+    transition-delay: calc(var(--motion-stagger) * 2);
+  }
+
+  :global(.reveal[data-visible='false']:not(:focus-within)) .heading > * {
+    opacity: 0;
+    translate: 0 var(--space-3);
+  }
+
+  :global(.reveal[data-visible='false']:not(:focus-within)) .rule {
+    scale: 0 1;
+  }
+
+  /* Contact icons settle a moment after their card. */
+  .contactIcon {
+    transition:
+      background-color var(--motion-normal) var(--motion-ease),
+      color var(--motion-normal) var(--motion-ease),
+      opacity var(--motion-slow) var(--motion-ease)
+        calc(var(--motion-stagger) * (var(--stagger-index, 0) + 3)),
+      scale var(--motion-slow) var(--motion-ease)
+        calc(var(--motion-stagger) * (var(--stagger-index, 0) + 3));
+  }
+
+  :global(.reveal[data-visible='false']:not(:focus-within)) .contactIcon {
+    opacity: 0;
+    scale: 0.6;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -633,6 +751,8 @@
   .cardArrow,
   .visitArrow,
   .timelineMarker,
+  .contactIcon,
+  .contactAction svg,
   .buttonPrimary,
   .buttonOutline {
     transition: none;

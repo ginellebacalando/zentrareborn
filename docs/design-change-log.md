@@ -1,5 +1,36 @@
 # Design change log
 
+## 26 November 2026 (evening) — Home Contact cards; every page fades in as you scroll
+
+User task: make the Home page's Contact section more professional, and give the whole site a smooth
+fade as the visitor scrolls ("ikaw na bahala mag-enhance lahat").
+
+- Contact (`components/home/ContactSection.tsx`, `HomeSections.module.css`): three cards on the
+  mist band (Visit us, Visiting hours, Reach us), each with an outlined icon (map pin, clock,
+  envelope), its details and one next step at its foot: "Get directions" (with a screen-reader note
+  that it opens Google Maps in a new tab), "Schedule a visit" (visits are by appointment only) and
+  "Send an inquiry". The links line up across the row; hovering a card fills its icon and the
+  link's arrow nudges. The cards arrive in a cascade and their icons settle a moment later.
+- Home section titles (`HomeSections.module.css`, SectionHeading): when a section scrolls into
+  view, its title rises in first, the short rule draws outward, then the subtitle follows.
+- Site-wide scroll reveal (`components/layout/ScrollReveal.tsx`, mounted in `app/layout.tsx` inside
+  PanelChrome; `app/globals.css`): every public page's sections that start below the first screen,
+  and the footer, fade and rise into place when they scroll into view. This replaces the CSS-only
+  version that ran in Chromium alone, so Safari on iPhones gets it too. The server still renders
+  everything visible; the script hides only what has not been reached, never under reduced motion;
+  keyboard focus inside a waiting block shows it at once; a block skipped by a jump reveals when
+  scrolled back to; the footer resets on each page change. Sections already animated by FadeIn
+  (Home, event pages and others) are left alone.
+
+Checked in Chromium on the local demo: the Contact cards at 1440px, 375px and 320px (no sideways
+scroll), the hidden and revealed states of titles, rules and icons with their delays; on About, two
+sections and the footer waited below the fold and revealed on scrolling (one skipped by a jump
+revealed when scrolled back to), keyboard focus showed a waiting footer, and after a page change
+the footer waited again and revealed. `npm run verify` passed: formatting, design and client-boundary checks, type check, 144 tests, lint and the production build.
+
+Not checked: Safari and Firefox themselves, a real phone, a screen reader, and the reduced-motion
+setting itself (the script and CSS both stand down for it; not emulated).
+
 ## 26 November 2026 (late afternoon) — Home: Available Dates, a clearer path to booking
 
 User task: make the Home page's Available Dates section look professional and modern, with
