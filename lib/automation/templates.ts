@@ -64,9 +64,14 @@ const footerLines = [
 ];
 
 const T = EMAIL_THEME;
-const LABEL = `font-size:14px;line-height:1.5;color:${T.muted};`;
-const VALUE = `font-size:15px;line-height:1.5;color:${T.text};`;
-const PANEL = `background:${T.surface};border:1px solid ${T.line};border-radius:10px;`;
+const HAIRLINE = `1px solid ${T.line}`;
+// One line height for labels and values, so their baselines line up across a row.
+const LABEL = `font-size:13px;line-height:22px;color:${T.muted};`;
+const VALUE = `font-size:15px;line-height:22px;color:${T.text};`;
+const PANEL = `background:${T.surface};border-radius:12px;`;
+const LINK = `color:${T.brand};text-decoration:underline;`;
+/** Keeps the mail app's inbox preview to the preheader instead of the text that follows it. */
+const PREHEADER_FILL = '&#847;&zwnj;&nbsp;'.repeat(40);
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -93,16 +98,55 @@ function paragraphHtml(text: string, emphasis?: readonly string[]) {
   return `<p style="margin:0 0 16px;">${richText(text, emphasis)}</p>`;
 }
 
-/** Label and value rows in a soft panel, a hairline between rows. */
+const EMAIL_ADDRESS = /^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i;
+const PHONE_NUMBER = /^\+?\d[\d\s-]{6,18}\d$/;
+const WEB_LINK = /^https?:\/\/\S+$/i;
+
+/** What a link in the details reads as: maps links say so, other links show their site. */
+function linkText(href: string) {
+  try {
+    const url = new URL(href);
+    const maps =
+      url.hostname === 'maps.app.goo.gl' ||
+      (/(^|\.)google\.[a-z.]+$/.test(url.hostname) && url.pathname.startsWith('/maps'));
+    return maps ? 'Open in Google Maps' : url.hostname.replace(/^www\./, '');
+  } catch {
+    return href;
+  }
+}
+
+/**
+ * A detail value; one that is wholly an email address, a phone number or a web address becomes a
+ * link in the brand color, so mail apps do not style it in their own blue.
+ */
+function valueHtml(value: string) {
+  const text = value.trim();
+  if (EMAIL_ADDRESS.test(text))
+    return `<a href="mailto:${escapeHtml(text)}" style="${LINK}">${escapeHtml(text)}</a>`;
+  const digits = text.replace(/\D/g, '');
+  if (PHONE_NUMBER.test(text) && digits.length >= 10 && digits.length <= 13)
+    return `<a href="tel:${escapeHtml(text.startsWith('+') ? `+${digits}` : digits)}" style="${LINK}">${escapeHtml(text)}</a>`;
+  if (WEB_LINK.test(text))
+    return `<a href="${escapeHtml(text)}" style="${LINK}">${escapeHtml(linkText(text))}</a>`;
+  return richText(value);
+}
+
+/**
+ * Label and value rows on a soft panel, a hairline between rows; rows stack on small screens.
+ * A list of counts (the daily digest) reads as a tally instead: the label in full on the left and
+ * the number in bold on the right, side by side at every width.
+ */
 function detailsHtml(details: EmailDetail[]) {
-  const rows = details
-    .filter(([, value]) => value.trim())
-    .map(([label, value], index) => {
-      const rule = index ? `border-top:1px solid ${T.line};` : '';
-      return `<tr><th scope="row" align="left" valign="top" width="38%" style="padding:10px 16px 10px 0;${rule}${LABEL}font-weight:normal;">${escapeHtml(label)}</th><td valign="top" style="padding:10px 0;${rule}${VALUE}">${richText(value)}</td></tr>`;
-    });
+  const shown = details.filter(([, value]) => value.trim());
+  const tally = shown.every(([, value]) => /^\d[\d,]*$/.test(value.trim()));
+  const rows = shown.map(([label, value], index) => {
+    const rule = index ? `border-top:${HAIRLINE};` : '';
+    return tally
+      ? `<tr><th scope="row" align="left" valign="top" style="padding:10px 16px 10px 0;${rule}${LABEL}font-weight:normal;">${escapeHtml(label)}</th><td align="right" valign="top" style="padding:10px 0;${rule}${VALUE}font-weight:bold;white-space:nowrap;">${escapeHtml(value.trim())}</td></tr>`
+      : `<tr class="zentra-row"><th scope="row" align="left" valign="top" width="34%" style="padding:12px 16px 12px 0;${rule}${LABEL}font-weight:normal;">${escapeHtml(label)}</th><td valign="top" style="padding:12px 0;${rule}${VALUE}">${valueHtml(value)}</td></tr>`;
+  });
   return rows.length
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 24px;${PANEL}"><tr><td style="padding:6px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows.join('')}</table></td></tr></table>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 28px;${PANEL}"><tr><td class="zentra-panel" style="padding:6px 24px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">${rows.join('')}</table></td></tr></table>`
     : '';
 }
 
@@ -116,7 +160,7 @@ export type EmailSummary = {
 
 function badgeHtml(value: string, tone: EmailTone) {
   const colors = T.tones[tone];
-  return `<span style="display:inline-block;padding:2px 10px;border-radius:999px;background:${colors.background};color:${colors.text};font-size:13px;line-height:1.5;font-weight:bold;white-space:nowrap;">${escapeHtml(value)}</span>`;
+  return `<span style="display:inline-block;padding:3px 12px;border-radius:999px;background:${colors.background};color:${colors.text};font-size:13px;line-height:1.5;font-weight:bold;white-space:nowrap;">${escapeHtml(value)}</span>`;
 }
 
 function rowsTable(rows: string[]) {
@@ -126,25 +170,25 @@ function rowsTable(rows: string[]) {
 function summaryHtml(summary: EmailSummary) {
   const statuses = summary.statuses.map(
     ({ label, value, tone }) =>
-      `<tr><td style="padding:7px 0;${LABEL}">${escapeHtml(label)}</td><td align="right" style="padding:7px 0;">${badgeHtml(value, tone)}</td></tr>`,
+      `<tr><td style="padding:8px 0;${LABEL}">${escapeHtml(label)}</td><td align="right" style="padding:8px 0;">${badgeHtml(value, tone)}</td></tr>`,
   );
   const amounts = summary.amounts.map(({ label, value, total }) => {
     const accent = total
-      ? `padding-top:12px;border-top:1px solid ${T.line};font-weight:bold;color:${T.text};`
+      ? `padding-top:14px;border-top:${HAIRLINE};font-size:16px;font-weight:bold;color:${T.text};`
       : '';
     return `<tr><td style="padding:6px 0;${LABEL}${accent}">${escapeHtml(label)}</td><td align="right" style="padding:6px 0;${VALUE}white-space:nowrap;${accent}">${escapeHtml(value)}</td></tr>`;
   });
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;${PANEL}">
-<tr><td style="padding:18px 20px 16px;"><div style="font-size:12px;line-height:1.4;letter-spacing:1.5px;text-transform:uppercase;color:${T.muted};">Booking reference</div><div style="margin-top:4px;font-size:18px;line-height:1.3;font-weight:bold;letter-spacing:0.5px;color:${T.text};">${escapeHtml(summary.reference)}</div></td></tr>
-${statuses.length ? `<tr><td style="padding:8px 20px;border-top:1px solid ${T.line};">${rowsTable(statuses)}</td></tr>` : ''}
-${amounts.length ? `<tr><td style="padding:8px 20px 12px;border-top:1px solid ${T.line};">${rowsTable(amounts)}</td></tr>` : ''}
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 28px;${PANEL}">
+<tr><td class="zentra-panel" style="padding:22px 24px 18px;"><div style="font-size:12px;line-height:1.4;letter-spacing:1.5px;text-transform:uppercase;color:${T.muted};">Booking reference</div><div style="margin-top:6px;font-size:20px;line-height:1.3;font-weight:bold;letter-spacing:0.5px;color:${T.text};">${escapeHtml(summary.reference)}</div></td></tr>
+${statuses.length ? `<tr><td class="zentra-panel" style="padding:10px 24px;border-top:${HAIRLINE};">${rowsTable(statuses)}</td></tr>` : ''}
+${amounts.length ? `<tr><td class="zentra-panel" style="padding:10px 24px 18px;border-top:${HAIRLINE};">${rowsTable(amounts)}</td></tr>` : ''}
 </table>`;
 }
 
 function sectionHtml(section: EmailSection, emphasis: readonly string[]) {
   return [
     section.heading
-      ? `<h2 style="margin:28px 0 10px;font-size:17px;line-height:1.35;font-weight:bold;color:${T.text};">${escapeHtml(section.heading)}</h2>`
+      ? `<h2 style="margin:32px 0 12px;font-size:16px;line-height:1.4;font-weight:bold;color:${T.text};">${escapeHtml(section.heading)}</h2>`
       : '',
     ...(section.paragraphs ?? []).map((text) => paragraphHtml(text, emphasis)),
     section.summary ? summaryHtml(section.summary) : '',
@@ -176,29 +220,45 @@ function sectionText(section: EmailSection) {
 }
 
 /**
- * The header logo: the ZENTRA wordmark image from the site's own address, linked to the site.
+ * The centered header logo: the ZENTRA wordmark from the site's own address, linked to the site.
  * Without a known address (local runs, tests) the wordmark is set in type instead; the same type
  * styles the alternative text when a mail app blocks images.
  */
 function logoHtml() {
   const origin = applicationUrl();
   const name = escapeHtml(T.wordmark);
-  const type = `font-family:${T.wordmarkFont};font-size:26px;line-height:1.1;letter-spacing:6px;font-weight:bold;color:${T.brand};`;
+  const type = `font-family:${T.wordmarkFont};font-size:28px;line-height:1.1;letter-spacing:6px;font-weight:bold;color:${T.brand};`;
   if (!origin) return `<div style="${type}">${name}</div>`;
   const { path, width, height } = T.logo;
-  return `<a href="${escapeHtml(origin)}" style="display:inline-block;text-decoration:none;"><img src="${escapeHtml(`${origin}${path}`)}" width="${width}" height="${height}" alt="${name}" style="display:block;border:0;outline:none;text-decoration:none;${type}"></a>`;
+  return `<a href="${escapeHtml(origin)}" style="display:inline-block;text-decoration:none;"><img src="${escapeHtml(`${origin}${path}`)}" width="${width}" height="${height}" alt="${name}" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;${type}"></a>`;
 }
 
 const footerHtml = [
-  escapeHtml(BRAND.address.lines.join(', ')),
-  `${escapeHtml(BRAND.contact.phone)} · <a href="${escapeHtml(BRAND.contact.emailHref)}" style="color:${T.muted};text-decoration:underline;">${escapeHtml(BRAND.contact.email)}</a>`,
-  escapeHtml(AUTOMATED_NOTE),
-].join('<br>');
+  `<div style="margin-bottom:4px;font-size:13px;font-weight:bold;color:${T.text};">${escapeHtml(BRAND.legalName)}</div>`,
+  `<div>${escapeHtml(BRAND.address.lines.join(', '))}</div>`,
+  `<div><a href="${escapeHtml(BRAND.contact.phoneHref)}" style="color:${T.muted};text-decoration:none;">${escapeHtml(BRAND.contact.phone)}</a> &nbsp;·&nbsp; <a href="${escapeHtml(BRAND.contact.emailHref)}" style="color:${T.muted};text-decoration:underline;">${escapeHtml(BRAND.contact.email)}</a></div>`,
+  `<div style="margin-top:12px;">${escapeHtml(AUTOMATED_NOTE)}</div>`,
+].join('\n');
+
+/** Small-screen and mail-app adjustments; every essential style is also inline. */
+const EMAIL_STYLE = `a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font-size: inherit !important; font-family: inherit !important; font-weight: inherit !important; line-height: inherit !important; }
+@media (max-width: 600px) {
+  .zentra-outer { padding: 20px 10px !important; }
+  .zentra-pad { padding-left: 22px !important; padding-right: 22px !important; }
+  .zentra-panel { padding-left: 18px !important; padding-right: 18px !important; }
+  .zentra-h1 { font-size: 22px !important; }
+  .zentra-row th, .zentra-row td { display: block !important; width: auto !important; }
+  .zentra-row th { padding: 12px 0 0 !important; }
+  .zentra-row td { padding: 2px 0 12px !important; border-top: 0 !important; }
+  .zentra-button { width: 100% !important; }
+  .zentra-button a { display: block !important; text-align: center !important; }
+}`;
 
 /**
- * Branded layout shared by every automated email: the ZENTRA logo over the venue name, then a
- * white card with the heading, sections (paragraphs, a booking summary, label and value panels),
- * one button and an optional closing note; the venue's address and contacts sit below the card.
+ * Branded layout shared by every automated email: a white card with the ZENTRA logo and the venue
+ * name centered at the top, then the heading, sections (paragraphs, a booking summary, label and
+ * value panels), one button and an optional closing note; the venue's address and contacts sit
+ * centered below the card.
  */
 export function renderEmail(input: {
   subject: string;
@@ -213,50 +273,54 @@ export function renderEmail(input: {
 }): RenderedEmail {
   const subject = singleLine(input.subject, 200);
   const emphasis = input.emphasis ?? [];
+  // A border-drawn button keeps its shape in Outlook, which ignores padding on links.
   const action = input.action
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 28px;"><tr><td style="border-radius:8px;background:${T.brand};"><a href="${escapeHtml(input.action.href)}" style="display:inline-block;padding:13px 24px;border-radius:8px;font-family:${T.bodyFont};font-size:15px;line-height:1.2;font-weight:bold;color:${T.onBrand};text-decoration:none;">${escapeHtml(input.action.label)}</a></td></tr></table>`
+    ? `<table role="presentation" class="zentra-button" cellpadding="0" cellspacing="0" style="margin:12px 0 8px;"><tr><td align="center" style="border-radius:10px;background:${T.brand};"><a href="${escapeHtml(input.action.href)}" style="display:inline-block;border-top:14px solid ${T.brand};border-bottom:14px solid ${T.brand};border-left:28px solid ${T.brand};border-right:28px solid ${T.brand};border-radius:10px;background:${T.brand};font-family:${T.bodyFont};font-size:15px;line-height:1.2;font-weight:bold;color:${T.onBrand};text-decoration:none;">${escapeHtml(input.action.label)}</a></td></tr></table>`
     : '';
   const note = input.note
-    ? `<p style="margin:8px 0 24px;padding-top:20px;border-top:1px solid ${T.line};font-size:13px;line-height:1.6;color:${T.muted};">${richText(input.note)}</p>`
+    ? `<p style="margin:28px 0 0;padding-top:20px;border-top:${HAIRLINE};font-size:13px;line-height:1.6;color:${T.muted};">${richText(input.note)}</p>`
     : '';
   const html = `<!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
 <title>${escapeHtml(subject)}</title>
 <style>
-@media (max-width: 520px) {
-  .zentra-outer { padding: 16px 8px !important; }
-  .zentra-pad { padding-left: 20px !important; padding-right: 20px !important; }
-}
+${EMAIL_STYLE}
 </style>
 </head>
-<body style="margin:0;padding:0;background:${T.canvas};-webkit-text-size-adjust:100%;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(input.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${T.canvas};">
-<tr><td class="zentra-outer" align="center" style="padding:32px 12px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:${T.background};border:1px solid ${T.line};border-radius:12px;font-family:${T.bodyFont};">
-<tr><td class="zentra-pad" style="padding:28px 32px 22px;border-bottom:1px solid ${T.line};">
+<body style="margin:0;padding:0;width:100%;background:${T.canvas};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+<div role="article" aria-roledescription="email" aria-label="${escapeHtml(subject)}" lang="en" dir="ltr" style="background:${T.canvas};">
+<div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(input.preheader)}${PREHEADER_FILL}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${T.canvas};">
+<tr><td class="zentra-outer" align="center" style="padding:40px 16px;">
+<!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:${T.background};border:${HAIRLINE};border-radius:16px;font-family:${T.bodyFont};">
+<tr><td class="zentra-pad" align="center" style="padding:24px 40px 26px;border-bottom:${HAIRLINE};">
 ${logoHtml()}
-<div style="margin-top:8px;font-size:12px;line-height:1.4;letter-spacing:2px;text-transform:uppercase;color:${T.muted};">${escapeHtml(BRAND.legalName)}</div>
+<div style="margin-top:6px;font-size:12px;line-height:1.4;letter-spacing:3px;text-transform:uppercase;color:${T.muted};">${escapeHtml(BRAND.legalName)}</div>
 </td></tr>
-<tr><td class="zentra-pad" style="padding:32px 32px 12px;font-size:15px;line-height:1.65;color:${T.text};">
-<h1 style="margin:0 0 20px;font-size:22px;line-height:1.3;font-weight:bold;color:${T.text};">${escapeHtml(input.heading)}</h1>
+<tr><td class="zentra-pad" style="padding:36px 40px 28px;font-size:15px;line-height:1.65;color:${T.text};">
+<h1 class="zentra-h1" style="margin:0 0 16px;font-size:24px;line-height:1.3;font-weight:bold;letter-spacing:-0.2px;color:${T.text};">${escapeHtml(input.heading)}</h1>
 ${input.sections.map((section) => sectionHtml(section, emphasis)).join('\n')}
 ${action}
 ${note}
 </td></tr>
 </table>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;font-family:${T.bodyFont};">
-<tr><td class="zentra-pad" align="center" style="padding:20px 32px 8px;font-size:12px;line-height:1.7;color:${T.muted};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<tr><td class="zentra-pad" align="center" style="padding:28px 40px 8px;font-family:${T.bodyFont};font-size:12px;line-height:1.7;color:${T.muted};">
 ${footerHtml}
 </td></tr>
 </table>
+<!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
 </table>
+</div>
 </body>
 </html>`;
   const text = [

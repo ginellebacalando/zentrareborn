@@ -1,5 +1,35 @@
 # Design change log
 
+## 26 November 2026 (morning) — Emails: centered logo, modern finish
+
+User task: make the automated emails look modern and professional, with the logo centered. Only
+the HTML changed; every email's wording and plain-text version stay as they were.
+
+- Layout (`lib/automation/templates.ts`, `lib/automation/email-theme.ts`), shared by every
+  automated email:
+  - Header: the ZENTRA wordmark centered over "ZION EVENTS PLACE", a hairline below. The wordmark
+    now comes from `public/images/brand/zentra-wordmark-email.png`: the website's wordmark on its
+    own white rounded plate (900 × 270, drawn at 200 × 60). The plate is invisible on the white
+    header and keeps the green wordmark readable when Gmail's dark mode darkens the card.
+  - Body: a 24px heading (22px on phones) over 15px text. Detail labels and values share one
+    baseline. Email addresses, phone numbers and web links in the details become brand-green
+    links, so mail apps do not turn them blue; a maps link reads "Open in Google Maps" instead of
+    the long address. A list of counts (the daily digest) reads as a tally, number on the right.
+  - Phones: detail rows stack (label above value), the button fills the width, padding tightens.
+  - Mail apps: preheader filler so inbox previews stop at the preheader; Apple Mail's automatic
+    links keep the text color; a fixed 600px frame for Outlook on Windows and a button drawn with
+    borders so it keeps its shape there; an "article" wrapper named by the subject for screen
+    readers.
+  - Footer: centered venue name, address, a tappable phone number and email, and the automated
+    message note.
+
+Checked: the staff visit notice, the visitor's visit confirmation, a booking notice with the
+summary block and the daily digest, rendered in Chromium (Edge) at 1000px, 375px and 320px with
+sample data; no sideways scroll at 320px. `npm run verify` passed: formatting, design and client-boundary checks, type check, 144 tests, lint and the production build.
+
+Not checked: the emails inside Gmail, Outlook and Apple Mail themselves (browser renders only),
+Gmail's dark mode on a real phone, and a screen reader.
+
 ## 26 November 2026 (night, second request) — Corporate pass: no duplicates, no template clichés
 
 User task: remove the remaining redundancy (starting with the footer's copy of the header links);

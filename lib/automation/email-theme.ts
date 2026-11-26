@@ -7,10 +7,12 @@ export const EMAIL_THEME = {
   /** The logo's alternative text, and the header itself when the site's address is unknown. */
   wordmark: 'ZENTRA',
   /**
-   * The ZENTRA wordmark exactly as the website shows it (770 × 179 pixels), loaded from the
-   * site's own address and drawn at half resolution or less so it stays sharp on dense screens.
+   * The website's ZENTRA wordmark (770 × 179 pixels) on its own white rounded plate, 900 × 270 in
+   * all, loaded from the site's own address and drawn at under a quarter of its size so it stays
+   * sharp. The plate is invisible on the white header and keeps the green wordmark readable when a
+   * mail app's dark mode darkens the card behind it.
    */
-  logo: { path: '/images/brand/zentra-wordmark.png', width: 156, height: 36 },
+  logo: { path: '/images/brand/zentra-wordmark-email.png', width: 200, height: 60 },
   brand: '#03422E',
   background: '#FFFFFF',
   /** --palette-zentra-pearl: the page behind the message card. */
