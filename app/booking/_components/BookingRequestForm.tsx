@@ -23,7 +23,7 @@ import {
 import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDatePicker';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { BRAND } from '@/config/brand';
-import { packageQuote } from '@/lib/booking-quote';
+import { cheaperTier, packageQuote } from '@/lib/booking-quote';
 import {
   BOOKING_EXTRAS,
   BOOKING_PAYMENT_METHODS,
@@ -750,6 +750,7 @@ export default function BookingRequestForm({
                   <div className={styles.packageList}>
                     {category.packages.map((item, index) => {
                       const itemEstimate = estimateFor(item, guests);
+                      const cheaper = cheaperTier(category.packages, item, guests);
                       return (
                         <label key={item.id} className={styles.packageOption}>
                           <input
@@ -794,6 +795,12 @@ export default function BookingRequestForm({
                           {itemEstimate && itemEstimate.extraGuests > 0 ? (
                             <span className={styles.packageNote}>
                               For {guests} guests: about {peso.format(itemEstimate.total)}
+                            </span>
+                          ) : null}
+                          {cheaper ? (
+                            <span className={styles.packageNote}>
+                              {cheaper.pkg.name} costs less for {guests} guests: about{' '}
+                              {peso.format(cheaper.totalCents / 100)}
                             </span>
                           ) : null}
                         </label>

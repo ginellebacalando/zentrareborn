@@ -3,7 +3,15 @@ import { zeniCopyFor } from '@/config/chatbot-receptionist';
 import { zeniTopics, type ZeniHelpTopic } from '@/config/zeni-topics';
 import { isAppreciation, receptionistIntent } from './intent';
 import { captureSlots, type SlotChanges } from './slots';
-import { rankSources, sourceEvidence, titleCoversQuestion, titleMatchRatio } from './retrieval';
+import {
+  candidateSources,
+  rankSources,
+  relevantPassage,
+  sourceEvidence,
+  titleCoversQuestion,
+  titleMatchRatio,
+} from './retrieval';
+import { MAX_PROMPT_SOURCES } from './llm-prompt';
 import { redactPersonalData } from './redaction';
 import { detectLanguage } from './language';
 import { detectTopic, type ZeniTopic } from './topics';
@@ -546,13 +554,20 @@ function groundedAnswer(context: PlanContext): ReceptionistPlan {
   );
   const helpTopic = topicFromKeywords(text);
   const bare = text.split(/\s+/).length <= 3;
+  // Related published facts the language model may combine into an answer.
+  const related = candidateSources(searchText, sources, previous, MAX_PROMPT_SOURCES).filter(
+    (source) => !unverifiedPaymentMethods(source),
+  );
   if (!selected.length) {
     const gap: ZeniGap = { reason: 'no_source', question: redacted, topic };
     // A message that only names a topic ("lechon?", "corkage") gets that topic's official
-    // summary. A specific question nothing covers is logged and never guessed.
+    // summary. A specific question nothing covers is never guessed by the rules: the honest
+    // "not published yet" reply stands in backup mode, while the language model may still answer
+    // from related facts or, for a general planning question, give general advice.
     if (helpTopic && bare) return topicPlan(context, helpTopic, { gap });
     const result = offerStaff(context, copy.knowledgeGap, 'knowledge_gap', gap);
     result.reply.suggestions = copy.suggestions.welcome;
+    result.compose = { mode: 'answer', question: redacted, sources: related };
     return result;
   }
   const faqGroups = new Map<string, Set<string>>();
@@ -579,11 +594,18 @@ function groundedAnswer(context: PlanContext): ReceptionistPlan {
     selected.filter((source) => source.topic && titleCoversQuestion(searchText, source)).length > 1
   )
     return topicPlan(context, helpTopic);
-  return answerFromSources(context, selected);
+  return answerFromSources(context, selected, related);
 }
 
-/** The reply for ranked sources; the first one is the answer. */
-function answerFromSources(context: PlanContext, selected: ChatSource[]): ReceptionistPlan {
+/**
+ * The reply for ranked sources; the first one is the answer. The language model also sees the
+ * related sources, so it can add a fact the first source leaves out.
+ */
+function answerFromSources(
+  context: PlanContext,
+  selected: ChatSource[],
+  related: ChatSource[] = [],
+): ReceptionistPlan {
   const { state, copy, redacted, topic } = context;
   const primary = selected[0];
   const reference = sourceReference(primary);
@@ -597,14 +619,19 @@ function answerFromSources(context: PlanContext, selected: ChatSource[]): Recept
   state.lastKnowledgeQuestion = redacted;
   state.lastAnswerTurn = state.turn;
   state.stage = state.stage === 'S7' ? 'S7' : 'S2';
-  // Visiting hours are one short fact set; the appointment condition qualifies every day.
+  // Visiting hours are one short fact set; the appointment condition qualifies every day. Other
+  // long sources (a policy, a booklet section) give the lines that match the question.
   const paragraph =
     primary.id === 'visits'
       ? primary.text.replaceAll('\n', '; ')
-      : (primary.text.split('\n').find((line) => line.trim()) ?? '');
+      : relevantPassage(redacted.replace(PLACEHOLDER, ' '), primary);
   // Official FAQ answers are short reviewed paragraphs, so they are never cut.
+  // A list passage is already trimmed to the lines that answer the question.
   const excerpt =
-    primary.id === 'visits' || primary.kind === 'faq' || paragraph.length <= 420
+    primary.id === 'visits' ||
+    primary.kind === 'faq' ||
+    paragraph.length <= 420 ||
+    paragraph.includes('\n')
       ? paragraph
       : paragraph.match(/^.{1,420}[.!?](?:\s|$)/)?.[0];
   if (excerpt && excerpt.trim().length <= 300)
@@ -623,7 +650,7 @@ function answerFromSources(context: PlanContext, selected: ChatSource[]): Recept
   const helpTopic = primary.topic ? zeniTopics.find((item) => item.id === primary.topic) : null;
   const followUp = copy.answerFollowUps[state.turn % copy.answerFollowUps.length];
   const body = excerpt ? excerpt.trim() : `${primary.title}.`;
-  const message = `${repeated ? `${copy.repeatPrefix} ` : ''}${body} ${followUp}`;
+  const message = `${repeated ? `${copy.repeatPrefix} ` : ''}${body}${body.includes('\n') ? '\n' : ' '}${followUp}`;
   return plan(
     context,
     reply('answer', message, {
@@ -635,7 +662,16 @@ function answerFromSources(context: PlanContext, selected: ChatSource[]): Recept
         : copy.suggestions.afterAnswer,
       actions: needsStaffOption(helpTopic) ? [staff(copy)] : [],
     }),
-    { compose: { mode: 'answer', question: redacted, sources: selected } },
+    {
+      compose: {
+        mode: 'answer',
+        question: redacted,
+        sources: [...selected, ...related.filter((source) => !selected.includes(source))].slice(
+          0,
+          MAX_PROMPT_SOURCES,
+        ),
+      },
+    },
   );
 }
 

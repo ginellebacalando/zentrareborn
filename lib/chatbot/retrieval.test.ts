@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { answerVisitor } from './retrieval';
+import { answerVisitor, rankSources, searchTerms } from './retrieval';
 import { websiteChatSources } from '@/config/chatbot';
 import { publicFaqs } from '@/config/public-faqs';
 import type { ChatSource } from './types';
@@ -48,6 +48,23 @@ test('answers common visitor questions with exact public evidence and source lin
     );
     assert.ok(reply.sources.every((source) => source.href.startsWith('/')));
   }
+});
+
+test('other wordings and Filipino share search words, so the unanswered log groups them', () => {
+  const words = (text: string) => searchTerms(text).sort().join(' ');
+  assert.equal(words('Is parking free?'), words('Free parking?'));
+  assert.equal(words('Libre ba ang parking?'), words('Is parking free?'));
+  assert.equal(words('Magkano po ang wedding package?'), words('How much is the wedding package?'));
+});
+
+test('one shared word never picks an answer about something else', () => {
+  for (const question of [
+    'Can we fly drones over the garden during the ceremony?',
+    'When do I sign a contract?',
+    'Can I get a printed copy of my confirmation?',
+    'How will you let me know that my booking is confirmed?',
+  ])
+    assert.deepEqual(rankSources(question, sources), [], question);
 });
 
 test('uses limited question context for a price follow-up', () => {

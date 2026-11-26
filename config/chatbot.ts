@@ -2,7 +2,9 @@ import { BRAND } from './brand';
 import { policiesData } from './policies';
 import { termsData } from './terms';
 import { publicFacilities } from './public-facilities';
-import { eventPackagePages } from './event-package-pages';
+import { eventPackagePages, type EventPackageMediaKey } from './event-package-pages';
+import { packageBooklets, type BookletPackage } from './package-booklets';
+import { bookletCatalog } from './package-catalog';
 import type { ChatSource } from '@/lib/chatbot/types';
 
 export const websiteChatSources: ChatSource[] = [
@@ -176,70 +178,132 @@ export const publicEventSources: ChatSource[] = Object.values(eventPackagePages)
   ],
 }));
 
-// Backup package catalog used when live database package records are unavailable.
-export const backupPackageSources: ChatSource[] = [
-  {
-    id: 'backup-pkg-wedding-classic',
-    kind: 'package',
-    title: 'Wedding Reception — Zion Classic',
-    href: '/events/weddings',
-    text: 'Published package price: ₱165,000\nGuests included: 50 to 80 pax\nInclusions: Exclusive 6-hour venue access (Selah Indoor Hall & Pavilion Garden), curated styling & backdrop, buffet catering setup, basic sound & lighting, and on-the-day coordination.',
-    keywords: ['wedding', 'classic', 'package', 'price', 'inclusion', 'reception'],
-  },
-  {
-    id: 'backup-pkg-wedding-premium',
-    kind: 'package',
-    title: 'Wedding Reception — Zion Premium',
-    href: '/events/weddings',
-    text: 'Published package price: ₱245,000\nGuests included: 80 to 100 pax\nInclusions: Full venue access (Selah Indoor Hall, Pavilion Garden, and Pool Deck), bespoke floral styling, full-course catering, photo & video coverage, hair & makeup, LED wall & pro lights/sounds, and full coordination.',
-    keywords: ['wedding', 'premium', 'package', 'price', 'inclusion', 'reception'],
-  },
-  {
-    id: 'backup-pkg-wedding-ultimate',
-    kind: 'package',
-    title: 'Wedding Reception — Zion Ultimate',
-    href: '/events/weddings',
-    text: 'Published package price: ₱350,000\nGuests included: 100 to 120 pax\nInclusions: All-inclusive luxury wedding with pre-event shoot access, designer ceremony & reception styling, elevated banquet menu, bridal suite prep access, premium photo & video team, HMUA, host, grazing table, and end-to-end coordination.',
-    keywords: ['wedding', 'ultimate', 'package', 'price', 'inclusion', 'reception'],
-  },
-  {
-    id: 'backup-pkg-debut',
-    kind: 'package',
-    title: 'Debut — Classic, Premium & Ultimate Packages',
-    href: '/events/debuts',
-    text: 'Published package prices: Starting at ₱150,000 (Classic) up to ₱280,000+ (Ultimate)\nGuests included: 50 to 120 pax\nInclusions: Exclusive venue access, themed debut styling & stage backdrop, 18 roses/candles/treasures program support, catering, lights & sounds, LED wall, and event coordination.',
-    keywords: ['debut', '18th', 'birthday', 'package', 'price', 'inclusion'],
-  },
-  {
-    id: 'backup-pkg-birthday',
-    kind: 'package',
-    title: 'Birthday — Classic & Premium Packages',
-    href: '/events/birthdays',
-    text: 'Published package prices: ₱100,000 to ₱220,000\nGuests included: 50 to 120 pax\nInclusions: Venue access, customized birthday styling, catering buffet, sound system & lighting, tables and chairs with linens, and on-the-day coordination.',
-    keywords: ['birthday', 'party', 'package', 'price', 'inclusion'],
-  },
-  {
-    id: 'backup-pkg-christening',
-    kind: 'package',
-    title: 'Christening — Intimate & Classic Packages',
-    href: '/events/christening',
-    text: 'Published package prices: ₱80,000 to ₱180,000\nGuests included: 50 to 100 pax\nInclusions: Exclusive venue access, elegant christening table & backdrop styling, family-friendly banquet catering, sound system, and event coordination.',
-    keywords: ['christening', 'baptism', 'package', 'price', 'inclusion'],
-  },
-  {
-    id: 'backup-pkg-gender-reveal',
-    kind: 'package',
-    title: 'Gender Reveal — Intimate & Classic Packages',
-    href: '/events/gender-reveal',
-    text: 'Published package prices: ₱80,000 to ₱180,000\nGuests included: 50 to 100 pax\nInclusions: Venue access, custom gender-reveal styling & photo backdrop, catering menu, sound system, and event coordination.',
-    keywords: ['gender reveal', 'baby', 'package', 'price', 'inclusion'],
-  },
-  {
-    id: 'backup-pkg-christmas',
-    kind: 'package',
-    title: 'Christmas Party & Corporate Celebrations',
-    href: '/events/christmas-party',
-    text: 'Published package prices: Starting at ₱150,000\nGuests included: 50 to 120 pax\nInclusions: Exclusive venue access, festive holiday styling, banquet catering, stage, built-in LED wall, lights & sounds, and event coordination.',
-    keywords: ['christmas', 'holiday', 'corporate', 'party', 'package', 'price', 'inclusion'],
-  },
-];
+const slug = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+/**
+ * The package booklets shown on the event pages: one source per booklet section (menu, styling,
+ * sound…) and one overview per package. Rates come from the package catalog, which
+ * scripts/sync-package-catalog.ts keeps in line with these booklets, so they are not repeated
+ * here: Zeni has one source for each price. A package offered on several event pages is listed
+ * once.
+ */
+function bookletSources(): ChatSource[] {
+  const packages = new Map<string, { item: BookletPackage; events: string[]; href: string }>();
+  for (const [key, booklet] of Object.entries(packageBooklets) as Array<
+    [EventPackageMediaKey, (typeof packageBooklets)[EventPackageMediaKey]]
+  >) {
+    const page = eventPackagePages[key];
+    const event = page.heroEyebrow.replace(/\s+Packages?$/i, '');
+    for (const item of booklet.packages) {
+      const entry = packages.get(item.id);
+      if (entry) entry.events.push(event);
+      else
+        packages.set(item.id, {
+          item,
+          events: [event],
+          href: packageSourcePaths[page.eventCategorySlug] ?? '/events/weddings',
+        });
+    }
+  }
+  return [...packages.values()].flatMap(({ item, events, href }) => {
+    const eventNames = events.join(', ');
+    const keywords = ['package', 'inclusion', item.name, ...events];
+    // "What is included" says nothing as a heading; such a package's list is its own source.
+    const headings = item.sections
+      .map((section) => section.title)
+      .filter((title) => !/^what is included$/i.test(title));
+    const overview: ChatSource = {
+      id: `booklet:${item.id}`,
+      kind: 'package',
+      title: `${item.name} package (${eventNames})`,
+      subject: `${item.name} package inclusions`,
+      packageName: item.name,
+      href,
+      text: [
+        [item.series, item.name].filter(Boolean).join(': ') +
+          (item.tagline ? ` — ${item.tagline}.` : '.'),
+        item.description,
+        item.idealFor?.length ? `Ideal for: ${item.idealFor.join(', ')}.` : '',
+        item.availability ? `Available: ${item.availability}.` : '',
+        headings.length
+          ? `${item.includesFrom ? `Everything in ${item.includesFrom}, plus` : 'Includes'}: ${headings
+              .map((title) => title.toLowerCase())
+              .join('; ')}.`
+          : '',
+        ...(item.schedule ?? []),
+        ...(item.notes ?? []),
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      keywords: [
+        ...keywords,
+        'overview',
+        'what is included',
+        // Only a booklet that promises "no hidden charges" answers "is the rate all-in?".
+        ...((item.notes ?? []).some((note) => /hidden charges/i.test(note))
+          ? ['all-in', 'hidden charges']
+          : []),
+      ],
+    };
+    const sections = item.sections.map((section): ChatSource => ({
+      id: `booklet:${item.id}:${slug(section.title)}`,
+      kind: 'package',
+      title: `${item.name} (${eventNames}): ${section.title}`,
+      subject: section.title,
+      packageName: item.name,
+      href,
+      text: [section.intro, ...section.items].filter(Boolean).join('\n'),
+      keywords: [...keywords, section.title],
+    }));
+    return [overview, ...sections];
+  });
+}
+
+export const bookletChatSources: ChatSource[] = bookletSources();
+
+/** Event names as the catalog's event categories show them. */
+const CATALOG_EVENT_NAMES: Record<string, string> = {
+  'wedding-reception': 'Weddings',
+  debut: 'Debuts',
+  birthday: 'Birthdays',
+  christening: 'Christening',
+  'gender-reveal': 'Gender Reveal',
+  'christmas-party': 'Christmas Party',
+};
+const pesos = new Intl.NumberFormat('en-PH', {
+  style: 'currency',
+  currency: 'PHP',
+  maximumFractionDigits: 0,
+});
+
+/**
+ * Package prices while the admin catalog has no packages: the booklets' published rates in the
+ * same form as catalog packages (config/package-catalog.ts), one per guest count.
+ */
+export const backupPackageSources: ChatSource[] = bookletCatalog.map((row) => ({
+  id: `backup-pkg-${row.categorySlug}-${row.slug}`,
+  kind: 'package',
+  packageName: row.baseName,
+  title: `${CATALOG_EVENT_NAMES[row.categorySlug] ?? row.categorySlug} — ${row.packageName}`,
+  href: packageSourcePaths[row.categorySlug] ?? '/contact',
+  text: [
+    `Published package price: ${pesos.format(row.price)}`,
+    `Guests included: ${row.paxIncluded}`,
+    row.excessPaxFee ? `Each extra guest: ${pesos.format(row.excessPaxFee)}` : '',
+    row.description,
+    `Inclusions:\n${row.inclusions.map((item) => item.inclusionName).join('\n')}`,
+  ]
+    .filter(Boolean)
+    .join('\n'),
+  keywords: [
+    'package',
+    'price',
+    'inclusion',
+    row.baseName,
+    CATALOG_EVENT_NAMES[row.categorySlug] ?? '',
+  ],
+}));

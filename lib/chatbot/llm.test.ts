@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { buildZeniPrompt, prepareComposeInput, type ZeniComposeInput } from './llm-prompt';
-import { validateZeniAnswer } from './llm-validation';
+import { validateGeneralAdvice, validateZeniAnswer } from './llm-validation';
+import { createConversation } from './conversation';
+import type { ChatSource } from './types';
+import { DEFAULT_PUBLIC_SYSTEM_SETTINGS } from '@/lib/system-settings-types';
+import type { ZeniTurnDependencies } from '@/services/chatbot/receptionist';
 import {
   createGeminiComposer,
   zeniLlmSettings,
@@ -112,6 +117,16 @@ test('validation accepts grounded answers and rejects invented facts, links and 
     validateZeniAnswer('Yes, parking is free for your 150 guests. See our /faq page.', context).ok,
     true,
   );
+  // Numbers written as words are checked like digits.
+  assert.equal(validateZeniAnswer('Parking fits up to forty cars.', context).ok, true);
+  assert.deepEqual(validateZeniAnswer('Parking fits up to sixty-five cars.', context), {
+    ok: false,
+    reason: 'number',
+  });
+  assert.deepEqual(validateZeniAnswer('Each table seats sampung bisita.', context), {
+    ok: false,
+    reason: 'number',
+  });
 });
 
 test('settings: on only with a key, switchable off, and a safe default model', () => {
@@ -255,4 +270,188 @@ test('the in-memory rate guard limits bursts per minute and per day', () => {
   guard.cooldown(5_000);
   assert.deepEqual(guard.tryAcquire(), { ok: false, reason: 'cooldown' });
   assert.equal(guard.snapshot().perDay, 3);
+});
+
+test('two-part answers keep Zion facts and general advice apart and check each part', async () => {
+  const general = await composer(async () =>
+    geminiResponse({
+      zion: 'At Zion, free parking is available for up to 40 cars, as our FAQ page says.',
+      general: 'Round tables usually seat 8 to 10 guests, so plan one table per 10 guests.',
+      covered: true,
+      aboutZion: false,
+      used: [1, 9],
+    }),
+  )(input);
+  assert.equal(general.status, 'used');
+  if (general.status === 'used') {
+    // A general question reads the advice first, labelled, then Zion's part.
+    assert.match(general.text, /^Sa pangkalahatan po, round tables usually seat 8 to 10 guests/);
+    assert.match(general.text, /\n\nAt Zion, free parking/);
+    assert.deepEqual([general.covered, general.general, general.aboutZion], [true, true, false]);
+    assert.deepEqual(general.used, [0]);
+  }
+  // Money, Zion claims or contacts in the advice drop only the advice.
+  for (const advice of [
+    'In general, budget about ₱500 per guest.',
+    'In general, Zion is the best choice for weddings.',
+    'In general, call 09171234567 for a coordinator.',
+  ]) {
+    const result = await composer(async () =>
+      geminiResponse({
+        zion: 'Free parking is available for up to 40 cars.',
+        general: advice,
+        covered: true,
+        aboutZion: true,
+        used: [1],
+      }),
+    )(input);
+    assert.equal(result.status, 'used', advice);
+    if (result.status === 'used') {
+      assert.equal(result.text, 'Free parking is available for up to 40 cars.', advice);
+      assert.equal(result.general, false, advice);
+    }
+  }
+  // An invented fact in the Zion part keeps the backup answer.
+  const invented = await composer(async () =>
+    geminiResponse({ zion: 'Parking costs ₱300.', general: '', covered: true, aboutZion: true }),
+  )(input);
+  assert.deepEqual(invented, { status: 'rejected', reason: 'money', model: 'gemini-test-flash' });
+});
+
+test('general advice is checked for money, links, contacts, Zion claims and its opening', () => {
+  assert.deepEqual(validateGeneralAdvice('In general, plan the program flow a week ahead.'), {
+    ok: true,
+    text: 'In general, plan the program flow a week ahead.',
+  });
+  assert.deepEqual(validateGeneralAdvice('Most couples send invitations 8 weeks ahead.'), {
+    ok: true,
+    text: 'In general, most couples send invitations 8 weeks ahead.',
+  });
+  assert.deepEqual(validateGeneralAdvice('LED walls suit evening programs.', 'taglish'), {
+    ok: true,
+    text: 'Sa pangkalahatan po, LED walls suit evening programs.',
+  });
+  for (const [text, reason] of [
+    ['In general, set aside 20k for flowers.', 'money'],
+    ['In general, see https://example.com for ideas.', 'url'],
+    ['In general, ask a coordinator at planner@example.test.', 'contact'],
+    ['In general, Zion handles the program for you.', 'zion'],
+    ['In general, your date is available.', 'claim'],
+    ['x'.repeat(700), 'too_long'],
+  ] as const) {
+    const result = validateGeneralAdvice(text);
+    assert.equal(result.ok, false, text);
+    if (!result.ok) assert.equal(result.reason, reason, text);
+  }
+  const { system } = buildZeniPrompt(prepareComposeInput(input));
+  assert.match(system, /"In general,"/);
+  assert.match(system, /"At Zion,"/);
+  assert.match(system, /another space or another date at Zion/);
+});
+
+test('backup mode keeps the rules answer; the model answers from facts or with general advice', async () => {
+  // The pipeline's modules create database clients when loaded; preview mode never queries them.
+  process.env.DATABASE_URL ??= 'postgresql://zeni-unit-test@127.0.0.1:1/unused';
+  const { runReceptionistPipeline } = await import('@/services/chatbot/receptionist');
+  const knowledge: ChatSource[] = [
+    {
+      id: 'parking',
+      kind: 'faq',
+      title: 'Is there parking for our guests?',
+      text: 'Yes, on-site parking fits up to 45 vehicles.',
+      href: '/faq#parking',
+      keywords: ['parking'],
+    },
+    {
+      id: 'tables',
+      kind: 'policy',
+      title: 'TABLE ARRANGEMENT & SEATING POLICY',
+      text: 'Standard guest tables seat ten (10) guests per table.',
+      href: '/policies',
+      keywords: ['policy', 'table'],
+    },
+  ];
+  const run = (question: string, compose: NonNullable<ZeniTurnDependencies['compose']>) =>
+    runReceptionistPipeline(
+      createConversation(randomUUID(), new Date('2099-01-01T00:00:00Z')),
+      { question, turnId: randomUUID() },
+      knowledge,
+      DEFAULT_PUBLIC_SYSTEM_SETTINGS,
+      { preview: true, compose },
+    );
+  // Backup mode: no model, so an unpublished question gets the honest reply and is logged.
+  const kit = 'What should be in the bride’s emergency kit?';
+  const backup = await run(kit, async () => ({ status: 'disabled', reason: 'no_key' }));
+  assert.equal(backup.reply.kind, 'handoff');
+  assert.equal(backup.gap?.reason, 'no_source');
+  assert.equal(backup.llm.status, 'disabled');
+  // A general planning question gets general advice from the model and is not logged.
+  const tips = await run(kit, async () => ({
+    status: 'used',
+    text: 'In general, pack safety pins, a small sewing kit, tissues and pain relievers.',
+    covered: false,
+    general: true,
+    aboutZion: false,
+    used: [],
+    model: 'gemini-test-flash',
+  }));
+  assert.equal(tips.reply.kind, 'answer');
+  assert.equal(tips.gap, undefined);
+  assert.deepEqual(tips.reply.sources, []);
+  assert.equal(tips.llm.reason, 'general advice');
+  // Advice for a question put to Zion itself is shown, but the question stays logged for staff,
+  // and the staff button is not repeated as a chip.
+  const asked = await run(
+    'How much food do you prepare for each guest at the buffet?',
+    async () => ({
+      status: 'used',
+      text: 'In general, caterers plan generous portions with a little extra for second helpings.',
+      covered: false,
+      general: true,
+      aboutZion: false,
+      used: [],
+      model: 'gemini-test-flash',
+    }),
+  );
+  assert.equal(asked.reply.kind, 'answer');
+  assert.equal(asked.gap?.reason, 'no_source');
+  assert.ok(asked.reply.actions?.some((item) => item.type === 'request_human'));
+  assert.ok(!asked.reply.suggestions.some((item) => /staff/i.test(item)));
+  // The model adds general advice to the published fact the rules found.
+  const advice = await run('How many tables do we need for 100 guests?', async (request) => {
+    const tables = request.sources.findIndex((source) => source.id === 'tables');
+    assert.ok(tables >= 0);
+    return {
+      status: 'used',
+      text: 'In general, plan one table per 8 to 10 guests.\n\nAt Zion, standard guest tables seat ten (10) guests per table.',
+      covered: true,
+      general: true,
+      aboutZion: false,
+      used: [tables],
+      model: 'gemini-test-flash',
+    };
+  });
+  assert.equal(advice.reply.kind, 'answer');
+  assert.equal(advice.gap, undefined);
+  assert.deepEqual(
+    advice.reply.sources.map((source) => source.title),
+    ['TABLE ARRANGEMENT & SEATING POLICY'],
+  );
+  assert.equal(advice.llm.reason, 'facts and general advice');
+  // A question about Zion the facts do not answer keeps the backup reply and stays logged.
+  const missing = await run(
+    'Do you allow drones over the garden during the ceremony?',
+    async () => ({
+      status: 'used',
+      text: 'I don’t have that in our published information yet.',
+      covered: false,
+      general: false,
+      aboutZion: true,
+      used: [],
+      model: 'gemini-test-flash',
+    }),
+  );
+  assert.equal(missing.reply.kind, 'handoff');
+  assert.equal(missing.gap?.reason, 'no_source');
+  assert.ok(missing.reply.actions?.some((item) => item.type === 'request_human'));
 });

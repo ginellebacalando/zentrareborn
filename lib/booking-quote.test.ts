@@ -1,7 +1,63 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { walkInReview } from './admin/booking-rules';
-import { bookingScheduleProblem, manilaDateAfter, packageQuote } from './booking-quote';
+import {
+  bookingScheduleProblem,
+  cheaperTier,
+  manilaDateAfter,
+  packageQuote,
+  packageFamily,
+} from './booking-quote';
+import { baseNameOf, bookletCatalog } from '@/config/package-catalog';
+
+test('the catalog carries every booklet rate, with the Terms reservation fees only', () => {
+  const classic = bookletCatalog.filter(
+    (row) => row.categorySlug === 'wedding-reception' && row.baseName === 'Zion Classic',
+  );
+  assert.deepEqual(
+    classic.map((row) => [row.packageName, row.price, row.paxIncluded, row.excessPaxFee]),
+    [
+      ['Zion Classic (50 guests)', 175000, 50, 1600],
+      ['Zion Classic (100 guests)', 199000, 100, 1600],
+    ],
+  );
+  assert.deepEqual(
+    [...new Set(bookletCatalog.filter((row) => row.reservationFee).map((row) => row.baseName))],
+    ['Zion Classic', 'Zion Premium', 'Zion Ultimate'],
+  );
+  // Slugs are unique within each event category, and every rate names its package.
+  for (const slug of new Set(bookletCatalog.map((row) => row.categorySlug))) {
+    const slugs = bookletCatalog.filter((row) => row.categorySlug === slug).map((row) => row.slug);
+    assert.equal(new Set(slugs).size, slugs.length, slug);
+  }
+  assert.ok(bookletCatalog.every((row) => baseNameOf(row.packageName) === row.baseName));
+  assert.ok(
+    bookletCatalog.every((row) => packageFamily(row.packageName) === row.baseName.toLowerCase()),
+  );
+});
+
+test('a guest tier points to the same package’s cheaper tier for the guest count', () => {
+  const tiers = bookletCatalog
+    .filter((row) => row.categorySlug === 'wedding-reception')
+    .map((row) => ({ ...row, name: row.packageName }));
+  const fifty = tiers.find((row) => row.packageName === 'Zion Classic (50 guests)')!;
+  const hundred = tiers.find((row) => row.packageName === 'Zion Classic (100 guests)')!;
+  // 100 guests: ₱175,000 + 50 × ₱1,600 = ₱255,000 against ₱199,000.
+  assert.deepEqual(cheaperTier(tiers, fifty, 100), { pkg: hundred, totalCents: 19_900_000 });
+  // 60 guests: ₱175,000 + 10 × ₱1,600 = ₱191,000 is the cheaper one already.
+  assert.equal(cheaperTier(tiers, fifty, 60), null);
+  assert.deepEqual(cheaperTier(tiers, hundred, 60), { pkg: fifty, totalCents: 19_100_000 });
+  // Other packages are never suggested, and nothing is suggested without a guest count.
+  assert.equal(
+    cheaperTier(
+      tiers,
+      tiers.find((row) => row.baseName === 'Zion Premium')!,
+      30,
+    ),
+    null,
+  );
+  assert.equal(cheaperTier(tiers, fifty, Number.NaN), null);
+});
 
 const classic = { price: 150000, paxIncluded: 100, excessPaxFee: 450, reservationFee: 5000 };
 // Wednesday 25 November 2026, 20:00 in Manila.

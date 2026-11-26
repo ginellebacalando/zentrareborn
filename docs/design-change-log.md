@@ -1,5 +1,79 @@
 # Design change log
 
+## 27 November 2026 (evening) — Package catalog matches the booklets; booking page tiers
+
+User task: update the admin package catalog to the package booklets' published rates (approved
+database change), so the booking form, the admin and Zeni quote the same prices as the event
+pages.
+
+- **Catalog data** (staging database and the local demo): 36 packages, one per published guest
+  count ("Zion Classic (50 guests)" ₱175,000, "Zion Classic (100 guests)" ₱199,000, …), with the
+  booklets' extra-guest rates, inclusions by booklet section, and only the Terms' reservation fees
+  (Zion Classic ₱30,000, Premium ₱40,000, Ultimate ₱50,000). The 8 demo packages are archived
+  and hidden, not deleted; existing bookings keep their package names. Saved through the admin
+  catalog with `scripts/sync-package-catalog.ts` (versions and audit entries).
+- **Booking page** (`app/booking/_components/BookingRequestForm.tsx`, `lib/services-packages.ts`):
+  packages are listed by guest count, then price, so the 50-guest options sit together; a card that
+  costs more for the entered guest count than another tier of the same package says so ("Zion
+  Classic (100 guests) costs less for 100 guests: about ₱199,000"), in the existing note style.
+
+Checked on the local demo in headless Edge: the Weddings step at 1440px and 320px (seven cards in
+guest-count order, the cheaper-tier notes, no sideways scroll), the admin Packages page (archived
+demo packages, new versions), and Zeni quoting ₱199,000 for "Zion Classic for 100 guests". The
+live site's package API returns the new packages from staging. Not checked: the live booking page
+after deployment, keyboard-only use, dark mode, a screen reader and real phones.
+
+## 27 November 2026 (later) — Zeni: AI-written answers, general advice and backup mode (phase 2)
+
+User task: phase 2 of the Zeni upgrade. The language model writes answers from Zion's published
+facts (not only rewording one excerpt), gives general planning advice for general questions, and
+keyword matching remains as the backup mode. Behavior and numbers are in `docs/chatbot.md`
+("AI-written answers, general advice and backup mode").
+
+- **Zeni chat replies:** an AI answer can have two paragraphs: general advice that starts with
+  "In general," (or "Sa pangkalahatan po,") and Zion's own information, often starting with "At
+  Zion,". A question no single source answered can now get an answer with its sources and photo
+  cards. Without the AI the replies are the same as after phase 1.
+- **"How Zeni works" panel** (`config/chatbot-receptionist.ts`): a new point explains the general
+  tips and that they are not Zion's rules or prices; the privacy point now says answers are
+  written by the AI from Zion's published information, with the published text shown when it is
+  unavailable.
+- **Admin Zeni page** (`components/admin/ZeniPanel.tsx`): the AI card's "AI phrasing: On/Off"
+  reads "Answers: Written by the AI / Backup mode", its help text explains backup mode, and the
+  test console labels each reply's source ("Written by the AI from published sources", with
+  "general advice" when added, or "Backup mode: … keyword matching answered"). Existing styles only.
+
+Checked in headless Edge on the local demo with the AI on: the chat at 1440px and 320px (a
+two-part answer as two paragraphs with its "From" link; general advice with one "Talk to staff"
+button after a fix that had shown it twice; booklet cards at 320px), the "How Zeni works" text,
+and the admin Zeni page at 1440px and 320px (AI card, booklets item, test console label); no
+sideways scroll. `npm run verify` passed. Not checked: keyboard-only use, the dark theme, a
+screen reader and real phones.
+
+## 27 November 2026 — Zeni: routing, search and the unanswered log (phase 1)
+
+User task: Zeni gave the calendar or booking form instead of answers ("anong mga food yung
+available?" got a date check), handed off to staff whenever a message said "staff", and answered
+few questions, especially in Tagalog. Phase 1 of the upgrade: routing, search and the unanswered
+log, checked against the 7,113-question client bank. Behavior and numbers are in
+`docs/chatbot.md` ("Routing and search check").
+
+- **Zeni chat replies:** an answer from a short policy or booklet section now reads as a list (a
+  booklet section under its package and event name, for example "Zion Classic (Wedding): Catering
+  (food and beverages):" then its items), using the same "•" lines as the topic summaries. A long
+  source shows only its matching lines. FAQ answers are unchanged.
+- **Admin Zeni page** (`components/admin/ZeniPanel.tsx`): a "Package booklets" item in "Knowledge
+  Zeni uses" (count of packages, a note that booklet rates are not quoted, edited as site content);
+  each unanswered question shows its topic in words ("Food and drinks" instead of "food") and,
+  when grouped wordings exist, an "Also asked as" line with up to three of them. The help text
+  says that questions with the same key words count as one, in English or Filipino. Existing
+  styles only; no new colors, sizes or components.
+
+Checked: `npm run verify` passed (formatting, design and client-boundary checks, type check, 153
+tests including 72 Zeni tests, lint and the production build); the question bank rerun and fresh
+hand checks. Not checked: the admin Zeni page and the chat list answers in a browser (desktop,
+320px, keyboard, themes), a screen reader, and real phones.
+
 ## 26 November 2026 (night, later) — Phones no longer load the site slightly zoomed out
 
 User task: find why 320px phones loaded some pages about 2% zoomed out (found while checking the

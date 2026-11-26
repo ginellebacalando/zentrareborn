@@ -5,7 +5,7 @@ import { createConversation, conversationSchema, conversationSummary } from './c
 import { planReceptionistTurn } from './receptionist';
 import { captureSlots } from './slots';
 import { receptionistIntent } from './intent';
-import { websiteChatSources } from '@/config/chatbot';
+import { bookletChatSources, websiteChatSources } from '@/config/chatbot';
 import { publicFaqs } from '@/config/public-faqs';
 import { zeniTopics } from '@/config/zeni-topics';
 import { faqChatSource, officialFaqSources } from './faq-sources';
@@ -86,6 +86,80 @@ test('routes information, booking, visit, staff, scope and safety intents separa
     ['Wedding packages', 'offerings'],
   ] as const)
     assert.equal(receptionistIntent(text), intent, text);
+});
+
+test('dates, booking and staff are routed only when asked for, not when a question mentions them', () => {
+  // "question" means any route that searches the published information.
+  const routed = new Set(['availability', 'new_booking', 'human', 'visit', 'greeting']);
+  for (const [text, expected] of [
+    // The calendar is for dates; "available" about a thing is a question.
+    ['Is December 12 available for a wedding?', 'availability'],
+    ['Is this still available?', 'availability'],
+    ['Available pa po ba ito?', 'availability'],
+    ['Are you still accepting bookings for 2027?', 'availability'],
+    ['anong mga food yung available?', 'question'],
+    ['Is there drinking water available for guests the whole time?', 'question'],
+    ['Is the weekday promo available for weddings?', 'question'],
+    ['The PDF won’t open on my phone. Can you send the packages as photos?', 'question'],
+    // The booking form is for starting a booking.
+    ['Can we already book a date in 2028?', 'new_booking'],
+    ['What are the steps to book an event with you?', 'new_booking'],
+    ['Paano po mag-book?', 'new_booking'],
+    ['What happens after we pay the reservation? What is the next step?', 'question'],
+    ['Do you provide a table and a pen for the guest book?', 'question'],
+    ['Is it easy to book a Grab to the venue?', 'question'],
+    ['Do we need to choose the exact dishes when we book, or later?', 'question'],
+    // Staff hand-off is for reaching a person.
+    ['Please connect me to staff', 'human'],
+    ['Is there a human I can chat with?', 'human'],
+    ['Can you pass my question to the staff?', 'human'],
+    ['Ayoko pong makipag-usap sa bot. Paki-connect na lang po ako sa staff.', 'human'],
+    ['Pwede ko po bang makausap ang staff?', 'human'],
+    ['Can I talk to Sir Tim about my deposit?', 'human'],
+    ['Can your staff help call a ride for elderly guests?', 'question'],
+    ['How do your staff handle guests who get too drunk?', 'question'],
+    ['Is there an emergency exit plan for the halls?', 'question'],
+    // Thanks after an event is thanks.
+    ['Our company had a great time at our Christmas party. Thank you!', 'greeting'],
+  ] as const) {
+    const intent = receptionistIntent(text);
+    assert.equal(routed.has(intent) ? intent : 'question', expected, `${text} → ${intent}`);
+  }
+  // "Bukas" also means "open": a question about opening days is not about tomorrow.
+  const { state, say } = scenario();
+  say('Bukas po ba kayo sa Linggo?');
+  assert.deepEqual(state.booking.dates, []);
+});
+
+test('the screenshot questions get published answers, or are logged under the right topic', () => {
+  const knowledge = [...officialSources, ...bookletChatSources];
+  const ask = (question: string) =>
+    planReceptionistTurn(
+      createConversation(randomUUID(), NOW),
+      { question, turnId: randomUUID() },
+      knowledge,
+      NOW,
+    );
+  // With a date saved earlier in the conversation, a food question still gets the menu.
+  const { state, say } = scenario(knowledge);
+  say('Is 2099-12-29 available?');
+  const food = say('anong mga food yung available?');
+  assert.equal(food.effect, undefined);
+  assert.equal(food.reply.kind, 'answer');
+  assert.match(food.reply.message, /3 main courses/);
+  assert.deepEqual(state.booking.dates, ['2099-12-29']);
+  // The booklets say "no hidden charges" but nothing about add-ons, so this one waits for an FAQ.
+  const allIn = ask('All-in na ba yung rate o may mga add-on pa?');
+  assert.equal(allIn.reply.kind, 'handoff');
+  assert.deepEqual([allIn.gap?.reason, allIn.gap?.topic], ['no_source', 'packages']);
+  const nice = ask('so ano yung mga magaganda expect namin doon?');
+  assert.equal(nice.reply.kind, 'answer');
+  assert.equal(nice.reply.sources[0]?.title, 'Why Choose Zion Events Place');
+  // Rates are not quoted from the booklets, and a named package is not answered by another one.
+  const booklets = knowledge.filter((source) => source.id.startsWith('booklet:'));
+  assert.ok(booklets.length > 0 && booklets.every((source) => !/₱|\bPHP\b/.test(source.text)));
+  const classic = ask('What are the full inclusions of Zion Classic?');
+  assert.match(classic.reply.sources[0]?.title ?? '', /Zion Classic/);
 });
 
 test('availability without a date asks for one and shows the calendar; no personal data', () => {
@@ -249,7 +323,9 @@ test('unknown questions log a redacted gap and offer staff; "yes" then starts th
   assert.equal(plan.reply.kind, 'handoff');
   assert.equal(plan.gap?.reason, 'no_source');
   assert.doesNotMatch(plan.gap?.question ?? '', /maria@example/);
-  assert.equal(plan.compose, undefined);
+  // The language model may still answer from related facts; it gets only the redacted question.
+  assert.equal(plan.compose?.mode, 'answer');
+  assert.doesNotMatch(plan.compose?.question ?? '', /maria@example/);
   const yes = say('Yes');
   assert.equal(yes.reply.kind, 'escalation');
   assert.equal(state.flags.needsHuman, true);

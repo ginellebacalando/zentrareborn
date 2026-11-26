@@ -8,6 +8,8 @@ import {
   type ReceptionistConversation,
 } from '@/lib/chatbot/conversation';
 import { buildBookingLink, buildVisitLink } from '@/lib/chatbot/links';
+import { detailCardsFor } from '@/lib/chatbot/cards';
+import { sourceEvidence } from '@/lib/chatbot/retrieval';
 import { redactPersonalData } from '@/lib/chatbot/redaction';
 import {
   planReceptionistTurn,
@@ -226,6 +228,79 @@ function rememberTurns(state: ReceptionistConversation, question: string, answer
   ].slice(-6);
 }
 
+type ModelAnswer = Extract<ZeniComposeResult, { status: 'used' }>;
+
+/** How the admin test console describes a model answer. */
+function answerKind(result: ModelAnswer): { reason?: string } {
+  if (result.covered && result.general) return { reason: 'facts and general advice' };
+  if (result.general)
+    return { reason: result.aboutZion ? 'general advice; facts missing' : 'general advice' };
+  return result.covered ? {} : { reason: 'not covered by the facts' };
+}
+
+/**
+ * The model's text replaces the backup reply. When the backup reply was "not published yet" (no
+ * source answered on its own), an answer from the facts becomes a normal answer with the sources
+ * the model used; a reply the facts do not cover keeps the honest backup text.
+ */
+function applyModelAnswer(
+  state: ReceptionistConversation,
+  plan: ReceptionistPlan,
+  reply: ChatReply,
+  result: ModelAnswer,
+  copy: Copy,
+): { reply: ChatReply; answered: boolean } {
+  const composeSources = plan.compose?.sources ?? [];
+  const used = (result.used ?? []).map((index) => composeSources[index]).filter(Boolean);
+  // General advice answers a general question. A question put to Zion ("Do you…?", "Pwede po
+  // ba dito…?") that only got advice is still logged, so staff can publish the real answer.
+  const answered =
+    result.covered ||
+    Boolean(
+      result.general &&
+      result.aboutZion === false &&
+      !ADDRESSES_VENUE.test(plan.compose?.question ?? ''),
+    );
+  const unanswered = plan.gap?.reason === 'no_source';
+  if (!result.text || (unanswered && !result.covered && !result.general))
+    return { reply, answered: false };
+  // The sources and photo cards follow the facts the model used ("Zion Classic (100 guests)").
+  if (!unanswered)
+    return {
+      reply: {
+        ...reply,
+        message: result.text,
+        ...(used.length
+          ? { sources: used.map(sourceEvidence), cards: detailCardsFor(used, copy.labels) }
+          : {}),
+      },
+      answered,
+    };
+  if (answered) {
+    state.flags.offeredHandoff = false;
+    state.lastKnowledgeQuestion = plan.compose?.question ?? state.lastKnowledgeQuestion;
+  }
+  // The staff button stays; a "Talk to staff" chip beside it would repeat it.
+  const staffButton = reply.actions?.some((item) => item.type === 'request_human');
+  return {
+    reply: {
+      ...reply,
+      kind: 'answer',
+      message: result.text,
+      sources: used.map(sourceEvidence),
+      cards: detailCardsFor(used, copy.labels),
+      suggestions: copy.suggestions.afterAnswer.filter(
+        (item) => !staffButton || !/staff/i.test(item),
+      ),
+    },
+    answered,
+  };
+}
+
+/** A question addressed to the venue itself, or asking what is allowed there. */
+const ADDRESSES_VENUE =
+  /\b(?:you|your|yours|zion|here|kayo|ninyo|niyo|nyo|inyo|inyong|dito|diyan|dyan|allowed|bawal|pwede|puwede|can we|may we|could we)\b/i;
+
 export type ZeniPipelineResult = {
   reply: ChatReply;
   plan: ReceptionistPlan;
@@ -350,11 +425,16 @@ export async function runReceptionistPipeline(
     }
     llm =
       result.status === 'used'
-        ? { status: 'used', model: result.model }
+        ? { status: 'used', model: result.model, ...answerKind(result) }
         : { status: result.status, reason: result.reason, model: result.model };
     if (result.status === 'used') {
-      reply = { ...reply, message: result.text };
-      if (!result.covered && plan.compose.mode === 'answer') {
+      const outcome = applyModelAnswer(state, plan, reply, result, copy);
+      reply = outcome.reply;
+      // A question the model answered from published facts, or a general planning question it
+      // answered with advice, is not a missing fact. A question about Zion that the facts do not
+      // answer stays (or becomes) an unanswered question, and the staff option is kept.
+      if (outcome.answered && gap?.reason === 'no_source') gap = undefined;
+      if (!result.covered && plan.compose.mode === 'answer' && result.aboutZion !== false) {
         state.flags.offeredHandoff = true;
         gap ??= { reason: 'low_confidence', question: plan.compose.question, topic: plan.topic };
         if (!reply.actions?.some((item) => item.type === 'request_human'))

@@ -36,6 +36,7 @@ export const chatbotReceptionist = {
   info: {
     points: [
       'Zeni answers from Zion Events Place’s published information: packages, facilities, FAQs and policies. When those pages don’t cover a question, Zeni says so instead of guessing.',
+      'For general planning questions, such as how many tables or what to prepare, Zeni can add general tips. They start with “In general” and are not Zion’s own rules or prices.',
       'Answers can still contain mistakes. Please confirm prices, dates and policies with our staff before you decide.',
       'Zeni never reserves a date, confirms a booking or takes payment. The calendar check shows only confirmed events; staff confirm every booking request.',
       'Prefer a person? Choose “Talk to staff” at any time.',
@@ -43,7 +44,7 @@ export const chatbotReceptionist = {
     privacyTitle: 'Your privacy',
     privacy: [
       'Please don’t share passwords, card numbers or ID details in the chat.',
-      'Some answers are phrased by an AI model (Google Gemini). Before anything is sent to it, Zeni removes names, email addresses, phone numbers, street addresses and booking references; only Zion’s public information, your question and the last few redacted messages are sent.',
+      'Answers are written by an AI model (Google Gemini) from Zion’s published information; when it is unavailable, Zeni shows the published text itself. Before anything is sent to it, Zeni removes names, email addresses, phone numbers, street addresses and booking references; only Zion’s public information, your question and the last few redacted messages are sent.',
       'Details you share stay in this browser’s conversation for up to 24 hours. “New conversation” clears them now; it does not cancel bookings or inquiries you already sent.',
     ],
     remembered: 'What Zeni remembers in this conversation',

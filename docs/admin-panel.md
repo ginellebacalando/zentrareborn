@@ -417,6 +417,22 @@ seed, import, or modify records merely by opening the page. Existing bookings
 retain their agreed details. Image fields accept existing local paths or HTTPS
 URLs; no new upload provider or deletion feature was introduced.
 
+Since 27 November 2026 the catalog holds the published rates of the package
+booklets on the event pages (`config/package-booklets.ts`). The catalog prices one
+guest count per package, so each published rate is its own package, for example
+"Zion Classic (50 guests)" at ₱175,000 and "Zion Classic (100 guests)" at ₱199,000
+(`config/package-catalog.ts`). Only the reservation fees the Terms publish are set
+(Zion Classic ₱30,000, Zion Premium ₱40,000, Zion Ultimate ₱50,000); the other
+packages have none, so their requests go to staff review. `scripts/sync-package-catalog.ts`
+applies the booklets through the same catalog save (validation, a version for each
+change, an audit entry, as a super administrator): a dry run by default, `--apply` to
+save; packages not in the booklets are archived and hidden, never deleted. A new
+local demo database runs it automatically (`npm run dev:local -- --sync-catalog`
+updates an existing one). The booking page lists packages by guest count, then price,
+and a tier that costs more for the entered guest count names the cheaper tier of the
+same package. After a booklet change, run the sync again: a dry run shows what would
+change.
+
 Settings includes Appearance and theme, Session and security, Client website
 controls, Communications, and Localization and data. Existing reservation/cash
 policy and delivery information remain below these sections. Changes require an

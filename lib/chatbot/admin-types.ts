@@ -6,8 +6,13 @@ export type ZeniGapReasonLabel = 'no_source' | 'low_confidence' | 'handoff' | 'c
 
 export type ZeniGapGroup = {
   hash: string;
+  /** The newest wording of the question. */
   question: string;
+  /** Up to three other wordings grouped with it, newest first. */
+  otherWordings: string[];
   topic: string;
+  /** The topic as the admin page names it ("Food and drinks"). */
+  topicLabel: string;
   language: ZeniLanguage;
   reasons: ZeniGapReasonLabel[];
   count: number;
@@ -16,7 +21,7 @@ export type ZeniGapGroup = {
 };
 
 export type ZeniKnowledgeSummary = {
-  id: 'packages' | 'faqs' | 'facilities' | 'policies';
+  id: 'packages' | 'booklets' | 'faqs' | 'facilities' | 'policies';
   label: string;
   count: number;
   updatedAt: string | null;

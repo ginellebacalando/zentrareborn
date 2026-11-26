@@ -6,7 +6,8 @@ import {
   prepareComposeInput,
   type ZeniComposeInput,
 } from '@/lib/chatbot/llm-prompt';
-import { validateZeniAnswer } from '@/lib/chatbot/llm-validation';
+import { validateGeneralAdvice, validateZeniAnswer } from '@/lib/chatbot/llm-validation';
+import { templateLanguage } from '@/lib/chatbot/language';
 import { createLlmRateGuard, type LlmRateGuard } from './llm-rate-guard';
 
 type Environment = Record<string, string | undefined>;
@@ -21,7 +22,19 @@ export type ZeniLlmSettings = {
 };
 
 export type ZeniComposeResult =
-  | { status: 'used'; text: string; covered: boolean; model: string }
+  | {
+      status: 'used';
+      text: string;
+      /** The sources answer what the guest asked about Zion. */
+      covered: boolean;
+      model: string;
+      /** The reply includes general event-planning advice ("In general, …"). */
+      general?: boolean;
+      /** The guest asked about Zion itself, not a general planning question. */
+      aboutZion?: boolean;
+      /** Positions (0-based) of the supplied sources the Zion part relies on. */
+      used?: number[];
+    }
   | {
       status: 'disabled' | 'rate_limited' | 'failed' | 'timeout' | 'rejected' | 'blocked';
       reason: string;
@@ -69,7 +82,24 @@ const geminiResponse = z.object({
     .optional(),
   promptFeedback: z.object({ blockReason: z.string().optional() }).optional(),
 });
-const modelAnswer = z.object({ answer: z.string().max(4000), covered: z.boolean() });
+/** The reply format: Zion's facts and general advice kept apart (instructions of 27 Nov 2026). */
+const twoPartAnswer = z.object({
+  zion: z.string().max(4000).default(''),
+  general: z.string().max(4000).default(''),
+  covered: z.boolean(),
+  aboutZion: z.boolean().default(true),
+  used: z.array(z.number().int()).max(12).default([]),
+});
+/** The earlier single-answer format, still accepted. */
+const singleAnswer = z.object({ answer: z.string().max(4000), covered: z.boolean() });
+// The single-answer format needs "answer", so it is tried first; extra keys are ignored.
+const modelAnswer = z
+  .union([singleAnswer, twoPartAnswer])
+  .transform((value) =>
+    'answer' in value
+      ? { zion: value.answer, general: '', covered: value.covered, aboutZion: true, used: [] }
+      : value,
+  );
 
 type Attempt =
   | { kind: 'ok'; text: string; finishReason?: string }
@@ -209,14 +239,63 @@ export function createGeminiComposer(options: GeminiComposerOptions = {}): ZeniC
         return { status: 'rejected', reason: `finish_${result.finishReason.toLowerCase()}`, model };
       const answer = parseModelJson(result.text);
       if (!answer.success) return { status: 'rejected', reason: 'format', model };
-      const validation = validateZeniAnswer(answer.data.answer, {
-        sources: prepared.sources,
-        question: prepared.question,
-        recentTurns: prepared.recentTurns,
-      });
-      if (!validation.ok) return { status: 'rejected', reason: validation.reason, model };
-      return { status: 'used', text: validation.text, covered: answer.data.covered, model };
+      return checkedAnswer(answer.data, prepared, model);
     }
     return failure;
+  };
+}
+
+/**
+ * Checks each part on its own terms: the Zion part strictly against the sources (any failure
+ * keeps Zeni's backup answer), the general advice for money, links, contacts and Zion claims (a
+ * failure drops only the advice). A general question reads advice first, then Zion's part.
+ */
+function checkedAnswer(
+  answer: { zion: string; general: string; covered: boolean; aboutZion: boolean; used: number[] },
+  prepared: ZeniComposeInput,
+  model: string,
+): ZeniComposeResult {
+  let zion = '';
+  if (answer.zion.trim()) {
+    const validation = validateZeniAnswer(answer.zion, {
+      sources: prepared.sources,
+      question: prepared.question,
+      recentTurns: prepared.recentTurns,
+    });
+    if (!validation.ok) return { status: 'rejected', reason: validation.reason, model };
+    zion = validation.text;
+  }
+  const covered = answer.covered && Boolean(zion);
+  // General advice answers a general planning question. For a question about Zion that the facts
+  // do not answer, advice about venues in general would only blur what Zion actually does.
+  const adviceWanted = prepared.mode === 'answer' && (!answer.aboutZion || covered);
+  const advice = adviceWanted
+    ? validateGeneralAdvice(answer.general, templateLanguage(prepared.language))
+    : ({ ok: true, text: '' } as const);
+  const general = advice.ok ? advice.text : '';
+  // Nothing to say is an honest "not covered": Zeni keeps its backup reply and offers staff.
+  if (!zion && !general && !answer.covered && advice.ok)
+    return {
+      status: 'used',
+      text: '',
+      covered: false,
+      model,
+      general: false,
+      aboutZion: answer.aboutZion,
+      used: [],
+    };
+  if (!zion && !general)
+    return { status: 'rejected', reason: advice.ok ? 'empty' : advice.reason, model };
+  const parts = answer.aboutZion ? [zion, general] : [general, zion];
+  return {
+    status: 'used',
+    text: parts.filter(Boolean).join('\n\n'),
+    covered,
+    model,
+    general: Boolean(general),
+    aboutZion: answer.aboutZion,
+    used: [...new Set(answer.used)]
+      .filter((position) => position >= 1 && position <= prepared.sources.length)
+      .map((position) => position - 1),
   };
 }

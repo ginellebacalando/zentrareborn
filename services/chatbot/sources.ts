@@ -4,8 +4,10 @@ import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { publicFaqs } from '@/config/public-faqs';
 import { faqChatSource, officialFaqSources } from '@/lib/chatbot/faq-sources';
+import { baseNameOf } from '@/config/package-catalog';
 import {
   backupPackageSources,
+  bookletChatSources,
   packageSourcePaths,
   websiteChatSources,
   publicEventSources,
@@ -117,6 +119,8 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
         ]
       : []),
     ...(managedFaqs ? [] : faqChatSources),
+    // The package booklets on the event pages: menus, inclusions and conditions, without rates.
+    ...(settings.client.packagesVisible ? bookletChatSources : []),
     ...(settings.client.packagesVisible && managedPackages === 0 ? backupPackageSources : []),
     ...packages.map((row): ChatSource => {
       // Only the version currently published to visitors is eligible. Never read
@@ -145,6 +149,8 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
           guests: snapshot.paxIncluded,
         },
         title: `${row.category} — ${snapshot.packageName}`,
+        // A rate's package ("Zion Classic (50 guests)" belongs to "Zion Classic").
+        packageName: baseNameOf(snapshot.packageName),
         text: [
           `Published package price: ${price}`,
           `Guests included: ${snapshot.paxIncluded}`,

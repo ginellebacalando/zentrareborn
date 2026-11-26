@@ -116,7 +116,13 @@ function explicitDate(text: string, now: Date): { date?: string; invalidDate?: b
         : (nextOccurrence(parts.month, parts.day, today) ?? undefined);
   }
   if (!date) {
-    if (/\b(?:tomorrow|bukas)\b/i.test(text)) date = addDays(today, 1);
+    // "Bukas" also means "open": "Bukas po ba kayo sa Linggo?" asks about opening days.
+    if (
+      /\btomorrow\b|\bbukas\b(?!\s+(?:na\s+)?(?:po\s+)?(?:ba\s+)?(?:kayo|ang|yung|ninyo|niyo|nyo)\b)/i.test(
+        text,
+      )
+    )
+      date = addDays(today, 1);
     else {
       const weekday = text.match(
         /\b(?:this|next|coming)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i,
@@ -163,6 +169,12 @@ function nameBeforeSentenceEnd(candidate: string) {
     words.push(word);
   }
   return words.join(' ');
+}
+
+/** True when the text names a calendar day ("Dec 12", "2026-12-12", "tomorrow"), even a past one. */
+export function mentionsDate(text: string, now = new Date()) {
+  const found = explicitDate(text, now);
+  return Boolean(found.date || found.invalidDate);
 }
 
 /** Extract explicit facts only. Ambiguous dates and inferred contact details are not filled. */

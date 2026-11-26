@@ -1,7 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
 import { publicFacilities } from '@/config/public-facilities';
-import { websiteChatSources } from '@/config/chatbot';
+import { bookletChatSources, websiteChatSources } from '@/config/chatbot';
 import { officialFaqSources } from '@/lib/chatbot/faq-sources';
 import type { ZeniAdminOverview, ZeniKnowledgeSummary } from '@/lib/chatbot/admin-types';
 import { publishedVisitorFaqs } from './sources';
@@ -79,6 +79,18 @@ async function policyKnowledge(): Promise<ZeniKnowledgeSummary> {
   };
 }
 
+function bookletKnowledge(): ZeniKnowledgeSummary {
+  const packages = new Set(bookletChatSources.map((source) => source.packageName));
+  return {
+    id: 'booklets',
+    label: 'Package booklets',
+    count: packages.size,
+    updatedAt: null,
+    note: 'Menus, inclusions and conditions from the booklets on the event pages. Prices come from Packages, which match the booklets’ published rates.',
+    edit: { label: 'Site content (developer change)' },
+  };
+}
+
 function facilityKnowledge(): ZeniKnowledgeSummary {
   return {
     id: 'facilities',
@@ -127,7 +139,7 @@ export async function zeniAdminOverview(): Promise<ZeniAdminOverview> {
       ...(settings.reason ? { reason: settings.reason } : {}),
       usage: sharedZeniLlmGuard().snapshot(),
     },
-    knowledge: [packages, faqs, facilityKnowledge(), policies],
+    knowledge: [packages, bookletKnowledge(), faqs, facilityKnowledge(), policies],
     gaps,
     handoffs,
   };

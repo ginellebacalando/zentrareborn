@@ -3,6 +3,14 @@ import type { ZeniLanguage } from './language';
 export type ChatSource = {
   id: string;
   title: string;
+  /**
+   * What the source is about when its title also carries context, such as a booklet section
+   * ("Catering (food and beverages)") under its package and event. Search compares it with the
+   * question; it defaults to the title.
+   */
+  subject?: string;
+  /** The one package a source describes ("Zion Classic"); a question naming another skips it. */
+  packageName?: string;
   text: string;
   href: string;
   keywords: string[];

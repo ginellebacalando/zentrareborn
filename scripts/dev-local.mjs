@@ -74,7 +74,39 @@ async function openDatabase(demoAdminPassword) {
     await seed(db, { adminPassword: demoAdminPassword });
     writeFileSync(fingerprintFile, fingerprint);
   }
-  return db;
+  return { db, fresh };
+}
+
+/**
+ * The admin catalog follows the package booklets (scripts/sync-package-catalog.ts): a new demo
+ * database gets their published rates, and `--sync-catalog` updates an existing one. The sync talks
+ * to this process's database server, so it runs as a child process while the server keeps serving.
+ */
+async function syncCatalog(databaseUrl) {
+  console.log('Matching the package catalog to the package booklets…');
+  const code = await new Promise((resolve) => {
+    const sync = spawn(
+      process.execPath,
+      [
+        '--conditions=react-server',
+        '--import',
+        'tsx',
+        'scripts/sync-package-catalog.ts',
+        '--apply',
+      ],
+      {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+          DIRECT_URL: databaseUrl,
+          DATABASE_POOL_MAX: '1',
+        },
+      },
+    );
+    sync.on('exit', resolve);
+  });
+  if (code !== 0) console.warn('The package catalog sync failed; the demo packages stay.');
 }
 
 if (!existsSync(path.join('public', 'fonts', 'licensed', 'fonts.css'))) {
@@ -82,10 +114,11 @@ if (!existsSync(path.join('public', 'fonts', 'licensed', 'fonts.css'))) {
 }
 
 const secrets = localSecrets();
-const db = await openDatabase(secrets.demoAdminPassword);
+const { db, fresh } = await openDatabase(secrets.demoAdminPassword);
 const pgServer = createServer(db, { logLevel: LogLevel.Error });
 await new Promise((resolve) => pgServer.listen(0, '127.0.0.1', resolve));
 const databaseUrl = `postgresql://postgres@127.0.0.1:${pgServer.address().port}/postgres`;
+if (fresh || process.argv.includes('--sync-catalog')) await syncCatalog(databaseUrl);
 
 const child = spawn(
   process.execPath,

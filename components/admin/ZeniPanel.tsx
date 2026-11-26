@@ -27,14 +27,14 @@ const LANGUAGE_LABELS: Record<ZeniLanguage, string> = {
   taglish: 'Taglish',
 };
 const LLM_LABELS: Record<string, string> = {
-  used: 'Phrased by the AI from published sources',
-  not_needed: 'Template answer (no AI needed)',
-  disabled: 'AI is off: deterministic answer',
-  rate_limited: 'AI limit reached: deterministic answer',
-  failed: 'AI error: deterministic answer',
-  timeout: 'AI timed out: deterministic answer',
-  rejected: 'AI answer failed the safety checks: deterministic answer',
-  blocked: 'Blocked by AI safety settings: deterministic answer',
+  used: 'Written by the AI from published sources',
+  not_needed: 'Rules answer (no AI needed)',
+  disabled: 'Backup mode: the AI is off, so keyword matching answered',
+  rate_limited: 'Backup mode: the AI limit was reached, so keyword matching answered',
+  failed: 'Backup mode: the AI failed, so keyword matching answered',
+  timeout: 'Backup mode: the AI timed out, so keyword matching answered',
+  rejected: 'Backup mode: the AI answer failed the checks, so keyword matching answered',
+  blocked: 'Backup mode: AI safety settings blocked it, so keyword matching answered',
 };
 
 function DateText({ value, empty = 'Not tracked' }: { value: string | null; empty?: string }) {
@@ -205,10 +205,10 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
                   </dd>
                 </div>
                 <div>
-                  <dt>AI phrasing</dt>
+                  <dt>Answers</dt>
                   <dd>
                     <StatusChip tone={ai.enabled ? 'ok' : 'off'}>
-                      {ai.enabled ? 'On' : 'Off'}
+                      {ai.enabled ? 'Written by the AI' : 'Backup mode'}
                     </StatusChip>
                     {ai.reason === 'switched_off' && (
                       <span className={styles.muted}> Turned off by the server setting.</span>
@@ -239,14 +239,17 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
                 </div>
               </dl>
               <p className={styles.help}>
-                Without the AI, or when it is over its limit, slow or unsure, Zeni replies with the
-                published text itself. Names, email addresses, phone numbers, street addresses and
-                booking references are removed before any AI request. The API key is configured in
-                the server environment (see docs/chatbot.md) and is never shown here.
+                With the AI on, it writes each answer from the published facts that match the
+                question and may add general planning advice that starts with “In general”. When the
+                AI is off, over its limit, slow, or its answer fails the checks, Zeni is in backup
+                mode: keyword matching replies with the published text itself. Names, email
+                addresses, phone numbers, street addresses and booking references are removed before
+                any AI request. The API key is configured in the server environment (see
+                docs/chatbot.md) and is never shown here.
               </p>
               {!ai.keyConfigured && (
                 <p className={styles.help}>
-                  To turn on AI phrasing: create a key in Google AI Studio, then in Vercel open this
+                  To turn on AI answers: create a key in Google AI Studio, then in Vercel open this
                   project, go to Settings, Environment Variables, add <code>GEMINI_API_KEY</code>{' '}
                   with the key as its value, save, and redeploy. This page then shows Configured.
                 </p>
@@ -317,9 +320,9 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
               Unanswered questions
             </h2>
             <p className={styles.help}>
-              Questions Zeni could not answer from published information, grouped by wording and
-              stored without personal details. Publish an FAQ or update the package or policy, then
-              mark the question resolved.
+              Questions Zeni could not answer from published information, stored without personal
+              details. Questions with the same key words count as one, in English or Filipino.
+              Publish an FAQ or update the package or policy, then mark the question resolved.
             </p>
             {!data.gaps.available ? (
               <p className={styles.alert} role="note">
@@ -339,11 +342,16 @@ export default function ZeniPanel({ initial }: { initial: ZeniAdminOverview | nu
                       <MessageSquareText size={20} aria-hidden="true" />
                       <span>“{group.question}”</span>
                     </p>
+                    {group.otherWordings.length > 0 && (
+                      <p className={styles.muted}>
+                        Also asked as: {group.otherWordings.map((text) => `“${text}”`).join(', ')}
+                      </p>
+                    )}
                     <ul className={styles.tags} aria-label="Details">
                       <li>
                         Asked {group.count} {group.count === 1 ? 'time' : 'times'}
                       </li>
-                      <li>Topic: {group.topic}</li>
+                      <li>Topic: {group.topicLabel}</li>
                       <li>{LANGUAGE_LABELS[group.language]}</li>
                       {group.reasons.map((reason) => (
                         <li key={reason} data-reason={reason}>

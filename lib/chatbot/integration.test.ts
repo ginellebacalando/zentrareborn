@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
+import type { ChatSource } from './types';
 
 test(
   'public chatbot HTTP handler respects publication, visibility, versioning, settings, and failures',
@@ -193,22 +194,18 @@ test(
       });
       await prisma.supportFaqEntry.update({ where: { id: faq.id }, data: { status: 'HIDDEN' } });
       assert.equal((await publishedVisitorFaqs()).length, 0);
+      // A hidden catalog package (or its hidden category) never reaches Zeni. The package
+      // booklets on the event pages are page content with no catalog price, so they stay.
+      const catalogPackage = (source: ChatSource) =>
+        source.kind === 'package' && !source.id.startsWith('booklet:');
       await prisma.package.update({ where: { id: 'package' }, data: { clientVisible: false } });
-      assert.ok(
-        (await visitorSources(DEFAULT_PUBLIC_SYSTEM_SETTINGS)).every(
-          (source) => source.kind !== 'package',
-        ),
-      );
+      assert.ok(!(await visitorSources(DEFAULT_PUBLIC_SYSTEM_SETTINGS)).some(catalogPackage));
       await prisma.package.update({ where: { id: 'package' }, data: { clientVisible: true } });
       await prisma.eventCategory.update({
         where: { id: 'category' },
         data: { clientVisible: false },
       });
-      assert.ok(
-        (await visitorSources(DEFAULT_PUBLIC_SYSTEM_SETTINGS)).every(
-          (source) => source.kind !== 'package',
-        ),
-      );
+      assert.ok(!(await visitorSources(DEFAULT_PUBLIC_SYSTEM_SETTINGS)).some(catalogPackage));
       await prisma.systemSetting.create({
         data: {
           id: 'singleton',
@@ -522,7 +519,7 @@ test(
       assert.equal(overview.handoffs.total, 1);
       assert.deepEqual(
         overview.knowledge.map((item) => item.id),
-        ['packages', 'faqs', 'facilities', 'policies'],
+        ['packages', 'booklets', 'faqs', 'facilities', 'policies'],
       );
       assert.equal(overview.knowledge[0].count, 1);
       assert.doesNotMatch(JSON.stringify(overview), /maria@example|Maria Santos|PRIVATE/);

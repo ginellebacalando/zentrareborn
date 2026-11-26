@@ -151,7 +151,9 @@ export async function getPublicPackagesForCategory(slug: string) {
           status: PackageStatus.ACTIVE,
           clientVisible: true,
         },
-        orderBy: [{ updatedAt: 'desc' }, { packageName: 'asc' }],
+        // By guest count, then price: a guest compares the packages for their number of guests
+        // ("Zion Classic (50 guests)" beside "Zion Premium (50 guests)").
+        orderBy: [{ paxIncluded: 'asc' }, { price: 'asc' }, { packageName: 'asc' }],
         include: {
           eventCategory: true,
           inclusions: { orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }] },

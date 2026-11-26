@@ -3,6 +3,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { redactPersonalData } from '@/lib/chatbot/redaction';
 import { zeniLanguages, type ZeniLanguage } from '@/lib/chatbot/language';
+import { searchTerms } from '@/lib/chatbot/retrieval';
+import { zeniTopicLabels, zeniTopics, type ZeniTopic } from '@/lib/chatbot/topics';
 import type { ZeniGap } from '@/lib/chatbot/receptionist';
 import type { ZeniGapGroup, ZeniGapReasonLabel } from '@/lib/chatbot/admin-types';
 import { receptionistPool } from './state-store';
@@ -28,9 +30,23 @@ export function normalizeGapQuestion(question: string) {
     .slice(0, 300);
 }
 
-/** Similar wording ("Is parking free?" / "is parking free") groups under one hash. */
+/**
+ * The words that carry a question's meaning, sorted, the same way Zeni searches: "Is parking
+ * free?", "Free parking?" and "Libre ba ang parking?" share one signature. A message without such
+ * words keeps its normalized wording.
+ */
+export function gapSignature(question: string) {
+  const words = searchTerms(normalizeGapQuestion(question)).sort();
+  return words.length ? words.join(' ') : normalizeGapQuestion(question);
+}
+
+/** Questions with the same signature group under one hash for staff review. */
 export function gapQuestionHash(question: string) {
-  return createHash('sha256').update(normalizeGapQuestion(question)).digest('hex');
+  return createHash('sha256').update(gapSignature(question)).digest('hex');
+}
+
+function topicLabel(topic: string) {
+  return zeniTopics.includes(topic as ZeniTopic) ? zeniTopicLabels[topic as ZeniTopic] : topic;
 }
 
 function missingTable(error: unknown) {
@@ -63,6 +79,7 @@ export async function recordZeniGap(
 type GroupRow = {
   question_hash: string;
   question: string;
+  recent: string[];
   topic: string;
   language: string;
   reasons: string[];
@@ -80,6 +97,7 @@ export async function listOpenZeniGaps(
       db.query<GroupRow>(
         `SELECT question_hash,
           (array_agg(question ORDER BY created_at DESC))[1] AS question,
+          (array_agg(question ORDER BY created_at DESC))[1:12] AS recent,
           (array_agg(topic ORDER BY created_at DESC))[1] AS topic,
           (array_agg(language ORDER BY created_at DESC))[1] AS language,
           array_agg(DISTINCT reason) AS reasons,
@@ -99,7 +117,12 @@ export async function listOpenZeniGaps(
       open: groups.rows.map((row) => ({
         hash: row.question_hash,
         question: row.question,
+        // Other wordings of the same question, newest first, without exact repeats.
+        otherWordings: [...new Set(row.recent ?? [])]
+          .filter((text) => normalizeGapQuestion(text) !== normalizeGapQuestion(row.question))
+          .slice(0, 3),
         topic: row.topic,
+        topicLabel: topicLabel(row.topic),
         language: zeniLanguages.includes(row.language as ZeniLanguage)
           ? (row.language as ZeniLanguage)
           : 'en',
