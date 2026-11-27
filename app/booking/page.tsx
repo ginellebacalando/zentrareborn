@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import { BRAND } from '@/config/brand';
 import type { BookingPaymentMethod } from '@/config/booking';
-import { readBookingWindow } from '@/lib/admin/preferences';
+import type { BookingStepRules } from '@/components/client/BookingSteps';
+import { readBookingRules, readBookingWindow } from '@/lib/admin/preferences';
 import { errorMetadata } from '@/lib/audit';
 import { DEFAULT_BOOKING_WINDOW, bookingWindowDates } from '@/lib/booking-window';
 import { readPublicDateAvailability } from '@/lib/public-availability';
@@ -33,6 +34,17 @@ function bookingImage(value: string | null) {
     const allowed = hostname.endsWith('.supabase.co') || hostname === 'images.unsplash.com';
     return protocol === 'https:' && allowed ? value : null;
   } catch {
+    return null;
+  }
+}
+
+/** The days in "What happens next"; without Settings the guide leaves the days out. */
+async function savedStepRules(): Promise<BookingStepRules | null> {
+  try {
+    const { paymentDeadlineDays, balanceDueDays } = await readBookingRules();
+    return { paymentDeadlineDays, balanceDueDays };
+  } catch (error) {
+    console.error('Unable to read the booking rules.', errorMetadata(error));
     return null;
   }
 }
@@ -80,6 +92,7 @@ export default async function BookingPage({
     if (typeof value === 'string') params.set(key, value);
   }
   const bookingWindow = await savedBookingWindow();
+  const stepRules = await savedStepRules();
   const { today, earliest, latest } = bookingWindowDates(bookingWindow);
   const feature = await getClientFeatureAvailability('inquirySubmissions');
 
@@ -116,6 +129,7 @@ export default async function BookingPage({
         pausedMessage={feature.enabled ? null : feature.message}
         loadFailed={loadFailed}
         paymentMethods={paymentMethods}
+        rules={stepRules}
         initial={bookingInitialChoices(
           parseBookingPrefill(params, { earliest, latest }),
           categories,

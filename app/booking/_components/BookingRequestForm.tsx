@@ -27,6 +27,7 @@ import { BRAND } from '@/config/brand';
 import type { OwnClientPhoto } from '@/config/client-photos';
 import { onlineMethodName } from '@/lib/booking-payment-choice';
 import { cheaperTier, packageQuote } from '@/lib/booking-quote';
+import BookingSteps, { type BookingStepRules } from '@/components/client/BookingSteps';
 import {
   limitSentence,
   noticeSentence,
@@ -229,6 +230,8 @@ type BookingRequestFormProps = {
   paymentMethods: BookingPaymentMethod[];
   /** Choices pre-filled from the link (for example a Zeni "Book this date" button). */
   initial: BookingInitialChoices;
+  /** The days in "What happens next" (Settings > Booking automation); null leaves them out. */
+  rules: BookingStepRules | null;
 };
 
 /**
@@ -246,6 +249,7 @@ export default function BookingRequestForm({
   loadFailed,
   paymentMethods,
   initial,
+  rules,
 }: BookingRequestFormProps) {
   const [form, setForm] = useState<FormState>(() => ({
     ...EMPTY_FORM,
@@ -488,43 +492,34 @@ export default function BookingRequestForm({
           <p className={styles.reference}>
             Booking reference <strong>{reference}</strong>
           </p>
-          <h2 className={styles.subheading}>What happens next</h2>
-          {hold ? (
-            <ol className={styles.nextSteps}>
-              <li>
-                Pay{' '}
-                {hold.amountDueCents
-                  ? `the ${peso.format(hold.amountDueCents / 100)} reservation fee`
-                  : 'the reservation fee'}{' '}
-                {transfer
-                  ? `by ${onlineMethodName(transfer)} before ${deadlineLabel(hold.expiresAt)}, then attach your receipt on your payment page.`
-                  : `by ${deadlineLabel(hold.expiresAt)}.`}{' '}
-                {hold.paymentPath
-                  ? transfer
-                    ? `It is linked below and in the email we sent to ${form.email.trim()}.`
-                    : `See how to pay on your payment page below; the link is also in the email we sent to ${form.email.trim()}.`
-                  : `How to pay is in the email we sent to ${form.email.trim()}.`}
-              </li>
-              <li>
-                {transfer
-                  ? 'We check your receipt against our records and confirm your date.'
-                  : 'We check your payment with our records and confirm your date.'}
-                {hold.onlinePayment &&
-                  !transfer &&
-                  ' For GCash or bank transfers, send the screenshot on your payment page.'}
-              </li>
-              <li>You receive a confirmation email with a calendar invitation.</li>
-            </ol>
-          ) : (
-            <ol className={styles.nextSteps}>
-              <li>We review your request, usually within one to two days.</li>
-              <li>
-                We contact you at {form.email.trim()} or {form.phone.trim()} with the reservation
-                fee details.
-              </li>
-              <li>We confirm your date once your payment is verified.</li>
-            </ol>
-          )}
+          {/* The whole way to the event day; the next step carries this booking's details. */}
+          <BookingSteps
+            title="What happens next"
+            id="booking-done-steps"
+            rules={rules}
+            done={['request']}
+            current={hold ? 'fee' : null}
+            notes={
+              hold
+                ? {
+                    fee: `Pay ${hold.amountDueCents ? `the ${peso.format(hold.amountDueCents / 100)} reservation fee` : 'the reservation fee'} ${
+                      transfer
+                        ? `by ${onlineMethodName(transfer)} before ${deadlineLabel(hold.expiresAt)}, then attach your receipt on your payment page.`
+                        : `by ${deadlineLabel(hold.expiresAt)}.`
+                    } ${
+                      hold.paymentPath
+                        ? transfer
+                          ? `It is linked below and in the email we sent to ${form.email.trim()}.`
+                          : `See how to pay on your payment page below; the link is also in the email we sent to ${form.email.trim()}.`
+                        : `How to pay is in the email we sent to ${form.email.trim()}.`
+                    }`,
+                    confirmed: `${transfer ? 'We check your receipt' : 'We check your payment'} against our records, confirm your date and email you the confirmation with a calendar invitation.${hold.onlinePayment && !transfer ? ' For GCash or bank transfers, send the screenshot on your payment page.' : ''}`,
+                  }
+                : {
+                    fee: `We review your request, usually within one to two days, and contact you at ${form.email.trim()} or ${form.phone.trim()} with the reservation fee details.`,
+                  }
+            }
+          />
           <p className={styles.muted}>
             {hold
               ? 'If we do not receive your payment by the deadline, the hold ends and the date opens to other clients. Keep your booking reference for any questions.'
@@ -1091,16 +1086,13 @@ export default function BookingRequestForm({
                 </fieldset>
 
                 <div className={styles.nextBox}>
-                  <h3 className={styles.subheading}>What happens next</h3>
-                  <ol className={styles.nextSteps}>
-                    <li>
-                      Most bookings are approved right away, and your date is held for a few days
-                      while you pay the reservation fee. Custom proposals and some larger events are
-                      reviewed by our team first.
-                    </li>
-                    <li>We confirm your date as soon as your payment is received.</li>
-                    <li>You receive a confirmation email with a calendar invitation.</li>
-                  </ol>
+                  <BookingSteps
+                    title="What happens next"
+                    headingLevel="h3"
+                    id="booking-review-steps"
+                    rules={rules}
+                    current="request"
+                  />
                 </div>
 
                 <div className={styles.field}>

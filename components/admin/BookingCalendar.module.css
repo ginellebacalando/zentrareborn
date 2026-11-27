@@ -603,3 +603,45 @@
   font: inherit;
   font-weight: var(--weight-regular);
 }
+
+/* Appointments (docs/visits.md): the name opens the appointment with its Front desk actions. */
+.itemButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--admin-heading);
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.itemButton:hover {
+  text-decoration-color: currentColor;
+}
+
+.visitCard {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The schedule form in a dialog: wide enough for its two columns, scrolling on short screens. */
+.scheduleDialog {
+  width: min(100% - var(--space-8), 44rem);
+  max-height: calc(100dvh - var(--space-8));
+  overflow-y: auto;
+}
+
+/* The last change, announced; it takes no room when empty. */
+.notice:empty {
+  display: none;
+}
+
+.notice {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: var(--type-small);
+}

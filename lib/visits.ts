@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { appointmentLabel, type AppointmentPurpose } from '@/lib/appointments';
 import { randomUUID } from 'node:crypto';
 import type { Prisma } from '@prisma/client';
 import { readVisitRules } from '@/lib/admin/preferences';
@@ -67,6 +68,10 @@ export type NewVisit = {
   guests: number | null;
   message: string;
   staffNotes?: string;
+  /** What it is for (lib/appointments.ts); a visit from the website is always OCULAR. */
+  purpose?: AppointmentPurpose;
+  title?: string;
+  place?: string;
   consentAt: Date | null;
   createdBy: string | null;
 };
@@ -209,6 +214,9 @@ export async function createVisit(
           guests: input.guests,
           message: input.message,
           staffNotes: input.staffNotes ?? '',
+          purpose: input.purpose ?? 'OCULAR',
+          title: input.title ?? '',
+          place: input.place ?? '',
           consentAt: input.consentAt,
           createdBy: input.createdBy,
         },
@@ -218,7 +226,7 @@ export async function createVisit(
         tx,
         options.actor,
         'CREATE',
-        `Ocular visit ${visit.reference} scheduled for ${when(visit)} (${input.source === 'STAFF' ? 'front desk' : 'website'}).`,
+        `${appointmentLabel(visit)} ${visit.reference} scheduled for ${when(visit)} (${input.source === 'STAFF' ? 'staff' : 'website'}).`,
         visit.id,
       );
       const notificationIds = await enqueueVisitChange(tx, {

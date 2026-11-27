@@ -1,5 +1,44 @@
 # Design change log
 
+## 28 November 2026 — Calendar appointments, the client's step-by-step guide, reviewed screenshots
+
+User task (team feedback): the Calendar should let staff add and remove entries and be easier to
+read, so an admin can put a meeting with a client on it, be reminded of it, and the client is
+notified; clients need a step-by-step guide to what comes after booking and paying, including the
+ocular visit, in the booking form's Review step; a payment screenshot should stay attached after
+it is reviewed and verified.
+
+- **Calendar** (`components/admin/BookingCalendar.tsx`): **Schedule** in the toolbar and **Schedule
+  on this day** in a chosen day's panel open the appointment form in a dialog. Chips lead with who
+  each event is for ("10 AM · Santos Family"; the chip's name adds what it is and its status), the
+  legend's "Ocular visit" becomes "Appointments", and an appointment opens with the Front desk's own
+  card (check in, reschedule, notes, cancel). The last change is announced under the calendar.
+- **Appointments** (`lib/appointments.ts`, `prisma/visits.sql`): a visit can be a planning meeting,
+  a contract signing or another meeting with its own title and place. Emails, calendar invitations,
+  reminders and the client's manage page name the meeting; ocular visits read as before. The bell
+  shows "N appointments today", new once a day. The Front desk's form is the same one
+  ("Schedule appointment").
+- **Guide** (`components/client/BookingSteps.tsx`): seven numbered steps joined by a line, ticks
+  for steps done and a ring on the current one, an "Optional" tag and "Schedule an ocular visit" on
+  the visit step; on the booking form's Review step, the screen after sending (with this booking's
+  fee and deadline) and the payment page. Public semantic tokens, light and dark.
+- **Reviewed screenshots** (`PaymentProofReview.tsx`, `BookingPayments.tsx`): each verified or
+  rejected screenshot keeps a 4rem preview that opens full size; the payment a verified one became
+  links "View payment screenshot".
+- **Checks (local preview, headless Edge 158, 1366 px and 320 px)**: scheduled a planning meeting
+  for today from the Calendar (chip "10:00 AM, Planning meeting, Liza Ramos, Scheduled"), opened
+  it (label, online place, check-in), saw the bell's "1 appointment today", cancelled it ("Liza
+  Ramos's meeting is cancelled"), and "Schedule on this day" opened on 10 December; the Calendar
+  has no sideways scrolling at 320 px. The Front desk form shows What for, Meeting title and Place.
+  The payment pages mark steps 1–3 done (confirmed) or step 2 current (held); the booking form's
+  Review step shows the guide with step 1 current and the sent screen ticks it. Both reviewed
+  screenshots load (200, image/png) with their link. Tests: the visit suite schedules a planning
+  meeting (wording, calendar summary and location, the database refusing a website meeting);
+  `lib/appointments.test.ts`. No page errors.
+- **Not checked**: real emails in an inbox, a phone's calendar app reading the invitation, a
+  screen reader, dark mode on the new admin dialog, the live site (the database fields must be
+  installed on staging first).
+
 ## 27 November 2026 (late night) — Printable contract on the ZENTRA letterhead
 
 User task: say where an issued contract goes; make the contract less overwhelming; let staff

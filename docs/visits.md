@@ -67,10 +67,33 @@ Every staff role can use it. The page refreshes itself every minute.
 Every change is in the activity log under the module **Front desk**, with the visit id.
 
 The admin **Calendar** shows the month's visits beside its events: a hollow square on each day
-with a visit (the booking dots are round), an "Ocular visit" legend entry, and the visits in the
-month list with their status and time, plus a link to the Front desk where they are managed.
+with a visit (the booking dots are round), an "Appointments" legend entry, and the appointments in
+the month list with their purpose, status and time; each opens with the Front desk's actions.
 Cancelled visits are left out; a booking status filter hides visits, and the search also matches a
 visitor's name, email or reference (`readCalendarVisits` in `lib/admin/front-desk.ts`).
+
+## Appointments: meetings with clients (28 November 2026)
+
+Staff also schedule **appointments** that are not ocular visits: a **planning meeting**, a
+**contract signing**, or **another meeting** with its own title ("Food tasting"). They are visits
+with a purpose (`lib/appointments.ts`), so they share everything a visit has: the open times and
+places (Settings > Ocular Visits; staff need no notice), the confirmation with `invite.ics`, the
+reminders the day before and on the morning, the staff calendar copies, the manage link, the Front
+desk's check-in, notes, reschedule and cancel, and the daily digest. Only staff schedule them; the
+website only schedules ocular visits (a database check keeps it so).
+
+- **Scheduling**: the Calendar's **Schedule** button, **Schedule on this day** in a chosen day's
+  panel (the form opens on that day), or **Schedule appointment** on the Front desk. The form asks
+  what it is for, a title for another meeting, and a place (empty means the venue; an online
+  meeting can paste its link), then the client and the time like a visit.
+- **Wording**: an ocular visit keeps every email and page as before. A meeting's emails, calendar
+  invitation (summary "Planning meeting with Zion Events Place", location the place) and manage page
+  name the meeting ("Your planning meeting is scheduled") and leave out the venue tour; a cancelled
+  meeting does not offer "Schedule a new visit".
+- **Changing or removing**: an appointment's chip opens it with the Front desk's own card (check in,
+  reschedule, staff notes, cancel with a reason); the client gets the update or cancellation.
+- **Reminders for staff**: besides the staff calendar copy, the bell shows "N appointments today"
+  with the first one's time, new once each day; it opens the Calendar.
 
 ## Emails and calendars
 
@@ -121,8 +144,8 @@ visitor's name, email or reference (`readCalendarVisits` in `lib/admin/front-des
 ## Not included yet
 
 - Signed-in client accounts that skip the form, and Turnstile on the visit page.
-- Other appointment types (planning meeting, payment visit) and linking a visit to the booking it
-  led to.
+- Linking an appointment to the booking it is about, and times outside the visit hours for a
+  meeting.
 - A follow-up email after a no-show.
 
 ## Code

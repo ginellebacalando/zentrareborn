@@ -33,6 +33,8 @@ export type PaymentProof = {
   status: 'SUBMITTED' | 'VERIFIED' | 'REJECTED';
   reviewReason: string;
   reviewedAt: string | null;
+  /** The payment recorded when staff verified this screenshot. */
+  paymentId: string | null;
   createdAt: string;
   /** Signs the payment may not be new, for staff to check against their records. */
   warnings: string[];
@@ -203,7 +205,7 @@ export type AdminNotificationSummary = {
     title: string;
     message: string;
     href: string;
-    kind: 'booking' | 'inquiry' | 'warning' | 'policy' | 'payment' | 'contract';
+    kind: 'booking' | 'inquiry' | 'warning' | 'policy' | 'payment' | 'contract' | 'calendar';
     /** It came in after this admin last opened the bell. */
     isNew: boolean;
   }[];

@@ -2,6 +2,14 @@ import 'server-only';
 
 import { BRAND } from '@/config/brand';
 import {
+  APPOINTMENT_PURPOSE_TEXT,
+  appointmentLabel,
+  appointmentNoun,
+  appointmentPlace,
+  appointmentPurpose,
+  withArticle,
+} from '@/lib/appointments';
+import {
   greetingName,
   manilaDate,
   manilaTime,
@@ -25,6 +33,10 @@ export type VisitEmailSource = {
   eventDate: Date | null;
   guests: number | null;
   message: string;
+  /** What it is for (lib/appointments.ts): an ocular visit, or a meeting staff scheduled. */
+  purpose: string;
+  title: string;
+  place: string;
 };
 
 /** Who changed the visit: the visitor on the manage page, or staff at the front desk. */
@@ -47,14 +59,27 @@ function eventDay(value: Date | null) {
     : '';
 }
 
+const isOcular = (visit: VisitEmailSource) => appointmentPurpose(visit.purpose) === 'OCULAR';
+
 function visitorDetails(visit: VisitEmailSource): EmailDetail[] {
-  return [
-    ['Visit', visit.reference],
+  if (isOcular(visit))
+    return [
+      ['Visit', visit.reference],
+      ['Date', manilaDate(visit.startsAt)],
+      ['Time', visitTime(visit)],
+      ['Venue', VENUE_LOCATION],
+      ['Directions', BRAND.maps.directionsUrl],
+    ];
+  const details: EmailDetail[] = [
+    ['Meeting', appointmentLabel(visit)],
+    ['Reference', visit.reference],
     ['Date', manilaDate(visit.startsAt)],
     ['Time', visitTime(visit)],
-    ['Venue', VENUE_LOCATION],
-    ['Directions', BRAND.maps.directionsUrl],
+    ['Place', appointmentPlace(visit, VENUE_LOCATION)],
   ];
+  // Directions help only when the meeting is at the venue.
+  if (!visit.place.trim()) details.push(['Directions', BRAND.maps.directionsUrl]);
+  return details;
 }
 
 function greeting(visit: VisitEmailSource) {
@@ -95,6 +120,43 @@ const CLIENT_COPY: Record<
   },
 };
 
+/** A meeting's emails: the same shape as a visit's, named for what it is. */
+function meetingCopy(
+  visit: VisitEmailSource,
+  change: VisitEmailChange,
+): { subject: string; heading: string; preheader: string; paragraphs: string[] } {
+  const label = appointmentLabel(visit);
+  const noun = appointmentNoun(visit);
+  const purpose = APPOINTMENT_PURPOSE_TEXT[appointmentPurpose(visit.purpose)];
+  if (change === 'SCHEDULED')
+    return {
+      subject: `${label} scheduled`,
+      heading: `Your ${noun} is scheduled`,
+      preheader: `Your ${noun} with ${BRAND.legalName} is scheduled.`,
+      paragraphs: [
+        `We scheduled ${withArticle(noun)} with you at ${appointmentPlace(visit, BRAND.legalName)}.`,
+        ...(purpose ? [purpose] : []),
+        `A calendar invitation (invite.ics) is attached so you can add the ${noun} to your calendar.`,
+      ],
+    };
+  if (change === 'RESCHEDULED')
+    return {
+      subject: `${label} moved`,
+      heading: `Your ${noun} has a new time`,
+      preheader: `Your ${noun} with ${BRAND.legalName} has a new time.`,
+      paragraphs: [
+        `Your ${noun} now takes place at the time below.`,
+        'The attached calendar update (invite.ics) replaces the earlier time in your calendar.',
+      ],
+    };
+  return {
+    subject: `${label} cancelled`,
+    heading: `Your ${noun} is cancelled`,
+    preheader: `Your ${noun} with ${BRAND.legalName} is cancelled.`,
+    paragraphs: [`The calendar update (cancel.ics) removes the ${noun} from your calendar.`],
+  };
+}
+
 /** The visitor's confirmation, new time or cancellation; the calendar file rides along. */
 export function visitClientNotice(
   visit: VisitEmailSource,
@@ -102,15 +164,18 @@ export function visitClientNotice(
   by: VisitActor,
   links: { manage: string | null; schedule: string | null },
 ): RenderedEmail {
-  const copy = CLIENT_COPY[change];
+  const ocular = isOcular(visit);
+  const copy = ocular ? CLIENT_COPY[change] : meetingCopy(visit, change);
+  const noun = appointmentNoun(visit);
   const cancelled = change === 'CANCELLED';
   const opening = cancelled
     ? by === 'VISITOR'
-      ? `As you asked, we cancelled your ocular visit on ${manilaDate(visit.startsAt)} at ${manilaTime(visit.startsAt)}.`
-      : `Your ocular visit on ${manilaDate(visit.startsAt)} at ${manilaTime(visit.startsAt)} was cancelled. If you did not expect this, please contact us.`
+      ? `As you asked, we cancelled your ${noun} on ${manilaDate(visit.startsAt)} at ${manilaTime(visit.startsAt)}.`
+      : `Your ${noun} on ${manilaDate(visit.startsAt)} at ${manilaTime(visit.startsAt)} was cancelled. If you did not expect this, please contact us.`
     : '';
+  // A cancelled meeting is arranged again with staff, so only a visit offers to book a new one.
   const action = cancelled
-    ? links.schedule && { label: 'Schedule a new visit', href: links.schedule }
+    ? ocular && links.schedule && { label: 'Schedule a new visit', href: links.schedule }
     : links.manage && { label: 'Reschedule or cancel', href: links.manage };
   return renderEmail({
     subject: `${BRAND.legalName} | ${copy.subject} | ${visit.reference}`,
@@ -134,22 +199,29 @@ export function visitClientNotice(
   });
 }
 
-/** A reminder the day before and on the morning of the visit. */
+/** A reminder the day before and on the morning of the visit or meeting. */
 export function visitReminder(
   visit: VisitEmailSource,
   lead: 'day' | 'today',
   manageUrl: string | null,
 ): RenderedEmail {
   const when = lead === 'day' ? 'tomorrow' : 'today';
+  const ocular = isOcular(visit);
+  const noun = appointmentNoun(visit);
+  const where = ocular ? `at ${BRAND.legalName}` : `with ${BRAND.legalName}`;
   return renderEmail({
-    subject: `${BRAND.legalName} | Visit reminder | ${visit.reference}`,
-    preheader: `Your ocular visit at ${BRAND.legalName} is ${when} at ${manilaTime(visit.startsAt)}.`,
-    heading: lead === 'day' ? 'Your visit is tomorrow' : 'Your visit is today',
+    subject: `${BRAND.legalName} | ${ocular ? 'Visit' : appointmentLabel(visit)} reminder | ${visit.reference}`,
+    preheader: `Your ${noun} ${where} is ${when} at ${manilaTime(visit.startsAt)}.`,
+    heading: ocular
+      ? lead === 'day'
+        ? 'Your visit is tomorrow'
+        : 'Your visit is today'
+      : `Your ${noun} is ${when}`,
     sections: [
       {
         paragraphs: [
           greeting(visit),
-          `This is a reminder of your ocular visit at ${BRAND.legalName} ${when} at ${manilaTime(visit.startsAt)}.`,
+          `This is a reminder of your ${noun} ${where} ${when} at ${manilaTime(visit.startsAt)}.`,
           manageUrl
             ? 'If the time no longer works for you, use the button below to reschedule or cancel.'
             : `If the time no longer works for you, please contact us at ${BRAND.contact.phone} or ${BRAND.contact.email}.`,
@@ -190,16 +262,30 @@ export function visitStaffNotice(
   by: VisitActor,
   frontDeskUrl: string | null,
 ): RenderedEmail {
-  const copy = STAFF_COPY[change];
+  const ocular = isOcular(visit);
+  const label = appointmentLabel(visit);
+  const noun = appointmentNoun(visit);
+  const copy = ocular
+    ? STAFF_COPY[change]
+    : {
+        SCHEDULED: { subject: label, heading: `${label} added to your calendar` },
+        RESCHEDULED: { subject: `${label} moved`, heading: `${label} moved` },
+        CANCELLED: { subject: `${label} cancelled`, heading: `${label} cancelled` },
+      }[change];
+  const paragraph = ocular
+    ? STAFF_COPY[change].paragraph
+    : STAFF_COPY[change].paragraph.replaceAll('visit', noun);
   const name = singleLine(visit.clientName, 80);
   const who =
     change === 'SCHEDULED'
       ? visit.source === 'STAFF'
-        ? `Staff scheduled an ocular visit for ${name} at the front desk.`
+        ? ocular
+          ? `Staff scheduled an ocular visit for ${name} at the front desk.`
+          : `Staff scheduled ${withArticle(noun)} with ${name}.`
         : `${name} scheduled an ocular visit on ${SOURCE_LABELS[visit.source] ?? 'the website'}.`
       : change === 'RESCHEDULED'
-        ? `${by === 'VISITOR' ? `${name} moved` : 'Staff moved'} this ocular visit to a new time.`
-        : `${by === 'VISITOR' ? `${name} cancelled` : 'Staff cancelled'} this ocular visit.`;
+        ? `${by === 'VISITOR' ? `${name} moved` : 'Staff moved'} this ${noun} to a new time.`
+        : `${by === 'VISITOR' ? `${name} cancelled` : 'Staff cancelled'} this ${noun}.`;
   return renderEmail({
     subject: `${copy.subject}: ${name}, ${manilaDate(visit.startsAt)} ${manilaTime(visit.startsAt)}`,
     preheader: `${visit.reference}: ${who}`,
@@ -208,12 +294,17 @@ export function visitStaffNotice(
       {
         paragraphs: [
           who,
-          copy.paragraph,
-          ...(visit.email ? ['Reply to this email to contact the visitor.'] : []),
+          paragraph,
+          ...(visit.email
+            ? [`Reply to this email to contact the ${ocular ? 'visitor' : 'client'}.`]
+            : []),
         ],
         details: [
-          ['Visit', visit.reference],
-          ['Visitor', singleLine(visit.clientName)],
+          [ocular ? 'Visit' : label, visit.reference],
+          [ocular ? 'Visitor' : 'Client', singleLine(visit.clientName)],
+          ...(ocular
+            ? []
+            : ([['Place', appointmentPlace(visit, VENUE_LOCATION)]] as EmailDetail[])),
           ['Email', visit.email],
           ['Phone', visit.phone],
           ['Date', manilaDate(visit.startsAt)],
@@ -236,11 +327,13 @@ export function visitCalendarText(
   status: string,
   manageUrl: string | null,
 ) {
+  const ocular = isOcular(visit);
+  const label = appointmentLabel(visit);
   if (audience === 'client')
     return {
-      summary: `Ocular visit at ${BRAND.legalName}`,
+      summary: ocular ? `Ocular visit at ${BRAND.legalName}` : `${label} with ${BRAND.legalName}`,
       description: [
-        `Visit ${visit.reference}`,
+        `${ocular ? 'Visit' : label} ${visit.reference}`,
         status,
         manageUrl ? `Reschedule or cancel: ${manageUrl}` : '',
         `Questions: ${BRAND.contact.phone} or ${BRAND.contact.email}`,
@@ -249,10 +342,10 @@ export function visitCalendarText(
         .join('\n'),
     };
   return {
-    summary: `Ocular visit: ${singleLine(visit.clientName, 80)} (${visit.reference})`,
+    summary: `${label}: ${singleLine(visit.clientName, 80)} (${visit.reference})`,
     description: [
-      `Visit ${visit.reference}`,
-      `Visitor: ${singleLine(visit.clientName)}`,
+      `${ocular ? 'Visit' : label} ${visit.reference}`,
+      `${ocular ? 'Visitor' : 'Client'}: ${singleLine(visit.clientName)}`,
       `Contact: ${[visit.email, visit.phone].filter(Boolean).join(', ')}`,
       visit.eventType ? `Event: ${singleLine(visit.eventType)}` : '',
       visit.eventDate ? `Event date: ${eventDay(visit.eventDate)}` : '',

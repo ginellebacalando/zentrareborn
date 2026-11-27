@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { appointmentLabel, appointmentNoun, appointmentPurpose } from '@/lib/appointments';
 import { z } from 'zod';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { greetingName } from '@/lib/automation/templates';
@@ -220,9 +221,15 @@ export async function readVisitManagePage(token: string): Promise<VisitManageVie
       endsAt: true,
       status: true,
       revision: true,
+      purpose: true,
+      title: true,
+      place: true,
     },
   });
   if (!visit) return { state: 'invalid' };
+  const label = appointmentLabel(visit);
+  // An ocular visit keeps the page's own wording ("your visit"); a meeting is named.
+  const noun = appointmentPurpose(visit.purpose) === 'OCULAR' ? 'visit' : appointmentNoun(visit);
   const now = new Date();
   const status = visit.status as VisitStatus;
   const photo = await clientPhotoFor({ kind: 'visit', id: visit.id }, now);
@@ -230,6 +237,9 @@ export async function readVisitManagePage(token: string): Promise<VisitManageVie
     return {
       state: 'closed',
       reference: visit.reference,
+      label,
+      noun,
+      place: visit.place,
       status,
       startsAt: visit.startsAt.toISOString(),
       endsAt: visit.endsAt.toISOString(),
@@ -239,6 +249,9 @@ export async function readVisitManagePage(token: string): Promise<VisitManageVie
   return {
     state: 'open',
     reference: visit.reference,
+    label,
+    noun,
+    place: visit.place,
     firstName: greetingName(visit.clientName).split(' ')[0] ?? '',
     startsAt: visit.startsAt.toISOString(),
     endsAt: visit.endsAt.toISOString(),

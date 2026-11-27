@@ -9,6 +9,7 @@ import {
   ArrowUpRight,
   Bell,
   CalendarCheck,
+  CalendarClock,
   CheckCheck,
   ChevronDown,
   CircleUserRound,
@@ -47,6 +48,7 @@ const notificationIcons = {
   policy: ShieldCheck,
   payment: Wallet,
   contract: FileSignature,
+  calendar: CalendarClock,
 };
 
 export default function AdminAccountControls({

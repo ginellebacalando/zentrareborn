@@ -19,6 +19,7 @@ const PROOF_SUMMARY = {
   status: true,
   reviewReason: true,
   reviewedAt: true,
+  paymentId: true,
   createdAt: true,
 } satisfies Prisma.AdminPaymentProofSelect;
 
@@ -110,6 +111,7 @@ export async function readBookingProofs(db: Db, bookingId: string) {
       status: proof.status,
       reviewReason: proof.reviewReason,
       reviewedAt: proof.reviewedAt,
+      paymentId: proof.paymentId,
       createdAt: proof.createdAt,
       warnings: proof.status === 'SUBMITTED' ? await proofWarnings(db, proof) : [],
     })),

@@ -3,6 +3,10 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { CircleAlert, FileText } from 'lucide-react';
+import BookingSteps, {
+  type BookingStepKey,
+  type BookingStepRules,
+} from '@/components/client/BookingSteps';
 import ClientPhotoCapture from '@/components/client-photo/ClientPhotoCapture';
 import { Button, ButtonLink } from '@/components/shared/Button';
 import { BRAND } from '@/config/brand';
@@ -384,7 +388,31 @@ function UploadForm({ view, token }: { view: View; token: string }) {
  * pay, and the screenshot upload. Staff verify every screenshot against Zion's own records; the
  * page never confirms a booking by itself.
  */
-export default function PaymentPage({ view, token }: { view: View; token: string }) {
+/**
+ * Where this booking is on the way to the event day: requested, paying the fee, being checked,
+ * confirmed (the visit, the contract and the balance still ahead), or fully paid.
+ */
+function journey(view: View): { done: BookingStepKey[]; current: BookingStepKey | null } {
+  if (view.state === 'review') return { done: [], current: 'request' };
+  if (view.state === 'waiting')
+    return view.proof?.status === 'SUBMITTED'
+      ? { done: ['request', 'fee'], current: 'confirmed' }
+      : { done: ['request'], current: 'fee' };
+  const confirmed: BookingStepKey[] = ['request', 'fee', 'confirmed'];
+  return view.paidCents >= view.totalCents
+    ? { done: [...confirmed, 'balance'], current: null }
+    : { done: confirmed, current: null };
+}
+
+export default function PaymentPage({
+  view,
+  token,
+  rules,
+}: {
+  view: View;
+  token: string;
+  rules: BookingStepRules | null;
+}) {
   // A screenshot staff have not checked yet: listed on its own, never subtracted from what is due.
   const waitingProof = view.paying && view.proof?.status === 'SUBMITTED' ? view.proof : null;
   const title =
@@ -484,6 +512,11 @@ export default function PaymentPage({ view, token }: { view: View; token: string
         )}
         {view.photo && (view.photo.canAdd || view.photo.photoUrl) && (
           <ClientPhotoCapture photo={view.photo} />
+        )}
+        {view.state !== 'closed' && (
+          <div className={styles.guide}>
+            <BookingSteps id="payment-steps" rules={rules} {...journey(view)} />
+          </div>
         )}
         <p className={shared.hint}>
           Questions? Call{' '}

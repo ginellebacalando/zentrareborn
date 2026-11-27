@@ -3,7 +3,15 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import useSWR from 'swr';
 import { CalendarPlus, LoaderCircle, RefreshCw, Search, UserPlus } from 'lucide-react';
+import { BRAND } from '@/config/brand';
 import { displayStatus } from '@/lib/admin/dashboard-status';
+import {
+  APPOINTMENT_FIELD_LIMITS,
+  APPOINTMENT_LABELS,
+  APPOINTMENT_PURPOSES,
+  appointmentLabel,
+  type AppointmentPurpose,
+} from '@/lib/appointments';
 import {
   visitSourceLabel,
   visitStatusLabel,
@@ -57,10 +65,38 @@ const STATUS_TONES: Record<VisitStatus, string> = {
   CANCELLED: styles.toneClosed,
 };
 
-type ActResult = { ok: true; body: Record<string, unknown> } | { ok: false; error: string };
-type Act = (payload: Record<string, unknown>, success: string) => Promise<ActResult>;
+export type ActResult = { ok: true; body: Record<string, unknown> } | { ok: false; error: string };
+export type Act = (payload: Record<string, unknown>, success: string) => Promise<ActResult>;
 /** Contact details carried into the schedule form, for example from the client lookup. */
 type Prefill = { clientName: string; email: string; phone: string };
+
+/**
+ * One Front desk change (app/api/admin/front-desk), shared with the Calendar: the server's
+ * answer, or the reason it failed in words staff can act on.
+ */
+export async function frontDeskRequest(payload: Record<string, unknown>): Promise<ActResult> {
+  try {
+    const response = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!response.ok)
+      return {
+        ok: false,
+        error: typeof body.error === 'string' ? body.error : 'The front desk action failed.',
+      };
+    return { ok: true, body };
+  } catch {
+    return { ok: false, error: 'The front desk action failed. Check the connection.' };
+  }
+}
+
+/** "visit" for an ocular visit, "meeting" for the rest, in the desk's buttons and messages. */
+function staffNoun(visit: Pick<FrontDeskVisit, 'purpose'>) {
+  return visit.purpose === 'OCULAR' ? 'visit' : 'meeting';
+}
 
 async function load<T>(url: string): Promise<T> {
   const response = await fetch(url, { cache: 'no-store' });
@@ -93,10 +129,13 @@ function StatusBadge({ status }: { status: VisitStatus }) {
 /** A day select and a time select over the open visit times (staff need no notice). */
 function SlotSelects({
   except,
+  initialDay,
   value,
   onChange,
 }: {
   except?: string;
+  /** The day to start on, for example the day chosen on the Calendar (YYYY-MM-DD). */
+  initialDay?: string;
   value: string;
   onChange: (startsAt: string) => void;
 }) {
@@ -105,8 +144,10 @@ function SlotSelects({
     load,
     { shouldRetryOnError: false },
   );
-  const [date, setDate] = useState('');
+  const [picked, setDate] = useState('');
   const open = data?.days.filter((day) => day.slots.length) ?? [];
+  // The suggested day counts only while it still has open times and no other day was picked.
+  const date = picked || (open.some((day) => day.date === initialDay) ? (initialDay ?? '') : '');
   const chosen = open.find((day) => day.date === date);
   return (
     <>
@@ -164,22 +205,36 @@ function FormError({ message }: { message: string }) {
   ) : null;
 }
 
-/** Schedules a visit for a caller or a walk-in who wants to come back another time. */
-function ScheduleVisitForm({
+/**
+ * Schedules an appointment (docs/visits.md, "Appointments"): an ocular visit for a caller or a
+ * walk-in, or a planning meeting, a contract signing or another meeting with a client, from the
+ * Front desk or the Calendar. The client gets the confirmation, calendar invitation and
+ * reminders when there is an email; staff calendars get the event either way.
+ */
+export function ScheduleAppointmentForm({
   prefill,
+  initialDay,
   act,
   busy,
   onClose,
+  headingLevel = 'h2',
 }: {
   prefill: Prefill;
+  /** The day to start on, from the Calendar (YYYY-MM-DD). */
+  initialDay?: string;
   act: Act;
   busy: boolean;
   onClose: () => void;
+  headingLevel?: 'h2' | 'h3';
 }) {
   const id = useId();
+  const Heading = headingLevel;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [startsAt, setStartsAt] = useState('');
+  const [purpose, setPurpose] = useState<AppointmentPurpose>('OCULAR');
   const [error, setError] = useState('');
+  const ocular = purpose === 'OCULAR';
+  const noun = ocular ? 'visit' : 'meeting';
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
@@ -189,10 +244,12 @@ function ScheduleVisitForm({
     const form = new FormData(event.currentTarget);
     const text = (key: string) => String(form.get(key) ?? '').trim();
     if (!startsAt) {
-      setError('Choose a day and a time for the visit.');
+      setError(`Choose a day and a time for the ${noun}.`);
       return;
     }
     const guests = text('guests');
+    const title = text('title');
+    const label = purpose === 'MEETING' ? title : APPOINTMENT_LABELS[purpose];
     const result = await act(
       {
         op: 'schedule-visit',
@@ -206,10 +263,13 @@ function ScheduleVisitForm({
           guests: guests ? Number(guests) : null,
           message: text('message'),
           staffNotes: text('staffNotes'),
+          purpose,
+          title,
+          place: text('place'),
         },
         consent: form.get('consent') === 'on',
       },
-      `Visit scheduled for ${text('clientName')} on ${moment.format(new Date(startsAt))}.`,
+      `${label} scheduled with ${text('clientName')} on ${moment.format(new Date(startsAt))}.`,
     );
     if (result.ok) onClose();
     else setError(result.error);
@@ -217,17 +277,54 @@ function ScheduleVisitForm({
 
   return (
     <section className={styles.card} aria-labelledby={`${id}-title`}>
-      <div>
-        <h2 id={`${id}-title`} ref={headingRef} tabIndex={-1} className={styles.focusTarget}>
-          Schedule a visit
-        </h2>
-        <p className={styles.intro}>
-          For a caller or a walk-in who wants to come back. With an email, the client gets the
-          confirmation and calendar invitation; staff calendars get the event either way.
-        </p>
-      </div>
+      <Heading id={`${id}-title`} ref={headingRef} tabIndex={-1} className={styles.focusTarget}>
+        Schedule an appointment
+      </Heading>
       <form className={styles.form} onSubmit={submit} aria-busy={busy}>
         <div className={styles.fields}>
+          <label className={styles.field}>
+            What for
+            <select
+              name="purpose"
+              value={purpose}
+              onChange={(event) => {
+                setPurpose(event.target.value as AppointmentPurpose);
+                setError('');
+              }}
+            >
+              {APPOINTMENT_PURPOSES.map((value) => (
+                <option key={value} value={value}>
+                  {APPOINTMENT_LABELS[value]}
+                </option>
+              ))}
+            </select>
+          </label>
+          {purpose === 'MEETING' && (
+            <label className={styles.field}>
+              Meeting title
+              <input
+                name="title"
+                required
+                minLength={2}
+                maxLength={APPOINTMENT_FIELD_LIMITS.title}
+                autoComplete="off"
+              />
+            </label>
+          )}
+          {!ocular && (
+            <label className={`${styles.field} ${styles.wide}`}>
+              Place (optional)
+              <input
+                name="place"
+                maxLength={APPOINTMENT_FIELD_LIMITS.place}
+                autoComplete="off"
+                aria-describedby={`${id}-place-hint`}
+              />
+              <span id={`${id}-place-hint`} className={styles.hint}>
+                Leave it empty to meet at {BRAND.legalName}. For an online meeting, paste the link.
+              </span>
+            </label>
+          )}
           <label className={styles.field}>
             Client name
             <input
@@ -260,7 +357,7 @@ function ScheduleVisitForm({
               defaultValue={prefill.email}
             />
           </label>
-          <SlotSelects value={startsAt} onChange={setStartsAt} />
+          <SlotSelects initialDay={initialDay} value={startsAt} onChange={setStartsAt} />
           <label className={styles.field}>
             Event (optional)
             <input name="eventType" maxLength={VISIT_FIELD_LIMITS.eventType} />
@@ -279,7 +376,7 @@ function ScheduleVisitForm({
             />
           </label>
           <label className={`${styles.field} ${styles.wide}`}>
-            What the client wants to see (optional)
+            {ocular ? 'What the client wants to see (optional)' : 'What it is about (optional)'}
             <textarea name="message" maxLength={VISIT_FIELD_LIMITS.message} rows={2} />
           </label>
           <label className={`${styles.field} ${styles.wide}`}>
@@ -290,14 +387,14 @@ function ScheduleVisitForm({
         <label className={styles.check}>
           <input name="consent" type="checkbox" required />
           <span>
-            The client agreed that Zion may keep these details to arrange the visit (Privacy
+            The client agreed that Zion may keep these details to arrange the {noun} (Privacy
             Notice).
           </span>
         </label>
         <FormError message={error} />
         <div className={styles.actions}>
           <Button type="submit" variant="primary" disabled={busy}>
-            Schedule visit
+            Schedule {noun}
           </Button>
           <Button type="button" variant="secondary" onClick={onClose}>
             Close
@@ -310,8 +407,11 @@ function ScheduleVisitForm({
 
 type Panel = 'reschedule' | 'cancel' | 'notes' | null;
 
-/** One visit with the actions its state allows; each change is announced and refocused. */
-function VisitCard({
+/**
+ * One visit or meeting with the actions its state allows; each change is announced and
+ * refocused. The Calendar shows the same card for an appointment it opens.
+ */
+export function VisitCard({
   visit,
   today,
   act,
@@ -338,6 +438,8 @@ function VisitCard({
   const started = hasStarted(visit.startsAt);
   const isToday = manilaDateKey(visit.startsAt) === today;
   const name = visit.clientName;
+  const ocular = visit.purpose === 'OCULAR';
+  const noun = staffNoun(visit);
 
   useEffect(() => {
     if (panel) panelRef.current?.querySelector<HTMLElement>('select, textarea')?.focus();
@@ -401,6 +503,7 @@ function VisitCard({
             <h3 id={`${id}-name`} ref={headingRef} tabIndex={-1} className={styles.focusTarget}>
               {clock.format(new Date(visit.startsAt))} · {name}
             </h3>
+            <span className={styles.purpose}>{appointmentLabel(visit)}</span>
             <StatusBadge status={status} />
           </div>
           {visit.email && (scheduled || status === 'CHECKED_IN') && (
@@ -444,6 +547,12 @@ function VisitCard({
             </dd>
           </div>
         )}
+        {!ocular && (
+          <div>
+            <dt>Place</dt>
+            <dd>{visit.place || BRAND.legalName}</dd>
+          </div>
+        )}
         <div>
           <dt>Reference</dt>
           <dd>
@@ -451,7 +560,11 @@ function VisitCard({
           </dd>
         </div>
       </dl>
-      {visit.message && <p className={styles.note}>Visitor: {visit.message}</p>}
+      {visit.message && (
+        <p className={styles.note}>
+          {ocular ? 'Visitor' : 'About'}: {visit.message}
+        </p>
+      )}
       {visit.staffNotes && <p className={styles.note}>Staff notes: {visit.staffNotes}</p>}
       {visit.cancelReason && status === 'CANCELLED' && (
         <p className={styles.note}>Cancelled: {visit.cancelReason}</p>
@@ -477,7 +590,7 @@ function VisitCard({
             onClick={() =>
               void run(
                 { op: 'visit-outcome', outcome: 'COMPLETE' },
-                `${name}'s visit is marked completed.`,
+                `${name}'s ${noun} is marked completed.`,
               )
             }
           >
@@ -492,7 +605,7 @@ function VisitCard({
             onClick={() =>
               void run(
                 { op: 'visit-outcome', outcome: 'NO_SHOW' },
-                `${name}'s visit is marked as a no-show.`,
+                `${name}'s ${noun} is marked as a no-show.`,
               )
             }
           >
@@ -512,7 +625,7 @@ function VisitCard({
             items={[
               { label: 'Reschedule', onSelect: () => choose('reschedule') },
               { label: 'Staff notes', onSelect: () => choose('notes') },
-              { label: 'Cancel visit', destructive: true, onSelect: () => choose('cancel') },
+              { label: `Cancel ${noun}`, destructive: true, onSelect: () => choose('cancel') },
             ]}
           />
         ) : (
@@ -536,18 +649,18 @@ function VisitCard({
                 if (!startsAt) return setError('Choose a new day and time.');
                 void run(
                   { op: 'reschedule-visit', revision: visit.revision, startsAt },
-                  `${name}'s visit moved to ${moment.format(new Date(startsAt))}. The client and staff calendars get the new time.`,
+                  `${name}'s ${noun} moved to ${moment.format(new Date(startsAt))}. The client and staff calendars get the new time.`,
                 );
               }}
             >
-              <h4>Move the visit</h4>
+              <h4>Move the {noun}</h4>
               <div className={styles.fields}>
                 <SlotSelects except={visit.id} value={startsAt} onChange={setStartsAt} />
               </div>
               <FormError message={error} />
               <div className={styles.actions}>
                 <Button type="submit" variant="primary" disabled={busy}>
-                  Move visit
+                  Move {noun}
                 </Button>
                 <Button type="button" variant="secondary" onClick={close}>
                   Close
@@ -563,11 +676,11 @@ function VisitCard({
                 const reason = String(new FormData(event.currentTarget).get('reason') ?? '');
                 void run(
                   { op: 'cancel-visit', revision: visit.revision, reason },
-                  `${name}'s visit is cancelled. The time is open again.`,
+                  `${name}'s ${noun} is cancelled. The time is open again.`,
                 );
               }}
             >
-              <h4>Cancel the visit</h4>
+              <h4>Cancel the {noun}</h4>
               <label className={styles.field}>
                 Reason (staff only)
                 <textarea
@@ -586,10 +699,10 @@ function VisitCard({
               <FormError message={error} />
               <div className={styles.actions}>
                 <Button type="submit" variant="destructive" disabled={busy}>
-                  Cancel visit
+                  Cancel {noun}
                 </Button>
                 <Button type="button" variant="secondary" onClick={close}>
-                  Keep visit
+                  Keep {noun}
                 </Button>
               </div>
             </form>
@@ -913,7 +1026,7 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
                   }
                 >
                   <CalendarPlus size={16} aria-hidden="true" />
-                  Schedule a visit for {latest.clientName}
+                  Schedule an appointment for {latest.clientName}
                 </Button>
                 {bookFrom && (
                   <ButtonLink variant="secondary" href={`${WALK_IN_PATH}?${bookFrom}`}>
@@ -949,22 +1062,12 @@ export default function FrontDesk() {
     setBusy(true);
     setNotice('');
     try {
-      const response = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!response.ok)
-        return {
-          ok: false,
-          error: typeof body.error === 'string' ? body.error : 'The front desk action failed.',
-        };
-      setNotice(success);
-      await mutate();
-      return { ok: true, body };
-    } catch {
-      return { ok: false, error: 'The front desk action failed. Check the connection.' };
+      const result = await frontDeskRequest(payload);
+      if (result.ok) {
+        setNotice(success);
+        await mutate();
+      }
+      return result;
     } finally {
       setBusy(false);
     }
@@ -1005,7 +1108,7 @@ export default function FrontDesk() {
               icon={<CalendarPlus aria-hidden="true" />}
               onClick={() => setScheduling({ clientName: '', email: '', phone: '' })}
             >
-              Schedule a visit
+              Schedule appointment
             </Button>
             <ButtonLink
               variant="secondary"
@@ -1032,7 +1135,7 @@ export default function FrontDesk() {
       )}
 
       {scheduling && (
-        <ScheduleVisitForm
+        <ScheduleAppointmentForm
           key={`${scheduling.clientName}|${scheduling.email}|${scheduling.phone}`}
           prefill={scheduling}
           act={act}

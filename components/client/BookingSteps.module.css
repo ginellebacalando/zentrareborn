@@ -1,0 +1,129 @@
+/*
+ * "Your booking, step by step" (components/client/BookingSteps.tsx): numbered steps joined by a
+ * line, a tick for each step done and a ring around the current one. Public semantic tokens, so
+ * it follows the site's light and dark themes.
+ */
+.guide {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--type-card-title);
+}
+
+.steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--space-8) minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+}
+
+/* The line from one step's number to the next. */
+.step:not(:last-child)::before {
+  position: absolute;
+  inset-block: var(--space-8) 0;
+  inset-inline-start: calc(var(--space-8) / 2 - 1px);
+  border-inline-start: 2px solid var(--line-hairline);
+  content: '';
+}
+
+.step[data-state='done']:not(:last-child)::before {
+  border-color: var(--action-primary);
+}
+
+.marker {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  border: 2px solid var(--line-hairline);
+  border-radius: 50%;
+  background: var(--surface-card);
+  color: var(--text-muted);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+}
+
+.marker svg {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+}
+
+.step[data-state='done'] .marker {
+  border-color: var(--action-primary);
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+.step[data-state='current'] .marker {
+  border-color: var(--action-primary);
+  color: var(--action-primary);
+  box-shadow: 0 0 0 var(--space-1) color-mix(in srgb, var(--action-primary) 18%, transparent);
+}
+
+.body {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+.stepTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.step[data-state='current'] .stepTitle {
+  color: var(--action-primary);
+}
+
+.optional {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-control);
+  color: var(--text-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+}
+
+.text {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: var(--line-body);
+}
+
+.action {
+  justify-self: start;
+  color: var(--action-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.action:hover {
+  color: var(--action-primary-hover);
+}
+
+.srOnly {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

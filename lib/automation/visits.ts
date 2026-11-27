@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { BRAND } from '@/config/brand';
+import { appointmentNoun, appointmentPlace, appointmentPurpose } from '@/lib/appointments';
 import { isEmailAddress } from '@/lib/email-address';
 import { prisma } from '@/lib/prisma';
 import { visitManageUrl } from '@/lib/visit-link';
@@ -53,6 +54,9 @@ export const visitNoticeSelect = {
   eventDate: true,
   guests: true,
   message: true,
+  purpose: true,
+  title: true,
+  place: true,
   revision: true,
 } as const;
 
@@ -100,8 +104,11 @@ function visitCalendar(
   attendees: { name: string; email: string }[],
   manageUrl: string | null,
 ) {
+  const noun = appointmentNoun(visit);
   const status =
-    method === 'CANCEL' ? 'This visit was cancelled.' : 'This ocular visit is scheduled.';
+    method === 'CANCEL'
+      ? `This ${appointmentPurpose(visit.purpose) === 'OCULAR' ? 'visit' : noun} was cancelled.`
+      : `This ${noun} is scheduled.`;
   return buildCalendarInvite({
     method,
     uid: visitCalendarUid(visit.id),
@@ -111,7 +118,7 @@ function visitCalendar(
     stamp,
     start: visit.startsAt,
     end: visit.endsAt,
-    location: VENUE_LOCATION,
+    location: appointmentPlace(visit, VENUE_LOCATION),
     organizer: { name: BRAND.legalName, email: BRAND.contact.email },
     attendees,
     ...visitCalendarText(visit, audience, status, manageUrl),

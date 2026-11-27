@@ -14,21 +14,33 @@ import { Button, ButtonLink } from '@/components/shared/Button';
 type View = Exclude<VisitManageView, { state: 'invalid' }>;
 type OpenView = Extract<VisitManageView, { state: 'open' }>;
 
-const CLOSED_TITLES: Record<string, string> = {
-  CANCELLED: 'This visit is cancelled',
-  COMPLETED: 'Thank you for visiting',
-  CHECKED_IN: 'You are checked in',
-  NO_SHOW: 'This visit has passed',
-  SCHEDULED: 'This visit has started',
-};
+/** The page's titles after the time has passed or changed; `noun` is "visit" or the meeting. */
+function closedTitle(status: string, noun: string) {
+  return (
+    {
+      CANCELLED: `This ${noun} is cancelled`,
+      COMPLETED: noun === 'visit' ? 'Thank you for visiting' : 'Thank you for meeting with us',
+      CHECKED_IN: 'You are checked in',
+      NO_SHOW: `This ${noun} has passed`,
+      SCHEDULED: `This ${noun} has started`,
+    }[status] ?? null
+  );
+}
 
-const CLOSED_NOTES: Record<string, string> = {
-  CANCELLED: 'This visit was cancelled, so it can no longer be changed here.',
-  COMPLETED: 'We hope you enjoyed seeing the venue. When you are ready, you can book your event.',
-  CHECKED_IN: 'Enjoy your visit. Our team is with you.',
-  NO_SHOW: 'We missed you at this visit. You are welcome to schedule another one.',
-  SCHEDULED: 'The visit time has started, so it can no longer be changed here.',
-};
+function closedNote(status: string, noun: string) {
+  return (
+    {
+      CANCELLED: `This ${noun} was cancelled, so it can no longer be changed here.`,
+      COMPLETED:
+        noun === 'visit'
+          ? 'We hope you enjoyed seeing the venue. When you are ready, you can book your event.'
+          : 'Thank you for your time. Our team will be in touch about the next steps.',
+      CHECKED_IN: `Enjoy your ${noun}. Our team is with you.`,
+      NO_SHOW: `We missed you at this ${noun}. Please contact us to arrange another time.`,
+      SCHEDULED: `The ${noun} time has started, so it can no longer be changed here.`,
+    }[status] ?? null
+  );
+}
 
 function VisitDetails({ view }: { view: View }) {
   return (
@@ -39,10 +51,8 @@ function VisitDetails({ view }: { view: View }) {
       <dd>
         {visitClock(view.startsAt)} to {visitClock(view.endsAt)} (Manila time)
       </dd>
-      <dt>Venue</dt>
-      <dd>
-        {BRAND.legalName}, {BRAND.address.full}
-      </dd>
+      <dt>{view.place ? 'Place' : 'Venue'}</dt>
+      <dd>{view.place || `${BRAND.legalName}, ${BRAND.address.full}`}</dd>
     </dl>
   );
 }
@@ -94,8 +104,8 @@ function ChangeVisit({
       await send({ token, revision: view.revision, ...payload });
       onChanged(
         payload.action === 'cancel'
-          ? 'Your visit is cancelled. We emailed you a confirmation and a calendar update.'
-          : 'Your visit has a new time. We emailed you the details and a calendar update.',
+          ? `Your ${view.noun} is cancelled. We emailed you a confirmation and a calendar update.`
+          : `Your ${view.noun} has a new time. We emailed you the details and a calendar update.`,
       );
       // The page reads the visit again: the new time, or the cancelled state.
       router.refresh();
@@ -145,7 +155,7 @@ function ChangeVisit({
             setTimeError('');
           }}
           errors={date ? { time: timeError } : { date: timeError }}
-          emptyMessage="No other visit times are open in the coming weeks. Please call or email us to arrange a time."
+          emptyMessage="No other times are open in the coming weeks. Please call or email us to arrange a time."
         />
         <div className={shared.actions}>
           <Button
@@ -156,7 +166,7 @@ function ChangeVisit({
             loadingLabel="Moving…"
             disabled={busy && confirming}
           >
-            Move my visit
+            Move my {view.noun}
           </Button>
         </div>
       </form>
@@ -170,13 +180,13 @@ function ChangeVisit({
 
       <section className={shared.fieldset} aria-labelledby={`${id}-cancel-title`}>
         <h2 id={`${id}-cancel-title`} className={shared.subheading}>
-          Cancel the visit
+          Cancel the {view.noun}
         </h2>
         {confirming ? (
           <div className={styles.confirmBox}>
             <p ref={confirmRef} tabIndex={-1}>
-              Cancel your visit on {visitDayLabel(visitDateKey(view.startsAt))} at{' '}
-              {visitClock(view.startsAt)}? The time opens for other visitors.
+              Cancel your {view.noun} on {visitDayLabel(visitDateKey(view.startsAt))} at{' '}
+              {visitClock(view.startsAt)}? The time opens for others.
             </p>
             <div className={shared.actions}>
               <Button
@@ -186,7 +196,7 @@ function ChangeVisit({
                 onClick={() => setConfirming(false)}
                 disabled={busy}
               >
-                Keep my visit
+                Keep my {view.noun}
               </Button>
               <Button
                 type="button"
@@ -196,7 +206,7 @@ function ChangeVisit({
                 loadingLabel="Cancelling…"
                 onClick={() => void act({ action: 'cancel' })}
               >
-                Yes, cancel my visit
+                Yes, cancel my {view.noun}
               </Button>
             </div>
           </div>
@@ -208,7 +218,7 @@ function ChangeVisit({
               size="lg"
               onClick={() => setConfirming(true)}
             >
-              Cancel my visit
+              Cancel my {view.noun}
             </Button>
           </div>
         )}
@@ -225,7 +235,9 @@ export default function VisitManage({ view, token }: { view: View; token: string
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [changed, setChanged] = useState('');
   const open = view.state === 'open';
-  const title = open ? 'Your ocular visit' : (CLOSED_TITLES[view.status] ?? 'Your ocular visit');
+  const ocular = view.noun === 'visit';
+  const openTitle = ocular ? 'Your ocular visit' : `Your ${view.noun}`;
+  const title = open ? openTitle : (closedTitle(view.status, view.noun) ?? openTitle);
   // After a change the page shows the new state; its heading takes focus so it is announced.
   // The first load leaves focus where the browser puts it.
   const key = open ? `${view.startsAt}:${view.revision}` : view.status;
@@ -241,14 +253,14 @@ export default function VisitManage({ view, token }: { view: View; token: string
           {title}
         </h1>
         <p className={shared.reference}>
-          Visit reference <strong>{view.reference}</strong>
+          {ocular ? 'Visit' : 'Reference'} <strong>{view.reference}</strong>
         </p>
         <VisitDetails view={view} />
         {open ? (
           <>
             <p className={`${styles.status} ${styles.statusSuccess}`} role="status">
               {changed ||
-                `${view.firstName ? `${view.firstName}, your` : 'Your'} visit is scheduled. A member of our team will meet you at the venue.`}
+                `${view.firstName ? `${view.firstName}, your` : 'Your'} ${view.noun} is scheduled.${ocular ? ' A member of our team will meet you at the venue.' : ''}`}
             </p>
             <p>
               <a
@@ -268,7 +280,9 @@ export default function VisitManage({ view, token }: { view: View; token: string
         ) : (
           <>
             <p className={styles.status} role="status">
-              {changed || CLOSED_NOTES[view.status] || 'This visit can no longer be changed here.'}
+              {changed ||
+                closedNote(view.status, view.noun) ||
+                `This ${view.noun} can no longer be changed here.`}
             </p>
             <div className={shared.actions}>
               <ButtonLink href="/visit" variant="secondary" size="lg">

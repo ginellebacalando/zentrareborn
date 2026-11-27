@@ -129,6 +129,18 @@ closed without emailing the client.
 Staff decide every screenshot. Nothing approves or verifies a payment automatically, and no AI
 reads the screenshots.
 
+**After review the screenshot stays with the booking** (28 November 2026): each verified or
+rejected one is listed under Payment screenshots with a small preview that opens full size (a PDF
+downloads), and the payment a verified screenshot became shows "View payment screenshot" under
+Payments received. The files were always kept; only the booking page now shows them.
+
+**The client's guide**: "Your booking, step by step" (`components/client/BookingSteps.tsx`) shows
+the whole way from the request to the event day: send the request, pay the reservation fee, get
+the confirmation, visit and plan (optional, with "Schedule an ocular visit"), sign the contract,
+pay the balance, celebrate. The booking form's Review step shows it before sending, the screen
+after sending marks the request done with this booking's fee and deadline, and the payment page
+marks where the booking is. The days come from Settings > Booking automation.
+
 ## Balance payments and receipts (phase 3)
 
 **The balance.** Zion's published terms ask for full payment at least 14 days before the event.

@@ -329,3 +329,14 @@
   gap: var(--space-1);
   min-width: 0;
 }
+
+/* What the appointment is for (lib/appointments.ts), beside its status. */
+.purpose {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-control);
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}

@@ -1,5 +1,5 @@
-// Checks (default) or applies prisma/visits.sql: the private table of ocular visits. The SQL is
-// additive and idempotent; existing data is never changed.
+// Checks (default) or applies prisma/visits.sql: the private table of ocular visits and calendar
+// appointments. The SQL is additive and idempotent; existing data is never changed.
 import { readFileSync } from 'node:fs';
 import { config } from 'dotenv';
 import pg from 'pg';
@@ -17,6 +17,11 @@ async function missingParts() {
   const missing = [];
   if (!table.rowCount) missing.push('visits table');
   else if (!table.rows[0].relrowsecurity) missing.push('visits row security');
+  // Calendar appointments (docs/visits.md): what a visit is for, its title and its place.
+  const purpose = await pool.query(
+    "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='zion_visits' AND column_name='purpose'",
+  );
+  if (table.rowCount && !purpose.rowCount) missing.push('appointment fields');
   return missing;
 }
 

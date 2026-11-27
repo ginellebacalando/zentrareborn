@@ -384,6 +384,57 @@ test(
         /Staff scheduled an ocular visit for Jose Reyes at the front desk\./,
       );
 
+      // Calendar appointments (docs/visits.md): a meeting staff schedule shares the visit's times,
+      // emails and invitations, named for what it is and where it happens.
+      const meetingSlot = staffSlots.days.flatMap((day) => day.slots)[1];
+      assert.ok(meetingSlot);
+      const meeting = {
+        clientName: 'Liza Ramos',
+        email: 'liza@example.test',
+        phone: '0917 555 0404',
+        startsAt: meetingSlot.startsAt,
+        purpose: 'PLANNING',
+        place: 'Online: https://meet.example.test/zion-liza',
+      };
+      await assert.rejects(
+        adminMutate(
+          { op: 'schedule-visit', visit: { ...meeting, purpose: 'MEETING' }, consent: true },
+          actor,
+        ),
+        /what the meeting is for/,
+      );
+      const planned = (await adminMutate(
+        { op: 'schedule-visit', visit: meeting, consent: true },
+        actor,
+      )) as { id: string; reference: string; emailed: boolean };
+      const plannedRow = await prisma.adminVisit.findUniqueOrThrow({ where: { id: planned.id } });
+      assert.equal(plannedRow.purpose, 'PLANNING');
+      assert.equal(plannedRow.place, meeting.place);
+      const plannedConfirmation = await job(planned.id, 'scheduled', 1);
+      assert.match(plannedConfirmation.subject, /Planning meeting scheduled/);
+      assert.match(plannedConfirmation.body, /We scheduled a planning meeting with you at Online/);
+      assert.doesNotMatch(plannedConfirmation.body, /ocular visit/i);
+      assert.match(
+        plannedConfirmation.calendar ?? '',
+        /SUMMARY:Planning meeting with Zion Events Place/,
+      );
+      assert.match(plannedConfirmation.calendar ?? '', /LOCATION:Online: https:\/\/meet/);
+      // Only staff schedule meetings: the database refuses one from the website.
+      await assert.rejects(
+        prisma.adminVisit.create({
+          data: {
+            reference: 'VIS-TEST-MEETING-WEB',
+            clientName: 'Web Visitor',
+            email: '',
+            phone: '0917 555 0505',
+            startsAt: new Date(Date.now() + 9 * DAY_MS),
+            endsAt: new Date(Date.now() + 9 * DAY_MS + 3_600_000),
+            source: 'WEBSITE',
+            purpose: 'PLANNING',
+          },
+        }),
+      );
+
       const now = new Date();
       const today = manilaDateKey(now);
       const todayStart = new Date(`${today}T00:00:00+08:00`).getTime();

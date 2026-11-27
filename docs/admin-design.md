@@ -190,11 +190,15 @@ layout. "Waiting for payment" is blue (`--admin-booking-pending*`), clearly apar
 `BookingCalendar.tsx`: one toolbar row (previous, Today, next and the month; search as you type and
 a Month · List switch), then the legend as status chips that also show or hide each status
 (cancelled hidden by default: "Show cancelled"), with "Clear filters" only while filters are on.
-Each day shows its events as chips with the time and a short label, coloured by status (ocular
-visits outlined), as many as fit, then "+N more"; the month takes the height the screen leaves, so
+Each day shows its events as chips with the time and who it is for ("10 AM · Santos Family"; the
+chip's name adds what it is and its status), coloured by status (appointments outlined), as many
+as fit, then "+N more"; the month takes the height the screen leaves, so
 it fits without scrolling at 1366 × 768 and 1920 × 1080. Today has a soft tint and past days are
 lighter. Choosing a day shows its schedule in the side panel, which otherwise shows today and what
-is coming up; an event chip opens a preview with "Open booking", centered like every dialog. On
+is coming up; an event chip opens a preview with "Open booking", centered like every dialog, and
+an appointment opens with the Front desk's card to check in, reschedule, add notes or cancel.
+**Schedule** in the toolbar, and **Schedule on this day** for a chosen day from today on, open the
+appointment form in a dialog (docs/visits.md, "Appointments"). On
 phones the month is compact: each day shows its number and up to three dots in its events' status
 colours (visits outlined, "+" for more), choosing a day lists its events below the month, and the
 status chips scroll sideways in one row; the List view is one tap away.

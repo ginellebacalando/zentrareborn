@@ -1,5 +1,10 @@
 import 'server-only';
 
+import {
+  APPOINTMENT_FIELD_LIMITS,
+  APPOINTMENT_PURPOSES,
+  appointmentPurpose,
+} from '@/lib/appointments';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
@@ -63,6 +68,9 @@ const visitSelect = {
   eventDate: true,
   guests: true,
   message: true,
+  purpose: true,
+  title: true,
+  place: true,
   staffNotes: true,
   revision: true,
   checkedInAt: true,
@@ -83,6 +91,7 @@ function visitView(visit: VisitRow): FrontDeskVisit {
     ...visit,
     status: visit.status as VisitStatus,
     source: visit.source as VisitSource,
+    purpose: appointmentPurpose(visit.purpose),
     startsAt: visit.startsAt.toISOString(),
     endsAt: visit.endsAt.toISOString(),
     eventDate: visit.eventDate ? visit.eventDate.toISOString().slice(0, 10) : null,
@@ -188,9 +197,10 @@ export async function readFrontDeskAgenda(
 const BOOKING_ONLY_FILTERS = ['approval', 'reservation', 'verification', 'eventType'];
 
 /**
- * The ocular visits of the admin Calendar's month, beside its events: every visit except the
- * cancelled ones, matched by the Calendar's search (name, email or reference). The caller has
- * already checked the `from` and `to` dates.
+ * The appointments of the admin Calendar's month (ocular visits and meetings), beside its events:
+ * every one except the cancelled ones, matched by the Calendar's search (name, email or
+ * reference), with what the Calendar's day panel needs to change them. The caller has already
+ * checked the `from` and `to` dates.
  */
 export async function readCalendarVisits(params: URLSearchParams): Promise<CalendarVisit[]> {
   const from = params.get('from');
@@ -211,22 +221,9 @@ export async function readCalendarVisits(params: URLSearchParams): Promise<Calen
     },
     orderBy: { startsAt: 'asc' },
     take: 200,
-    select: {
-      id: true,
-      reference: true,
-      clientName: true,
-      email: true,
-      startsAt: true,
-      endsAt: true,
-      status: true,
-    },
+    select: visitSelect,
   });
-  return rows.map((visit) => ({
-    ...visit,
-    status: visit.status as VisitStatus,
-    startsAt: visit.startsAt.toISOString(),
-    endsAt: visit.endsAt.toISOString(),
-  }));
+  return rows.map(visitView);
 }
 
 /** Phone numbers match on their last digits, whatever spaces or country code were typed. */
@@ -351,8 +348,16 @@ const scheduleSchema = z
           .default(null),
         message: z.string().trim().max(VISIT_FIELD_LIMITS.message).default(''),
         staffNotes: z.string().trim().max(VISIT_FIELD_LIMITS.staffNotes).default(''),
+        // An ocular visit by default; staff may schedule a meeting instead (lib/appointments.ts).
+        purpose: z.enum(APPOINTMENT_PURPOSES).default('OCULAR'),
+        title: z.string().trim().max(APPOINTMENT_FIELD_LIMITS.title).default(''),
+        place: z.string().trim().max(APPOINTMENT_FIELD_LIMITS.place).default(''),
       })
-      .strict(),
+      .strict()
+      .refine((visit) => visit.purpose !== 'MEETING' || visit.title.length >= 2, {
+        message: 'Enter what the meeting is for.',
+        path: ['title'],
+      }),
     consent: z.literal(true, {
       error: 'Confirm that the client agreed to share these details for the visit.',
     }),
@@ -525,6 +530,10 @@ export async function frontDeskMutate(raw: unknown, actor: AdminActor) {
           guests: input.guests,
           message: input.message,
           staffNotes: input.staffNotes,
+          purpose: input.purpose,
+          // A title only names an "other" meeting; the place applies to meetings, not visits.
+          title: input.purpose === 'MEETING' ? input.title : '',
+          place: input.purpose === 'OCULAR' ? '' : input.place,
           consentAt: now,
           createdBy: actor.id,
         },

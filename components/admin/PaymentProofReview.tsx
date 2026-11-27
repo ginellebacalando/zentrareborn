@@ -1,7 +1,7 @@
 'use client';
 import { useId, useState } from 'react';
 import Link from 'next/link';
-import { Download, ImageIcon, TriangleAlert } from 'lucide-react';
+import { Download, FileText, ImageIcon, TriangleAlert } from 'lucide-react';
 import { money, paidTotal } from '@/lib/admin/domain';
 import { onlinePaymentMethods, PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
 import type { PaymentRejectionReason } from '@/lib/payment-page-types';
@@ -47,6 +47,42 @@ function acceptsScreenshots(b: Booking) {
   );
 }
 
+/** A payment screenshot's file, for signed-in staff (app/api/admin/payment-proofs/[id]). */
+export function proofFileUrl(id: string) {
+  return `/api/admin/payment-proofs/${encodeURIComponent(id)}`;
+}
+
+/**
+ * A reviewed screenshot stays with the booking: a small preview that opens full size in a new
+ * tab, or a PDF to download.
+ */
+function ProofThumbnail({ proof, clientName }: { proof: PaymentProof; clientName: string }) {
+  const url = proofFileUrl(proof.id);
+  if (proof.contentType === 'application/pdf')
+    return (
+      <a className={review.thumbFile} href={url} download>
+        <FileText size={20} aria-hidden="true" />
+        <span>
+          PDF
+          <span className={styles.srOnly}>
+            {' '}
+            payment receipt {proof.referenceNumber} from {clientName}
+          </span>
+        </span>
+      </a>
+    );
+  return (
+    <a className={review.thumb} href={url} target="_blank" rel="noopener noreferrer">
+      {/* eslint-disable-next-line @next/next/no-img-element -- A private file for signed-in staff: the image optimizer must not fetch or cache it. */}
+      <img
+        src={url}
+        alt={`Payment screenshot ${proof.referenceNumber} from ${clientName}, opens full size`}
+        loading="lazy"
+      />
+    </a>
+  );
+}
+
 /** What the client still owes to confirm the booking under its payment rule. */
 function amountDue(b: Booking) {
   const required = b.paymentRule === 'FULL_PAYMENT_REQUIRED' ? b.totalCents : b.depositCents;
@@ -67,7 +103,7 @@ function WaitingProof({
   const eventDate = useAdminDate();
   const id = useId();
   const [reason, setReason] = useState<PaymentRejectionReason>('NOT_RECEIVED');
-  const url = `/api/admin/payment-proofs/${encodeURIComponent(proof.id)}`;
+  const url = proofFileUrl(proof.id);
   const pdf = proof.contentType === 'application/pdf';
   const closed = ['CANCELLED', 'COMPLETED'].includes(b.reservation);
   const canVerify = b.approval === 'APPROVED' && !closed;
@@ -347,25 +383,28 @@ export default function PaymentProofReview({
       {reviewed.length > 0 && (
         <ul className={styles.receiptList} aria-label="Reviewed screenshots">
           {reviewed.map((proof) => (
-            <li key={proof.id}>
-              <div className={styles.receiptHeading}>
-                <div>
-                  <strong>
-                    {PAYMENT_METHOD_LABELS[proof.method]} · {proof.referenceNumber}
-                  </strong>
-                  <small>
-                    Sent {eventDate(proof.createdAt)}
-                    {proof.reviewedAt && ` · reviewed ${eventDate(proof.reviewedAt)}`}
-                  </small>
+            <li key={proof.id} className={review.reviewed}>
+              <ProofThumbnail proof={proof} clientName={b.clientName} />
+              <div className={review.reviewedBody}>
+                <div className={styles.receiptHeading}>
+                  <div>
+                    <strong>
+                      {PAYMENT_METHOD_LABELS[proof.method]} · {proof.referenceNumber}
+                    </strong>
+                    <small>
+                      Sent {eventDate(proof.createdAt)}
+                      {proof.reviewedAt && ` · reviewed ${eventDate(proof.reviewedAt)}`}
+                    </small>
+                  </div>
+                  <div>
+                    <strong>{money(proof.amountCents)}</strong>
+                    <Badge value={proof.status} />
+                  </div>
                 </div>
-                <div>
-                  <strong>{money(proof.amountCents)}</strong>
-                  <Badge value={proof.status} />
-                </div>
+                {proof.status === 'REJECTED' && proof.reviewReason && (
+                  <p className={styles.help}>Reason given to the client: {proof.reviewReason}</p>
+                )}
               </div>
-              {proof.status === 'REJECTED' && proof.reviewReason && (
-                <p className={styles.help}>Reason given to the client: {proof.reviewReason}</p>
-              )}
             </li>
           ))}
         </ul>

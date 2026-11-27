@@ -16,6 +16,7 @@ import { getAdminPreferences, readBookingRules, saveAdminPreferences } from './p
 import { isNewSince } from './header-numbers';
 import { readSeenTimes } from './notification-seen';
 import { contractSnapshot } from './contract-snapshot';
+import { appointmentLabel } from '@/lib/appointments';
 import { paymentDeadline, requiresPayment } from './booking-rules';
 import { readCatalog, saveCatalog } from './catalog';
 import {
@@ -351,6 +352,19 @@ export async function readNotificationSummary(actor: AdminActor) {
   const { settings } = await getAdminPreferences();
   const preferences = settings.admin.notifications;
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // Today's appointments (Manila day) still to come or under way: the bell's reminder.
+  const manilaToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const dayStart = new Date(`${manilaToday}T00:00:00+08:00`);
+  const appointmentsToday = await prisma.adminVisit.findMany({
+    where: {
+      status: { in: ['SCHEDULED', 'CHECKED_IN'] },
+      startsAt: { gte: dayStart, lt: new Date(dayStart.getTime() + 24 * 60 * 60 * 1000) },
+    },
+    orderBy: { startsAt: 'asc' },
+    take: 50,
+    select: { startsAt: true, clientName: true, purpose: true, title: true },
+  });
+  const firstAppointment = appointmentsToday[0];
   const [recentEvents, contractUpdates, newMessages] = await Promise.all([
     prisma.adminOutbox.groupBy({
       by: ['event'],
@@ -401,6 +415,8 @@ export async function readNotificationSummary(actor: AdminActor) {
     'delivery-issues':
       lastAttemptAt && queuedAt && lastAttemptAt > queuedAt ? lastAttemptAt : queuedAt,
     'policy-review': null,
+    // New once a day: the reminder rings the first time someone opens the bell that day.
+    'appointments-today': dayStart,
   };
   const enabled: Record<string, boolean> = {
     'pending-bookings': preferences.newBookingRequests,
@@ -415,6 +431,17 @@ export async function readNotificationSummary(actor: AdminActor) {
     'contract-updates': preferences.contractUpdates,
   };
   const notices = [
+    ...(firstAppointment
+      ? [
+          {
+            id: 'appointments-today',
+            kind: 'calendar' as const,
+            title: `${appointmentsToday.length} ${appointmentsToday.length === 1 ? 'appointment' : 'appointments'} today`,
+            message: `First at ${firstAppointment.startsAt.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' })}: ${appointmentLabel(firstAppointment)} with ${firstAppointment.clientName}.`,
+            href: '/admin/calendar',
+          },
+        ]
+      : []),
     ...(pending
       ? [
           {

@@ -116,6 +116,12 @@ model AdminVisit {
   status String @default("SCHEDULED") @db.VarChar(20)
   // WEBSITE, ZENI or STAFF.
   source String @default("WEBSITE") @db.VarChar(20)
+  // What it is for (lib/appointments.ts): OCULAR, or PLANNING, CONTRACT or MEETING scheduled by
+  // staff from the Calendar or the Front desk. A meeting's own name; where it happens when not at
+  // the venue (an address or an online link). Empty means none, and the venue.
+  purpose String @default("OCULAR") @db.VarChar(20)
+  title String @default("") @db.VarChar(120)
+  place String @default("") @db.VarChar(200)
   eventType String @default("") @db.VarChar(100)
   eventDate DateTime? @db.Date
   guests Int?

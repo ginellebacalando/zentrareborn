@@ -166,3 +166,10 @@
   height: 1.25rem;
   accent-color: var(--action-primary);
 }
+
+/* "Your booking, step by step" under the payment details (components/client/BookingSteps.tsx). */
+.guide {
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line-hairline);
+  text-align: start;
+}

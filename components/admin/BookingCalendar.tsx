@@ -8,19 +8,21 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import {
   displayStatus,
   displayStatusLabels,
   displayStatuses,
   type DisplayStatus,
 } from '@/lib/admin/dashboard-status';
+import { appointmentLabel } from '@/lib/appointments';
 import { visitStatusLabel, type CalendarVisit } from '@/lib/visit-types';
 import { Button, ButtonLink, IconButton } from '@/components/shared/Button';
 import { StatusChip, StatusDot, statusTone } from './BookingStatus';
 import { bookingPagePath } from './booking-links';
 import { packageShortName } from './booking-view';
 import ClientPhotoAvatar from './ClientPhoto';
+import { frontDeskRequest, ScheduleAppointmentForm, VisitCard, type Act } from './FrontDesk';
 import type { Booking } from './types';
 import styles from './admin.module.css';
 import cal from './BookingCalendar.module.css';
@@ -37,6 +39,8 @@ const timeLabel = (value: string) =>
     hour: 'numeric',
     minute: '2-digit',
   });
+/** A chip's time, as short as it reads: "10 AM", "2:30 PM". */
+const chipTime = (value: string) => timeLabel(value).replace(':00', '');
 const dayLabel = (key: string, style: 'long' | 'short' = 'short') =>
   new Date(`${key}T12:00:00+08:00`).toLocaleDateString('en-US', {
     timeZone: TIME_ZONE,
@@ -60,10 +64,11 @@ const CHIP_PX = 22;
 const DAY_CHROME_PX = 46;
 
 /**
- * The admin Calendar (docs/admin-design.md, "Calendar"): a compact toolbar, status chips that are
- * both the legend and the filters, a month whose days show their events as labelled chips (as
- * many as fit, then "+N more"), a list view, and a side panel with the chosen day or today and
- * what comes next. Times are Manila time, the venue's own.
+ * The admin Calendar (docs/admin-design.md, "Calendar"): a compact toolbar with Schedule, status
+ * chips that are both the legend and the filters, a month whose days show who each event or
+ * appointment is for (as many chips as fit, then "+N more"), a list view, and a side panel with
+ * the chosen day or today and what comes next. An appointment opens with the Front desk's own
+ * actions (reschedule, notes, cancel). Times are Manila time, the venue's own.
  */
 export default function BookingCalendar({
   bookings,
@@ -72,15 +77,18 @@ export default function BookingCalendar({
   onQuery,
   onMonth,
   onPhotoChanged,
+  onChanged,
 }: {
   bookings: Booking[];
-  /** The month's ocular visits; staff manage them on the Front desk (docs/visits.md). */
+  /** The month's appointments: ocular visits and meetings (docs/visits.md). */
   visits: CalendarVisit[];
   query: string;
   onQuery: (value: string) => void;
   onMonth: (from: string, to: string) => void;
   /** Reloads the month after a client photo change (docs/client-photos.md). */
   onPhotoChanged?: () => unknown;
+  /** Reloads the month after an appointment is scheduled or changed. */
+  onChanged?: () => unknown;
 }) {
   const id = useId();
   const gridRef = useRef<HTMLDivElement>(null);
@@ -94,6 +102,11 @@ export default function BookingCalendar({
   const [maxChips, setMaxChips] = useState(3);
   // '' shows every venue.
   const [venue, setVenue] = useState('');
+  // Schedule: the dialog's day (the chosen one, or none), and the last change for the live region.
+  const scheduleRef = useRef<HTMLDialogElement>(null);
+  const [scheduling, setScheduling] = useState<{ day?: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
 
   const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
@@ -129,6 +142,32 @@ export default function BookingCalendar({
     const dialog = previewRef.current;
     if (preview && dialog && !dialog.open) dialog.showModal();
   }, [preview]);
+
+  useEffect(() => {
+    const dialog = scheduleRef.current;
+    if (scheduling && dialog && !dialog.open) dialog.showModal();
+  }, [scheduling]);
+
+  /** Front desk changes from the Calendar; the month reloads after each one. */
+  const act: Act = async (payload, success) => {
+    setBusy(true);
+    setNotice('');
+    try {
+      const result = await frontDeskRequest(payload);
+      if (result.ok) {
+        setNotice(success);
+        await onChanged?.();
+      }
+      return result;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  function closeSchedule() {
+    scheduleRef.current?.close();
+    setScheduling(null);
+  }
 
   function shift(offset: number) {
     const next = new Date(Date.UTC(year, month + offset, 1));
@@ -196,16 +235,17 @@ export default function BookingCalendar({
     if (opener?.isConnected) opener.focus();
   }
 
+  // Chips lead with who it is for; the full line (what, who, status) is the chip's name.
   function chipLabel(entry: Entry) {
     return entry.kind === 'visit'
-      ? `${timeLabel(entry.visit.startsAt)} · Ocular visit`
-      : `${timeLabel(entry.booking.startsAt)} · ${entry.booking.eventType}`;
+      ? `${chipTime(entry.visit.startsAt)} · ${entry.visit.clientName}`
+      : `${chipTime(entry.booking.startsAt)} · ${entry.booking.clientName}`;
   }
 
   function chipName(entry: Entry) {
     return entry.kind === 'visit'
-      ? `${chipLabel(entry)}, ${entry.visit.clientName}, ${visitStatusLabel(entry.visit.status)}`
-      : `${chipLabel(entry)}, ${entry.booking.clientName}, ${displayStatusLabels[entry.status]}`;
+      ? `${timeLabel(entry.visit.startsAt)}, ${appointmentLabel(entry.visit)}, ${entry.visit.clientName}, ${visitStatusLabel(entry.visit.status)}`
+      : `${timeLabel(entry.booking.startsAt)}, ${entry.booking.eventType}, ${entry.booking.clientName}, ${displayStatusLabels[entry.status]}`;
   }
 
   /** One schedule line; `withDay` adds the date for lists that span days. */
@@ -225,13 +265,19 @@ export default function BookingCalendar({
               subject={{ kind: 'visit', id: entry.visit.id }}
               onChanged={onPhotoChanged}
             />
-            <strong>Ocular visit · {entry.visit.clientName}</strong>
+            <button
+              type="button"
+              className={cal.itemButton}
+              onClick={(event) => openPreview(entry, event)}
+            >
+              <strong>
+                {appointmentLabel(entry.visit)} · {entry.visit.clientName}
+              </strong>
+            </button>
             <span className={cal.itemMeta}>
               <span className={cal.visitMark} aria-hidden="true" />
-              {visitStatusLabel(entry.visit.status)} ·{' '}
-              <Link href="/admin/front-desk" className={cal.itemLink}>
-                Front desk
-              </Link>
+              {visitStatusLabel(entry.visit.status)}
+              {entry.visit.place ? ` · ${entry.visit.place}` : ''}
             </span>
           </span>
         </li>
@@ -330,6 +376,15 @@ export default function BookingCalendar({
               aria-label="Search the calendar by client, event, email or reference"
             />
           </label>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            icon={<CalendarPlus aria-hidden="true" />}
+            onClick={() => setScheduling({})}
+          >
+            Schedule
+          </Button>
           <div className={cal.switch} role="group" aria-label="View">
             {(['month', 'list'] as const).map((value) => (
               <button
@@ -360,7 +415,7 @@ export default function BookingCalendar({
               <StatusDot status={kind} />
             )}
             {kind === 'visit'
-              ? 'Ocular visit'
+              ? 'Appointments'
               : kind === 'cancelled' && hidden.has('cancelled')
                 ? 'Show cancelled'
                 : displayStatusLabels[kind]}
@@ -503,6 +558,17 @@ export default function BookingCalendar({
               ) : (
                 <p className={cal.empty}>Nothing scheduled.</p>
               )}
+              {selected >= today && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  icon={<CalendarPlus aria-hidden="true" />}
+                  onClick={() => setScheduling({ day: selected })}
+                >
+                  Schedule on this day
+                </Button>
+              )}
             </>
           ) : (
             <>
@@ -538,7 +604,7 @@ export default function BookingCalendar({
             <div className={cal.panelHeading}>
               <h2 id={`${id}-preview`}>
                 {preview.entry.kind === 'visit'
-                  ? `Ocular visit · ${preview.entry.visit.clientName}`
+                  ? `${appointmentLabel(preview.entry.visit)} · ${preview.entry.visit.clientName}`
                   : preview.entry.booking.clientName}
               </h2>
               <IconButton
@@ -550,16 +616,26 @@ export default function BookingCalendar({
               />
             </div>
             {preview.entry.kind === 'visit' ? (
-              <>
-                <p className={cal.previewLine}>
-                  {dayLabel(dateKey(preview.entry.visit.startsAt), 'long')} ·{' '}
-                  {timeLabel(preview.entry.visit.startsAt)}–{timeLabel(preview.entry.visit.endsAt)}
-                </p>
-                <p className={cal.previewLine}>{visitStatusLabel(preview.entry.visit.status)}</p>
-                <ButtonLink href="/admin/front-desk" variant="secondary" size="sm">
-                  Open the Front desk
-                </ButtonLink>
-              </>
+              // The live appointment, so a change shows at once; a cancelled one leaves the month.
+              (() => {
+                const visit = visits.find((item) => item.id === preview.entry.id);
+                return visit ? (
+                  <ul className={cal.visitCard}>
+                    <VisitCard
+                      visit={visit}
+                      today={today}
+                      act={act}
+                      busy={busy}
+                      refresh={() => onChanged?.()}
+                      showDate
+                    />
+                  </ul>
+                ) : (
+                  <p className={cal.previewLine} role="status">
+                    {notice || 'This appointment is no longer on the calendar.'}
+                  </p>
+                );
+              })()
             ) : (
               <>
                 <StatusChip status={preview.entry.status} />
@@ -586,6 +662,28 @@ export default function BookingCalendar({
           </div>
         </dialog>
       )}
+      {scheduling && (
+        <dialog
+          ref={scheduleRef}
+          className={`${cal.preview} ${cal.scheduleDialog}`}
+          aria-label="Schedule an appointment"
+          onCancel={(event) => {
+            event.preventDefault();
+            closeSchedule();
+          }}
+        >
+          <ScheduleAppointmentForm
+            prefill={{ clientName: '', email: '', phone: '' }}
+            initialDay={scheduling.day}
+            act={act}
+            busy={busy}
+            onClose={closeSchedule}
+          />
+        </dialog>
+      )}
+      <p className={cal.notice} role="status">
+        {notice}
+      </p>
       <p className={styles.srOnly} role="status">
         {shown.length} of {entries.length} events shown in {monthLabel}.
       </p>

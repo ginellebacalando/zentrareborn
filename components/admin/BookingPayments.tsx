@@ -1,6 +1,6 @@
 'use client';
 import type { FormEvent } from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, ImageIcon } from 'lucide-react';
 import { money, paidTotal } from '@/lib/admin/domain';
 import { onlinePaymentMethods, PAYMENT_METHOD_LABELS } from '@/lib/admin/payment-accounts';
 import {
@@ -10,7 +10,7 @@ import {
 } from '@/lib/booking-payment-choice';
 import { Button } from '@/components/shared/Button';
 import { Badge } from './AdminBadge';
-import PaymentProofReview from './PaymentProofReview';
+import PaymentProofReview, { proofFileUrl } from './PaymentProofReview';
 import { manilaInput } from './datetime';
 import { useAdminDate, useAdminPreferences } from './AdminPreferencesProvider';
 import type { Booking, Mutate } from './types';
@@ -39,6 +39,12 @@ export default function BookingPayments({
   const eventDate = useAdminDate();
   const { settings } = useAdminPreferences();
   const paid = paidTotal(b.payments);
+  // The screenshot each verified transfer came from, shown beside its payment.
+  const screenshots = new Map(
+    (b.paymentProofs ?? []).flatMap((proof) =>
+      proof.paymentId ? [[proof.paymentId, proof] as const] : [],
+    ),
+  );
   const closed = ['CANCELLED', 'COMPLETED'].includes(b.reservation);
   const takesCash = b.approval === 'APPROVED' && !closed && paid < b.totalCents;
   // A client who chose GCash or bank transfer pays by attaching the receipt, not in cash.
@@ -96,60 +102,76 @@ export default function BookingPayments({
         </h2>
         {b.payments.length > 0 ? (
           <ul className={styles.receiptList}>
-            {b.payments.map((p) => (
-              <li key={p.id}>
-                <div className={styles.receiptHeading}>
-                  <div>
-                    <strong>{p.receiptNumber}</strong>
-                    <small>
-                      {eventDate(p.receivedAt)} ·{' '}
-                      {PAYMENT_METHOD_LABELS[p.method as keyof typeof PAYMENT_METHOD_LABELS] ??
-                        p.method}
-                      {p.acknowledgmentNumber && ` · Acknowledgment ${p.acknowledgmentNumber}`}
-                    </small>
+            {b.payments.map((p) => {
+              const screenshot = screenshots.get(p.id);
+              return (
+                <li key={p.id}>
+                  <div className={styles.receiptHeading}>
+                    <div>
+                      <strong>{p.receiptNumber}</strong>
+                      <small>
+                        {eventDate(p.receivedAt)} ·{' '}
+                        {PAYMENT_METHOD_LABELS[p.method as keyof typeof PAYMENT_METHOD_LABELS] ??
+                          p.method}
+                        {p.acknowledgmentNumber && ` · Acknowledgment ${p.acknowledgmentNumber}`}
+                      </small>
+                    </div>
+                    <div>
+                      <strong>{money(p.amountCents)}</strong>
+                      <Badge value={p.voidedAt ? 'VOIDED' : 'RECORDED'} />
+                    </div>
                   </div>
-                  <div>
-                    <strong>{money(p.amountCents)}</strong>
-                    <Badge value={p.voidedAt ? 'VOIDED' : 'RECORDED'} />
-                  </div>
-                </div>
-                {p.acknowledgmentNumber && (
-                  <a
-                    className={styles.receiptDownload}
-                    href={`/api/admin/receipts/${encodeURIComponent(p.id)}`}
-                    download
-                  >
-                    <FileText size={16} aria-hidden="true" />
-                    Download receipt (PDF)
-                    <span className={styles.srOnly}> {p.acknowledgmentNumber}</span>
-                  </a>
-                )}
-                {p.note && <p>{p.note}</p>}
-                {p.voidedAt && <p className={styles.help}>Correction: {p.voidReason}</p>}
-                {owner && !p.voidedAt && (
-                  <details className={styles.receiptCorrection}>
-                    <summary aria-label={`Correct receipt ${p.receiptNumber}`}>
-                      Correct this receipt
-                    </summary>
-                    <form onSubmit={(event) => void voidReceipt(event, p.id)}>
-                      <label>
-                        Reason for correction
-                        <input
-                          name="reason"
-                          aria-label={`Reason for voiding ${p.receiptNumber}`}
-                          placeholder="Correction reason"
-                          required
-                          minLength={5}
-                        />
-                      </label>
-                      <Button variant="destructive" size="sm" disabled={busy}>
-                        Void receipt
-                      </Button>
-                    </form>
-                  </details>
-                )}
-              </li>
-            ))}
+                  {p.acknowledgmentNumber && (
+                    <a
+                      className={styles.receiptDownload}
+                      href={`/api/admin/receipts/${encodeURIComponent(p.id)}`}
+                      download
+                    >
+                      <FileText size={16} aria-hidden="true" />
+                      Download receipt (PDF)
+                      <span className={styles.srOnly}> {p.acknowledgmentNumber}</span>
+                    </a>
+                  )}
+                  {screenshot && (
+                    <a
+                      className={styles.receiptDownload}
+                      href={proofFileUrl(screenshot.id)}
+                      {...(screenshot.contentType === 'application/pdf'
+                        ? { download: true }
+                        : { target: '_blank', rel: 'noopener noreferrer' })}
+                    >
+                      <ImageIcon size={16} aria-hidden="true" />
+                      View payment screenshot
+                      <span className={styles.srOnly}> for {p.receiptNumber}</span>
+                    </a>
+                  )}
+                  {p.note && <p>{p.note}</p>}
+                  {p.voidedAt && <p className={styles.help}>Correction: {p.voidReason}</p>}
+                  {owner && !p.voidedAt && (
+                    <details className={styles.receiptCorrection}>
+                      <summary aria-label={`Correct receipt ${p.receiptNumber}`}>
+                        Correct this receipt
+                      </summary>
+                      <form onSubmit={(event) => void voidReceipt(event, p.id)}>
+                        <label>
+                          Reason for correction
+                          <input
+                            name="reason"
+                            aria-label={`Reason for voiding ${p.receiptNumber}`}
+                            placeholder="Correction reason"
+                            required
+                            minLength={5}
+                          />
+                        </label>
+                        <Button variant="destructive" size="sm" disabled={busy}>
+                          Void receipt
+                        </Button>
+                      </form>
+                    </details>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className={page.quiet}>No payment received yet.</p>

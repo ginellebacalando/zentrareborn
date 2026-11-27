@@ -439,6 +439,7 @@ export default function AdminWorkspace({
                 onQuery={setQuery}
                 onMonth={onCalendarMonth}
                 onPhotoChanged={() => load()}
+                onChanged={() => load()}
               />
             ) : (
               <BookingRegister

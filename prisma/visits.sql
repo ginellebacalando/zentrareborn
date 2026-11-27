@@ -53,3 +53,15 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
+
+-- Calendar appointments (docs/visits.md, "Appointments"): what a visit is for, a meeting's own
+-- name, and where it happens when not at the venue. Existing visits stay ocular visits, and only
+-- staff schedule the other kinds.
+ALTER TABLE "zion_visits" ADD COLUMN IF NOT EXISTS "purpose" VARCHAR(20) NOT NULL DEFAULT 'OCULAR';
+ALTER TABLE "zion_visits" ADD COLUMN IF NOT EXISTS "title" VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE "zion_visits" ADD COLUMN IF NOT EXISTS "place" VARCHAR(200) NOT NULL DEFAULT '';
+ALTER TABLE "zion_visits" DROP CONSTRAINT IF EXISTS visit_purpose;
+ALTER TABLE "zion_visits" ADD CONSTRAINT visit_purpose CHECK (
+  purpose IN ('OCULAR','PLANNING','CONTRACT','MEETING')
+  AND (purpose = 'OCULAR' OR source = 'STAFF')
+);

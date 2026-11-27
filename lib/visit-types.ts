@@ -3,6 +3,7 @@
  * the admin Front desk and the server.
  */
 import type { OwnClientPhoto, StaffClientPhoto } from '@/config/client-photos';
+import type { AppointmentPurpose } from './appointments';
 import type { VisitDay } from './visit-rules';
 
 export const VISIT_STATUSES = [
@@ -70,6 +71,12 @@ export type VisitManageView =
   | {
       state: 'closed';
       reference: string;
+      /** "Ocular visit", "Planning meeting" or a meeting's title (lib/appointments.ts). */
+      label: string;
+      /** The word in sentences: "visit", "planning meeting" or a meeting's title. */
+      noun: string;
+      /** Where it happens when not at the venue (an address or an online link). */
+      place: string;
       status: VisitStatus;
       startsAt: string;
       endsAt: string;
@@ -78,6 +85,9 @@ export type VisitManageView =
   | {
       state: 'open';
       reference: string;
+      label: string;
+      noun: string;
+      place: string;
       firstName: string;
       startsAt: string;
       endsAt: string;
@@ -102,6 +112,10 @@ export type FrontDeskVisit = {
   eventDate: string | null;
   guests: number | null;
   message: string;
+  /** What it is for: an ocular visit or a meeting (lib/appointments.ts), its title and place. */
+  purpose: AppointmentPurpose;
+  title: string;
+  place: string;
   staffNotes: string;
   revision: number;
   checkedInAt: string | null;
@@ -165,16 +179,8 @@ export type ClientLookup = {
 };
 
 /** An ocular visit on the admin Calendar: when, who and how it went. */
-export type CalendarVisit = {
-  id: string;
-  reference: string;
-  clientName: string;
-  email: string;
-  startsAt: string;
-  endsAt: string;
-  status: VisitStatus;
-  clientPhoto?: StaffClientPhoto | null;
-};
+/** An appointment on the admin Calendar: the Front desk view, so the day panel can change it. */
+export type CalendarVisit = FrontDeskVisit;
 
 /** The open visit times staff can offer, without the notice the website requires. */
 export type FrontDeskSlots = { days: VisitDay[]; slotMinutes: number };
