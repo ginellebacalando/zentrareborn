@@ -21,8 +21,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import ZionDatePicker, { type ZionDateStatus } from '@/components/client/ZionDatePicker';
+import ClientPhotoCapture from '@/components/client-photo/ClientPhotoCapture';
 import { useReducedMotion } from '@/components/shared/useReducedMotion';
 import { BRAND } from '@/config/brand';
+import type { OwnClientPhoto } from '@/config/client-photos';
 import { onlineMethodName } from '@/lib/booking-payment-choice';
 import { cheaperTier, packageQuote } from '@/lib/booking-quote';
 import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
@@ -256,6 +258,8 @@ export default function BookingRequestForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [reference, setReference] = useState('');
+  // The optional "Add your photo" step after the request (docs/client-photos.md).
+  const [photo, setPhoto] = useState<OwnClientPhoto | null>(null);
   // Set when the booking automation approved the request and holds the date until a deadline.
   const [hold, setHold] = useState<{
     expiresAt: string;
@@ -363,9 +367,11 @@ export default function BookingRequestForm({
         amountDueCents?: number | null;
         paymentPath?: string | null;
         onlinePayment?: boolean;
+        photo?: OwnClientPhoto | null;
         error?: string;
       } | null;
       if (response.ok && payload?.reference) {
+        setPhoto(payload.photo?.token ? payload.photo : null);
         setHold(
           payload.holdExpiresAt
             ? {
@@ -528,6 +534,17 @@ export default function BookingRequestForm({
               </ButtonLink>
             )}
           </div>
+          {photo && (
+            <ClientPhotoCapture
+              photo={photo}
+              skippable
+              skippedNote={
+                hold?.paymentPath
+                  ? 'No problem. You can add a photo later on your payment page, linked in your email.'
+                  : 'No problem. You can add a photo later through the link in your email.'
+              }
+            />
+          )}
         </section>
       </div>
     );

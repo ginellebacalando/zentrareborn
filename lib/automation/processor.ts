@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma';
 import { STAFF_EVENTS } from './catalog';
 import { AUTOMATION_POLICY, readMailSettings, type MailSettings } from './config';
 import { retryDelayMs } from './outbox';
+import { clientPhotoJobIrrelevance } from './client-photos';
 import { resolveStaffRecipients } from './recipients';
 import { visitJobIrrelevance } from './visits';
 import {
@@ -141,6 +142,8 @@ async function finish(job: AdminOutbox, status: 'REVIEW_REQUIRED' | 'EXPIRED', l
 async function irrelevanceReason(job: AdminOutbox, now: Date) {
   // Ocular visits have their own rules: a stale time or a cancelled visit is never sent.
   if (job.event.startsWith('VISIT_')) return visitJobIrrelevance(job, now);
+  // A photo email is pointless once the client added a photo or the booking or visit ended.
+  if (job.event.startsWith('CLIENT_PHOTO_')) return clientPhotoJobIrrelevance(job);
   if (job.event === PAYMENT_PROOF_WAITING) {
     const waiting = job.bookingId
       ? await prisma.adminPaymentProof.count({

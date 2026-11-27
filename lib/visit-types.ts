@@ -2,6 +2,7 @@
  * Browser-safe vocabulary for ocular visits (docs/visits.md), shared by the public visit pages,
  * the admin Front desk and the server.
  */
+import type { OwnClientPhoto, StaffClientPhoto } from '@/config/client-photos';
 import type { VisitDay } from './visit-rules';
 
 export const VISIT_STATUSES = [
@@ -59,6 +60,8 @@ export type ScheduledVisit = {
   emailed: boolean;
   /** The private page to reschedule or cancel, or null when links cannot be signed. */
   managePath: string | null;
+  /** The optional "Add your photo" step (docs/client-photos.md); null leaves it out. */
+  photo: OwnClientPhoto | null;
 };
 
 /** The visitor's private manage page. */
@@ -70,6 +73,7 @@ export type VisitManageView =
       status: VisitStatus;
       startsAt: string;
       endsAt: string;
+      photo: OwnClientPhoto | null;
     }
   | {
       state: 'open';
@@ -80,6 +84,7 @@ export type VisitManageView =
       revision: number;
       slotMinutes: number;
       days: VisitDay[];
+      photo: OwnClientPhoto | null;
     };
 
 /** One visit as the Front desk shows it. */
@@ -104,6 +109,8 @@ export type FrontDeskVisit = {
   cancelledAt: string | null;
   cancelReason: string;
   createdAt: string;
+  /** The client's arrival photo; left out for roles that may not see photos. */
+  clientPhoto?: StaffClientPhoto | null;
 };
 
 /** An event at the venue on the agenda; only what the front desk needs. */
@@ -118,6 +125,10 @@ export type FrontDeskEvent = {
   endsAt: string;
   /** Confirmed, or held while the client pays. */
   state: 'CONFIRMED' | 'HELD';
+  email: string;
+  /** When the client arrived (Front desk "Check in"); the booking status never changes. */
+  checkedInAt: string | null;
+  clientPhoto?: StaffClientPhoto | null;
 };
 
 export type FrontDeskAgenda = {
@@ -144,6 +155,7 @@ export type ClientHistoryBooking = {
   startsAt: string;
   approval: string;
   reservation: string;
+  clientPhoto?: StaffClientPhoto | null;
 };
 
 export type ClientLookup = {
@@ -157,9 +169,11 @@ export type CalendarVisit = {
   id: string;
   reference: string;
   clientName: string;
+  email: string;
   startsAt: string;
   endsAt: string;
   status: VisitStatus;
+  clientPhoto?: StaffClientPhoto | null;
 };
 
 /** The open visit times staff can offer, without the notice the website requires. */

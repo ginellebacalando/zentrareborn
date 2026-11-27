@@ -14,6 +14,7 @@ import { displayStatus } from '@/lib/admin/dashboard-status';
 import { TESTIMONY_HOLD_ANCHOR } from '@/lib/admin/website-activity-feed';
 import { StatusChip } from './BookingStatus';
 import { bookingPagePath } from './booking-links';
+import { ClientPhotoFace } from './ClientPhoto';
 import DashboardCharts from './DashboardCharts';
 import DashboardKpis from './DashboardKpis';
 import DashboardStatusCards from './DashboardStatusCards';
@@ -90,6 +91,7 @@ export default function DashboardOverview({
                     day: 'numeric',
                   })}
                 </div>
+                <ClientPhotoFace name={b.clientName} photo={b.clientPhoto} />
                 <div className={styles.grow}>
                   <strong>
                     {b.eventType} · {b.clientName}

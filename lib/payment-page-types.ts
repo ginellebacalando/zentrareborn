@@ -1,3 +1,4 @@
+import type { OwnClientPhoto } from '@/config/client-photos';
 import type { OnlinePaymentMethod, PaymentAccounts } from '@/lib/admin/payment-accounts';
 
 /**
@@ -54,6 +55,8 @@ export type PaymentPageView =
       accounts: PaymentAccounts;
       proof: PaymentProofSummary | null;
       payments: RecordedPayment[];
+      /** The client's optional arrival photo (docs/client-photos.md); null leaves it out. */
+      photo: OwnClientPhoto | null;
     };
 
 /** The reasons staff can give when a screenshot cannot be verified. */

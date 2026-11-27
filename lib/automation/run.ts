@@ -15,6 +15,7 @@ import {
   scheduleEventReminders,
   sweepInquiryNotifications,
 } from './scheduler';
+import { deleteExpiredPhotos, scheduleClientPhotoReminders } from './client-photos';
 import type { MailTransport } from './transport';
 import { scheduleVisitReminders } from './visits';
 
@@ -36,6 +37,10 @@ export type AutomationRunSummary = {
     completedEvents: number;
     /** Ocular visit reminders: the day before and on the morning (docs/visits.md). */
     visitReminders: number;
+    /** Optional photo reminders, three days ahead (docs/client-photos.md). */
+    photoReminders: number;
+    /** Client photos deleted after the retention period. */
+    photosDeleted: number;
   };
   delivery: DeliveryRunResult;
   failedSteps: string[];
@@ -76,6 +81,11 @@ export async function runAutomation(options: {
   const visitReminders = await step('visit-reminders', failedSteps, () =>
     scheduleVisitReminders(now),
   );
+  const photoReminders = await step('photo-reminders', failedSteps, () =>
+    scheduleClientPhotoReminders(now),
+  );
+  // Privacy: client photos past the retention period are deleted (docs/client-photos.md).
+  const photosDeleted = await step('photo-retention', failedSteps, () => deleteExpiredPhotos(now));
   const digest = await step('digest', failedSteps, () => scheduleDailyDigest(now));
   const delivery = await processDueJobs({
     now,
@@ -94,6 +104,8 @@ export async function runAutomation(options: {
       proofReminders,
       completedEvents,
       visitReminders,
+      photoReminders,
+      photosDeleted,
     },
     delivery,
     failedSteps,
@@ -112,8 +124,10 @@ export async function runAutomation(options: {
         holdReminders +
         balanceReminders +
         proofReminders +
-        visitReminders,
+        visitReminders +
+        photoReminders,
       bookingsChanged: expiredHolds + completedEvents,
+      photosDeleted,
     };
     await prisma.automationState.upsert({
       where: { key: LAST_RUN_STATE_KEY },

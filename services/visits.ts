@@ -6,6 +6,7 @@ import { greetingName } from '@/lib/automation/templates';
 import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import { prisma } from '@/lib/prisma';
 import { visitIdFromManageToken, visitManagePath } from '@/lib/visit-link';
+import { clientPhotoFor } from '@/services/client-photos';
 import { manilaDateKey } from '@/lib/visit-rules';
 import {
   VISIT_FIELD_LIMITS,
@@ -200,6 +201,7 @@ export async function scheduleWebsiteVisit(request: Request) {
     endsAt: visit.endsAt.toISOString(),
     emailed: notificationIds.length > 0,
     managePath: visitManagePath(visit.id),
+    photo: await clientPhotoFor({ kind: 'visit', id: visit.id }),
   };
   return { result, notificationIds };
 }
@@ -223,6 +225,7 @@ export async function readVisitManagePage(token: string): Promise<VisitManageVie
   if (!visit) return { state: 'invalid' };
   const now = new Date();
   const status = visit.status as VisitStatus;
+  const photo = await clientPhotoFor({ kind: 'visit', id: visit.id }, now);
   if (status !== 'SCHEDULED' || visit.startsAt <= now)
     return {
       state: 'closed',
@@ -230,6 +233,7 @@ export async function readVisitManagePage(token: string): Promise<VisitManageVie
       status,
       startsAt: visit.startsAt.toISOString(),
       endsAt: visit.endsAt.toISOString(),
+      photo,
     };
   const { days, slotMinutes } = await readVisitAvailability({ now, exceptVisitId: visit.id });
   return {
@@ -241,6 +245,7 @@ export async function readVisitManagePage(token: string): Promise<VisitManageVie
     revision: visit.revision,
     slotMinutes,
     days,
+    photo,
   };
 }
 

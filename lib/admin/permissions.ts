@@ -49,6 +49,11 @@ export const ACTION_ACCESS = {
   'edit-packages': SUPER_ADMIN,
   /** Verifying or rejecting payment screenshots and recording cash. */
   'verify-payments': EVERY_ADMIN,
+  /**
+   * Seeing, requesting, reviewing, taking and removing clients' optional arrival photos
+   * (docs/client-photos.md): staff who handle bookings, visits and the Front desk.
+   */
+  'client-photos': EVERY_ADMIN,
 } as const satisfies Record<string, readonly AdminRole[]>;
 export type AdminAction = keyof typeof ACTION_ACCESS;
 
@@ -100,6 +105,9 @@ const OPERATION_ACTION: Record<string, AdminAction> = {
   'cash-receipt': 'verify-payments',
   'verify-proof': 'verify-payments',
   'reject-proof': 'verify-payments',
+  'client-photo-review': 'client-photos',
+  'client-photo-request': 'client-photos',
+  'client-photo-remove': 'client-photos',
   'team-invite': 'manage-team',
   'team-resend': 'manage-team',
   'team-role': 'manage-team',

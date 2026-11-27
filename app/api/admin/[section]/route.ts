@@ -8,6 +8,7 @@ import {
   checkMutationOrigin,
   requireAdmin,
 } from '@/lib/admin/access';
+import { CLIENT_PHOTO_OPERATIONS } from '@/lib/admin/client-photos';
 import { FRONT_DESK_OPERATIONS } from '@/lib/admin/front-desk';
 import { adminRead, adminMutate } from '@/lib/admin/service';
 
@@ -69,14 +70,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ sec
     const op = raw && typeof raw === 'object' && 'op' in raw ? raw.op : null;
     const allowed: Record<string, string[]> = {
       dashboard: ['testimony-action'],
-      bookings: ['create-booking', 'booking-action', 'edit-booking'],
+      bookings: ['create-booking', 'booking-action', 'edit-booking', ...CLIENT_PHOTO_OPERATIONS],
       payments: ['cash-receipt', 'void-receipt', 'verify-proof', 'reject-proof'],
       contracts: ['create-contract', 'contract-action'],
       profile: ['profile'],
       settings: ['settings'],
       preferences: ['preferences'],
       services: ['catalog-category', 'catalog-package'],
-      'front-desk': [...FRONT_DESK_OPERATIONS],
+      'front-desk': [...FRONT_DESK_OPERATIONS, ...CLIENT_PHOTO_OPERATIONS],
       team: ['team-invite', 'team-resend', 'team-role', 'team-status'],
     };
     if (typeof op !== 'string' || !allowed[section]?.includes(op))

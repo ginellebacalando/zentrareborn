@@ -22,6 +22,7 @@ import {
   type OnlinePaymentMethod,
 } from './payment-accounts';
 import { readBookingProofs } from './payment-proofs';
+import { CLIENT_PHOTO_OPERATIONS, clientPhotoMutate, withClientPhotos } from './client-photos';
 import {
   FRONT_DESK_OPERATIONS,
   frontDeskMutate,
@@ -313,7 +314,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
     return { ...(await getAdminPreferences()), canEdit: canDo(actor.role, 'change-settings') };
   // Polled by the dashboard's Website activity panel; read-only, so it has no POST operations.
   if (section === 'website-activity') return readWebsiteActivity();
-  if (section === 'front-desk') return readFrontDesk(params);
+  if (section === 'front-desk') return readFrontDesk(params, actor);
   if (section === 'notifications') {
     const [pending, flagged, inquiries, deliveryIssues, screenshots, p] = await Promise.all([
       prisma.adminBooking.count({
@@ -634,7 +635,8 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       confirmed,
       flagged,
       cashCents: receipts._sum.amountCents ?? 0,
-      upcoming,
+      // "Coming up at Zion" shows each client's arrival photo (docs/client-photos.md).
+      upcoming: await withClientPhotos(upcoming, actor),
       outbox,
       inquiries,
       heldTestimonies: heldTestimonies.map((item) => ({
@@ -720,8 +722,9 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
   if (['bookings', 'calendar', 'payments', 'contracts'].includes(section)) {
     if (params.get('id')) {
       const booking = await findBooking(prisma, params.get('id')!);
+      const [withPhoto] = await withClientPhotos([booking], actor);
       return {
-        booking: { ...booking, paymentProofs: await readBookingProofs(prisma, booking.id) },
+        booking: { ...withPhoto, paymentProofs: await readBookingProofs(prisma, booking.id) },
         // The booking page needs the venue policy for its actions and its edit form.
         policy: await policy(),
       };
@@ -789,9 +792,16 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       ...booking,
       proofsToVerify: _count.paymentProofs,
     }));
-    // The Calendar shows the month's ocular visits beside its events (docs/visits.md).
-    const visits = section === 'calendar' ? await readCalendarVisits(params) : undefined;
-    return { bookings, total, page, policy: await policy(), ...(visits ? { visits } : {}) };
+    // The Calendar shows the month's ocular visits beside its events (docs/visits.md), and the
+    // clients' arrival photos in the day's schedule (docs/client-photos.md).
+    if (section === 'calendar') {
+      const [shown, visits] = await Promise.all([
+        withClientPhotos(bookings, actor),
+        readCalendarVisits(params).then((rows) => withClientPhotos(rows, actor)),
+      ]);
+      return { bookings: shown, total, page, policy: await policy(), visits };
+    }
+    return { bookings, total, page, policy: await policy() };
   }
   throw new AdminError('Unknown admin module.', 404);
 }
@@ -805,6 +815,8 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
   if (op === 'preferences') return saveAdminPreferences(raw, actor);
   if (op === 'catalog-category' || op === 'catalog-package') return saveCatalog(raw, actor);
   if ((FRONT_DESK_OPERATIONS as readonly string[]).includes(op)) return frontDeskMutate(raw, actor);
+  if ((CLIENT_PHOTO_OPERATIONS as readonly string[]).includes(op))
+    return clientPhotoMutate(raw, actor);
   if (op === 'create-booking') {
     const input = z
       .object({

@@ -36,3 +36,27 @@ export function idFromSignedToken(purpose: string, token: string) {
   const actual = Buffer.from(given);
   return actual.length === expected.length && timingSafeEqual(actual, expected) ? id : null;
 }
+
+const EXPIRY = /^[0-9a-z]{1,10}$/;
+
+/**
+ * A private link that also expires: `<record id>.<expiry>.<signature>`, the expiry in base-36
+ * seconds and covered by the signature, so it cannot be extended. Used for client photo upload
+ * links and the short-lived addresses photos are shown through (lib/client-photo-link.ts).
+ */
+export function signedExpiringToken(purpose: string, id: string, expiresAt: Date) {
+  const expiry = Math.floor(expiresAt.getTime() / 1000).toString(36);
+  return `${id}.${expiry}.${signature(purpose, `${id}.${expiry}`)}`;
+}
+
+/** The record id and expiry of a genuine, unexpired token for this purpose, or null. */
+export function idFromSignedExpiringToken(purpose: string, token: string, now = new Date()) {
+  const [id, expiry, given, ...rest] = token.split('.');
+  if (rest.length || !id || !expiry || !given || !RECORD_ID.test(id) || !EXPIRY.test(expiry))
+    return null;
+  const expected = Buffer.from(signature(purpose, `${id}.${expiry}`));
+  const actual = Buffer.from(given);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+  const expiresAt = new Date(parseInt(expiry, 36) * 1000);
+  return expiresAt.getTime() > now.getTime() ? { id, expiresAt } : null;
+}

@@ -10,11 +10,15 @@ import {
   VISIT_FIELD_LIMITS,
   type ClientLookup,
   type FrontDeskAgenda,
+  type FrontDeskEvent,
   type FrontDeskSlots,
   type FrontDeskVisit,
   type VisitStatus,
 } from '@/lib/visit-types';
+import Link from 'next/link';
 import { StatusChip } from './BookingStatus';
+import { bookingPagePath } from './booking-links';
+import ClientPhotoAvatar, { ClientPhotoStatus } from './ClientPhoto';
 import AdminPageHeader from './AdminPageHeader';
 import styles from './FrontDesk.module.css';
 import { Button, ButtonLink, IconButton } from '@/components/shared/Button';
@@ -312,12 +316,15 @@ function VisitCard({
   today,
   act,
   busy,
+  refresh,
   showDate,
 }: {
   visit: FrontDeskVisit;
   today: string;
   act: Act;
   busy: boolean;
+  /** Reloads the desk after a photo change. */
+  refresh: () => unknown;
   showDate?: boolean;
 }) {
   const id = useId();
@@ -378,13 +385,33 @@ function VisitCard({
   const when = showDate
     ? `${longDay.format(new Date(visit.startsAt))}, ${timeRange(visit.startsAt, visit.endsAt)}`
     : timeRange(visit.startsAt, visit.endsAt);
+  const subject = { kind: 'visit' as const, id: visit.id };
   return (
     <li className={styles.item}>
-      <div className={styles.itemTop}>
-        <h3 id={`${id}-name`} ref={headingRef} tabIndex={-1} className={styles.focusTarget}>
-          {clock.format(new Date(visit.startsAt))} · {name}
-        </h3>
-        <StatusBadge status={status} />
+      <div className={styles.person}>
+        <ClientPhotoAvatar
+          name={name}
+          photo={visit.clientPhoto}
+          subject={subject}
+          onChanged={refresh}
+          size={isToday ? 64 : 48}
+        />
+        <div className={styles.personText}>
+          <div className={styles.itemTop}>
+            <h3 id={`${id}-name`} ref={headingRef} tabIndex={-1} className={styles.focusTarget}>
+              {clock.format(new Date(visit.startsAt))} · {name}
+            </h3>
+            <StatusBadge status={status} />
+          </div>
+          {visit.email && (scheduled || status === 'CHECKED_IN') && (
+            <ClientPhotoStatus
+              name={name}
+              photo={visit.clientPhoto}
+              subject={subject}
+              onChanged={refresh}
+            />
+          )}
+        </div>
       </div>
       <dl className={styles.facts}>
         <div>
@@ -606,6 +633,85 @@ function VisitCard({
   );
 }
 
+/**
+ * One of today's events as an arrival (docs/client-photos.md): the client's photo, name, time
+ * and event, and "Check in" when they arrive. Checking in records the arrival time only; the
+ * booking's status never changes.
+ */
+function EventArrival({
+  event,
+  act,
+  busy,
+  refresh,
+}: {
+  event: FrontDeskEvent;
+  act: Act;
+  busy: boolean;
+  refresh: () => unknown;
+}) {
+  const id = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [error, setError] = useState('');
+  const name = event.clientName;
+  const subject = { kind: 'booking' as const, id: event.id };
+  async function checkIn() {
+    setError('');
+    const result = await act({ op: 'event-check-in', id: event.id }, `${name} is checked in.`);
+    if (result.ok) requestAnimationFrame(() => headingRef.current?.focus());
+    else setError(result.error);
+  }
+  return (
+    <li className={styles.item}>
+      <div className={styles.person}>
+        <ClientPhotoAvatar
+          name={name}
+          photo={event.clientPhoto}
+          subject={subject}
+          onChanged={refresh}
+          size={64}
+        />
+        <div className={styles.personText}>
+          <div className={styles.itemTop}>
+            <h3 id={`${id}-name`} ref={headingRef} tabIndex={-1} className={styles.focusTarget}>
+              {clock.format(new Date(event.startsAt))} · {name}
+            </h3>
+            <span className={`${styles.badge} ${event.checkedInAt ? styles.toneCheckedIn : ''}`}>
+              {event.checkedInAt
+                ? 'Arrived'
+                : event.state === 'CONFIRMED'
+                  ? 'Event'
+                  : 'Event, held'}
+            </span>
+          </div>
+          {!event.checkedInAt && (
+            <ClientPhotoStatus
+              name={name}
+              photo={event.clientPhoto}
+              subject={subject}
+              onChanged={refresh}
+            />
+          )}
+        </div>
+      </div>
+      <p className={styles.intro}>
+        {timeRange(event.startsAt, event.endsAt)} · {event.eventType} · {event.packageName} ·{' '}
+        {event.guests} guests ·{' '}
+        <Link href={bookingPagePath(event.reference)}>{event.reference}</Link>
+      </p>
+      <FormError message={error} />
+      <div className={styles.actions} role="group" aria-labelledby={`${id}-name`}>
+        {event.checkedInAt ? (
+          <p className={styles.intro}>Checked in at {clock.format(new Date(event.checkedInAt))}.</p>
+        ) : (
+          <Button type="button" variant="primary" disabled={busy} onClick={() => void checkIn()}>
+            Check in
+          </Button>
+        )}
+      </div>
+    </li>
+  );
+}
+
 function VisitList({
   visits,
   empty,
@@ -628,11 +734,13 @@ function UpcomingVisits({
   today,
   act,
   busy,
+  refresh,
 }: {
   visits: FrontDeskVisit[];
   today: string;
   act: Act;
   busy: boolean;
+  refresh: () => unknown;
 }) {
   if (!visits.length)
     return <p className={styles.empty}>No visits are scheduled for the next two weeks.</p>;
@@ -646,7 +754,14 @@ function UpcomingVisits({
             {visits
               .filter((visit) => manilaDateKey(visit.startsAt) === day)
               .map((visit) => (
-                <VisitCard key={visit.id} visit={visit} today={today} act={act} busy={busy} />
+                <VisitCard
+                  key={visit.id}
+                  visit={visit}
+                  today={today}
+                  act={act}
+                  busy={busy}
+                  refresh={refresh}
+                />
               ))}
           </ul>
         </div>
@@ -660,7 +775,12 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
   const id = useId();
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
-  const { data, error, isLoading } = useSWR<ClientLookup>(
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: refreshLookup,
+  } = useSWR<ClientLookup>(
     submitted ? `${ENDPOINT}?lookup=${encodeURIComponent(submitted)}` : null,
     load,
     { shouldRetryOnError: false },
@@ -726,16 +846,26 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
                 <ul className={styles.list}>
                   {data.clientBookings.map((booking) => (
                     <li key={booking.id} className={styles.item}>
-                      <div className={styles.itemTop}>
-                        <h4>
-                          {booking.eventType} · {booking.clientName}
-                        </h4>
-                        <StatusChip status={displayStatus(booking)} />
+                      <div className={styles.person}>
+                        <ClientPhotoAvatar
+                          name={booking.clientName}
+                          photo={booking.clientPhoto}
+                          subject={{ kind: 'booking', id: booking.id }}
+                          onChanged={() => refreshLookup()}
+                        />
+                        <div className={styles.personText}>
+                          <div className={styles.itemTop}>
+                            <h4>
+                              {booking.eventType} · {booking.clientName}
+                            </h4>
+                            <StatusChip status={displayStatus(booking)} />
+                          </div>
+                          <p className={styles.intro}>
+                            {booking.reference} · {moment.format(new Date(booking.startsAt))} ·{' '}
+                            {booking.packageName}
+                          </p>
+                        </div>
                       </div>
-                      <p className={styles.intro}>
-                        {booking.reference} · {moment.format(new Date(booking.startsAt))} ·{' '}
-                        {booking.packageName}
-                      </p>
                     </li>
                   ))}
                 </ul>
@@ -747,13 +877,23 @@ function ClientLookupCard({ onSchedule }: { onSchedule: (prefill: Prefill) => vo
                 <ul className={styles.list}>
                   {data.clientVisits.map((visit) => (
                     <li key={visit.id} className={styles.item}>
-                      <div className={styles.itemTop}>
-                        <h4>{visit.clientName}</h4>
-                        <StatusBadge status={visit.status} />
+                      <div className={styles.person}>
+                        <ClientPhotoAvatar
+                          name={visit.clientName}
+                          photo={visit.clientPhoto}
+                          subject={{ kind: 'visit', id: visit.id }}
+                          onChanged={() => refreshLookup()}
+                        />
+                        <div className={styles.personText}>
+                          <div className={styles.itemTop}>
+                            <h4>{visit.clientName}</h4>
+                            <StatusBadge status={visit.status} />
+                          </div>
+                          <p className={styles.intro}>
+                            {visit.reference} · {moment.format(new Date(visit.startsAt))}
+                          </p>
+                        </div>
                       </div>
-                      <p className={styles.intro}>
-                        {visit.reference} · {moment.format(new Date(visit.startsAt))}
-                      </p>
                     </li>
                   ))}
                 </ul>
@@ -831,6 +971,18 @@ export default function FrontDesk() {
   };
 
   const today = data?.today ?? '';
+  const refresh = () => mutate();
+  // Today's events and visits in one list, in the order clients arrive.
+  const arrivals = data
+    ? [
+        ...data.eventsToday.map((event) => ({
+          kind: 'event' as const,
+          at: event.startsAt,
+          event,
+        })),
+        ...data.visitsToday.map((visit) => ({ kind: 'visit' as const, at: visit.startsAt, visit })),
+      ].sort((a, b) => a.at.localeCompare(b.at))
+    : [];
   return (
     <section className={styles.panel} aria-labelledby="front-desk-title" aria-busy={busy}>
       <AdminPageHeader
@@ -901,29 +1053,38 @@ export default function FrontDesk() {
           <div className={styles.stack}>
             <section className={styles.card} aria-labelledby="front-desk-today">
               <div>
-                <h2 id="front-desk-today">
-                  Today, {longDay.format(new Date(`${today}T12:00:00+08:00`))}
-                </h2>
+                <h2 id="front-desk-today">Today&apos;s arrivals</h2>
                 <p className={styles.intro}>
-                  Visits last {data.slotMinutes} minutes. Times are in Manila time.
+                  {longDay.format(new Date(`${today}T12:00:00+08:00`))} · Events and ocular visits
+                  in time order; visits last {data.slotMinutes} minutes. Times are in Manila time.
                 </p>
               </div>
-              {data.eventsToday.length > 0 && (
-                <ul className={styles.list} aria-label="Events at the venue today">
-                  {data.eventsToday.map((event) => (
-                    <li key={event.id} className={styles.event}>
-                      <strong>{timeRange(event.startsAt, event.endsAt)}</strong> · {event.eventType}{' '}
-                      for {event.clientName} ({event.reference}) · {event.guests} guests ·{' '}
-                      {event.state === 'CONFIRMED' ? 'Confirmed' : 'Held for payment'}
-                    </li>
-                  ))}
+              {arrivals.length ? (
+                <ul className={styles.list}>
+                  {arrivals.map((arrival) =>
+                    arrival.kind === 'event' ? (
+                      <EventArrival
+                        key={`event-${arrival.event.id}`}
+                        event={arrival.event}
+                        act={act}
+                        busy={busy}
+                        refresh={refresh}
+                      />
+                    ) : (
+                      <VisitCard
+                        key={`visit-${arrival.visit.id}`}
+                        visit={arrival.visit}
+                        today={today}
+                        act={act}
+                        busy={busy}
+                        refresh={refresh}
+                      />
+                    ),
+                  )}
                 </ul>
+              ) : (
+                <p className={styles.empty}>No events or visits today.</p>
               )}
-              <VisitList visits={data.visitsToday} empty="No visits today.">
-                {(visit) => (
-                  <VisitCard key={visit.id} visit={visit} today={today} act={act} busy={busy} />
-                )}
-              </VisitList>
             </section>
 
             {data.needsOutcome.length > 0 && (
@@ -942,6 +1103,7 @@ export default function FrontDesk() {
                       today={today}
                       act={act}
                       busy={busy}
+                      refresh={refresh}
                       showDate
                     />
                   )}
@@ -951,7 +1113,13 @@ export default function FrontDesk() {
 
             <section className={styles.card} aria-labelledby="front-desk-upcoming">
               <h2 id="front-desk-upcoming">Upcoming visits</h2>
-              <UpcomingVisits visits={data.upcoming} today={today} act={act} busy={busy} />
+              <UpcomingVisits
+                visits={data.upcoming}
+                today={today}
+                act={act}
+                busy={busy}
+                refresh={refresh}
+              />
             </section>
           </div>
           <ClientLookupCard onSchedule={setScheduling} />

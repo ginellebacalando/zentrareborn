@@ -23,6 +23,7 @@ import {
   preparePaymentProofFile,
 } from '@/lib/payment-proof-file';
 import { prisma } from '@/lib/prisma';
+import { clientPhotoFor } from '@/services/client-photos';
 
 /**
  * The client side of booking automation phase 2 (docs/booking-automation.md): a private payment
@@ -183,6 +184,7 @@ export async function readPaymentPage(token: string): Promise<PaymentPageView> {
         }
       : null,
     payments,
+    photo: await clientPhotoFor({ kind: 'booking', id: bookingId }),
   };
 }
 

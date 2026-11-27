@@ -26,6 +26,7 @@ import {
   type VisitAuditActor,
 } from '@/lib/visits';
 import type { AdminActor } from './access';
+import { withClientPhotos } from './client-photos';
 import { AdminError } from './errors';
 import { readVisitRules } from './preferences';
 import { createWalkInBooking, readWalkInOptions, readWalkInPrefill } from './walk-in';
@@ -45,6 +46,7 @@ export const FRONT_DESK_OPERATIONS = [
   'visit-outcome',
   'visit-notes',
   'walk-in-booking',
+  'event-check-in',
 ] as const;
 
 const visitSelect = {
@@ -99,8 +101,14 @@ function addDays(day: string, days: number) {
   return new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Today's visits and events, the next two weeks of visits, and earlier visits left open. */
-export async function readFrontDeskAgenda(now = new Date()): Promise<FrontDeskAgenda> {
+/**
+ * Today's visits and events, the next two weeks of visits, and earlier visits left open, each
+ * with the client's arrival photo for roles that may see photos (docs/client-photos.md).
+ */
+export async function readFrontDeskAgenda(
+  actor: Pick<AdminActor, 'role'>,
+  now = new Date(),
+): Promise<FrontDeskAgenda> {
   const today = manilaDateKey(now);
   const start = manilaDayStart(today);
   const tomorrow = manilaDayStart(addDays(today, 1));
@@ -120,12 +128,14 @@ export async function readFrontDeskAgenda(now = new Date()): Promise<FrontDeskAg
         id: true,
         reference: true,
         clientName: true,
+        email: true,
         eventType: true,
         packageName: true,
         guests: true,
         startsAt: true,
         endsAt: true,
         reservation: true,
+        arrival: { select: { checkedInAt: true } },
       },
     }),
     prisma.adminVisit.findMany({
@@ -142,22 +152,34 @@ export async function readFrontDeskAgenda(now = new Date()): Promise<FrontDeskAg
     }),
     readVisitRules(),
   ]);
+  const [shownVisitsToday, shownEvents, shownUpcoming, shownNeedsOutcome] = await Promise.all([
+    withClientPhotos(visitsToday.map(visitView), actor, now),
+    withClientPhotos(
+      eventsToday.map((event) => ({
+        id: event.id,
+        reference: event.reference,
+        clientName: event.clientName,
+        email: event.email,
+        eventType: event.eventType,
+        packageName: event.packageName,
+        guests: event.guests,
+        startsAt: event.startsAt.toISOString(),
+        endsAt: event.endsAt.toISOString(),
+        state: event.reservation === 'CONFIRMED' ? ('CONFIRMED' as const) : ('HELD' as const),
+        checkedInAt: event.arrival?.checkedInAt.toISOString() ?? null,
+      })),
+      actor,
+      now,
+    ),
+    withClientPhotos(upcoming.map(visitView), actor, now),
+    withClientPhotos(needsOutcome.map(visitView), actor, now),
+  ]);
   return {
     today,
-    visitsToday: visitsToday.map(visitView),
-    eventsToday: eventsToday.map((event) => ({
-      id: event.id,
-      reference: event.reference,
-      clientName: event.clientName,
-      eventType: event.eventType,
-      packageName: event.packageName,
-      guests: event.guests,
-      startsAt: event.startsAt.toISOString(),
-      endsAt: event.endsAt.toISOString(),
-      state: event.reservation === 'CONFIRMED' ? 'CONFIRMED' : 'HELD',
-    })),
-    upcoming: upcoming.map(visitView),
-    needsOutcome: needsOutcome.map(visitView),
+    visitsToday: shownVisitsToday,
+    eventsToday: shownEvents,
+    upcoming: shownUpcoming,
+    needsOutcome: shownNeedsOutcome,
     slotMinutes: rules.slotMinutes,
   };
 }
@@ -193,6 +215,7 @@ export async function readCalendarVisits(params: URLSearchParams): Promise<Calen
       id: true,
       reference: true,
       clientName: true,
+      email: true,
       startsAt: true,
       endsAt: true,
       status: true,
@@ -223,7 +246,10 @@ async function idsByPhone(table: 'bookings' | 'visits', digits: string) {
 }
 
 /** A returning client's bookings and visits, by email, phone or part of the name. */
-export async function lookupClient(raw: string): Promise<ClientLookup> {
+export async function lookupClient(
+  raw: string,
+  actor: Pick<AdminActor, 'role'>,
+): Promise<ClientLookup> {
   const query = raw.trim().replace(/\s+/g, ' ').slice(0, 120);
   if (query.length < 3)
     throw new AdminError('Enter at least 3 characters: an email, a phone number or a name.');
@@ -262,26 +288,26 @@ export async function lookupClient(raw: string): Promise<ClientLookup> {
       select: visitSelect,
     }),
   ]);
-  return {
-    query,
-    clientBookings: bookings.map((booking) => ({
-      ...booking,
-      startsAt: booking.startsAt.toISOString(),
-    })),
-    clientVisits: visits.map(visitView),
-  };
+  const [clientBookings, clientVisits] = await Promise.all([
+    withClientPhotos(
+      bookings.map((booking) => ({ ...booking, startsAt: booking.startsAt.toISOString() })),
+      actor,
+    ),
+    withClientPhotos(visits.map(visitView), actor),
+  ]);
+  return { query, clientBookings, clientVisits };
 }
 
 /**
  * What the Front desk pages read: the agenda, a lookup, the open visit times for a form, or the
  * walk-in page's options and a client's details to start from (lib/admin/walk-in.ts).
  */
-export async function readFrontDesk(params: URLSearchParams) {
+export async function readFrontDesk(params: URLSearchParams, actor: Pick<AdminActor, 'role'>) {
   const walkIn = params.get('walk-in');
   if (walkIn === 'options') return readWalkInOptions();
   if (walkIn === 'prefill') return readWalkInPrefill(params);
   const lookup = params.get('lookup');
-  if (lookup !== null) return lookupClient(lookup);
+  if (lookup !== null) return lookupClient(lookup, actor);
   if (params.has('slots')) {
     const except = params.get('except') || undefined;
     const slots: FrontDeskSlots = await readVisitAvailability({
@@ -290,7 +316,7 @@ export async function readFrontDesk(params: URLSearchParams) {
     });
     return slots;
   }
-  return readFrontDeskAgenda();
+  return readFrontDeskAgenda(actor);
 }
 
 const identifier = z.string().min(1).max(64);
@@ -370,6 +396,53 @@ const notesSchema = z
     staffNotes: z.string().trim().max(VISIT_FIELD_LIMITS.staffNotes),
   })
   .strict();
+
+const eventCheckInSchema = z.object({ op: z.literal('event-check-in'), id: identifier }).strict();
+
+/**
+ * Records that the client of today's event has arrived (docs/client-photos.md). Only the arrival
+ * time is kept, in its own table; the booking's status, rules and payments never change.
+ */
+async function checkInEvent(input: z.infer<typeof eventCheckInSchema>, actor: AdminActor) {
+  const now = new Date();
+  const booking = await prisma.adminBooking.findUnique({
+    where: { id: input.id },
+    select: {
+      reference: true,
+      clientName: true,
+      eventType: true,
+      startsAt: true,
+      endsAt: true,
+      reservation: true,
+      approval: true,
+      arrival: { select: { checkedInAt: true } },
+    },
+  });
+  if (!booking) throw new AdminError('Booking not found.', 404);
+  if (booking.arrival) throw new AdminError('This client is already checked in.', 409);
+  const today = manilaDateKey(now);
+  if (manilaDateKey(booking.startsAt) > today || manilaDateKey(booking.endsAt) < today)
+    throw new AdminError('Check-in is only possible on the day of the event.', 409);
+  if (booking.reservation !== 'CONFIRMED' && booking.reservation !== 'REQUESTED')
+    throw new AdminError('Only an upcoming event can be checked in.', 409);
+  await prisma.$transaction(async (tx) => {
+    await tx.adminEventArrival.create({
+      data: { bookingId: input.id, checkedInAt: now, checkedInBy: actor.username },
+    });
+    await tx.auditLog.create({
+      data: {
+        ...auditActor(actor),
+        action: 'UPDATE',
+        module: 'Front desk',
+        description: `${booking.clientName} checked in for the ${booking.eventType} (${booking.reference}).`,
+        status: 'SUCCESS',
+        source: 'zion-admin',
+        metadata: { bookingId: input.id },
+      },
+    });
+  });
+  return { id: input.id, checkedInAt: now.toISOString() };
+}
 
 function auditActor(actor: AdminActor): VisitAuditActor {
   return {
@@ -483,6 +556,7 @@ export async function frontDeskMutate(raw: unknown, actor: AdminActor) {
     }
     if (op === 'visit-outcome') return recordOutcome(outcomeSchema.parse(raw), actor);
     if (op === 'walk-in-booking') return createWalkInBooking(raw, actor);
+    if (op === 'event-check-in') return checkInEvent(eventCheckInSchema.parse(raw), actor);
     const input = notesSchema.parse(raw);
     const visit = await prisma.adminVisit.findUnique({
       where: { id: input.id },

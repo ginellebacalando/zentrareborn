@@ -1,5 +1,35 @@
 # Design change log
 
+## 27 November 2026 (afternoon) — Optional client photos for faster welcomes
+
+User task: replace Zion's manual process (asking clients for a picture during booking and keeping
+it in Excel) with an optional client photo, so staff recognize clients when they arrive for an
+ocular visit or their event. Details in [docs/client-photos.md](client-photos.md).
+
+- **Client screens** (`components/client-photo/ClientPhotoCapture.tsx`): "Add your photo
+  (optional)" at the end of the booking request and visit confirmations, on the private payment
+  and visit pages, and on the emailed photo link page (`app/photo/[token]`). The reason in one
+  sentence, tips, a preview with Retake and Use this photo, a separate unticked consent box, "Take a
+  selfie" (front camera) on phones and "Upload a photo" everywhere, "Skip for now", and Change or
+  Remove (confirmed inline) once saved. Public tokens only; works in light and dark.
+- **Staff screens** (`components/admin/ClientPhoto.tsx`): a 48 to 64 px photo or initials that
+  opens a larger view; "No photo yet" with Request photo; Photo OK and Ask for a new one next to
+  the contact verification on the booking page; take or upload a photo with the client's consent.
+  The Front desk's Today section became **Today's arrivals**: events and visits in time order, with
+  photos and Check in (events record only the arrival time). Photos also show in the Calendar's
+  day schedule, the dashboard's "Coming up at Zion" and the client lookup.
+- **Settings**: a "Privacy and retention" section with "Delete client photos after (days)",
+  default 30, marked to confirm with Zion.
+
+Checked on the local preview in headless Edge: the photo link page at 1,280 px (preview, the
+consent error, saved) and on a 390 px phone in dark mode ("Take a selfie" shown only on a touch
+phone; Change and Remove when saved); the payment page's photo section on a phone; the Front desk,
+booking page, photo dialog (centered), Calendar, dashboard and Settings at 1,366 × 768, the
+booking page in dark and the Front desk on a phone in dark. No sideways overflow and no text under
+12 px on any of them. The served photo had no EXIF or XMP block and an unsigned address returned 404. Not checked: a real phone camera or iPhone photo (HEIC conversion relies on the phone and
+browser), the whole booking and visit forms through to the new step (the step is the same
+component the photo page uses), a screen reader, and 200% text zoom.
+
 ## 27 November 2026 (late morning, later) — Admin header: one size, one badge, one line
 
 User task: the header's icons and the "Super admin" button did not line up or match in size; make

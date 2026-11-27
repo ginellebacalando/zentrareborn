@@ -4,6 +4,7 @@ import { paymentPagePath } from '@/lib/payment-link';
 import { prisma } from '@/lib/prisma';
 import { requireClientFeature, settingsErrorResponse } from '@/lib/system-settings';
 import { bookingRequestErrorResponse, submitBookingRequest } from '@/services/booking-requests';
+import { clientPhotoFor } from '@/services/client-photos';
 
 export const dynamic = 'force-dynamic';
 // Leaves time for the immediate email attempt that runs after the response (`after()`).
@@ -30,6 +31,8 @@ export async function POST(request: Request) {
         paymentPath: held ? paymentPagePath(result.id) : null,
         // Whether that page takes GCash or bank transfer screenshots, or shows cash only.
         onlinePayment: held ? await onlinePaymentsOffered(prisma) : false,
+        // The optional "Add your photo" step (docs/client-photos.md); null leaves it out.
+        photo: await clientPhotoFor({ kind: 'booking', id: result.id }),
       },
       { status: 201 },
     );

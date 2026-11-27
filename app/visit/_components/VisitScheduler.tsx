@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, CircleAlert, Info, Mail, MapPin, Phone } from 'lucide-react';
+import ClientPhotoCapture from '@/components/client-photo/ClientPhotoCapture';
 import { BRAND } from '@/config/brand';
 import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import type { VisitDay } from '@/lib/visit-rules';
@@ -182,6 +183,17 @@ function Confirmation({ visit, email }: { visit: ScheduledVisit; email: string }
             <span className={shared.visuallyHidden}> (opens in a new tab)</span>
           </ButtonAnchor>
         </div>
+        {visit.photo && (
+          <ClientPhotoCapture
+            photo={visit.photo}
+            skippable
+            skippedNote={
+              visit.managePath
+                ? 'No problem. You can add a photo later on your visit page, linked in your confirmation email.'
+                : 'No problem. You can add a photo later.'
+            }
+          />
+        )}
       </section>
     </div>
   );

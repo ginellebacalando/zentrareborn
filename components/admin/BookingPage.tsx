@@ -83,6 +83,7 @@ export default function BookingPage({ bookingId, role }: { bookingId: string; ro
       owner={canDo(role, 'void-receipt')}
       busy={busy}
       mutate={mutate}
+      refresh={() => reload()}
       initialTab={initialTab}
       notice={notice}
       back={{

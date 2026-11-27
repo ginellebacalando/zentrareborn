@@ -3,6 +3,7 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { CircleAlert, FileText } from 'lucide-react';
+import ClientPhotoCapture from '@/components/client-photo/ClientPhotoCapture';
 import { Button, ButtonLink } from '@/components/shared/Button';
 import { BRAND } from '@/config/brand';
 import { PAYMENT_METHOD_LABELS, type OnlinePaymentMethod } from '@/lib/admin/payment-accounts';
@@ -480,6 +481,9 @@ export default function PaymentPage({ view, token }: { view: View; token: string
         {view.paying && <HowToPay view={view} />}
         {view.paying && view.methods.length > 0 && view.amountDueCents > 0 && (
           <UploadForm view={view} token={token} />
+        )}
+        {view.photo && (view.photo.canAdd || view.photo.photoUrl) && (
+          <ClientPhotoCapture photo={view.photo} />
         )}
         <p className={shared.hint}>
           Questions? Call{' '}

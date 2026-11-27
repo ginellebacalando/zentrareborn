@@ -193,6 +193,16 @@ color and header descriptions in the older sections below, which are kept as his
   while the tab is visible and on focus, never moves keyboard focus, and returns no email addresses,
   phone numbers, messages or comments.
 
+## Optional client photos — 27 November 2026
+
+Clients may add a photo so staff recognize them when they arrive; it replaces the old practice
+of keeping pictures in Excel. Staff see it in the Front desk's **Today's arrivals** (with Check in
+for events and visits), on the booking page, in the Calendar's day schedule, in the dashboard's
+"Coming up at Zion" and in the client lookup, and can request, review, take (with consent) or
+remove it. Only roles with the `client-photos` action see photos. Photos are private, cleaned of
+hidden data, never sent to AI, and deleted after the retention period in Settings → Privacy and
+retention (default 30 days, to confirm with Zion). See [Client photos](client-photos.md).
+
 ## Front desk and ocular visits — 25 November 2026
 
 - **Front desk** (`/admin/front-desk`, `app/admin/(panel)/front-desk/page.tsx`,

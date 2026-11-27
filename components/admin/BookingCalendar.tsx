@@ -20,6 +20,7 @@ import { Button, ButtonLink, IconButton } from '@/components/shared/Button';
 import { StatusChip, StatusDot, statusTone } from './BookingStatus';
 import { bookingPagePath } from './booking-links';
 import { packageShortName } from './booking-view';
+import ClientPhotoAvatar from './ClientPhoto';
 import type { Booking } from './types';
 import styles from './admin.module.css';
 import cal from './BookingCalendar.module.css';
@@ -70,6 +71,7 @@ export default function BookingCalendar({
   query,
   onQuery,
   onMonth,
+  onPhotoChanged,
 }: {
   bookings: Booking[];
   /** The month's ocular visits; staff manage them on the Front desk (docs/visits.md). */
@@ -77,6 +79,8 @@ export default function BookingCalendar({
   query: string;
   onQuery: (value: string) => void;
   onMonth: (from: string, to: string) => void;
+  /** Reloads the month after a client photo change (docs/client-photos.md). */
+  onPhotoChanged?: () => unknown;
 }) {
   const id = useId();
   const gridRef = useRef<HTMLDivElement>(null);
@@ -215,6 +219,12 @@ export default function BookingCalendar({
             {timeLabel(entry.visit.startsAt)}–{timeLabel(entry.visit.endsAt)}
           </span>
           <span className={cal.itemMain}>
+            <ClientPhotoAvatar
+              name={entry.visit.clientName}
+              photo={entry.visit.clientPhoto}
+              subject={{ kind: 'visit', id: entry.visit.id }}
+              onChanged={onPhotoChanged}
+            />
             <strong>Ocular visit · {entry.visit.clientName}</strong>
             <span className={cal.itemMeta}>
               <span className={cal.visitMark} aria-hidden="true" />
@@ -234,6 +244,12 @@ export default function BookingCalendar({
           {timeLabel(booking.startsAt)}–{timeLabel(booking.endsAt)}
         </span>
         <span className={cal.itemMain}>
+          <ClientPhotoAvatar
+            name={booking.clientName}
+            photo={booking.clientPhoto}
+            subject={{ kind: 'booking', id: booking.id }}
+            onChanged={onPhotoChanged}
+          />
           <Link href={bookingPagePath(booking.reference)} className={cal.itemLink}>
             <strong>{booking.clientName}</strong>
           </Link>

@@ -1,3 +1,4 @@
+import { CLIENT_PHOTO_RETENTION_DAYS } from '@/config/client-photos';
 import { DEFAULT_BOOKING_RULES, type BookingRules } from '@/lib/admin/booking-rules';
 import { EMPTY_PAYMENT_ACCOUNTS, type PaymentAccounts } from '@/lib/admin/payment-accounts';
 import { STAFF_RECIPIENT_LIMITS } from '@/lib/automation/catalog';
@@ -50,6 +51,11 @@ export type AdminPreferences = {
     paymentAccounts: PaymentAccounts;
     /** When Zion receives ocular visits and how long each lasts (docs/visits.md). */
     visitRules: VisitRules;
+    /**
+     * Retention of personal data the system deletes on its own (docs/client-photos.md). The
+     * periods are defaults to confirm with Zion.
+     */
+    privacy: { clientPhotoRetentionDays: number };
   };
 };
 export type PreferencesResponse = {
@@ -70,6 +76,7 @@ export const DEFAULT_ADMIN_PREFERENCES: AdminPreferences = {
     bookingRules: { ...DEFAULT_BOOKING_RULES },
     paymentAccounts: structuredClone(EMPTY_PAYMENT_ACCOUNTS),
     visitRules: structuredClone(DEFAULT_VISIT_RULES),
+    privacy: { clientPhotoRetentionDays: CLIENT_PHOTO_RETENTION_DAYS.default },
   },
 };
 

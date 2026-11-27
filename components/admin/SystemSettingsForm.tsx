@@ -30,6 +30,7 @@ import {
   type PaymentAccountField,
   type PaymentAccounts,
 } from '@/lib/admin/payment-accounts';
+import { CLIENT_PHOTO_RETENTION_DAYS } from '@/config/client-photos';
 import { switchTheme } from '@/lib/theme-switch';
 import { useAdminPreferences } from './AdminPreferencesProvider';
 import AdminPageHeader from './AdminPageHeader';
@@ -238,6 +239,17 @@ function PreferencesEditor({
   const unavailableId = useId();
   // Ocular visit rules check themselves on save (components/admin/VisitRulesSettings.tsx).
   const visitRulesRef = useRef<VisitRulesHandle>(null);
+  // Client photo retention (docs/client-photos.md) keeps the typed text, checked when saving.
+  const [photoDays, setPhotoDays] = useState(
+    String(initial.settings.admin.privacy.clientPhotoRetentionDays),
+  );
+  const [photoDaysError, setPhotoDaysError] = useState<{
+    message: string;
+    attempt: number;
+  } | null>(null);
+  const privacyRef = useRef<HTMLDetailsElement>(null);
+  const photoDaysRef = useRef<HTMLInputElement>(null);
+  const privacyId = useId();
   const { previewTheme, clearPersonalTheme } = useAdminPreferences();
   const disabled = !initial.canEdit || busy;
   useEffect(() => () => previewTheme(null), [previewTheme]);
@@ -312,6 +324,22 @@ function PreferencesEditor({
       return;
     }
     setAccountsError(null);
+    const retentionDays = Number(photoDays);
+    if (
+      !photoDays.trim() ||
+      !Number.isInteger(retentionDays) ||
+      retentionDays < CLIENT_PHOTO_RETENTION_DAYS.min ||
+      retentionDays > CLIENT_PHOTO_RETENTION_DAYS.max
+    ) {
+      setPhotoDaysError((current) => ({
+        message: `Enter a whole number of days from ${CLIENT_PHOTO_RETENTION_DAYS.min} to ${CLIENT_PHOTO_RETENTION_DAYS.max}.`,
+        attempt: (current?.attempt ?? 0) + 1,
+      }));
+      if (privacyRef.current) privacyRef.current.open = true;
+      photoDaysRef.current?.focus();
+      return;
+    }
+    setPhotoDaysError(null);
     const visitRules = visitRulesRef.current?.validate();
     if (visitRules === null) return;
     setBusy(true);
@@ -328,6 +356,7 @@ function PreferencesEditor({
               staffNotifications: { emails: staffList.emails },
               bookingRules: bookingRules.rules,
               paymentAccounts,
+              privacy: { clientPhotoRetentionDays: retentionDays },
               ...(visitRules ? { visitRules } : {}),
             },
           },
@@ -708,6 +737,60 @@ function PreferencesEditor({
                   day before it.
                 </p>
                 {ruleError('balanceDueDays')}
+              </div>
+            </div>
+          </details>
+          <details
+            ref={privacyRef}
+            className={`${styles.settingsCard} ${styles.settingsDisclosure}`}
+          >
+            <summary>
+              <h2 className={styles.settingsSectionTitle}>
+                Privacy and retention
+                <ChevronDown size={20} aria-hidden="true" />
+              </h2>
+            </summary>
+            <div className={styles.settingsCardBody}>
+              <p className={styles.help}>
+                Personal data the system deletes on its own. The periods are defaults to confirm
+                with Zion.
+              </p>
+              <div className={styles.settingsEmails}>
+                <label>
+                  Delete client photos after (days)
+                  <input
+                    ref={photoDaysRef}
+                    type="number"
+                    inputMode="numeric"
+                    min={CLIENT_PHOTO_RETENTION_DAYS.min}
+                    max={CLIENT_PHOTO_RETENTION_DAYS.max}
+                    step={1}
+                    required
+                    disabled={disabled}
+                    value={photoDays}
+                    aria-invalid={photoDaysError ? true : undefined}
+                    aria-describedby={`${privacyId}-photo-help${photoDaysError ? ` ${privacyId}-photo-error` : ''}`}
+                    onChange={(event) => {
+                      setPhotoDays(event.target.value);
+                      setPhotoDaysError(null);
+                    }}
+                  />
+                </label>
+                <p id={`${privacyId}-photo-help`} className={styles.help}>
+                  To confirm with Zion. Counted from the day the client&apos;s last event or visit
+                  is completed or cancelled. A client can remove their photo sooner, and it is then
+                  deleted at once. Clients see this number where they add a photo.
+                </p>
+                {photoDaysError && (
+                  <p
+                    key={photoDaysError.attempt}
+                    id={`${privacyId}-photo-error`}
+                    className={styles.error}
+                    role="alert"
+                  >
+                    {photoDaysError.message}
+                  </p>
+                )}
               </div>
             </div>
           </details>

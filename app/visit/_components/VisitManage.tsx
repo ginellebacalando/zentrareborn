@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CalendarCheck2, CircleAlert, MapPin } from 'lucide-react';
+import ClientPhotoCapture from '@/components/client-photo/ClientPhotoCapture';
 import { BRAND } from '@/config/brand';
 import type { VisitManageView } from '@/lib/visit-types';
 import shared from '../../booking/_components/BookingRequest.module.css';
@@ -262,6 +263,7 @@ export default function VisitManage({ view, token }: { view: View; token: string
             </p>
             {/* A new time starts the choices afresh. */}
             <ChangeVisit key={key} view={view} token={token} onChanged={setChanged} />
+            {view.photo && <ClientPhotoCapture photo={view.photo} />}
           </>
         ) : (
           <>
@@ -276,6 +278,8 @@ export default function VisitManage({ view, token }: { view: View; token: string
                 Book your event
               </ButtonLink>
             </div>
+            {/* After the visit, a saved photo can still be removed. */}
+            {view.photo?.photoUrl && <ClientPhotoCapture photo={view.photo} />}
           </>
         )}
         <p className={shared.hint}>

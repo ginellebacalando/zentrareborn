@@ -14,6 +14,7 @@ import BookingActivity from './BookingActivity';
 import BookingAgreements from './BookingAgreements';
 import BookingPayments from './BookingPayments';
 import { StatusChip } from './BookingStatus';
+import ClientPhotoAvatar, { ClientPhotoStatus } from './ClientPhoto';
 import { BookingForm } from './Forms';
 import MoreMenu, { type MoreMenuItem } from './MoreMenu';
 import type { BookingTab } from './booking-links';
@@ -60,6 +61,7 @@ export default function BookingDetail({
   owner,
   busy,
   mutate,
+  refresh,
   initialTab,
   back,
   notice,
@@ -69,6 +71,8 @@ export default function BookingDetail({
   owner: boolean;
   busy: boolean;
   mutate: Mutate;
+  /** Reloads the booking after a change made outside `mutate` (the client's photo). */
+  refresh?: () => unknown;
   initialTab: BookingTab;
   back: { href: string; onClick: (event: MouseEvent<HTMLAnchorElement>) => void };
   /** The last save's outcome, shown under the header. */
@@ -118,6 +122,7 @@ export default function BookingDetail({
   const paidShare = b.totalCents ? Math.min(100, (paid / b.totalCents) * 100) : 0;
   const canMarkVerified =
     !closed && b.reservation !== 'CONFIRMED' && b.verification === 'UNREVIEWED';
+  const photoSubject = { kind: 'booking' as const, id: b.id };
 
   // The tab lives in the address, so a reload or a shared link opens the same tab.
   useEffect(() => {
@@ -253,6 +258,13 @@ export default function BookingDetail({
         </div>
         <div className={page.titleRow}>
           <div className={page.identity}>
+            <ClientPhotoAvatar
+              name={b.clientName}
+              photo={b.clientPhoto}
+              subject={photoSubject}
+              onChanged={refresh}
+              size={64}
+            />
             <h1 id={`${id}-name`}>{b.clientName}</h1>
             <span className={page.reference}>
               {b.reference}
@@ -421,6 +433,19 @@ export default function BookingDetail({
                         </Button>
                       )}
                     </dd>
+                    {b.clientPhoto !== undefined && (
+                      <>
+                        <dt>Photo</dt>
+                        <dd className={page.inlineValue}>
+                          <ClientPhotoStatus
+                            name={b.clientName}
+                            photo={b.clientPhoto}
+                            subject={photoSubject}
+                            onChanged={refresh}
+                          />
+                        </dd>
+                      </>
+                    )}
                     {b.verificationNote && (
                       <>
                         <dt>Contact note</dt>

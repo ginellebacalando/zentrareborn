@@ -316,3 +316,16 @@
     animation: none;
   }
 }
+/* A client's arrival photo beside their name (docs/client-photos.md). */
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.personText {
+  display: grid;
+  flex: 1;
+  gap: var(--space-1);
+  min-width: 0;
+}

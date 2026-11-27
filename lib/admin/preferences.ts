@@ -1,6 +1,7 @@
 import 'server-only';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
+import { CLIENT_PHOTO_RETENTION_DAYS } from '@/config/client-photos';
 import { prisma } from '@/lib/prisma';
 import {
   LANGUAGE_OPTIONS,
@@ -159,6 +160,23 @@ export const preferencesSchema = z
             if (issue) context.addIssue({ code: 'custom', message: issue.problem });
           })
           .optional(),
+        // Optional like the others: an older Settings page leaves the saved periods unchanged.
+        privacy: z
+          .object({
+            clientPhotoRetentionDays: z
+              .number()
+              .int('Enter a whole number of days.')
+              .min(
+                CLIENT_PHOTO_RETENTION_DAYS.min,
+                `Keep photos at least ${CLIENT_PHOTO_RETENTION_DAYS.min} days.`,
+              )
+              .max(
+                CLIENT_PHOTO_RETENTION_DAYS.max,
+                `Keep photos at most ${CLIENT_PHOTO_RETENTION_DAYS.max} days.`,
+              ),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     client: z
@@ -221,6 +239,27 @@ function storedBookingRules(settings: unknown): BookingRules {
       whole(stored.balanceDueDays, BALANCE_DUE_DAYS.min, BALANCE_DUE_DAYS.max) ??
       DEFAULT_BOOKING_RULES.balanceDueDays,
   };
+}
+/** Lenient reader for the saved retention periods: out-of-range values fall back to the defaults. */
+function storedPrivacy(settings: unknown) {
+  const days = record(record(record(settings).admin).privacy).clientPhotoRetentionDays;
+  return {
+    clientPhotoRetentionDays:
+      typeof days === 'number' &&
+      Number.isInteger(days) &&
+      days >= CLIENT_PHOTO_RETENTION_DAYS.min &&
+      days <= CLIENT_PHOTO_RETENTION_DAYS.max
+        ? days
+        : CLIENT_PHOTO_RETENTION_DAYS.default,
+  };
+}
+/** How many days client photos are kept after the client's last event or visit ends. */
+export async function readClientPhotoRetentionDays(db: Prisma.TransactionClient = prisma) {
+  const row = await db.systemSetting.findUnique({
+    where: { id: 'singleton' },
+    select: { settings: true },
+  });
+  return storedPrivacy(row?.settings).clientPhotoRetentionDays;
 }
 /** Lenient reader for the saved payment accounts: an incomplete or invalid set is ignored. */
 function storedPaymentAccounts(settings: unknown): PaymentAccounts {
@@ -334,6 +373,7 @@ export function normalizeAdminPreferences(input: unknown) {
       bookingRules: storedBookingRules(root),
       paymentAccounts: storedPaymentAccounts(root),
       visitRules: storedVisitRules(root),
+      privacy: storedPrivacy(root),
     },
     client: {
       maintenanceMode: bool(client.maintenanceMode, defaults.client.maintenanceMode),
@@ -408,6 +448,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
           ? { paymentAccounts: settings.admin.paymentAccounts }
           : {}),
         ...(settings.admin.visitRules ? { visitRules: settings.admin.visitRules } : {}),
+        ...(settings.admin.privacy ? { privacy: settings.admin.privacy } : {}),
       },
     };
     // The audit trail records that the staff inboxes changed and how many there are, never which.
@@ -438,6 +479,12 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         JSON.stringify(storedVisitRules(previous?.settings))
         ? ' Visit hours or rules changed.'
         : '';
+    const retentionDays = settings.admin.privacy?.clientPhotoRetentionDays;
+    const privacyChange =
+      retentionDays !== undefined &&
+      retentionDays !== storedPrivacy(previous?.settings).clientPhotoRetentionDays
+        ? ` Client photos are now kept ${retentionDays} days after the client's last event or visit.`
+        : '';
     const row = await tx.systemSetting.upsert({
       where: { id: 'singleton' },
       create: {
@@ -454,7 +501,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         userRole: actor.role,
         action: 'SETTINGS_CHANGE',
         module: 'Settings',
-        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${accountsChange}${visitsChange}`,
+        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${accountsChange}${visitsChange}${privacyChange}`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },

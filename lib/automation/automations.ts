@@ -193,6 +193,27 @@ export const AUTOMATIONS: readonly AutomationDefinition[] = [
     details: 'Sent the day before and on the morning of the visit.',
   },
   {
+    key: 'client-photo-request',
+    when: 'Staff ask a client for a photo or a clearer one',
+    action: 'Email the client a private link to add it',
+    timing: 'instant',
+    events: ['CLIENT_PHOTO_REQUEST', 'CLIENT_PHOTO_RETAKE'],
+    canSwitchOff: false,
+    essential: 'Staff send it on purpose from the booking page or the Front desk.',
+    details:
+      'The link works for seven days. The photo is optional and only helps staff recognize the client when they arrive (docs/client-photos.md).',
+  },
+  {
+    key: 'client-photo-reminder',
+    when: 'A confirmed event or a visit is three days away and the client has no photo',
+    action: 'Remind the client once that they can add a photo',
+    timing: 'scheduled',
+    events: ['CLIENT_PHOTO_REMINDER'],
+    canSwitchOff: true,
+    details:
+      'One email per event or visit, with a seven-day photo link. Not sent if the client adds a photo first.',
+  },
+  {
     key: 'event-completed',
     when: 'A fully paid event has passed',
     action: 'Mark it completed and thank the client',

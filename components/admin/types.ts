@@ -1,3 +1,4 @@
+import type { StaffClientPhoto } from '@/config/client-photos';
 import type { TeamMember } from '@/lib/admin/team';
 import type { CalendarVisit } from '@/lib/visit-types';
 import type { DashboardInsights } from '@/lib/admin/dashboard-types';
@@ -78,6 +79,11 @@ export type Booking = {
   paymentProofs?: PaymentProof[];
   /** Screenshots waiting for review; set on booking lists. */
   proofsToVerify?: number;
+  /**
+   * The client's optional arrival photo (docs/client-photos.md), on the booking page, the
+   * Calendar and the dashboard; left out for roles that may not see photos.
+   */
+  clientPhoto?: StaffClientPhoto | null;
 };
 export type Policy = {
   version: number;
