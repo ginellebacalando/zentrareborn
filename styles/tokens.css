@@ -320,6 +320,8 @@
   --motion-normal: 180ms;
   --motion-slow: 320ms;
   --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  /* A soft spring for things that open from a point (Zeni's panel): quick start, gentle settle. */
+  --motion-spring: cubic-bezier(0.22, 1, 0.36, 1);
   /* Scroll reveals, the hero text entrance and slow photo zooms; each stays off under reduced
      motion. Content fades in and rises 12px, once. The stagger is the gap between items revealed
      together, such as a row of cards. */

@@ -8,6 +8,18 @@ import { bookletCatalog } from './package-catalog';
 import type { ChatSource } from '@/lib/chatbot/types';
 
 export const websiteChatSources: ChatSource[] = [
+  // Guests ask what "ZENTRA" (the website's name) is; it is Zion's own website and booking system.
+  {
+    id: 'about-zentra',
+    kind: 'venue',
+    title: `What is ${BRAND.wordmark}?`,
+    href: '/about',
+    text: [
+      `${BRAND.wordmark} is the website and booking system of ${BRAND.legalName}, an event venue in San Pedro, Laguna.`,
+      'On it you can see the venue and its event packages, check a date, send a booking request, schedule an ocular visit, pay through your private payment page after booking, and ask Zeni, the virtual concierge.',
+    ].join(' '),
+    keywords: ['zentra', 'website', 'site', 'system', 'app', 'booking system', 'ano ang zentra'],
+  },
   {
     id: 'about-us-story',
     kind: 'venue',

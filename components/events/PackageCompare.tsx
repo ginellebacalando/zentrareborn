@@ -89,6 +89,7 @@ export default function PackageCompare({ families }: { families: readonly Packag
       <Button
         type="button"
         variant="secondary"
+        size="lg"
         icon={<Columns3 aria-hidden="true" />}
         aria-haspopup="dialog"
         onClick={() => dialogRef.current?.showModal()}

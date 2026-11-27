@@ -16,6 +16,7 @@ import { redactPersonalData } from './redaction';
 import { detectLanguage } from './language';
 import { detectTopic, type ZeniTopic } from './topics';
 import { detailCardsFor, eventCardFor, formatStartsAt } from './cards';
+import { PAYMENT_METHODS_SOURCE_ID } from './payment-methods';
 import { asksPermission, publishedRuleFor, requestSubject, unusualEventRequest } from './unusual';
 import { buildBookingLink, buildVisitLink, type BookingLinkInput } from './links';
 import type { ReceptionistConversation, ReceptionistIntent } from './conversation';
@@ -518,9 +519,13 @@ function reconciliationPlan(context: PlanContext): ReceptionistPlan | null {
     context.state.flags.needsHuman = true;
     return offerStaff(context, copy.paymentReview, 'payment_policy_conflict', conflict);
   }
+  // The methods the booking system offers now (Settings > Online payments) answer the question.
+  const offeredMethods = sources.find((source) => source.id === PAYMENT_METHODS_SOURCE_ID);
+  if (PAYMENT_METHODS.test(question) && offeredMethods)
+    return answerFromSources(context, [offeredMethods]);
   if (PAYMENT_METHODS.test(question) && sources.some(unverifiedPaymentMethods)) {
-    // The published lists of payment methods disagree, so Zeni gives the official payment
-    // schedule and leaves the accepted methods to Sir Tim or staff (and logs the question).
+    // Without them the published lists of payment methods disagree, so Zeni gives the official
+    // payment schedule and leaves the accepted methods to Sir Tim or staff (and logs it).
     const payments = zeniTopics.find((item) => item.id === 'payments');
     context.state.flags.reason = 'payment_methods_review';
     return payments

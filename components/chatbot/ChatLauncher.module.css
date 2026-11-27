@@ -28,6 +28,20 @@
   cursor: pointer;
   pointer-events: auto;
   box-shadow: 0 2px var(--space-2) color-mix(in srgb, var(--chat-shadow) 20%, transparent);
+  transition:
+    transform var(--motion-normal) var(--motion-spring),
+    box-shadow var(--motion-normal) var(--motion-ease);
+}
+
+/* The button lifts a little under the pointer and presses in when chosen. */
+.launcher:hover:not(:disabled) {
+  box-shadow: 0 var(--space-2) var(--space-4)
+    color-mix(in srgb, var(--chat-shadow) 24%, transparent);
+  transform: translateY(-2px);
+}
+
+.launcher:active:not(:disabled) {
+  transform: scale(0.94);
 }
 
 .launcher .mark {
@@ -75,7 +89,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .launcher,
   .launcher .mark {
     transition: none;
+  }
+
+  .launcher:hover:not(:disabled),
+  .launcher:active:not(:disabled) {
+    transform: none;
   }
 }

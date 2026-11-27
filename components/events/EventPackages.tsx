@@ -3,6 +3,7 @@
 import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { X } from 'lucide-react';
 import { ButtonLink, IconButton } from '@/components/shared/Button';
+import { buttonClassName } from '@/components/shared/button-classes';
 import { useModalDialog } from '@/components/shared/useModalDialog';
 import {
   bookableGuests,
@@ -78,7 +79,11 @@ export default function EventPackages({
                   type="button"
                   role="tab"
                   id={`${baseId}-tab-${index}`}
-                  className={styles.tab}
+                  // The shared button look and the large 48px size, like every other button here.
+                  className={buttonClassName(
+                    { variant: index === selected ? 'primary' : 'secondary', size: 'lg' },
+                    styles.tab,
+                  )}
                   aria-selected={index === selected}
                   aria-controls={`${baseId}-panel-${index}`}
                   tabIndex={index === selected ? 0 : -1}
@@ -90,7 +95,11 @@ export default function EventPackages({
                 </button>
               ))}
             </div>
-            {families.length > 1 ? <PackageCompare families={families} /> : null}
+            {families.length > 1 ? (
+              <div className={styles.compare}>
+                <PackageCompare families={families} />
+              </div>
+            ) : null}
           </div>
           {families.map((item, index) => (
             <div
@@ -130,7 +139,7 @@ export default function EventPackages({
           <span className={styles.barTotal}>{formatPeso(estimate.totalCents / 100)}</span>
           <span className={styles.barMeta}>{guests} guests · Change</span>
         </button>
-        <ButtonLink href={booking} variant="primary">
+        <ButtonLink href={booking} variant="primary" size="lg">
           Check dates
         </ButtonLink>
       </div>

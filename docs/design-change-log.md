@@ -1,5 +1,30 @@
 # Design change log
 
+## 27 November 2026 (evening) — One button height on event pages, Zeni opens smoothly
+
+User task (screenshots): Zeni avoided "ano mga possible mode of payment?" and did not know what
+ZENTRA is; the package tabs and "Compare packages" had different sizes; Zeni should open with a
+smooth, lively animation.
+
+- **Zeni answers**: payment methods come from what the booking system offers now (cash at the
+  venue always; GCash and bank transfer while their account is set up in Settings), and "What is
+  ZENTRA?" has a website source. Details in [docs/chatbot.md](chatbot.md).
+- **Event pages** (`components/events/`): the package tabs are the shared large buttons (48px,
+  primary when selected, secondary otherwise) across the full width, with the name and "From ₱…";
+  "Compare packages" follows at the end of its own line (full width on phones). The guest counter,
+  card buttons and the phones' bar button share the 48px height; the estimate total is larger.
+- **Zeni motion** (`Chatbot.module.css`, `ChatLauncher.module.css`, new token `--motion-spring`):
+  the panel grows out of the launcher with a soft spring (320ms), its header, conversation and
+  message field follow in a short cascade, new messages rise in, the launcher lifts on hover and
+  presses in; phones slide the sheet up. Reduced motion removes all of it.
+- **Checks (local preview, headless Edge)**: tabs, Compare and card buttons all 48px on
+  `/events/debuts` and `/events/weddings` (four packages) at 1366px and 320px; at 390px two
+  wrapped tabs share 68px. Panel motion sampled: scale 0.92 → 1 and opacity 0 → 1 within about
+  300ms; with reduced motion the panel opens without a transform. Zeni (model on) answered the
+  payment and ZENTRA questions in Filipino from the new sources.
+- **Not checked**: real phones, a screen reader, 200% zoom; the live site's payment accounts
+  decide which methods Zeni lists there.
+
 ## 27 November 2026 (late afternoon) — Event pages, one booking window, Zeni answers everything
 
 User task: make the event package pages modern and trustworthy (no brochure image, real photos, a

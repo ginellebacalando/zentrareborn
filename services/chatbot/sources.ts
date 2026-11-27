@@ -2,6 +2,10 @@ import 'server-only';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
+import { onlinePaymentMethods } from '@/lib/admin/payment-accounts';
+import { readPaymentAccounts } from '@/lib/admin/preferences';
+import { offeredBookingPaymentMethods } from '@/lib/booking-payment-choice';
+import { paymentMethodsSource } from '@/lib/chatbot/payment-methods';
 import { publicFaqs } from '@/config/public-faqs';
 import { faqChatSource, officialFaqSources } from '@/lib/chatbot/faq-sources';
 import { baseNameOf } from '@/config/package-catalog';
@@ -54,9 +58,20 @@ const packageSnapshot = z.object({
     .optional(),
 });
 
+/** The payment methods the booking system offers now; none when Settings cannot be read. */
+async function offeredPaymentMethodsSource() {
+  try {
+    const accounts = await readPaymentAccounts();
+    return paymentMethodsSource(offeredBookingPaymentMethods(onlinePaymentMethods(accounts)));
+  } catch {
+    console.error('[zeni] The payment methods could not be read from Settings.');
+    return null;
+  }
+}
+
 export async function visitorSources(settings: PublicSystemSettings): Promise<ChatSource[]> {
   if (settings.client.maintenanceMode) return [];
-  const [faqs, packages, managedPackages, policy] = await Promise.all([
+  const [faqs, packages, managedPackages, policy, paymentMethods] = await Promise.all([
     settings.client.faqVisible ? publishedVisitorFaqs() : [],
     settings.client.packagesVisible
       ? prisma.$queryRaw<
@@ -81,6 +96,7 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
       where: { id: 'venue' },
       select: { reviewed: true, paymentRule: true, version: true },
     }),
+    offeredPaymentMethodsSource(),
   ]);
   if (packages.length > 500) throw new Error('Public package source limit exceeded.');
   const seenFaqQuestions = new Set(faqs.map((faq) => faq.question.trim().toLowerCase()));
@@ -94,6 +110,8 @@ export async function visitorSources(settings: PublicSystemSettings): Promise<Ch
   const managedFaqs = faqs !== publicFaqs;
   const sources: ChatSource[] = [
     ...websiteChatSources,
+    // What the booking system accepts now outranks every written list of payment methods.
+    ...(paymentMethods ? [paymentMethods] : []),
     ...(settings.client.packagesVisible ? publicEventSources : []),
     ...(managedFaqs ? faqChatSources : []),
     ...backupFaqPageSources,

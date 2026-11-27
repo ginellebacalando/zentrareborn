@@ -28,8 +28,14 @@
   font-size: var(--type-body);
   line-height: var(--line-body);
   opacity: 0;
-  /* A short fade on open and close; browsers without discrete transitions simply snap. */
-  transition-property: opacity, overlay, display;
+  /*
+   * Opening grows the panel out of Zeni's button (bottom right) with a soft spring, then its
+   * header, conversation and message field follow in a short cascade; closing is a quick fade.
+   * Browsers without discrete transitions simply snap; reduced motion removes all of it.
+   */
+  transform: translateY(var(--space-2)) scale(0.98);
+  transform-origin: bottom right;
+  transition-property: opacity, transform, overlay, display;
   transition-duration: var(--motion-fast);
   transition-timing-function: var(--motion-ease);
   transition-behavior: allow-discrete;
@@ -39,12 +45,41 @@
   display: flex;
   flex-direction: column;
   opacity: 1;
+  transform: none;
+  transition-duration: var(--motion-slow);
+  transition-timing-function: var(--motion-spring);
 }
 
 @starting-style {
   .dialog[open] {
     opacity: 0;
+    transform: translateY(var(--space-4)) scale(0.92);
   }
+}
+
+.dialog[open] > :is(.header, .conversation, .composer) {
+  animation: zeni-part-in var(--motion-slow) var(--motion-spring) both;
+}
+
+.dialog[open] > .conversation {
+  animation-delay: 60ms;
+}
+
+.dialog[open] > .composer {
+  animation-delay: 120ms;
+}
+
+@keyframes zeni-part-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+}
+
+/* Each new message rises in gently. */
+.guestTurn,
+.zeniTurn {
+  animation: zeni-part-in var(--motion-normal) var(--motion-spring) both;
 }
 
 .dialog::backdrop {
@@ -836,6 +871,16 @@
     height: 100dvh;
     border: 0;
     border-radius: 0;
+    transform: translateY(var(--space-6));
+    transform-origin: bottom center;
+  }
+
+  /* The full-height sheet slides up from the bottom instead of growing from the button. */
+  @starting-style {
+    .dialog[open] {
+      opacity: 0;
+      transform: translateY(var(--space-12));
+    }
   }
 
   .header {
@@ -868,6 +913,17 @@
   .inputBar textarea,
   .send {
     transition: none;
+  }
+
+  .dialog,
+  .dialog[open] {
+    transform: none;
+  }
+
+  .dialog[open] > :is(.header, .conversation, .composer),
+  .guestTurn,
+  .zeniTurn {
+    animation: none;
   }
 }
 
