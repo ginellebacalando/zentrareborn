@@ -1,7 +1,16 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { zeniCopyFor } from '@/config/chatbot-receptionist';
-import { nextDateKey, venueDateKey } from '@/lib/calendar-time';
+import { readBookingWindow } from '@/lib/admin/preferences';
+import {
+  DEFAULT_BOOKING_WINDOW,
+  addDaysIso,
+  addMonthsIso,
+  bookingOpensOn,
+  bookingWindowDates,
+  windowPosition,
+  type BookingWindow,
+} from '@/lib/booking-window';
 import {
   AVAILABILITY_RESULT_LIFETIME_MS,
   createConversation,
@@ -17,7 +26,12 @@ import {
   type ReceptionistPlan,
   type ZeniGap,
 } from '@/lib/chatbot/receptionist';
-import type { ChatReply, ChatSource, ZeniCalendarCard } from '@/lib/chatbot/types';
+import type {
+  ChatReply,
+  ChatSource,
+  ZeniCalendarCard,
+  ZeniCalendarMonth,
+} from '@/lib/chatbot/types';
 import type { ZeniPreviewResult } from '@/lib/chatbot/admin-types';
 import type { PublicSystemSettings } from '@/lib/system-settings-types';
 import {
@@ -30,12 +44,11 @@ import { createGeminiComposer, type ZeniComposeResult, type ZeniComposer } from 
 import { gapQuestionHash, recordZeniGap } from './gaps';
 import { liveStaffOnline, openLiveChat, recentlyMissedLiveChat } from './live-chat';
 
-/** The calendar card shows about two months ahead. */
-export const CALENDAR_CARD_DAYS = 60;
-
 export type ZeniTurnDependencies = {
   now?: () => Date;
   calendar?: ReceptionistCalendarAvailability;
+  /** Settings > Booking window; read from Settings when not given. */
+  bookingWindow?: BookingWindow;
   submitEscalation?: typeof submitReceptionistEscalation;
   compose?: ZeniComposer;
   recordGap?: (
@@ -71,12 +84,6 @@ export async function tryLiveHandoff(
 type Copy = ReturnType<typeof zeniCopyFor>;
 type LlmOutcome = { status: string; reason?: string; model?: string };
 
-function addDays(key: string, days: number) {
-  let result = key;
-  for (let index = 0; index < days; index += 1) result = nextDateKey(result);
-  return result;
-}
-
 function displayDate(date: string) {
   return new Intl.DateTimeFormat('en-PH', {
     weekday: 'long',
@@ -100,21 +107,72 @@ function displayObserved(value: string) {
   }).format(new Date(value));
 }
 
+/** The saved booking window, or the default when Settings cannot be read. */
+async function savedBookingWindow() {
+  try {
+    return await readBookingWindow();
+  } catch {
+    console.error('[zeni] The booking window could not be read; using the default.');
+    return DEFAULT_BOOKING_WINDOW;
+  }
+}
+
+/**
+ * Unavailable dates of one month inside the booking window, for the calendar card (dates only).
+ * Null for a month outside the window, so nothing beyond it is ever read.
+ */
+export async function readCalendarMonth(
+  month: string,
+  dependencies: {
+    now?: Date;
+    window?: BookingWindow;
+    calendar?: ReceptionistCalendarAvailability;
+  } = {},
+): Promise<ZeniCalendarMonth | null> {
+  const now = dependencies.now ?? new Date();
+  const window = dependencies.window ?? (await savedBookingWindow());
+  const dates = bookingWindowDates(window, now.getTime());
+  if (!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)) return null;
+  if (month < dates.today.slice(0, 7) || month > dates.latest.slice(0, 7)) return null;
+  const monthStart = `${month}-01`;
+  const monthEnd = addDaysIso(addMonthsIso(monthStart, 1), -1);
+  const from = monthStart < dates.today ? dates.today : monthStart;
+  const to = monthEnd > dates.latest ? dates.latest : monthEnd;
+  const calendar =
+    dependencies.calendar ?? createReceptionistCalendarAvailability({ now: () => now });
+  return {
+    month,
+    unavailable: await calendar.unavailableDates(from, to),
+    observedAt: now.toISOString(),
+  };
+}
+
+/**
+ * The calendar card for the booking window. It opens on the chosen date's month, or on the month
+ * of the first bookable date, and carries that month's unavailable dates.
+ */
 async function calendarCard(
   calendar: ReceptionistCalendarAvailability,
   now: Date,
+  window: BookingWindow,
   selected?: string,
 ): Promise<ZeniCalendarCard | null> {
-  const today = venueDateKey(now);
-  const to = addDays(today, CALENDAR_CARD_DAYS);
+  const dates = bookingWindowDates(window, now.getTime());
+  const shown =
+    selected && selected >= dates.today && selected <= dates.latest ? selected : dates.earliest;
+  const month = (shown > dates.latest ? dates.latest : shown).slice(0, 7);
   try {
-    const unavailable = await calendar.unavailableDates(today, to);
+    const loaded = await readCalendarMonth(month, { now, window, calendar });
     return {
       type: 'calendar',
-      today,
-      from: today,
-      to,
-      unavailable,
+      today: dates.today,
+      from: dates.today,
+      to: dates.latest,
+      earliest: dates.earliest,
+      minNoticeDays: window.minNoticeDays,
+      maxMonthsAhead: window.maxMonthsAhead,
+      month,
+      unavailable: loaded?.unavailable ?? [],
       ...(selected ? { selected } : {}),
       observedAt: now.toISOString(),
     };
@@ -122,6 +180,36 @@ async function calendarCard(
     console.error('[zeni] The calendar card could not read the admin calendar.');
     return null;
   }
+}
+
+/**
+ * A date the booking window does not allow: too soon (inside the minimum notice) or too far
+ * (beyond the furthest month). Zeni says why and when, offers the staff, and checks nothing.
+ */
+function outsideWindowReply(
+  state: ReceptionistConversation,
+  copy: Copy,
+  date: string,
+  position: 'too_soon' | 'too_far',
+  window: BookingWindow,
+): { reply: ChatReply; calendar?: { selected?: string } } {
+  state.booking.dates = [];
+  state.booking.status = 'collecting';
+  state.awaiting = 'dates';
+  const staff = { type: 'request_human' as const, label: copy.labels.talkToStaff };
+  const message =
+    position === 'too_soon'
+      ? copy.tooSoon(displayDate(date), window.minNoticeDays)
+      : copy.tooFar(
+          displayDate(date),
+          displayDate(bookingOpensOn(date, window)),
+          window.maxMonthsAhead,
+        );
+  return {
+    reply: { kind: 'availability', message, sources: [], suggestions: [], actions: [staff] },
+    // A date too soon opens the calendar on its month, where the notice period is marked.
+    calendar: position === 'too_soon' ? { selected: date } : undefined,
+  };
 }
 
 function availabilityReply(
@@ -200,6 +288,8 @@ function availabilityReply(
   }
   state.booking.status = 'available';
   return {
+    // The calendar opens on the checked date's month, so nearby dates are one tap away.
+    calendar: { selected: result.date },
     reply: {
       kind: 'availability',
       message: copy.available(displayDate(result.date), window, displayObserved(result.observedAt)),
@@ -232,6 +322,7 @@ type ModelAnswer = Extract<ZeniComposeResult, { status: 'used' }>;
 
 /** How the admin test console describes a model answer. */
 function answerKind(result: ModelAnswer): { reason?: string } {
+  if (result.scope && result.scope !== 'zion') return { reason: `${result.scope} message` };
   if (result.covered && result.general) return { reason: 'facts and general advice' };
   if (result.general)
     return { reason: result.aboutZion ? 'general advice; facts missing' : 'general advice' };
@@ -252,6 +343,22 @@ function applyModelAnswer(
 ): { reply: ChatReply; answered: boolean } {
   const composeSources = plan.compose?.sources ?? [];
   const used = (result.used ?? []).map((index) => composeSources[index]).filter(Boolean);
+  // A playful, unrelated or rude message: the model's short, checked reply answers it, the topics
+  // follow as next steps, and nothing is logged as an unanswered question.
+  if (result.scope && result.scope !== 'zion' && result.text)
+    return {
+      reply: {
+        ...reply,
+        kind: 'scope',
+        message: result.text,
+        sources: [],
+        cards: [],
+        links: [],
+        actions: [],
+        suggestions: copy.suggestions.welcome,
+      },
+      answered: true,
+    };
   // General advice answers a general question. A question put to Zion ("Do you…?", "Pwede po
   // ba dito…?") that only got advice is still logged, so staff can publish the real answer.
   const answered =
@@ -262,6 +369,18 @@ function applyModelAnswer(
       !ADDRESSES_VENUE.test(plan.compose?.question ?? ''),
     );
   const unanswered = plan.gap?.reason === 'no_source';
+  // An unusual request or a message no rule placed: the model's honest reply to it (checked to
+  // state no rule) replaces Zeni's general one; the staff offer and the log entry stay.
+  if (result.text && !result.covered && !result.general && plan.compose?.replyWhenUncovered)
+    return {
+      reply: {
+        ...reply,
+        message: result.text,
+        sources: used.map(sourceEvidence),
+        cards: detailCardsFor(used, copy.labels),
+      },
+      answered: false,
+    };
   if (!result.text || (unanswered && !result.covered && !result.general))
     return { reply, answered: false };
   // The sources and photo cards follow the facts the model used ("Zion Classic (100 guests)").
@@ -386,20 +505,37 @@ export async function runReceptionistPipeline(
     }
   }
 
+  const bookingWindow =
+    plan.effect?.type === 'availability' || calendarRequest
+      ? (dependencies.bookingWindow ?? (await savedBookingWindow()))
+      : DEFAULT_BOOKING_WINDOW;
+
   if (plan.effect?.type === 'availability') {
-    const result = await calendar.check({
-      date: plan.effect.date,
-      ...(plan.effect.startTime && plan.effect.endTime
-        ? { startTime: plan.effect.startTime, endTime: plan.effect.endTime }
-        : {}),
-    });
-    const outcome = availabilityReply(state, result, copy, plan.effect.date);
+    // The booking window applies before the calendar is read (docs/booking-window.md).
+    const position = windowPosition(
+      plan.effect.date,
+      bookingWindowDates(bookingWindow, now().getTime()),
+    );
+    const outcome =
+      position === 'too_soon' || position === 'too_far'
+        ? outsideWindowReply(state, copy, plan.effect.date, position, bookingWindow)
+        : availabilityReply(
+            state,
+            await calendar.check({
+              date: plan.effect.date,
+              ...(plan.effect.startTime && plan.effect.endTime
+                ? { startTime: plan.effect.startTime, endTime: plan.effect.endTime }
+                : {}),
+            }),
+            copy,
+            plan.effect.date,
+          );
     reply = outcome.reply;
     calendarRequest = outcome.calendar;
   }
 
   if (calendarRequest) {
-    const card = await calendarCard(calendar, now(), calendarRequest.selected);
+    const card = await calendarCard(calendar, now(), bookingWindow, calendarRequest.selected);
     if (card) reply = { ...reply, cards: [...(reply.cards ?? []), card] };
   }
 

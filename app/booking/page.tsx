@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import { BRAND } from '@/config/brand';
-import { BOOKING_REQUEST_RULES, type BookingPaymentMethod } from '@/config/booking';
+import type { BookingPaymentMethod } from '@/config/booking';
+import { readBookingWindow } from '@/lib/admin/preferences';
 import { errorMetadata } from '@/lib/audit';
+import { DEFAULT_BOOKING_WINDOW, bookingWindowDates } from '@/lib/booking-window';
 import { readPublicDateAvailability } from '@/lib/public-availability';
 import { getPublicEventCategories, getPublicPackagesForCategory } from '@/lib/services-packages';
 import { getClientFeatureAvailability } from '@/lib/system-settings';
@@ -35,9 +37,14 @@ function bookingImage(value: string | null) {
   }
 }
 
-/** A Manila calendar date (UTC+8, no daylight saving) shifted by `days`, as YYYY-MM-DD. */
-function manilaIso(days: number) {
-  return new Date(Date.now() + 8 * 3_600_000 + days * 86_400_000).toISOString().slice(0, 10);
+/** The saved booking window, or the default when Settings cannot be read. */
+async function savedBookingWindow() {
+  try {
+    return await readBookingWindow();
+  } catch (error) {
+    console.error('Unable to read the booking window.', errorMetadata(error));
+    return DEFAULT_BOOKING_WINDOW;
+  }
 }
 
 async function publishedPackages(slug: string): Promise<BookingPackage[]> {
@@ -45,6 +52,7 @@ async function publishedPackages(slug: string): Promise<BookingPackage[]> {
     const { packages } = await getPublicPackagesForCategory(slug);
     return packages.map((pkg) => ({
       id: pkg.id,
+      slug: pkg.slug,
       name: pkg.packageName,
       price: pkg.price,
       paxIncluded: pkg.paxIncluded,
@@ -71,9 +79,8 @@ export default async function BookingPage({
   for (const [key, value] of Object.entries(await searchParams)) {
     if (typeof value === 'string') params.set(key, value);
   }
-  const today = manilaIso(0);
-  const earliest = manilaIso(BOOKING_REQUEST_RULES.minLeadDays);
-  const latest = manilaIso(BOOKING_REQUEST_RULES.maxDaysAhead);
+  const bookingWindow = await savedBookingWindow();
+  const { today, earliest, latest } = bookingWindowDates(bookingWindow);
   const feature = await getClientFeatureAvailability('inquirySubmissions');
 
   let categories: BookingCategory[] = [];
@@ -103,12 +110,16 @@ export default async function BookingPage({
       <BookingRequestForm
         categories={categories}
         availability={availability}
+        bookingWindow={bookingWindow}
         earliest={earliest}
         latest={latest}
         pausedMessage={feature.enabled ? null : feature.message}
         loadFailed={loadFailed}
         paymentMethods={paymentMethods}
-        initial={bookingInitialChoices(parseBookingPrefill(params, earliest), categories)}
+        initial={bookingInitialChoices(
+          parseBookingPrefill(params, { earliest, latest }),
+          categories,
+        )}
       />
     </main>
   );

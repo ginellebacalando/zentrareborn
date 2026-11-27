@@ -2,6 +2,7 @@ import { CLIENT_PHOTO_RETENTION_DAYS } from '@/config/client-photos';
 import { DEFAULT_BOOKING_RULES, type BookingRules } from '@/lib/admin/booking-rules';
 import { EMPTY_PAYMENT_ACCOUNTS, type PaymentAccounts } from '@/lib/admin/payment-accounts';
 import { STAFF_RECIPIENT_LIMITS } from '@/lib/automation/catalog';
+import { DEFAULT_BOOKING_WINDOW, type BookingWindow } from '@/lib/booking-window';
 import { isEmailAddress } from '@/lib/email-address';
 import { DEFAULT_VISIT_RULES, type VisitRules } from '@/lib/visit-rules';
 import {
@@ -47,6 +48,8 @@ export type AdminPreferences = {
     staffNotifications: { emails: string[] };
     /** Payment deadline and review limit of the booking automation (docs/booking-automation.md). */
     bookingRules: BookingRules;
+    /** How soon and how far ahead guests can book (docs/booking-window.md); to confirm with Zion. */
+    bookingWindow: BookingWindow;
     /** GCash and bank accounts for each client's private payment page (phase 2). */
     paymentAccounts: PaymentAccounts;
     /** When Zion receives ocular visits and how long each lasts (docs/visits.md). */
@@ -74,6 +77,7 @@ export const DEFAULT_ADMIN_PREFERENCES: AdminPreferences = {
     localization: { ...DEFAULT_PUBLIC_SYSTEM_SETTINGS.localization },
     staffNotifications: { emails: [] },
     bookingRules: { ...DEFAULT_BOOKING_RULES },
+    bookingWindow: { ...DEFAULT_BOOKING_WINDOW },
     paymentAccounts: structuredClone(EMPTY_PAYMENT_ACCOUNTS),
     visitRules: structuredClone(DEFAULT_VISIT_RULES),
     privacy: { clientPhotoRetentionDays: CLIENT_PHOTO_RETENTION_DAYS.default },

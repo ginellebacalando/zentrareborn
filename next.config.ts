@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ['@prisma/client', '@prisma/adapter-pg', 'pg'],
   images: {
+    // AVIF where the browser takes it, WebP otherwise. Quality 70 keeps the event page photo
+    // headers small (docs/event-pages.md); 75 is the default for every other image.
+    formats: ['image/avif', 'image/webp'],
+    qualities: [70, 75],
     remotePatterns: [
       {
         protocol: 'https',

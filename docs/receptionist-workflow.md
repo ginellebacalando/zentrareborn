@@ -13,13 +13,13 @@ Zeni, the virtual concierge, answers from Zion's published information and moves
 
 ## 2. Dates and booking
 
-| Step | Actor | What happens                                                                                                                                                                 |
-| ---- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Guest | Asks about a date or wants to book ("May available pa ba kayo sa Oct 9?").                                                                                                   |
-| 2    | Zeni  | Without a date, shows the availability calendar card (next two months, confirmed events marked booked). With a date, checks the admin calendar for that date or time window. |
-| 3    | Zeni  | Reports the timestamped result. A free date is not a reservation. Booked dates come with the calendar to pick another date.                                                  |
-| 4    | Guest | Chooses **Book this date**: the booking page opens with the event, package style, date, time and guest count already filled in (`/booking?…&source=zeni`).                   |
-| 5    | Staff | Review the booking request in the admin panel and confirm it there. Zeni is not involved after the link.                                                                     |
+| Step | Actor | What happens                                                                                                                                                                            |
+| ---- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Guest | Asks about a date or wants to book ("May available pa ba kayo sa Oct 9?").                                                                                                              |
+| 2    | Zeni  | Without a date, shows the availability calendar card (the booking window, held or confirmed events marked booked). With a date, checks the admin calendar for that date or time window. |
+| 3    | Zeni  | Reports the timestamped result. A free date is not a reservation. Booked dates come with the calendar to pick another date.                                                             |
+| 4    | Guest | Chooses **Book this date**: the booking page opens with the event, package style, date, time and guest count already filled in (`/booking?…&source=zeni`).                              |
+| 5    | Staff | Review the booking request in the admin panel and confirm it there. Zeni is not involved after the link.                                                                                |
 
 ## 3. Ocular visits
 

@@ -16,6 +16,7 @@ import { redactPersonalData } from './redaction';
 import { detectLanguage } from './language';
 import { detectTopic, type ZeniTopic } from './topics';
 import { detailCardsFor, eventCardFor, formatStartsAt } from './cards';
+import { asksPermission, publishedRuleFor, requestSubject, unusualEventRequest } from './unusual';
 import { buildBookingLink, buildVisitLink, type BookingLinkInput } from './links';
 import type { ReceptionistConversation, ReceptionistIntent } from './conversation';
 import type { ChatReply, ChatSource, ReceptionistAction, ZeniLink } from './types';
@@ -39,6 +40,11 @@ export type ComposeRequest = {
   mode: 'answer' | 'small_talk';
   question: string;
   sources: ChatSource[];
+  /**
+   * The backup reply is only Zeni's general "not sure" or "no rule yet": the model's honest reply
+   * to the actual message may replace it even when the facts do not answer (it may state no rule).
+   */
+  replyWhenUncovered?: boolean;
 };
 
 export type ReceptionistPlan = {
@@ -565,6 +571,8 @@ function groundedAnswer(context: PlanContext): ReceptionistPlan {
     // "not published yet" reply stands in backup mode, while the language model may still answer
     // from related facts or, for a general planning question, give general advice.
     if (helpTopic && bare) return topicPlan(context, helpTopic, { gap });
+    const unusual = unusualRequestPlan(context, related);
+    if (unusual) return unusual;
     const result = offerStaff(context, copy.knowledgeGap, 'knowledge_gap', gap);
     result.reply.suggestions = copy.suggestions.welcome;
     result.compose = { mode: 'answer', question: redacted, sources: related };
@@ -595,6 +603,74 @@ function groundedAnswer(context: PlanContext): ReceptionistPlan {
   )
     return topicPlan(context, helpTopic);
   return answerFromSources(context, selected, related);
+}
+
+/**
+ * An event question about an unusual item or activity (pets, fireworks, confetti, inflatables,
+ * open flames, outside equipment, props): the published policy or FAQ that names it, or an honest
+ * "no rule yet" with the staff offer, logged so staff can add the rule. Never a guessed rule;
+ * a package inclusion ("fireworks display") is not a rule about bringing one.
+ */
+function unusualRequestPlan(context: PlanContext, related: ChatSource[]): ReceptionistPlan | null {
+  const { state, copy, sources, text, redacted, topic } = context;
+  // Only a request to bring or do something ("Can we…?", "Pwede po bang…?"); a question that
+  // just mentions an item ("Does the LED wall have sound?") is searched like any other.
+  const request = asksPermission(text) ? unusualEventRequest(text) : null;
+  if (!request) return null;
+  const found = publishedRuleFor(
+    sources.filter((source) => !unverifiedPaymentMethods(source)),
+    request,
+  );
+  // The answer is the rule's own sentence, with its source.
+  if (found) return answerFromSources(context, [{ ...found.source, text: found.rule }], related);
+  const subject = requestSubject(request, state.client.language === 'en' ? 'en' : 'fil');
+  const result = offerStaff(context, copy.noRuleYet(subject), 'unusual_request', {
+    reason: 'no_source',
+    question: redacted,
+    topic,
+  });
+  result.reply.suggestions = copy.suggestions.welcome;
+  result.compose = {
+    mode: 'answer',
+    question: redacted,
+    sources: related,
+    replyWhenUncovered: true,
+  };
+  return result;
+}
+
+/**
+ * A short message nothing official covers and no rule can place ("can i bring dinosaur?"): Zeni
+ * still replies to it, says what it can help with and offers the team, then shows the topics. The
+ * language model, when on, answers the message itself. Only a request about the event (asking
+ * whether something is allowed) is logged as unanswered; idle or unrelated messages are not.
+ */
+function unplacedMessagePlan(context: PlanContext): ReceptionistPlan {
+  const { state, copy, sources, text, redacted, topic } = context;
+  state.stage = 'S1';
+  const searchText = redacted.replace(PLACEHOLDER, ' ');
+  const related = candidateSources(
+    searchText,
+    sources,
+    state.lastKnowledgeQuestion.replace(PLACEHOLDER, ' '),
+    MAX_PROMPT_SOURCES,
+  ).filter((source) => !unverifiedPaymentMethods(source));
+  const unusual = unusualRequestPlan(context, related);
+  if (unusual) return unusual;
+  const result = offerStaff(
+    context,
+    copy.notSure,
+    'unplaced_message',
+    asksPermission(text) ? { reason: 'no_source', question: redacted, topic } : undefined,
+  );
+  result.reply.suggestions = copy.suggestions.welcome;
+  result.compose = {
+    mode: 'answer',
+    question: redacted,
+    sources: related,
+    replyWhenUncovered: true,
+  };
+  return result;
 }
 
 /**
@@ -940,7 +1016,8 @@ export function planReceptionistTurn(
   if (intent === 'comparison') return plan(context, reply('discovery', copy.comparison));
   if (intent === 'unclear' && text.split(/\s+/).length < 5) {
     // Short questions such as "lechon" or "do kids eat free?" are answered when the official
-    // information covers them; otherwise Zeni asks what the guest is looking for.
+    // information covers them; anything else still gets a reply to what was asked, never only
+    // the topic menu (docs/chatbot.md, "Unusual and unrelated questions").
     const searchText = context.redacted.replace(PLACEHOLDER, ' ');
     if (
       rankSources(searchText, sources).some((match) => !unverifiedPaymentMethods(match.source)) ||
@@ -948,11 +1025,7 @@ export function planReceptionistTurn(
       PAYMENT_METHODS.test(text)
     )
       return groundedAnswer(context);
-    state.stage = 'S1';
-    return plan(
-      context,
-      reply('discovery', copy.unclear, { suggestions: copy.suggestions.welcome }),
-    );
+    return unplacedMessagePlan(context);
   }
   return groundedAnswer(context);
 }

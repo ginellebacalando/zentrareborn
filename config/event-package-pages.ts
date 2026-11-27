@@ -748,14 +748,15 @@ export const eventPackagePages = {
         alt: 'A modern pink and blue gender reveal backdrop',
       },
     ],
+    // The first card photo is Zeni's card image; the 270px gender-reveal.webp looked blurry there.
     packageCardImages: [
-      {
-        src: '/images/events/gender-reveals/gender-reveal.webp',
-        alt: 'A colorful gender reveal setup',
-      },
       {
         src: '/images/events/gender-reveals/gender-reveal-2.webp',
         alt: 'A pink and blue gender reveal dessert table',
+      },
+      {
+        src: '/images/events/gender-reveals/gender-reveal.webp',
+        alt: 'A colorful gender reveal setup',
       },
       {
         src: '/images/events/gender-reveals/gender-reveal-2-2.webp',

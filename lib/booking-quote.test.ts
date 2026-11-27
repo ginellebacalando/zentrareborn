@@ -86,20 +86,32 @@ test('one pricing engine: extra guests pay the per-guest fee and the fee never e
 test('one set of date and time rules for the website and the front desk', () => {
   assert.equal(manilaDateAfter(0, NOW), '2026-11-25');
   assert.equal(manilaDateAfter(1, NOW), '2026-11-26');
+  // Settings > Booking window: 14 days of notice, up to 18 months ahead (25 May 2028).
+  const window = { minNoticeDays: 14, maxMonthsAhead: 18 };
   const event = { date: '2026-12-16', startTime: '14:00', endTime: '18:00' };
-  assert.equal(bookingScheduleProblem(event, NOW), null);
-  assert.deepEqual(bookingScheduleProblem({ ...event, date: '2026-11-25' }, NOW), {
+  assert.equal(bookingScheduleProblem(event, window, NOW), null);
+  assert.deepEqual(bookingScheduleProblem({ ...event, date: '2026-11-25' }, window, NOW), {
     field: 'date',
-    problem: 'Please choose a date from tomorrow onward.',
+    problem: 'Choose a date from December 9, 2026 onward. Book at least 14 days ahead.',
   });
-  assert.equal(bookingScheduleProblem({ ...event, date: '2028-12-16' }, NOW)?.field, 'date');
+  assert.equal(
+    bookingScheduleProblem({ ...event, date: '2026-12-08' }, window, NOW)?.field,
+    'date',
+  );
+  assert.equal(bookingScheduleProblem({ ...event, date: '2026-12-09' }, window, NOW), null);
+  assert.equal(bookingScheduleProblem({ ...event, date: '2028-05-25' }, window, NOW), null);
+  assert.deepEqual(bookingScheduleProblem({ ...event, date: '2028-05-26' }, window, NOW), {
+    field: 'date',
+    problem:
+      'Choose a date up to May 25, 2028. You can book up to 18 months ahead (until May 2028).',
+  });
   for (const times of [
     { startTime: '07:30', endTime: '12:00' },
     { startTime: '20:00', endTime: '23:45' },
     { startTime: '14:00', endTime: '14:30' },
     { startTime: '18:00', endTime: '14:00' },
   ])
-    assert.equal(bookingScheduleProblem({ ...event, ...times }, NOW)?.field, 'endTime');
+    assert.equal(bookingScheduleProblem({ ...event, ...times }, window, NOW)?.field, 'endTime');
 });
 
 test('at the desk only the guest limit can be approved by staff; other reasons stay with Bookings', () => {

@@ -1,205 +1,116 @@
-import React from 'react';
-import Image from 'next/image';
+import Link from 'next/link';
 import { connection } from 'next/server';
 
 import ClientFeatureUnavailable from '@/components/client/ClientFeatureUnavailable';
-import GalleryRibbon from '@/components/client/GalleryRibbon';
-import SpacesSection from '@/components/client/SpacesSection';
 import TestimonialSection from '@/components/client/TestimonialSection';
-import { eventPackagePages, type EventPackageMediaKey } from '@/config/event-package-pages';
-import { getClientFeatureAvailability } from '@/lib/system-settings';
-import { optimizedPublicMediaPath } from '@/lib/public-media';
-import PackageBooklet from './PackageBooklet';
-import PackageHeroSection from './PackageHeroSection';
+import { ButtonLink } from '@/components/shared/Button';
 import FadeIn from '@/components/shared/FadeIn';
+import { eventPackagePages, type EventPackageMediaKey } from '@/config/event-package-pages';
+import { eventPhotos } from '@/config/event-photos';
+import { errorMetadata } from '@/lib/audit';
+import { packageFamilies, type PackageFamily } from '@/lib/event-packages';
+import { getPublicPackagesForCategory, ServicesPackagesError } from '@/lib/services-packages';
+import { getClientFeatureAvailability } from '@/lib/system-settings';
+import EventHero from './EventHero';
+import EventPackages from './EventPackages';
+import EventPhotoGrid from './EventPhotoGrid';
+import styles from './EventPackages.module.css';
 
-interface PackageLayoutProps {
-  eventType: EventPackageMediaKey;
+/** How the page names the event: "Debut packages", "Debuts at Zion". */
+export const EVENT_NAMES: Record<EventPackageMediaKey, { one: string; many: string }> = {
+  weddings: { one: 'Wedding', many: 'Weddings' },
+  debuts: { one: 'Debut', many: 'Debuts' },
+  birthdays: { one: 'Birthday', many: 'Birthdays' },
+  christening: { one: 'Christening', many: 'Christenings' },
+  genderReveal: { one: 'Gender reveal', many: 'Gender reveals' },
+  christmasParty: { one: 'Christmas party', many: 'Christmas parties' },
+};
+
+type PackagesLoad =
+  | { status: 'ready'; families: PackageFamily[]; bookingEvent: string }
+  | { status: 'empty' | 'failed' };
+
+/** The event's published packages from the database (lib/services-packages.ts). */
+async function readPackages(categorySlug: string): Promise<PackagesLoad> {
+  try {
+    const { category, packages } = await getPublicPackagesForCategory(categorySlug);
+    const families = packageFamilies(packages);
+    return families.length
+      ? { status: 'ready', families, bookingEvent: category?.categoryKey ?? '' }
+      : { status: 'empty' };
+  } catch (error) {
+    if (error instanceof ServicesPackagesError && error.status === 404) return { status: 'empty' };
+    console.error('Unable to load the event packages.', errorMetadata(error));
+    return { status: 'failed' };
+  }
 }
 
-function SectionHeading({
-  id,
-  title,
-  subtitle,
-}: {
-  id?: string;
-  title: string;
-  subtitle?: string;
-}) {
-  return (
-    <div className="mb-8 flex w-full flex-col items-center overflow-hidden">
-      <div
-        className="group relative flex w-full min-w-0 cursor-default items-center justify-center gap-3 md:gap-6"
-        data-motion="decorative"
-      >
-        <div className="h-px min-w-4 flex-1 bg-[var(--palette-client-section)]/60 md:max-w-20" />
-        <h2
-          id={id}
-          className="min-w-0 text-balance text-center font-serif text-[1.05rem] uppercase tracking-[0.08em] text-ink min-[360px]:text-xl min-[360px]:tracking-[0.1em] md:text-4xl md:tracking-[0.2em]"
-        >
-          {title}
-        </h2>
-        <div className="h-px min-w-4 flex-1 bg-[var(--palette-client-section)]/60 md:max-w-20" />
-      </div>
-      {subtitle && (
-        <p className="mt-2 text-center font-serif text-base text-ink/80 transition-all duration-500 hover:text-ink md:text-lg">
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
-}
-
-export default async function PackageLayout({ eventType }: PackageLayoutProps) {
+/**
+ * An event package page (docs/event-pages.md): a real photo of the event at Zion, the packages
+ * from the published catalog with the booking estimate, real photos, then testimonies. Package
+ * names, prices and inclusions come only from the database; brochure pages are never shown.
+ */
+export default async function PackageLayout({ eventType }: { eventType: EventPackageMediaKey }) {
   await connection();
   const page = eventPackagePages[eventType];
-  const heroVideoSrc = 'heroVideoSrc' in page ? page.heroVideoSrc : undefined;
-  const packageAvailability = await getClientFeatureAvailability('packages');
+  const photos = eventPhotos[eventType];
+  const names = EVENT_NAMES[eventType];
+  const availability = await getClientFeatureAvailability('packages');
+  const packages = availability.enabled ? await readPackages(page.eventCategorySlug) : null;
+  const galleryHref = `/gallery?category=${photos.galleryCategory}`;
 
   return (
-    <main
-      id="main-content"
-      tabIndex={-1}
-      className="public-page responsive-page relative flex min-h-screen flex-col bg-transparent"
-    >
-      <PackageHeroSection
-        title={page.heroTitle}
-        subtitle={page.heroSubtitle}
-        slides={page.heroSlides}
-        videoSrc={heroVideoSrc}
-      />
+    <main id="main-content" tabIndex={-1} className="public-page responsive-page">
+      <EventHero title={page.heroEyebrow} line={page.heroTitle} photo={photos.hero} />
 
-      {!packageAvailability.enabled ? (
-        <div className="relative z-10 w-full bg-transparent">
-          <ClientFeatureUnavailable
-            title="Packages Are Paused"
-            message={packageAvailability.message}
-          />
-        </div>
+      {!availability.enabled ? (
+        <ClientFeatureUnavailable title="Packages Are Paused" message={availability.message} />
+      ) : packages?.status === 'ready' ? (
+        <EventPackages
+          families={packages.families}
+          bookingEvent={packages.bookingEvent}
+          eventLabel={names.one}
+        />
       ) : (
-        <div data-package-layout-content className="relative z-10 w-full bg-transparent">
-          {/* Package Experience Highlights */}
-          <FadeIn direction="up">
-            <section
-              aria-labelledby={`${eventType}-experience-title`}
-              className="w-full bg-transparent px-4 pt-12 pb-10 md:px-12 md:pt-16 md:pb-12"
-            >
-              <div className="mx-auto max-w-7xl">
-                <SectionHeading
-                  id={`${eventType}-experience-title`}
-                  title={page.experienceHeading}
-                  subtitle={page.experienceSubtitle}
-                />
-
-                <div className="flex flex-col gap-16 md:gap-24">
-                  {page.contentBlocks.map((block, index) => {
-                    const isImageLeft = block.imagePosition === 'left';
-                    return (
-                      <div
-                        key={index}
-                        className={`flex flex-col items-center gap-12 lg:flex-row ${isImageLeft ? '' : 'lg:flex-row-reverse'}`}
-                      >
-                        <FadeIn
-                          direction={isImageLeft ? 'right' : 'left'}
-                          className="relative w-full flex-1"
-                        >
-                          <div
-                            className={`relative z-10 p-2 md:p-3 bg-surface rounded-3xl border border-white/60 transform ${isImageLeft ? '-rotate-3' : 'rotate-3'} hover:rotate-0 hover:scale-[1.02] transition-all duration-700 ease-in-out`}
-                          >
-                            <Image
-                              src={optimizedPublicMediaPath(block.image.src)}
-                              alt={block.image.alt}
-                              width={1200}
-                              height={900}
-                              sizes="(min-width: 1024px) 50vw, 100vw"
-                              className="h-[400px] w-full rounded-2xl object-cover md:h-[550px]"
-                            />
-                          </div>
-                          {block.secondaryImage && (
-                            <div
-                              className={`absolute -bottom-8 ${isImageLeft ? '-right-8' : '-left-8'} z-20 hidden h-56 w-2/3 transform md:block md:h-72 ${isImageLeft ? 'rotate-6' : '-rotate-6'} transition-all duration-700 ease-in-out hover:z-30 hover:rotate-0 ${isImageLeft ? 'hover:-translate-x-2' : 'hover:translate-x-2'}`}
-                            >
-                              <Image
-                                src={optimizedPublicMediaPath(block.secondaryImage.src)}
-                                alt={block.secondaryImage.alt}
-                                width={900}
-                                height={720}
-                                sizes="33vw"
-                                className="h-full w-full rounded-2xl border-4 border-white object-cover shadow-2xl"
-                              />
-                            </div>
-                          )}
-                        </FadeIn>
-
-                        <FadeIn
-                          direction={isImageLeft ? 'left' : 'right'}
-                          className={`mt-12 w-full flex-1 lg:mt-0 ${isImageLeft ? 'lg:pl-10' : 'lg:pr-10'}`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className="mb-5 block h-px w-12 bg-[var(--palette-client-section)]"
-                          />
-                          <p className="font-serif text-xl leading-relaxed tracking-wide text-ink md:text-2xl lg:text-3xl">
-                            {block.text}
-                          </p>
-                        </FadeIn>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-          </FadeIn>
-
-          {/* Our Spaces (exact Home page video experience) */}
-          <FadeIn direction="up">
-            <SpacesSection />
-          </FadeIn>
-
-          {/* Our Packages: the event's booklet */}
-          <FadeIn direction="up">
-            <section
-              id="packages"
-              aria-labelledby={`${eventType}-packages-title`}
-              className="w-full scroll-mt-24 bg-transparent px-4 py-12 md:px-12"
-            >
-              <div className="mx-auto max-w-7xl">
-                <SectionHeading
-                  id={`${eventType}-packages-title`}
-                  title="OUR PACKAGES"
-                  subtitle="Curated inclusions tailored for your celebration at Zion."
-                />
-
-                <p className="mx-auto mb-10 max-w-3xl text-center font-serif text-xl leading-relaxed text-ink md:text-2xl">
-                  {page.packageText}
-                </p>
-                {/* This event's packages only, as readable text (QA, 26 November 2026). */}
-                <div id="packages-booklet" className="mx-auto max-w-6xl scroll-mt-28">
-                  <PackageBooklet eventType={eventType} />
-                </div>
-              </div>
-            </section>
-          </FadeIn>
-
-          {/* Package Gallery (exact Home page continuous ribbon) */}
-          <FadeIn direction="up">
-            <section
-              aria-labelledby={`${eventType}-gallery-title`}
-              className="w-full bg-transparent px-4 py-12 md:px-12"
-            >
-              <div className="mx-auto max-w-7xl">
-                <SectionHeading id={`${eventType}-gallery-title`} title="GALLERY" />
-                <GalleryRibbon images={page.galleryImages} ariaLabel="Package gallery highlights" />
-              </div>
-            </section>
-          </FadeIn>
-
-          {/* Testimonies (exact Home page social proof section) */}
-          <FadeIn direction="up">
-            <TestimonialSection />
-          </FadeIn>
-        </div>
+        <section id="packages" className={styles.section} aria-label={`${names.one} packages`}>
+          <div
+            className={styles.emptyState}
+            role={packages?.status === 'failed' ? 'alert' : undefined}
+          >
+            <p>
+              {packages?.status === 'failed'
+                ? 'We couldn’t load the packages just now. Please refresh the page, or ask our team for the rates.'
+                : `Our ${names.one.toLowerCase()} packages will be listed here soon. Our team can share the current rates.`}
+            </p>
+            <div className={styles.emptyActions}>
+              <ButtonLink href="/contact" variant="primary">
+                Contact our team
+              </ButtonLink>
+              <ButtonLink href="/visit" variant="secondary">
+                Schedule an ocular visit
+              </ButtonLink>
+            </div>
+          </div>
+        </section>
       )}
+
+      <FadeIn direction="up">
+        {photos.gallery.length ? (
+          <EventPhotoGrid
+            title={`${names.many} at Zion`}
+            photos={photos.gallery}
+            galleryHref={galleryHref}
+          />
+        ) : (
+          <p className={styles.galleryNote}>
+            <Link href={galleryHref}>See photos from events at Zion in the Gallery</Link>
+          </p>
+        )}
+      </FadeIn>
+
+      <FadeIn direction="up">
+        <TestimonialSection />
+      </FadeIn>
     </main>
   );
 }

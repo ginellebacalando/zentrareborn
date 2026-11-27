@@ -6,7 +6,8 @@
 
 .dialog {
   --launcher-clearance: calc(
-    3.5rem + var(--layout-floating-control-inset) + var(--space-2) + var(--space-3)
+    3.5rem + var(--layout-floating-control-inset) + var(--space-2) + var(--space-3) +
+      var(--layout-bottom-bar-clearance)
   );
   position: fixed;
   z-index: 10000;
@@ -424,6 +425,45 @@
   opacity: 0.55;
 }
 
+/* Inside the minimum notice period: quiet, with a dotted outline the legend repeats. */
+.calendarDay[data-state='notice'] {
+  border: 1px dashed var(--chat-control-border);
+  background: var(--chat-surface-subtle);
+  color: var(--chat-muted);
+}
+
+.calendarDay[data-state='pending'] {
+  color: var(--chat-muted);
+}
+
+.calendarStatus {
+  margin: var(--space-2) 0 0;
+  color: var(--chat-muted);
+  font-size: var(--type-small);
+}
+
+.calendarRetry {
+  min-height: var(--layout-touch-target);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--chat-accent);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.calendarRetry:focus-visible {
+  outline: 2px solid var(--chat-focus);
+  outline-offset: 1px;
+}
+
+.calendarLimit {
+  color: var(--chat-ink);
+}
+
 .calendarDay[data-selected] {
   box-shadow: inset 0 0 0 2px var(--chat-action);
 }
@@ -467,6 +507,11 @@
 .legendItem[data-state='booked']::before {
   border-color: var(--chat-unavailable-ink);
   background: var(--chat-unavailable-surface);
+}
+
+.legendItem[data-state='notice']::before {
+  border-style: dashed;
+  background: var(--chat-surface-subtle);
 }
 
 .calendarNote {

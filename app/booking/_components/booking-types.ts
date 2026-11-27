@@ -1,6 +1,8 @@
 /** Published catalog data the booking page needs, prepared on the server. */
 export type BookingPackage = {
   id: string;
+  /** Catalog slug of the guest tier ("zion-essential-100"), named by event page links. */
+  slug: string;
   name: string;
   price: number;
   paxIncluded: number;

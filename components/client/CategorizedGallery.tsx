@@ -301,8 +301,16 @@ const SwipeCard = ({
   );
 };
 
-export default function CategorizedGallery() {
-  const [activeCategory, setActiveCategory] = useState('All');
+/**
+ * `initialCategory` comes from the page's link ("See more in the Gallery" on an event page opens
+ * /gallery?category=debuts-birthdays); anything unknown shows all photos.
+ */
+export default function CategorizedGallery({
+  initialCategory = 'All',
+}: {
+  initialCategory?: (typeof categories)[number];
+}) {
+  const [activeCategory, setActiveCategory] = useState<string>(initialCategory);
 
   // --- Mobile Swipe State ---
   const [currentIndex, setCurrentIndex] = useState(0);

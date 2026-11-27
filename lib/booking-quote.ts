@@ -4,6 +4,7 @@
  * (docs/walk-ins.md). Pure functions, safe in the browser.
  */
 import { BOOKING_REQUEST_RULES } from '@/config/booking';
+import { bookingWindowDates, windowDateProblem, type BookingWindow } from '@/lib/booking-window';
 
 /** The published package fields that set a price, in pesos as the catalog stores them. */
 export type PricedPackage = {
@@ -79,16 +80,15 @@ export function manilaDateAfter(days: number, now = Date.now()) {
 
 /**
  * The first date or time problem of a booking, worded as the booking page shows it, or null when
- * the event fits the booking window and the venue's hours.
+ * the event fits the booking window (Settings > Booking window) and the venue's hours.
  */
 export function bookingScheduleProblem(
   input: { date: string; startTime: string; endTime: string },
+  window: BookingWindow,
   now = Date.now(),
 ): { field: BookingScheduleField; problem: string } | null {
-  if (input.date < manilaDateAfter(BOOKING_REQUEST_RULES.minLeadDays, now))
-    return { field: 'date', problem: 'Please choose a date from tomorrow onward.' };
-  if (input.date > manilaDateAfter(BOOKING_REQUEST_RULES.maxDaysAhead, now))
-    return { field: 'date', problem: 'Please choose a date within the next two years.' };
+  const dateProblem = windowDateProblem(input.date, window, bookingWindowDates(window, now));
+  if (dateProblem) return { field: 'date', problem: dateProblem };
   const start = minutesOf(input.startTime);
   const end = minutesOf(input.endTime);
   if (

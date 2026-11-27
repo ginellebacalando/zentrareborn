@@ -3,6 +3,7 @@
  * the walk-in page and the server.
  */
 import type { BookingPaymentMethod } from '@/config/booking';
+import type { BookingWindow } from '@/lib/booking-window';
 
 export const CONSENT_METHODS = ['PRINTED_FORM', 'ON_SCREEN'] as const;
 export type ConsentMethod = (typeof CONSENT_METHODS)[number];
@@ -26,7 +27,8 @@ export type WalkInCategory = { slug: string; name: string; packages: WalkInPacka
 /** What the walk-in page needs to price, check and explain a booking before it is sent. */
 export type WalkInOptions = {
   categories: WalkInCategory[];
-  /** The booking window, Manila dates (YYYY-MM-DD). */
+  /** Settings > Booking window, and the first and last Manila dates (YYYY-MM-DD) it allows. */
+  bookingWindow: BookingWindow;
   earliest: string;
   latest: string;
   /** Dates held or confirmed for an event, and dates with an open request. */

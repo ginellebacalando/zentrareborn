@@ -31,6 +31,11 @@ import {
   type PaymentAccounts,
 } from '@/lib/admin/payment-accounts';
 import { CLIENT_PHOTO_RETENTION_DAYS } from '@/config/client-photos';
+import {
+  BOOKING_WINDOW_LIMITS,
+  parseBookingWindow,
+  type BookingWindowField,
+} from '@/lib/booking-window';
 import { switchTheme } from '@/lib/theme-switch';
 import { useAdminPreferences } from './AdminPreferencesProvider';
 import AdminPageHeader from './AdminPageHeader';
@@ -227,6 +232,30 @@ function PreferencesEditor({
     ) : null;
   const ruleDescribedBy = (field: BookingRuleField, help: string) =>
     `${rulesId}-${help}${rulesError?.field === field ? ` ${rulesId}-error` : ''}`;
+  // The booking window (lib/booking-window.ts) keeps the typed text, checked when saving.
+  const [noticeDays, setNoticeDays] = useState(
+    String(initial.settings.admin.bookingWindow.minNoticeDays),
+  );
+  const [monthsAhead, setMonthsAhead] = useState(
+    String(initial.settings.admin.bookingWindow.maxMonthsAhead),
+  );
+  const [windowError, setWindowError] = useState<{
+    field: BookingWindowField;
+    message: string;
+    attempt: number;
+  } | null>(null);
+  const windowRef = useRef<HTMLDetailsElement>(null);
+  const noticeDaysRef = useRef<HTMLInputElement>(null);
+  const monthsAheadRef = useRef<HTMLInputElement>(null);
+  const windowId = useId();
+  const windowFieldError = (field: BookingWindowField) =>
+    windowError?.field === field ? (
+      <p key={windowError.attempt} id={`${windowId}-error`} className={styles.error} role="alert">
+        {windowError.message}
+      </p>
+    ) : null;
+  const windowDescribedBy = (field: BookingWindowField, help: string) =>
+    `${windowId}-${help}${windowError?.field === field ? ` ${windowId}-error` : ''}`;
   // Online payment accounts are checked when saving, like the rules above.
   const [accountsError, setAccountsError] = useState<{
     field: PaymentAccountField;
@@ -293,6 +322,19 @@ function PreferencesEditor({
       return;
     }
     setStaffEmailsError(null);
+    const bookingWindow = parseBookingWindow(noticeDays, monthsAhead);
+    if ('problem' in bookingWindow) {
+      const { field, problem } = bookingWindow;
+      setWindowError((current) => ({
+        field,
+        message: problem,
+        attempt: (current?.attempt ?? 0) + 1,
+      }));
+      if (windowRef.current) windowRef.current.open = true;
+      (field === 'minNoticeDays' ? noticeDaysRef : monthsAheadRef).current?.focus();
+      return;
+    }
+    setWindowError(null);
     const bookingRules = parseBookingRules(paymentDays, guestLimit, balanceDays);
     if ('problem' in bookingRules) {
       const { field, problem } = bookingRules;
@@ -355,6 +397,7 @@ function PreferencesEditor({
               ...settings.admin,
               staffNotifications: { emails: staffList.emails },
               bookingRules: bookingRules.rules,
+              bookingWindow: bookingWindow.window,
               paymentAccounts,
               privacy: { clientPhotoRetentionDays: retentionDays },
               ...(visitRules ? { visitRules } : {}),
@@ -636,6 +679,79 @@ function PreferencesEditor({
                     {staffEmailsError.message}
                   </p>
                 )}
+              </div>
+            </div>
+          </details>
+          <details
+            ref={windowRef}
+            className={`${styles.settingsCard} ${styles.settingsDisclosure}`}
+          >
+            <summary>
+              <h2 className={styles.settingsSectionTitle}>
+                Booking window
+                <ChevronDown size={20} aria-hidden="true" />
+              </h2>
+            </summary>
+            <div className={styles.settingsCardBody}>
+              <p className={styles.help}>
+                How soon and how far ahead guests can book. The booking page and its server check,
+                walk-ins, the event pages and Zeni&apos;s calendar all use these two numbers. To
+                confirm with Zion: the team plan suggests{' '}
+                {BOOKING_WINDOW_LIMITS.minNoticeDays.default} days and{' '}
+                {BOOKING_WINDOW_LIMITS.maxMonthsAhead.default} months.
+              </p>
+              <div className={styles.settingsEmails}>
+                <label>
+                  Minimum notice (days)
+                  <input
+                    ref={noticeDaysRef}
+                    type="number"
+                    inputMode="numeric"
+                    min={BOOKING_WINDOW_LIMITS.minNoticeDays.min}
+                    max={BOOKING_WINDOW_LIMITS.minNoticeDays.max}
+                    step={1}
+                    required
+                    disabled={disabled}
+                    value={noticeDays}
+                    aria-invalid={windowError?.field === 'minNoticeDays' ? true : undefined}
+                    aria-describedby={windowDescribedBy('minNoticeDays', 'notice-help')}
+                    onChange={(event) => {
+                      setNoticeDays(event.target.value);
+                      if (windowError?.field === 'minNoticeDays') setWindowError(null);
+                    }}
+                  />
+                </label>
+                <p id={`${windowId}-notice-help`} className={styles.help}>
+                  Guests can book an event at least this many days after today.
+                </p>
+                {windowFieldError('minNoticeDays')}
+              </div>
+              <div className={styles.settingsEmails}>
+                <label>
+                  Furthest date (months ahead)
+                  <input
+                    ref={monthsAheadRef}
+                    type="number"
+                    inputMode="numeric"
+                    min={BOOKING_WINDOW_LIMITS.maxMonthsAhead.min}
+                    max={BOOKING_WINDOW_LIMITS.maxMonthsAhead.max}
+                    step={1}
+                    required
+                    disabled={disabled}
+                    value={monthsAhead}
+                    aria-invalid={windowError?.field === 'maxMonthsAhead' ? true : undefined}
+                    aria-describedby={windowDescribedBy('maxMonthsAhead', 'months-help')}
+                    onChange={(event) => {
+                      setMonthsAhead(event.target.value);
+                      if (windowError?.field === 'maxMonthsAhead') setWindowError(null);
+                    }}
+                  />
+                </label>
+                <p id={`${windowId}-months-help`} className={styles.help}>
+                  Guests can book up to this many months after today. Bookings already made are not
+                  changed.
+                </p>
+                {windowFieldError('maxMonthsAhead')}
               </div>
             </div>
           </details>

@@ -149,13 +149,30 @@ type ZeniCopy = {
     nextMonth: string;
     booked: string;
     open: string;
+    /** A day inside the minimum notice period. */
+    notice: (days: number) => string;
     outside: string;
     selected: string;
     legendBooked: string;
     legendOpen: string;
+    legendNotice: string;
+    /** "Book at least 14 days ahead." */
+    noticeNote: (days: number) => string;
+    /** "You can book up to 18 months ahead (until May 2028)." */
+    limitNote: (months: number, until: string) => string;
+    loading: string;
+    loadError: string;
+    retry: string;
     note: string;
     check: (date: string) => string;
   };
+  /** Backup reply to a message the rules cannot place: it still answers the guest. */
+  notSure: string;
+  /** An event question with no published rule yet ("bringing pets"). */
+  noRuleYet: (subject: string) => string;
+  /** A date inside the minimum notice period, and one beyond the booking window. */
+  tooSoon: (date: string, days: number) => string;
+  tooFar: (date: string, opensOn: string, months: number) => string;
   /** Live chat with a staff member, opened when Zeni hands the visitor over. */
   live: {
     connecting: string;
@@ -245,7 +262,7 @@ const en: ZeniCopy = {
   privacy:
     'For your privacy, please don’t share passwords, card numbers or ID details here. I can still help with your event or connect you with our staff.',
   scope:
-    'That’s outside what I can help with as Zion’s concierge. Would you like to know about our venue, packages or available dates?',
+    'That’s outside what I can help with. I’m Zion’s event concierge, so I can help with packages, dates, the venue and bookings.',
   abuse:
     'I’m here to help with your event, and we can continue respectfully. What would you like to know about Zion?',
   leave:
@@ -292,15 +309,31 @@ const en: ZeniCopy = {
     title: 'Available dates',
     previousMonth: 'Previous month',
     nextMonth: 'Next month',
-    booked: 'already has a confirmed event',
-    open: 'no confirmed event yet; tap to check',
-    outside: 'outside the next two months',
+    booked: 'booked: an event is held or confirmed',
+    open: 'no event yet; tap to check',
+    notice: (days) => `too soon to book online; book at least ${days} days ahead`,
+    outside: 'beyond the booking window',
     selected: 'last checked',
     legendBooked: 'Booked',
     legendOpen: 'Open to check',
-    note: 'Dates only. A date without a confirmed event is not reserved until our staff confirm a booking.',
+    legendNotice: 'Too soon',
+    noticeNote: (days) => `Book at least ${days} day${days === 1 ? '' : 's'} ahead.`,
+    limitNote: (months, until) =>
+      `You can book up to ${months} month${months === 1 ? '' : 's'} ahead (until ${until}).`,
+    loading: 'Loading dates…',
+    loadError: 'These dates could not be loaded.',
+    retry: 'Try again',
+    note: 'Dates only. A date without an event is not reserved until our staff confirm a booking.',
     check: (date) => `Check ${date}`,
   },
+  notSure:
+    'I’m not sure about that one. I can help with packages, dates, the venue and bookings, or connect you with our team.',
+  noRuleYet: (subject) =>
+    `I don’t have a rule about ${subject} yet, so I won’t guess. Want me to check with our team?`,
+  tooSoon: (date, days) =>
+    `${date} is less than ${days} days away, so it can’t be booked online. Please book at least ${days} days ahead, or I can connect you with our team about a short-notice event.`,
+  tooFar: (date, opensOn, months) =>
+    `We take bookings up to ${months} months ahead, so bookings for ${date} open on ${opensOn}. Would you like me to connect you with our team in the meantime?`,
   live: {
     connecting:
       'I’m bringing in a member of our team. A real person from Zion Events Place will reply right here in this chat.',
@@ -418,7 +451,7 @@ const taglish: ZeniCopy = {
   privacy:
     'Para sa inyong privacy, huwag po magbahagi ng password, card number o ID details dito. Matutulungan ko pa rin po kayo sa inyong event, o i-connect sa aming staff.',
   scope:
-    'Wala po iyan sa matutulungan ko bilang concierge ng Zion. Gusto n’yo po bang malaman ang tungkol sa venue, packages o available dates?',
+    'Hindi ko po iyan masasagot. Ako po ang event concierge ng Zion, kaya matutulungan ko kayo sa packages, petsa, venue at booking.',
   abuse:
     'Nandito po ako para tumulong sa inyong event, at puwede po tayong magpatuloy nang may respeto. Ano po ang gusto ninyong malaman tungkol sa Zion?',
   leave:
@@ -466,15 +499,31 @@ const taglish: ZeniCopy = {
     title: 'Available dates',
     previousMonth: 'Nakaraang buwan',
     nextMonth: 'Susunod na buwan',
-    booked: 'may confirmed na event na',
-    open: 'wala pang confirmed na event; i-tap para ma-check',
-    outside: 'lampas sa susunod na dalawang buwan',
+    booked: 'booked: may naka-hold o confirmed na event',
+    open: 'wala pang event; i-tap para ma-check',
+    notice: (days) => `masyado nang malapit para i-book online; mag-book nang ${days} araw bago`,
+    outside: 'lampas sa booking window',
     selected: 'huling na-check',
     legendBooked: 'Booked',
     legendOpen: 'Puwedeng i-check',
-    note: 'Dates lang po ito. Hindi pa reserved ang date na walang confirmed na event hangga’t hindi kinukumpirma ng staff ang booking.',
+    legendNotice: 'Masyadong malapit',
+    noticeNote: (days) => `Mag-book po nang hindi bababa sa ${days} araw bago ang event.`,
+    limitNote: (months, until) =>
+      `Puwede pong mag-book hanggang ${months} buwan bago ang event (hanggang ${until}).`,
+    loading: 'Nilo-load ang mga petsa…',
+    loadError: 'Hindi po ma-load ang mga petsang ito.',
+    retry: 'Subukan ulit',
+    note: 'Dates lang po ito. Hindi pa reserved ang date na walang event hangga’t hindi kinukumpirma ng staff ang booking.',
     check: (date) => `I-check ang ${date}`,
   },
+  notSure:
+    'Hindi po ako sigurado diyan. Matutulungan ko po kayo sa packages, petsa, venue at booking, o i-connect ko po kayo sa aming team.',
+  noRuleYet: (subject) =>
+    `Wala pa po akong hawak na policy tungkol sa ${subject}. Gusto n’yo po bang i-connect ko kayo sa team namin para makumpirma?`,
+  tooSoon: (date, days) =>
+    `Kulang na po sa ${days} araw bago ang ${date}, kaya hindi na ito mabu-book online. Mag-book po nang hindi bababa sa ${days} araw bago ang event, o i-connect ko po kayo sa aming team para sa short-notice na event.`,
+  tooFar: (date, opensOn, months) =>
+    `Hanggang ${months} buwan bago ang event lang po kami tumatanggap ng booking, kaya magbubukas ang booking para sa ${date} sa ${opensOn}. Gusto n’yo po bang i-connect ko kayo sa aming team habang hinihintay ito?`,
   live: {
     connecting:
       'Tatawagin ko po ang isa sa aming team. Isang totoong tao mula sa Zion Events Place ang sasagot dito mismo sa chat.',

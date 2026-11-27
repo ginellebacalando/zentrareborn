@@ -2,6 +2,11 @@ import 'server-only';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { CLIENT_PHOTO_RETENTION_DAYS } from '@/config/client-photos';
+import {
+  BOOKING_WINDOW_LIMITS,
+  normalizeBookingWindow,
+  type BookingWindow,
+} from '@/lib/booking-window';
 import { prisma } from '@/lib/prisma';
 import {
   LANGUAGE_OPTIONS,
@@ -160,6 +165,34 @@ export const preferencesSchema = z
             if (issue) context.addIssue({ code: 'custom', message: issue.problem });
           })
           .optional(),
+        // Optional like the others: an older Settings page leaves the saved window unchanged.
+        bookingWindow: z
+          .object({
+            minNoticeDays: z
+              .number()
+              .int('Enter a whole number of days.')
+              .min(
+                BOOKING_WINDOW_LIMITS.minNoticeDays.min,
+                `Ask for at least ${BOOKING_WINDOW_LIMITS.minNoticeDays.min} day of notice.`,
+              )
+              .max(
+                BOOKING_WINDOW_LIMITS.minNoticeDays.max,
+                `Ask for at most ${BOOKING_WINDOW_LIMITS.minNoticeDays.max} days of notice.`,
+              ),
+            maxMonthsAhead: z
+              .number()
+              .int('Enter a whole number of months.')
+              .min(
+                BOOKING_WINDOW_LIMITS.maxMonthsAhead.min,
+                `Allow at least ${BOOKING_WINDOW_LIMITS.maxMonthsAhead.min} month ahead.`,
+              )
+              .max(
+                BOOKING_WINDOW_LIMITS.maxMonthsAhead.max,
+                `Allow at most ${BOOKING_WINDOW_LIMITS.maxMonthsAhead.max} months ahead.`,
+              ),
+          })
+          .strict()
+          .optional(),
         // Optional like the others: an older Settings page leaves the saved periods unchanged.
         privacy: z
           .object({
@@ -239,6 +272,20 @@ function storedBookingRules(settings: unknown): BookingRules {
       whole(stored.balanceDueDays, BALANCE_DUE_DAYS.min, BALANCE_DUE_DAYS.max) ??
       DEFAULT_BOOKING_RULES.balanceDueDays,
   };
+}
+function storedBookingWindow(settings: unknown): BookingWindow {
+  return normalizeBookingWindow(record(record(settings).admin).bookingWindow);
+}
+/**
+ * How soon and how far ahead guests can book (Settings > Booking window). Public pages, the
+ * booking server, walk-ins and Zeni read it here; inside a transaction pass its client.
+ */
+export async function readBookingWindow(db: Prisma.TransactionClient = prisma) {
+  const row = await db.systemSetting.findUnique({
+    where: { id: 'singleton' },
+    select: { settings: true },
+  });
+  return storedBookingWindow(row?.settings);
 }
 /** Lenient reader for the saved retention periods: out-of-range values fall back to the defaults. */
 function storedPrivacy(settings: unknown) {
@@ -371,6 +418,7 @@ export function normalizeAdminPreferences(input: unknown) {
       },
       staffNotifications: { emails: storedStaffNotificationEmails(root) },
       bookingRules: storedBookingRules(root),
+      bookingWindow: storedBookingWindow(root),
       paymentAccounts: storedPaymentAccounts(root),
       visitRules: storedVisitRules(root),
       privacy: storedPrivacy(root),
@@ -444,6 +492,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         localization: settings.admin.localization,
         staffNotifications: settings.admin.staffNotifications,
         ...(rules ? { bookingRules: rules } : {}),
+        ...(settings.admin.bookingWindow ? { bookingWindow: settings.admin.bookingWindow } : {}),
         ...(settings.admin.paymentAccounts
           ? { paymentAccounts: settings.admin.paymentAccounts }
           : {}),
@@ -479,6 +528,14 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         JSON.stringify(storedVisitRules(previous?.settings))
         ? ' Visit hours or rules changed.'
         : '';
+    const window = settings.admin.bookingWindow;
+    const previousWindow = storedBookingWindow(previous?.settings);
+    const windowChange =
+      window &&
+      (window.minNoticeDays !== previousWindow.minNoticeDays ||
+        window.maxMonthsAhead !== previousWindow.maxMonthsAhead)
+        ? ` Booking window changed: at least ${window.minNoticeDays} day${window.minNoticeDays === 1 ? '' : 's'} ahead, up to ${window.maxMonthsAhead} month${window.maxMonthsAhead === 1 ? '' : 's'} ahead.`
+        : '';
     const retentionDays = settings.admin.privacy?.clientPhotoRetentionDays;
     const privacyChange =
       retentionDays !== undefined &&
@@ -501,7 +558,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         userRole: actor.role,
         action: 'SETTINGS_CHANGE',
         module: 'Settings',
-        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${accountsChange}${visitsChange}${privacyChange}`,
+        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${windowChange}${accountsChange}${visitsChange}${privacyChange}`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },

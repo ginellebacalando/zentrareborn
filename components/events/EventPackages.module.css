@@ -1,0 +1,776 @@
+/*
+ * Event package section (docs/event-pages.md): package tabs and details on the left, the booking
+ * estimate on the right (sticky on desktop), a slim bar fixed at the bottom on phones and tablets.
+ * Shared tokens only; the dark theme follows the semantic tokens.
+ */
+.section {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding: var(--space-8) var(--layout-gutter) var(--layout-section-space);
+  scroll-margin-top: var(--layout-header-offset);
+}
+
+.layout {
+  display: grid;
+  gap: var(--space-8);
+  align-items: start;
+}
+
+@media (min-width: 64rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr) 21rem;
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+/* Every package stays in view: tabs share the row and wrap to a second row on narrow screens. */
+.tabs {
+  display: grid;
+  flex: 1 1 24rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+}
+
+.tab {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--layout-touch-target);
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: calc(var(--radius-card) - var(--space-1));
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-normal) var(--motion-ease),
+    color var(--motion-normal) var(--motion-ease);
+}
+
+.tab:hover {
+  background: var(--surface-subtle);
+}
+
+.tab[aria-selected='true'] {
+  background: var(--action-primary);
+  color: var(--text-on-action);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tabName {
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}
+
+.tabPrice {
+  font-size: var(--type-small);
+  opacity: 0.85;
+}
+
+/* A new package fades in; with reduced motion it simply appears. */
+.panel {
+  animation: panel-in var(--motion-slow) var(--motion-ease);
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+.panelHeader {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--line-hairline);
+}
+
+.packageName {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-zion-serif);
+  font-size: var(--type-panel-title);
+  font-weight: var(--weight-medium);
+  line-height: var(--line-heading);
+}
+
+.tagline {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-primary);
+}
+
+.prices li:not(:last-child)::after {
+  margin-left: var(--space-4);
+  color: var(--text-muted);
+  content: '·';
+}
+
+/* Narrow phones list the rates one per line, without separators. */
+@media (max-width: 30rem) {
+  .prices {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .prices li:not(:last-child)::after {
+    content: none;
+  }
+}
+
+.prices strong {
+  font-weight: var(--weight-semibold);
+}
+
+.facts {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  font-size: var(--type-small);
+}
+
+.facts div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.facts dt {
+  color: var(--text-muted);
+}
+
+.facts dd {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.includesFrom {
+  margin: var(--space-6) 0 0;
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.groups {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 48rem) {
+  .groups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6) var(--space-8);
+  }
+}
+
+.group {
+  min-width: 0;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-control);
+  background: var(--surface-card);
+}
+
+.groupTitle {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+}
+
+.groupToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--layout-touch-target);
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupToggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.groupToggle svg {
+  flex: none;
+  transition: transform var(--motion-normal) var(--motion-ease);
+}
+
+.group[data-open] .groupToggle svg {
+  transform: rotate(180deg);
+}
+
+.groupHeading {
+  display: none;
+}
+
+.groupBody {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.group:not([data-open]) .groupBody {
+  display: none;
+}
+
+/* Wider screens list every category at once: no toggles. */
+@media (min-width: 48rem) {
+  .group {
+    border: 0;
+    background: transparent;
+  }
+
+  .groupToggle {
+    display: none;
+  }
+
+  .groupHeading {
+    display: block;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--line-hairline);
+  }
+
+  .groupBody,
+  .group:not([data-open]) .groupBody {
+    display: block;
+    padding: var(--space-3) 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupToggle svg {
+    transition: none;
+  }
+}
+
+.groupIntro {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+.items {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.items li {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--type-small);
+  line-height: 1.5;
+}
+
+.items svg {
+  margin-top: 0.2rem;
+  color: var(--text-accent);
+}
+
+.notes {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-6) 0 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  font-size: var(--type-small);
+}
+
+.notes p {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------------------------------
+   Booking estimate: a card beside the packages on desktop, a sheet from the bottom bar on phones
+   ------------------------------------------------------------------------------------------ */
+.aside {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .aside {
+    position: sticky;
+    top: calc(var(--layout-header-offset) + var(--space-4));
+    display: block;
+  }
+}
+
+.card {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--layout-card-padding);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  line-height: 1.3;
+}
+
+.cardPackage {
+  margin: calc(var(--space-3) * -1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  color: var(--text-primary);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: var(--layout-touch-target) minmax(0, 1fr) var(--layout-touch-target);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-control);
+  background: var(--surface-input);
+}
+
+.stepper button {
+  display: grid;
+  place-items: center;
+  min-height: var(--layout-touch-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.stepper button:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.stepper button:focus-visible,
+.stepper input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.stepper input {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--layout-touch-target);
+  border: 0;
+  border-inline: 1px solid var(--line-hairline);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  appearance: textfield;
+}
+
+.stepper input::-webkit-inner-spin-button,
+.stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.fieldHint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+}
+
+.fieldError {
+  margin: 0;
+  color: var(--feedback-error-ink);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+}
+
+.estimate {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--surface-subtle);
+}
+
+.total {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown,
+.disclaimer {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+  line-height: 1.5;
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* ------------------------------------------------------------------------------------------
+   Phones and tablets: the bar fixed at the bottom, above which Zeni's button moves
+   ------------------------------------------------------------------------------------------ */
+.bar {
+  position: fixed;
+  z-index: 90;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--layout-booking-bar-height);
+  padding: var(--space-2) var(--layout-gutter) max(var(--space-2), env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line-hairline);
+  background: var(--surface-card);
+  box-shadow: 0 -0.25rem 1rem color-mix(in srgb, var(--palette-ink) 8%, transparent);
+}
+
+@media (min-width: 64rem) {
+  .bar {
+    display: none;
+  }
+}
+
+@media (max-width: 63.99rem) {
+  html:has(.bar) {
+    --layout-bottom-bar-clearance: var(--layout-booking-bar-height);
+    scroll-padding-bottom: calc(var(--layout-booking-bar-height) + var(--space-4));
+  }
+
+  html:has(.bar) body {
+    padding-bottom: calc(var(--layout-booking-bar-height) + env(safe-area-inset-bottom));
+  }
+}
+
+.barSummary {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--layout-touch-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.barSummary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.barTotal {
+  font-size: var(--type-lead);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.barMeta {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--type-small);
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.sheet {
+  position: fixed;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: 32rem;
+  max-height: min(85dvh, 40rem);
+  margin: auto auto 0;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.sheet::backdrop,
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--palette-ink) 45%, transparent);
+}
+
+.sheetBody {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--layout-gutter) max(var(--space-4), env(safe-area-inset-bottom));
+}
+
+.sheetHeader,
+.dialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* ------------------------------------------------------------------------------------------
+   Compare packages: a table on wider screens, a stacked list on phones
+   ------------------------------------------------------------------------------------------ */
+.dialog {
+  width: min(72rem, calc(100vw - 2 * var(--layout-gutter)));
+  max-width: none;
+  max-height: calc(100dvh - 2 * var(--space-6));
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.dialogHeader {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--layout-card-padding);
+  border-bottom: 1px solid var(--line-hairline);
+  background: var(--surface-card);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+}
+
+.dialogTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--layout-touch-target);
+  font-size: var(--type-small);
+  cursor: pointer;
+}
+
+.check input {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--action-primary);
+}
+
+.dialogBody {
+  padding: var(--space-4) var(--layout-card-padding) var(--layout-card-padding);
+}
+
+.compareTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-small);
+}
+
+.compareTable th,
+.compareTable td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--line-hairline);
+  text-align: left;
+  vertical-align: top;
+}
+
+.compareTable thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-card);
+  font-size: var(--type-body);
+}
+
+.compareTable tbody th {
+  width: 12rem;
+  font-weight: var(--weight-semibold);
+}
+
+.compareTable tr[data-differs] > * {
+  background: var(--surface-subtle);
+}
+
+.differs {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-control);
+  border-radius: 999px;
+  color: var(--text-primary);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.cellList {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+}
+
+.inherited,
+.missing {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.stacked {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.stackedRow {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-control);
+}
+
+.stackedRow[data-differs] {
+  background: var(--surface-subtle);
+}
+
+.stackedRow h3 {
+  margin: 0;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}
+
+.stackedRow dl {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.stackedRow dt {
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+}
+
+.stackedRow dd {
+  margin: 0;
+  font-size: var(--type-small);
+}
+
+.wideOnly {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .wideOnly {
+    display: block;
+  }
+
+  .narrowOnly {
+    display: none;
+  }
+}
+
+.emptyState {
+  max-width: var(--layout-reading-width);
+  margin: 0 auto;
+  padding: var(--space-8) 0;
+  text-align: center;
+}
+
+.emptyState p {
+  margin: 0 0 var(--space-4);
+  color: var(--text-primary);
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.galleryNote {
+  max-width: var(--layout-max-width);
+  margin: 0 auto;
+  padding: 0 var(--layout-gutter) var(--layout-section-space);
+}
+
+.galleryNote a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--layout-touch-target);
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}

@@ -143,7 +143,9 @@ test(
       const weddings = options.categories.find((candidate) => candidate.slug === 'weddings');
       assert.ok(weddings?.packages[0], 'The published package is offered at the desk');
       const packageId = weddings.packages[0].id;
-      assert.equal(options.earliest, manilaDateAfter(1));
+      // The booking window from Settings (default: 14 days to 18 months ahead) applies at the desk too.
+      assert.equal(options.earliest, manilaDateAfter(14));
+      assert.deepEqual(options.bookingWindow, { minNoticeDays: 14, maxMonthsAhead: 18 });
 
       const day = (offset: number) => manilaDateAfter(offset);
       // Paper receipt numbers are unique, so every booking that pays gets its own.
@@ -180,7 +182,8 @@ test(
         ) as Promise<WalkInResult>;
 
       // The same rules as the website: dates, times, guests and consent.
-      await assert.rejects(walkIn({}, { date: day(0) }), /from tomorrow onward/);
+      await assert.rejects(walkIn({}, { date: day(0) }), /Book at least 14 days ahead/);
+      await assert.rejects(walkIn({}, { date: day(13) }), /Book at least 14 days ahead/);
       await assert.rejects(walkIn({}, { startTime: '18:00', endTime: '14:00' }), /one hour/);
       await assert.rejects(walkIn({}, { guests: 5 }), /at least 10/);
       await assert.rejects(walkIn({ consent: undefined }));

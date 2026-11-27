@@ -182,6 +182,7 @@ function stepErrors(step: number, draft: Draft, options: WalkInOptions): Errors 
     if (draft.date && draft.startTime && draft.endTime && !errors.date) {
       const issue = bookingScheduleProblem(
         { date: draft.date, startTime: draft.startTime, endTime: draft.endTime },
+        options.bookingWindow,
         nowMs(),
       );
       if (issue) errors[issue.field] = issue.problem;

@@ -13,7 +13,8 @@ import { offeredPaymentMethods } from '@/lib/automation/payment-proofs';
 import { offeredBookingPaymentMethods, preferredPaymentNote } from '@/lib/booking-payment-choice';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
-import { bookingScheduleProblem, manilaDateAfter, packageQuote } from '@/lib/booking-quote';
+import { bookingScheduleProblem, packageQuote } from '@/lib/booking-quote';
+import { bookingWindowDates } from '@/lib/booking-window';
 import { paymentPagePath } from '@/lib/payment-link';
 import { nextAcknowledgmentNumber } from '@/lib/payment-receipts';
 import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
@@ -37,7 +38,7 @@ import type { AdminActor } from './access';
 import { paymentDeadline, requiresPayment, walkInReview } from './booking-rules';
 import { confirmationError, eventDate, money } from './domain';
 import { AdminError } from './errors';
-import { readBookingRules } from './preferences';
+import { readBookingRules, readBookingWindow } from './preferences';
 
 /**
  * Walk-in bookings at the Front desk (plan section 16.2, docs/walk-ins.md): staff book for a
@@ -95,9 +96,8 @@ async function publishedCategories(): Promise<WalkInCategory[]> {
 }
 
 export async function readWalkInOptions(): Promise<WalkInOptions> {
-  const today = manilaDateAfter(0);
-  const earliest = manilaDateAfter(BOOKING_REQUEST_RULES.minLeadDays);
-  const latest = manilaDateAfter(BOOKING_REQUEST_RULES.maxDaysAhead);
+  const bookingWindow = await readBookingWindow();
+  const { today, earliest, latest } = bookingWindowDates(bookingWindow);
   const [categories, availability, policy, rules, online] = await Promise.all([
     publishedCategories(),
     readPublicDateAvailability(today, latest),
@@ -107,6 +107,7 @@ export async function readWalkInOptions(): Promise<WalkInOptions> {
   ]);
   return {
     categories,
+    bookingWindow,
     earliest,
     latest,
     booked: availability.booked,
@@ -264,7 +265,7 @@ export async function createWalkInBooking(raw: unknown, actor: AdminActor): Prom
   const input = walkInSchema.parse(raw);
   const { client, event, payment } = input;
   const now = new Date();
-  const scheduleIssue = bookingScheduleProblem(event, now.getTime());
+  const scheduleIssue = bookingScheduleProblem(event, await readBookingWindow(), now.getTime());
   if (scheduleIssue) throw new AdminError(scheduleIssue.problem);
   const { category, pkg } = await chosenPackage(event.eventCategory, event.packageId);
   const quote = pkg

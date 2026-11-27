@@ -27,6 +27,12 @@ import { BRAND } from '@/config/brand';
 import type { OwnClientPhoto } from '@/config/client-photos';
 import { onlineMethodName } from '@/lib/booking-payment-choice';
 import { cheaperTier, packageQuote } from '@/lib/booking-quote';
+import {
+  limitSentence,
+  noticeSentence,
+  windowDateProblem,
+  type BookingWindow,
+} from '@/lib/booking-window';
 import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import {
   BOOKING_EXTRAS,
@@ -168,14 +174,14 @@ function estimateFor(pkg: BookingPackage | null, guests: number) {
 function validate(
   step: number,
   form: FormState,
-  limits: { earliest: string; latest: string; booked: Set<string> },
+  limits: { earliest: string; latest: string; booked: Set<string>; window: BookingWindow },
 ): FieldErrors {
   const errors: FieldErrors = {};
   if (step === 0) {
+    const outside = form.date ? windowDateProblem(form.date, limits.window, limits) : null;
     if (!form.category) errors.category = 'Choose the type of event.';
     if (!form.date) errors.date = 'Choose your event date.';
-    else if (form.date < limits.earliest || form.date > limits.latest)
-      errors.date = 'Choose a date from tomorrow up to two years ahead.';
+    else if (outside) errors.date = outside;
     else if (limits.booked.has(form.date))
       errors.date = 'This date is already booked. Please choose another date.';
     if (!form.startTime) errors.startTime = 'Choose a start time.';
@@ -212,6 +218,8 @@ function validate(
 type BookingRequestFormProps = {
   categories: BookingCategory[];
   availability: BookingAvailability;
+  /** Settings > Booking window, and the first and last dates it allows today. */
+  bookingWindow: BookingWindow;
   earliest: string;
   latest: string;
   pausedMessage: string | null;
@@ -230,6 +238,7 @@ type BookingRequestFormProps = {
 export default function BookingRequestForm({
   categories,
   availability,
+  bookingWindow,
   earliest,
   latest,
   pausedMessage,
@@ -407,7 +416,7 @@ export default function BookingRequestForm({
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const found = validate(step, form, { earliest, latest, booked });
+    const found = validate(step, form, { earliest, latest, booked, window: bookingWindow });
     if (Object.keys(found).length) {
       showErrors(found);
       return;
@@ -693,6 +702,9 @@ export default function BookingRequestForm({
                       getDateStatus={dateStatus}
                       onChange={(value) => update('date', value)}
                     />
+                    <p className={styles.hint}>
+                      {noticeSentence(bookingWindow)} {limitSentence(bookingWindow, { latest })}
+                    </p>
                     {form.date && !errors.date && inquired.has(form.date) ? (
                       <p className={styles.hint}>
                         Another guest has asked about this date. Send your request and we will

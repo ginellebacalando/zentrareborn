@@ -1,5 +1,45 @@
 # Design change log
 
+## 27 November 2026 (late afternoon) — Event pages, one booking window, Zeni answers everything
+
+User task: make the event package pages modern and trustworthy (no brochure image, real photos, a
+useful booking card, the same design on every event page); let Zeni's date calendar go past
+January 2027; make Zeni reply to unusual and unrelated questions instead of a generic menu.
+Details in [docs/event-pages.md](event-pages.md), [docs/booking-window.md](booking-window.md) and
+[docs/chatbot.md](chatbot.md).
+
+- **Event pages** (`components/events/`, all six `/events/*` routes, same addresses): a real-photo
+  header (or a brand-green text header), packages from the database at full width with tabs, one
+  price row, inclusions by category (collapsible on phones), "Compare packages" (table, or a
+  stacked list on phones, with "Show only differences"), a sticky booking estimate on desktop and
+  a bottom bar with a sheet on phones and tablets, real photos with a lightbox and a filtered
+  Gallery link. Removed: the brochure cover, the two intro lines, the video header, the experience
+  blocks and spaces videos (they used web and stock images). Zeni's button moves above the bar.
+- **Booking window** (Settings > Booking window, 14 days / 18 months, to confirm with Zion): the
+  booking page shows the limits under the date and refuses dates outside them, like its server
+  check and walk-ins.
+- **Zeni**: the calendar card goes month by month to the furthest month, loads each month when
+  opened, marks days inside the notice period ("Too soon"), has a legend and states the limit; a
+  typed date opens its month; dates too soon or too far are explained. Replies to unusual,
+  playful, unrelated and rude messages; sharper card photos.
+- **Checks (local preview, headless Edge)**: `/events/debuts` at 1366×768, 1920×1080, 390×844 and
+  320 px; `/events/weddings`, `/events/gender-reveal` and `/events/christmas-party`. No sideways
+  scrolling, no text under 12 px, no brochure image. Layout shift 0.003. Header photo 346 px of
+  768 (45%), served as AVIF/WebP at 153 KB (weddings 163 KB). On phones Zeni's button sits 20 px
+  above the bar. Compare dialog takes focus, closes on Escape; "Show only differences" leaves the
+  9 differing rows of 14. 120 guests show "₱209,000 (100 guests ₱189,000 + 20 extra guests ×
+  ₱1,000)"; Check dates opens the booking page with Debut and 120 guests filled in and the
+  window note; the visit page arrives with the event, guests and package note. Lightbox opens and
+  moves with the arrow keys. Phone tabs fit; the first category is open and others toggle. Dark
+  theme and reduced motion (no panel animation) verified. Zeni: calendar from December 2026
+  (1–10 December "too soon") to May 2028, with a loading state and the limit note; replies to
+  "can i bring dinosaur?", "What's the capital of Japan?" and a 2029 date checked. Settings shows
+  the two new fields.
+- **Not checked**: real phones and iPhone Safari, a screen reader, 200% text zoom, the live site.
+  The local preview database had to be rebuilt during these checks (the earlier copy is in
+  `.local/pgdata-damaged-2026-11-27`); the local test Admin account made through an invitation
+  is gone.
+
 ## 27 November 2026 (afternoon) — Optional client photos for faster welcomes
 
 User task: replace Zion's manual process (asking clients for a picture during booking and keeping

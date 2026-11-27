@@ -66,16 +66,32 @@ export type ZeniDetailCard = {
   startsAt?: string;
 };
 
-/** Dates only: a confirmed admin-calendar event marks the whole date unavailable. */
+/**
+ * Dates only: a held or confirmed admin-calendar event marks the whole date unavailable. The card
+ * covers the booking window (docs/booking-window.md): from today to the last bookable date, with
+ * the days before `earliest` inside the minimum notice period. It carries the unavailable dates of
+ * the month it opens on; the browser loads other months from /api/client/chatbot/calendar.
+ */
 export type ZeniCalendarCard = {
   type: 'calendar';
   today: string;
+  /** Today, the first day shown. */
   from: string;
+  /** The last bookable date. */
   to: string;
+  /** The first bookable date; older saved cards have none (no notice period shown). */
+  earliest?: string;
+  minNoticeDays?: number;
+  maxMonthsAhead?: number;
+  /** The month the card opens on (YYYY-MM); `unavailable` holds that month's dates. */
+  month?: string;
   unavailable: string[];
   selected?: string;
   observedAt: string;
 };
+
+/** One month of the calendar card, loaded when the guest opens it. */
+export type ZeniCalendarMonth = { month: string; unavailable: string[]; observedAt: string };
 
 export type ZeniCard = ZeniDetailCard | ZeniCalendarCard;
 

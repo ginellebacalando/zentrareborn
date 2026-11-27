@@ -24,6 +24,8 @@ export const BOOKING_PACKAGE_BY_SLUG = {
 export type BookingPrefill = {
   eventType?: (typeof BOOKING_EVENT_BY_SLUG)[keyof typeof BOOKING_EVENT_BY_SLUG];
   packageTier?: (typeof BOOKING_PACKAGE_BY_SLUG)[keyof typeof BOOKING_PACKAGE_BY_SLUG];
+  /** One published guest tier by its catalog slug ("zion-essential-100"), from an event page. */
+  packageSlug?: string;
   eventDate?: string;
   startTime?: string;
   endTime?: string;
@@ -31,7 +33,11 @@ export type BookingPrefill = {
   fromZeni: boolean;
 };
 
-const MAX_DAYS_AHEAD = 3 * 366;
+// A catalog guest tier: the package name, then its guest count (config/package-catalog.ts).
+const packageSlugSchema = z
+  .string()
+  .max(120)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*-\d{1,4}$/);
 const eventSchema = z.enum(
   Object.keys(BOOKING_EVENT_BY_SLUG) as [keyof typeof BOOKING_EVENT_BY_SLUG],
 );
@@ -46,14 +52,13 @@ const guestsSchema = z
   .transform(Number)
   .pipe(z.number().int().min(1).max(500));
 
-function daysBetween(from: string, to: string) {
-  return (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000;
-}
-
-/** `today` is the visitor's calendar date (YYYY-MM-DD); past and far-future dates are ignored. */
+/**
+ * `window` holds the first and last dates the booking window allows today (YYYY-MM-DD); a date
+ * outside it is ignored, so the form never opens on a date it would refuse.
+ */
 export function parseBookingPrefill(
   search: string | URLSearchParams,
-  today: string,
+  window: { earliest: string; latest: string },
 ): BookingPrefill {
   const params = typeof search === 'string' ? new URLSearchParams(search) : search;
   const read = (key: string) => params.get(key)?.trim().toLowerCase() ?? undefined;
@@ -63,8 +68,12 @@ export function parseBookingPrefill(
   if (event.success) prefill.eventType = BOOKING_EVENT_BY_SLUG[event.data];
   const tier = packageSchema.safeParse(read('package'));
   if (tier.success) prefill.packageTier = BOOKING_PACKAGE_BY_SLUG[tier.data];
+  else {
+    const slug = packageSlugSchema.safeParse(read('package'));
+    if (slug.success) prefill.packageSlug = slug.data;
+  }
   const date = dateSchema.safeParse(read('date'));
-  if (date.success && date.data >= today && daysBetween(today, date.data) <= MAX_DAYS_AHEAD)
+  if (date.success && date.data >= window.earliest && date.data <= window.latest)
     prefill.eventDate = date.data;
   const start = clockSchema.safeParse(read('start'));
   const end = clockSchema.safeParse(read('end'));
@@ -87,6 +96,7 @@ export function hasBookingPrefill(prefill: BookingPrefill) {
   return Boolean(
     prefill.eventType ||
     prefill.packageTier ||
+    prefill.packageSlug ||
     prefill.eventDate ||
     prefill.guestCount ||
     prefill.startTime,

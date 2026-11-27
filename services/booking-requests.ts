@@ -12,7 +12,7 @@ import {
 import { paymentDeadline, websiteReviewReasons } from '@/lib/admin/booking-rules';
 import { eventDate } from '@/lib/admin/domain';
 import { onlinePaymentMethods } from '@/lib/admin/payment-accounts';
-import { readBookingRules, readPaymentAccounts } from '@/lib/admin/preferences';
+import { readBookingRules, readBookingWindow, readPaymentAccounts } from '@/lib/admin/preferences';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueueWebsiteBookingRequest } from '@/lib/automation/booking-requests';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
@@ -145,8 +145,9 @@ export async function submitBookingRequest(request: Request) {
     );
   const input = parsed.data;
 
-  // The same date and time rules as walk-in bookings at the Front desk (lib/booking-quote.ts).
-  const scheduleIssue = bookingScheduleProblem(input);
+  // The same date and time rules as walk-in bookings at the Front desk (lib/booking-quote.ts),
+  // within the booking window saved in Settings.
+  const scheduleIssue = bookingScheduleProblem(input, await readBookingWindow());
   if (scheduleIssue) throw new BookingRequestError(scheduleIssue.problem);
 
   const availability = await readPublicDateAvailability(input.date, input.date);

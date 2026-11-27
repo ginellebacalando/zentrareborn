@@ -199,11 +199,15 @@ function Confirmation({ visit, email }: { visit: ScheduledVisit; email: string }
   );
 }
 
+/** Details filled in from an event page's link; the visitor can change all of them. */
+export type VisitInitialDetails = { eventType: string; guests: string; message: string };
+
 export type VisitSchedulerProps = {
   days: VisitDay[];
   slotMinutes: number;
   /** Published event types for the optional "Event" choice. */
   eventTypes: string[];
+  initialDetails?: VisitInitialDetails;
   /** A day from the link (for example Zeni's "Schedule a visit"), when it has open times. */
   initialDate: string;
   /** The link asked for a day that has no open time. */
@@ -224,7 +228,14 @@ export default function VisitScheduler(props: VisitSchedulerProps) {
   const [days, setDays] = useState(props.days);
   const [date, setDate] = useState(props.initialDate);
   const [time, setTime] = useState('');
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(() => ({
+    ...EMPTY_FORM,
+    ...(props.initialDetails && props.eventTypes.includes(props.initialDetails.eventType)
+      ? { eventType: props.initialDetails.eventType }
+      : {}),
+    guests: props.initialDetails?.guests ?? '',
+    message: props.initialDetails?.message ?? '',
+  }));
   const [errors, setErrors] = useState<Errors>({});
   const [submitError, setSubmitError] = useState('');
   const [sending, setSending] = useState(false);

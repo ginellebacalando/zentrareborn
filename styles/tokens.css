@@ -363,6 +363,10 @@
   --layout-floating-control-clearance: calc(
     var(--layout-floating-control-size) + var(--layout-floating-control-inset) + 0.75rem
   );
+  /* The event pages' booking bar fixed at the bottom of phones and tablets. While it shows, its
+     height is the bottom bar clearance that Zeni's button and panel move up by. */
+  --layout-booking-bar-height: 4.5rem;
+  --layout-bottom-bar-clearance: 0px;
 }
 
 /* Desktop shows the full Figma header (wordmark row plus links row) before the page scrolls. */

@@ -251,3 +251,51 @@ export function validateGeneralAdvice(
     : advice;
   return { ok: true, text: `${opener} ${rest}` };
 }
+
+export const MAX_SIDE_REPLY_LENGTH = 420;
+
+/**
+ * A sentence that states a Zion rule the facts do not publish: something is (not) allowed,
+ * welcome or banned, or guests can or cannot bring or use it. "Our team can confirm which props
+ * are allowed" asks; "Pets are allowed at Zion" states.
+ */
+const RULE_CLAIMS = [
+  /\b(?:you|guests?|kids|children|clients?)\s+(?:can(?:not|'t)?|may(?: not)?|are (?:not )?allowed to|are welcome to|must not)\s+(?:bring|use|have|set up|light|release|play|park|swim)\b/i,
+  /\b(?:is|are)\s+(?:not\s+)?(?:allowed|permitted|prohibited|banned|forbidden|welcome)\s+(?:at|in|inside|on|here)\b/i,
+  /\b(?:we|zion)\s+(?:do(?:n't| not) )?(?:allow|permit|prohibit|ban|welcome)\b/i,
+  /\b(?:pwede|puwede)\s+po(?:ng)?\s+(?:kayo|kayong|ninyo|n[’']?yo|magdala|dalhin)\b/i,
+  /\bbawal\s+po\b|\bhindi\s+po\s+(?:pwede|puwede)\b/i,
+];
+
+export function claimsUnpublishedRule(text: string) {
+  return RULE_CLAIMS.some((pattern) => pattern.test(text));
+}
+
+export type SideReplyRejection = AdviceRejection | 'rule' | 'empty';
+
+/**
+ * Zeni's own short reply when the published facts cannot answer: an unusual event request with no
+ * rule yet, a joke, an unrelated or a rude message (docs/chatbot.md, "Unusual and unrelated
+ * questions"). It may not state amounts, numbers, contacts, links, booking claims or any rule.
+ */
+export function validateSideReply(
+  raw: string,
+): { ok: true; text: string } | { ok: false; reason: SideReplyRejection } {
+  const text = raw
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^["“]|["”]$/g, '')
+    .trim();
+  if (!text) return { ok: false, reason: 'empty' };
+  if (text.length > MAX_SIDE_REPLY_LENGTH) return { ok: false, reason: 'too_long' };
+  if (/\[(?:name|email|phone|number|address|reference)\]|\[S\d+\]/i.test(text))
+    return { ok: false, reason: 'placeholder' };
+  if (text.match(EMAIL) || PHONE.test(text)) return { ok: false, reason: 'contact' };
+  if (/https?:\/\/|\bwww\./i.test(text) || DOMAIN.test(text)) return { ok: false, reason: 'url' };
+  if (/(?<![\w./])\/[a-z0-9][a-z0-9\-/]*/i.test(text)) return { ok: false, reason: 'path' };
+  if (/\d/.test(text) || new RegExp(MONEY.source, 'i').test(text) || SPELLED_AMOUNT.test(text))
+    return { ok: false, reason: 'money' };
+  if (CLAIMS.some((pattern) => pattern.test(text))) return { ok: false, reason: 'claim' };
+  if (claimsUnpublishedRule(text)) return { ok: false, reason: 'rule' };
+  return { ok: true, text };
+}

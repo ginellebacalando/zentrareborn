@@ -2,11 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { zeniCopyFor } from '@/config/chatbot-receptionist';
 import type { ZeniLanguage } from '@/lib/chatbot/language';
-import type { ZeniCalendarCard, ZeniDetailCard } from '@/lib/chatbot/types';
+import type { ZeniCalendarCard, ZeniCalendarMonth, ZeniDetailCard } from '@/lib/chatbot/types';
 import styles from './Chatbot.module.css';
 
 export function DetailCard({ card, onNavigate }: { card: ZeniDetailCard; onNavigate: () => void }) {
@@ -14,12 +14,14 @@ export function DetailCard({ card, onNavigate }: { card: ZeniDetailCard; onNavig
   return (
     <article className={styles.detailCard} aria-labelledby={titleId}>
       {card.image ? (
+        // A 6rem square, or the card's full width (at most 15rem) in a narrow chat: 240px covers
+        // both, so a landscape photo cropped to a square is never enlarged.
         <Image
           src={card.image.src}
           alt={card.image.alt}
           width={96}
           height={96}
-          sizes="96px"
+          sizes="240px"
           className={styles.detailImage}
         />
       ) : null}
@@ -92,10 +94,26 @@ function monthCells(month: string) {
   return cells;
 }
 
+type MonthData =
+  | { status: 'ready'; unavailable: ReadonlySet<string> }
+  | { status: 'loading' }
+  | { status: 'error' };
+
+type DayState = 'open' | 'booked' | 'notice' | 'pending' | 'outside';
+
+/** Every month from `first` to `last` (YYYY-MM), inclusive. */
+function monthsBetween(first: string, last: string) {
+  const months: string[] = [];
+  for (let month = first; month <= last; month = shiftMonth(month, 1)) months.push(month);
+  return months;
+}
+
 /**
- * Month view of the next two months. Dates with a confirmed admin-calendar event are marked
- * booked (with text, not color alone); choosing an open date asks Zeni to check it.
- * Arrow keys move between days, Page Up/Down between months; only one day is in the Tab order.
+ * Month view of the booking window (docs/booking-window.md): from today to the last bookable date,
+ * one month at a time. Each month's held or booked dates load when it is opened. Days inside the
+ * minimum notice period and booked days say why they cannot be chosen (text, not color alone);
+ * choosing an open date asks Zeni to check it. Arrow keys move between days, Page Up/Down between
+ * months; only one day is in the Tab order.
  */
 export function CalendarCard({
   card,
@@ -111,14 +129,29 @@ export function CalendarCard({
   const copy = zeniCopyFor(language).calendar;
   const headingId = useId();
   const noteId = useId();
-  const unavailable = useMemo(() => new Set(card.unavailable), [card.unavailable]);
+  const limitId = useId();
+  const earliest = card.earliest ?? card.from;
   const firstMonth = monthKey(card.from);
   const lastMonth = monthKey(card.to);
-  const initialFocus = card.selected && card.selected >= card.from ? card.selected : card.from;
-  const [month, setMonth] = useState(monthKey(initialFocus));
+  const chosen =
+    card.selected && card.selected >= card.from && card.selected <= card.to ? card.selected : null;
+  const openingMonth = card.month ?? monthKey(chosen ?? card.from);
+  const initialFocus =
+    chosen ??
+    (monthKey(earliest) === openingMonth && earliest <= card.to ? earliest : `${openingMonth}-01`);
+  const [months, setMonths] = useState<Record<string, MonthData>>(() => {
+    const unavailable = new Set(card.unavailable);
+    // A card saved before months loaded separately holds every month's dates.
+    const loaded = card.month ? [card.month] : monthsBetween(firstMonth, lastMonth);
+    return Object.fromEntries(
+      loaded.map((month) => [month, { status: 'ready', unavailable } satisfies MonthData]),
+    );
+  });
+  const [month, setMonth] = useState(openingMonth);
   const [focusKey, setFocusKey] = useState(initialFocus);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const keyboardMove = useRef(false);
+  const requested = useRef(new Set<string>(Object.keys(months)));
 
   useEffect(() => {
     if (!keyboardMove.current) return;
@@ -126,14 +159,48 @@ export function CalendarCard({
     buttons.current.get(focusKey)?.focus();
   }, [focusKey, month]);
 
+  async function load(target: string) {
+    setMonths((current) => ({ ...current, [target]: { status: 'loading' } }));
+    try {
+      const response = await fetch(`/api/client/chatbot/calendar?month=${target}`, {
+        cache: 'no-store',
+      });
+      if (!response.ok) throw new Error('calendar');
+      const data = (await response.json()) as ZeniCalendarMonth;
+      setMonths((current) => ({
+        ...current,
+        [target]: { status: 'ready', unavailable: new Set(data.unavailable) },
+      }));
+    } catch {
+      requested.current.delete(target);
+      setMonths((current) => ({ ...current, [target]: { status: 'error' } }));
+    }
+  }
+
+  /** Shows a month, loading its dates the first time it is opened. */
+  function showMonth(target: string) {
+    const clamped = target < firstMonth ? firstMonth : target > lastMonth ? lastMonth : target;
+    setMonth(clamped);
+    if (!requested.current.has(clamped)) {
+      requested.current.add(clamped);
+      void load(clamped);
+    }
+    return clamped;
+  }
+
   const inRange = (key: string) => key >= card.from && key <= card.to;
-  const status = (key: string) =>
-    !inRange(key) ? 'outside' : unavailable.has(key) ? 'booked' : 'open';
+  const status = (key: string): DayState => {
+    if (!inRange(key)) return 'outside';
+    if (key < earliest) return 'notice';
+    const data = months[monthKey(key)];
+    if (data?.status !== 'ready') return 'pending';
+    return data.unavailable.has(key) ? 'booked' : 'open';
+  };
 
   function moveFocus(target: string) {
     const clamped = target < card.from ? card.from : target > card.to ? card.to : target;
     keyboardMove.current = true;
-    setMonth(monthKey(clamped));
+    showMonth(monthKey(clamped));
     setFocusKey(clamped);
   }
 
@@ -159,6 +226,15 @@ export function CalendarCard({
   const focusInMonth = monthKey(focusKey) === month ? focusKey : null;
   const tabbable =
     focusInMonth ?? cells.find((key): key is string => Boolean(key && inRange(key))) ?? null;
+  const shown = months[month];
+  const minNoticeDays = card.minNoticeDays ?? 0;
+  const dayLabel: Record<DayState, string> = {
+    open: copy.open,
+    booked: copy.booked,
+    notice: copy.notice(minNoticeDays),
+    pending: copy.loading,
+    outside: copy.outside,
+  };
 
   return (
     <section className={styles.calendarCard} aria-labelledby={headingId} aria-describedby={noteId}>
@@ -168,7 +244,7 @@ export function CalendarCard({
           className={styles.calendarNav}
           aria-label={copy.previousMonth}
           disabled={month <= firstMonth}
-          onClick={() => setMonth((value) => shiftMonth(value, -1))}
+          onClick={() => showMonth(shiftMonth(month, -1))}
         >
           <ChevronLeft size={18} aria-hidden="true" />
         </button>
@@ -179,12 +255,25 @@ export function CalendarCard({
           type="button"
           className={styles.calendarNav}
           aria-label={copy.nextMonth}
+          aria-describedby={month >= lastMonth && card.maxMonthsAhead ? limitId : undefined}
           disabled={month >= lastMonth}
-          onClick={() => setMonth((value) => shiftMonth(value, 1))}
+          onClick={() => showMonth(shiftMonth(month, 1))}
         >
           <ChevronRight size={18} aria-hidden="true" />
         </button>
       </div>
+      {shown?.status === 'loading' ? (
+        <p className={styles.calendarStatus} role="status">
+          {copy.loading}
+        </p>
+      ) : shown?.status === 'error' ? (
+        <p className={styles.calendarStatus} role="alert">
+          {copy.loadError}{' '}
+          <button type="button" className={styles.calendarRetry} onClick={() => showMonth(month)}>
+            {copy.retry}
+          </button>
+        </p>
+      ) : null}
       <div className={styles.calendarGrid} role="group" aria-labelledby={headingId}>
         {WEEKDAYS.map((day) => (
           <span key={day} className={styles.calendarWeekday} aria-hidden="true">
@@ -196,9 +285,7 @@ export function CalendarCard({
           const state = status(key);
           const selected = key === card.selected;
           const blocked = state !== 'open' || disabled;
-          const label = `${fullDate(key)}, ${
-            state === 'booked' ? copy.booked : state === 'outside' ? copy.outside : copy.open
-          }${selected ? `, ${copy.selected}` : ''}`;
+          const label = `${fullDate(key)}, ${dayLabel[state]}${selected ? `, ${copy.selected}` : ''}`;
           return (
             <button
               key={key}
@@ -227,15 +314,27 @@ export function CalendarCard({
           );
         })}
       </div>
+      {/* Each day's name already says its status; the legend repeats it for the eye. */}
       <div className={styles.calendarLegend} aria-hidden="true">
-        <span className={styles.legendItem} data-state="booked">
-          {copy.legendBooked}
-        </span>
         <span className={styles.legendItem} data-state="open">
           {copy.legendOpen}
         </span>
+        <span className={styles.legendItem} data-state="booked">
+          {copy.legendBooked}
+        </span>
+        {minNoticeDays ? (
+          <span className={styles.legendItem} data-state="notice">
+            {copy.legendNotice}
+          </span>
+        ) : null}
       </div>
       <p id={noteId} className={styles.calendarNote}>
+        {card.maxMonthsAhead ? (
+          <span id={limitId} className={styles.calendarLimit}>
+            {minNoticeDays ? `${copy.noticeNote(minNoticeDays)} ` : ''}
+            {copy.limitNote(card.maxMonthsAhead, monthLabel(lastMonth))}
+          </span>
+        ) : null}{' '}
         {copy.note}
       </p>
     </section>

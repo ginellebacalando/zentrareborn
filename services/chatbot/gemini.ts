@@ -6,7 +6,12 @@ import {
   prepareComposeInput,
   type ZeniComposeInput,
 } from '@/lib/chatbot/llm-prompt';
-import { validateGeneralAdvice, validateZeniAnswer } from '@/lib/chatbot/llm-validation';
+import {
+  claimsUnpublishedRule,
+  validateGeneralAdvice,
+  validateSideReply,
+  validateZeniAnswer,
+} from '@/lib/chatbot/llm-validation';
 import { templateLanguage } from '@/lib/chatbot/language';
 import { createLlmRateGuard, type LlmRateGuard } from './llm-rate-guard';
 
@@ -34,6 +39,11 @@ export type ZeniComposeResult =
       aboutZion?: boolean;
       /** Positions (0-based) of the supplied sources the Zion part relies on. */
       used?: number[];
+      /**
+       * What kind of message the model saw: about Zion or the event, or a playful, unrelated or
+       * rude one whose short reply stands on its own (docs/chatbot.md).
+       */
+      scope?: ZeniMessageScope;
     }
   | {
       status: 'disabled' | 'rate_limited' | 'failed' | 'timeout' | 'rejected' | 'blocked';
@@ -42,6 +52,9 @@ export type ZeniComposeResult =
     };
 
 export type ZeniComposer = (input: ZeniComposeInput) => Promise<ZeniComposeResult>;
+
+export const ZENI_MESSAGE_SCOPES = ['zion', 'playful', 'unrelated', 'rude'] as const;
+export type ZeniMessageScope = (typeof ZENI_MESSAGE_SCOPES)[number];
 
 const MODEL_NAME = /^[a-z0-9][a-z0-9.-]{1,62}$/i;
 const OFF_VALUES = new Set(['false', '0', 'off', 'no', 'disabled']);
@@ -86,6 +99,8 @@ const geminiResponse = z.object({
 const twoPartAnswer = z.object({
   zion: z.string().max(4000).default(''),
   general: z.string().max(4000).default(''),
+  // An unknown kind is treated as a question about Zion, the strictest checks.
+  scope: z.enum(ZENI_MESSAGE_SCOPES).catch('zion').default('zion'),
   covered: z.boolean(),
   aboutZion: z.boolean().default(true),
   used: z.array(z.number().int()).max(12).default([]),
@@ -93,13 +108,18 @@ const twoPartAnswer = z.object({
 /** The earlier single-answer format, still accepted. */
 const singleAnswer = z.object({ answer: z.string().max(4000), covered: z.boolean() });
 // The single-answer format needs "answer", so it is tried first; extra keys are ignored.
-const modelAnswer = z
-  .union([singleAnswer, twoPartAnswer])
-  .transform((value) =>
-    'answer' in value
-      ? { zion: value.answer, general: '', covered: value.covered, aboutZion: true, used: [] }
-      : value,
-  );
+const modelAnswer = z.union([singleAnswer, twoPartAnswer]).transform((value) =>
+  'answer' in value
+    ? {
+        zion: value.answer,
+        general: '',
+        scope: 'zion' as const,
+        covered: value.covered,
+        aboutZion: true,
+        used: [],
+      }
+    : value,
+);
 
 type Attempt =
   | { kind: 'ok'; text: string; finishReason?: string }
@@ -251,10 +271,33 @@ export function createGeminiComposer(options: GeminiComposerOptions = {}): ZeniC
  * failure drops only the advice). A general question reads advice first, then Zion's part.
  */
 function checkedAnswer(
-  answer: { zion: string; general: string; covered: boolean; aboutZion: boolean; used: number[] },
+  answer: {
+    zion: string;
+    general: string;
+    scope: ZeniMessageScope;
+    covered: boolean;
+    aboutZion: boolean;
+    used: number[];
+  },
   prepared: ZeniComposeInput,
   model: string,
 ): ZeniComposeResult {
+  // A playful, unrelated or rude message gets a short reply of its own: no facts, numbers, rules
+  // or links, and nothing about Zion's offers (validateSideReply).
+  if (answer.scope !== 'zion') {
+    const side = validateSideReply(answer.zion);
+    if (!side.ok) return { status: 'rejected', reason: `side_${side.reason}`, model };
+    return {
+      status: 'used',
+      text: side.text,
+      covered: false,
+      model,
+      general: false,
+      aboutZion: false,
+      used: [],
+      scope: answer.scope,
+    };
+  }
   let zion = '';
   if (answer.zion.trim()) {
     const validation = validateZeniAnswer(answer.zion, {
@@ -265,6 +308,9 @@ function checkedAnswer(
     if (!validation.ok) return { status: 'rejected', reason: validation.reason, model };
     zion = validation.text;
   }
+  // When the facts do not answer, the reply may only say so: a rule it states is not published.
+  if (!answer.covered && zion && claimsUnpublishedRule(zion))
+    return { status: 'rejected', reason: 'rule', model };
   const covered = answer.covered && Boolean(zion);
   // General advice answers a general planning question. For a question about Zion that the facts
   // do not answer, advice about venues in general would only blur what Zion actually does.

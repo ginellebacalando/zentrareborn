@@ -224,7 +224,7 @@ export function receptionistIntent(message: string): ReceptionistIntent {
     return 'manipulation';
   if (containsSensitiveDetails(message)) return 'sensitive';
   if (
-    /\b(?:you(?:'re| are)?|zeni|bot)\b.{0,24}\b(?:idiot|stupid|useless|moron)\b|\bshut up\b|\b(?:bobo|tanga|gago)\b/i.test(
+    /\b(?:you(?:'re| are)?|zeni|bot)\b.{0,24}\b(?:idiot|stupid|useless|moron)\b|\bshut up\b|\b(?:bobo|tanga|gago|fuck(?:ing)?|bullshit|putang ?ina|tang ?ina|pakyu|ulol|inutil)\b/i.test(
       message,
     )
   )
@@ -296,6 +296,13 @@ export function receptionistIntent(message: string): ReceptionistIntent {
     return 'off_topic';
   if (
     /\b(weather forecast|politics|president|election|stock market|bitcoin|write (?:me |some )?code|football|basketball|who won|recipe|restaurant recommendation|recommend a (?:restaurant|hotel)|medical advice|diagnos[ei]|investment advice)\b/i.test(
+      message,
+    )
+  )
+    return 'off_topic';
+  // Questions with nothing to do with Zion or an event: general knowledge, schoolwork, coding.
+  if (
+    /\b(capital of|population of|kabisera ng|translate (?:this|to)|solve (?:this|the|for)|math problem|equation|takdang[- ]aralin|essay about|python|javascript|chatgpt|song lyrics|lyrics of|horoscope|lotto|lottery|crypto(?:currency)?|stock price|prime minister)\b/i.test(
       message,
     )
   )

@@ -6,6 +6,10 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer, LogLevel } from 'pglite-server';
 import type { ChatSource } from './types';
+import { addDaysIso, manilaToday } from '../booking-window';
+
+/** A date inside the default booking window (14 days to 18 months ahead), with no event yet. */
+const EVENT_DAY = addDaysIso(manilaToday(), 40);
 
 test(
   'public chatbot HTTP handler respects publication, visibility, versioning, settings, and failures',
@@ -372,7 +376,7 @@ test(
       const availability = visitor();
       await availability.say('My name is Private Person, private@example.test.');
       const checked = await availability.say(
-        'Is Selah Hall available on 2099-12-24 at 14:00 to 19:00?',
+        `Is Selah Hall available on ${EVENT_DAY} at 14:00 to 19:00?`,
       );
       assert.equal(checked.payload.kind, 'availability');
       assert.equal(checked.payload.context.status, 'available');
@@ -380,7 +384,8 @@ test(
       assert.ok(
         checked.payload.links.some(
           (link: { href: string; primary?: boolean }) =>
-            link.primary && /date=2099-12-24&start=14%3A00&end=19%3A00/.test(link.href),
+            link.primary &&
+            new RegExp(`date=${EVENT_DAY}&start=14%3A00&end=19%3A00`).test(link.href),
         ),
       );
       assert.doesNotMatch(JSON.stringify(checked.payload.links), /Private|private@example/);
@@ -388,7 +393,7 @@ test(
       const soon = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
       soon.setUTCHours(6, 0, 0, 0);
       for (const [id, startsAt, endsAt] of [
-        ['private-calendar-event', '2099-12-24T06:00:00Z', '2099-12-24T11:00:00Z'],
+        ['private-calendar-event', `${EVENT_DAY}T06:00:00Z`, `${EVENT_DAY}T11:00:00Z`],
         [
           'private-soon-event',
           soon.toISOString(),
@@ -420,7 +425,7 @@ test(
         });
       const blocked = visitor();
       const conflict = await blocked.say(
-        'Is Pavilion Garden available on 2099-12-24 at 14:00 to 19:00?',
+        `Is Pavilion Garden available on ${EVENT_DAY} at 14:00 to 19:00?`,
       );
       assert.equal(conflict.payload.context.status, 'unavailable');
       assert.match(conflict.payload.message, /confirmed event/);
@@ -437,18 +442,44 @@ test(
         month: '2-digit',
         day: '2-digit',
       }).format(soon);
-      assert.deepEqual(card.unavailable, [soonKey]);
-      assert.equal(card.selected, '2099-12-24');
+      // The card opens on the checked date's month and carries only that month's dates.
+      assert.equal(card.selected, EVENT_DAY);
+      assert.equal(card.month, EVENT_DAY.slice(0, 7));
+      assert.ok(card.unavailable.includes(EVENT_DAY));
+      assert.ok(card.unavailable.every((day: string) => day.startsWith(card.month)));
+      assert.equal(card.earliest, addDaysIso(manilaToday(), 14));
+      assert.equal(card.maxMonthsAhead, 18);
+      // Other months load on their own, only inside the booking window.
+      const { GET: calendarMonth } = await import('../../app/api/client/chatbot/calendar/route');
+      const soonMonth = await calendarMonth(
+        new Request(`http://localhost/api/client/chatbot/calendar?month=${soonKey.slice(0, 7)}`),
+      );
+      assert.equal(soonMonth.status, 200);
+      assert.ok((await soonMonth.json()).unavailable.includes(soonKey));
+      const farMonth = await calendarMonth(
+        new Request('http://localhost/api/client/chatbot/calendar?month=2099-12'),
+      );
+      assert.equal(farMonth.status, 400);
+      // A date inside the notice period, or beyond the window, is explained, not checked.
+      const tooSoon = await visitor().say(`Is the venue available on ${soonKey}?`);
+      assert.equal(tooSoon.payload.context.status, 'collecting');
+      assert.match(tooSoon.payload.message, /less than 14 days away/);
+      const tooFar = await visitor().say('Is the venue available on 2099-12-24?');
+      assert.equal(tooFar.payload.context.status, 'collecting');
+      assert.match(tooFar.payload.message, /bookings for .+ open on .+2098/);
+      assert.ok(
+        tooFar.payload.actions.some((item: { type: string }) => item.type === 'request_human'),
+      );
       const adjacent = visitor();
       assert.equal(
-        (await adjacent.say('Is the pool available on 2099-12-24 at 19:00 to 21:00?')).payload
+        (await adjacent.say(`Is the pool available on ${EVENT_DAY} at 19:00 to 21:00?`)).payload
           .context.status,
         'available',
       );
       // Without a remembered time window, tapping a calendar date checks the whole day.
-      const tapped = await visitor().say('Check December 24, 2099', {
+      const tapped = await visitor().say('Check that date', {
         type: 'check_availability',
-        value: '2099-12-24',
+        value: EVENT_DAY,
       });
       assert.equal(tapped.payload.context.status, 'unavailable');
 
@@ -573,7 +604,7 @@ test(
           expiryExecutions++;
           state.booking.status = 'available';
           state.booking.intent = 'availability_check';
-          state.booking.dates = ['2099-12-24'];
+          state.booking.dates = [EVENT_DAY];
           state.booking.resultObservedAt = new Date(Date.now() - 600000).toISOString();
           state.booking.resultExpiresAt = new Date(Date.now() - 1000).toISOString();
           return {
@@ -596,7 +627,7 @@ test(
       assert.match(expiredReplay.message, /expired/);
       assert.equal(expiryExecutions, 1);
       assert.equal(expiredReplay.context?.status, 'stale');
-      assert.equal(expiredReplay.actions?.[0]?.value, '2099-12-24');
+      assert.equal(expiredReplay.actions?.[0]?.value, EVENT_DAY);
       const staleRestore = await (await GET(interrupted.request())).json();
       assert.equal(staleRestore.reply.context.status, 'stale');
       assert.equal(staleRestore.reply.context.previousStatus, 'available');

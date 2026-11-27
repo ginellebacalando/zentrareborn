@@ -1,5 +1,6 @@
 import { publicFacilities } from '@/config/public-facilities';
 import { eventPackagePages } from '@/config/event-package-pages';
+import { eventPhotos } from '@/config/event-photos';
 import { packageSourcePaths } from '@/config/chatbot';
 import { optimizedPublicMediaPath } from '@/lib/public-media';
 import type { ChatSource, ZeniDetailCard } from './types';
@@ -19,8 +20,10 @@ function eventPageFor(href: string) {
   return eventPages.find((page) => packageSourcePaths[page.eventCategorySlug] === href);
 }
 
+/** The event page's own real photo when it has one (config/event-photos.ts), sharp at any size. */
 function eventImage(page: (typeof eventPages)[number]) {
-  const image = page.packageCardImages[0] ?? page.galleryImages[0];
+  const image =
+    eventPhotos[page.heroKey].hero ?? page.packageCardImages[0] ?? page.galleryImages[0];
   return image ? { src: optimizedPublicMediaPath(image.src), alt: image.alt } : undefined;
 }
 

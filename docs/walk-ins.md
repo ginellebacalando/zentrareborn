@@ -26,7 +26,8 @@ travel in its address (`?visit=<id>`, `?booking=<id>`), never contact details.
 - **Price**: `packageQuote` in `lib/booking-quote.ts` is the one pricing engine for the booking
   page, its server and the Front desk: the package price plus each guest above the included guests
   at the package's per-guest fee; the reservation fee never exceeds the total.
-- **Dates and times**: `bookingScheduleProblem` (same file): from tomorrow to two years ahead,
+- **Dates and times**: `bookingScheduleProblem` (same file): inside the booking window from
+  Settings ([docs/booking-window.md](booking-window.md); by default 14 days to 18 months ahead),
   08:00 to 23:30, at least an hour, and 10 to 500 guests. A time held or confirmed for another
   booking is refused when saving.
 - **Review**: the website's review rules (`websiteReviewReasons`). At the desk, staff may approve a

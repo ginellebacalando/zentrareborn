@@ -8,9 +8,7 @@ export const WEBSITE_BOOKING_ACTOR = 'website';
 export const BOOKING_REQUEST_RULES = {
   minGuests: 10,
   maxGuests: 500,
-  /** Requests must be for a date at least this many days after today (Manila). */
-  minLeadDays: 1,
-  maxDaysAhead: 730,
+  // How soon and how far ahead is the booking window, a setting (lib/booking-window.ts).
   /** Earliest start and latest end, on the half hour. */
   firstStart: '08:00',
   lastEnd: '23:30',

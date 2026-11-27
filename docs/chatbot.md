@@ -60,6 +60,42 @@ With a key configured, the model writes the answer; keyword matching is the **ba
 
 Measured with `zeni-ai-eval.ts` on a fixed sample of 150 information questions from the question bank (preview mode, `gemini-3.5-flash-lite`). The first version (questions 1–58) answered 32 where the rules answered 4, but 14 of its answers had problems (advice where a Zion rule applied, a fact stretched to another situation, a missed package comparison); the fixes above followed. After them (questions 59–150, 60 English and 32 Tagalog): the rules answered 15 of 92 and the AI 43, or 28 more: 29 from the facts, 5 facts with general advice, 6 general advice, while 51 stayed honestly unanswered and logged and 1 malformed reply fell back to the rules. Hand check of the 40 answers the AI wrote: 19 fit, 12 partly, 5 general advice that fits, 4 problems (a rule stretched to a nearby case, or a plausible statement the facts do not make). The "From" link under each answer lets a guest check its source.
 
+### Unusual and unrelated questions (27 November 2026)
+
+Zeni replies to what the guest actually asked, every time; the topic chips may follow as a next
+step but are never the whole reply. "can i bring dinosaur?" used to get only the menu ("Happy to
+help! Tap a topic below…"): it matched no rule, and a message under five words that nothing
+official covered went straight to the menu, without the model and without the unanswered log.
+
+- **About Zion or the event**: answered from the published sources, as above.
+- **Unusual event requests** (asking whether pets or animals, props or costumes, inflatables,
+  fireworks, confetti, candles or the guest's own equipment are allowed; `lib/chatbot/unusual.ts`):
+  the published sentence that names the item and states a rule is the answer, quoted on its own
+  (for example the Terms: "Confetti, glitter … are prohibited unless approved in writing").
+  Otherwise Zeni says it does not have that rule yet ("Wala pa po akong hawak na policy tungkol sa
+  pagdadala ng alagang hayop…") and offers the team; the question goes to the admin **Unanswered**
+  list so staff can add the rule. A question that only mentions an item ("Does the LED wall have
+  sound?") is searched as usual; a package inclusion ("fireworks display") is not a rule about
+  bringing one; an open-flame rule is not used for LED candles; Zion's own LED wall and generator
+  are not outside equipment.
+- **Short messages no rule places**: in backup mode "I'm not sure about that one. I can help with
+  packages, dates, the venue and bookings, or connect you with our team." with the staff button and
+  the topics; logged only when it asks whether something is allowed.
+- **The model** answers these messages too (one to three sentences, in the guest's language) and
+  says what kind of message it was (`scope`: `zion`, `playful`, `unrelated`, `rude`). A joke gets
+  one friendly line and, when it has one, its sensible meaning ("A real dinosaur might not fit in
+  our garden! If you mean dinosaur-themed decorations…"). Unrelated questions get one polite
+  sentence and what Zeni can help with; rude messages a calm reply that steers back. These replies
+  are checked (`validateSideReply`): no numbers, amounts, links, contacts, booking claims or rules,
+  and a reply the facts do not cover may not say that anything is allowed or not
+  (`claimsUnpublishedRule`). Playful, unrelated and rude messages are not logged as unanswered.
+- **Backup mode** keeps the rules above: unrelated keywords (general knowledge, homework, coding,
+  news, politics) get the one-sentence decline, and a short list of insults the calm reply.
+
+The examples from the request are in `lib/chatbot/unusual.test.ts` (backup and model modes).
+The older built-in FAQ list, used while no staff-managed FAQ exists, says pets are welcome if they
+wear diapers; Zeni answers from it while it is in use. Zion should confirm or remove that answer.
+
 ## Language model configuration (server only)
 
 | Variable           | Default                 | Meaning                                                                                                                                  |
@@ -95,8 +131,8 @@ Google's free tier may use prompts and responses to improve its products, so **n
 ## Cards, buttons and links
 
 - **Detail cards**: facility, published package or event page, with a photo from `public/images`, a short description, a "Starts at" price only from a published package version, and a link to the page.
-- **Availability calendar card**: a month view for today plus about 60 days (Manila). Dates with any `CONFIRMED` admin-calendar event are marked booked, in text as well as color. Dates only: no event, client, payment or note is exposed. Choosing an open date runs the calendar check.
-- **Calendar check** (`receptionist-calendar.ts`): a date with a time window checks that window; a date alone checks the whole Manila day. Venue names are aliases of the one exclusive venue resource. A result is a timestamped snapshot, valid for five minutes, and never a hold.
+- **Availability calendar card**: a month view of the booking window ([docs/booking-window.md](booking-window.md)): from today to the last bookable date (18 months ahead by default), one month at a time. The card carries the month it opens on; each other month loads when the guest opens it (`GET /api/client/chatbot/calendar?month=YYYY-MM`, months inside the window only, with a short loading state). Dates with a held or confirmed admin-calendar event are marked booked, days inside the minimum notice are marked too soon, in text as well as color, with a legend (Open to check, Booked, Too soon) and the limits in words ("Book at least 14 days ahead. You can book up to 18 months ahead (until May 2028)."). The next-month arrow stops only at the furthest month. Dates only: no event, client, payment or note is exposed. Choosing an open date runs the calendar check, and a typed or checked date opens the card on its month.
+- **Calendar check** (`receptionist-calendar.ts`): a date with a time window checks that window; a date alone checks the whole Manila day. A date inside the minimum notice, or beyond the window, is not checked: Zeni says why ("…is less than 14 days away" or "bookings for … open on …") and offers the staff. Venue names are aliases of the one exclusive venue resource. A result is a timestamped snapshot, valid for five minutes, and never a hold.
 - **Links** built by the server: "Book this date" / "Open the booking form" → `/booking?…&source=zeni`; "Schedule an ocular visit" → `/visit?date=…&source=zeni` (the visit page, [docs/visits.md](visits.md)); source links to the public page. "Talk to staff" starts the hand-off.
 - **Suggested replies**: short, language-aware chips such as "Check a date", "Wedding packages" and "Schedule a visit".
 

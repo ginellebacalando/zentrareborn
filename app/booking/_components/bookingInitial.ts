@@ -21,11 +21,16 @@ export function bookingInitialChoices(
   const tier = Object.entries(BOOKING_PACKAGE_BY_SLUG).find(
     ([, label]) => label === prefill.packageTier,
   )?.[0];
+  // An event page names the exact guest tier; a Zeni link names a tier word.
   const packageId =
     tier === 'custom'
       ? 'custom'
       : (category?.packages.find((candidate) =>
-          tier ? candidate.name.toLowerCase().includes(tier) : false,
+          prefill.packageSlug
+            ? candidate.slug === prefill.packageSlug
+            : tier
+              ? candidate.name.toLowerCase().includes(tier)
+              : false,
         )?.id ?? '');
   return {
     category: category?.slug ?? '',

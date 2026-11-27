@@ -5,7 +5,10 @@
   position: fixed;
   z-index: 999;
   right: max(var(--space-4), env(safe-area-inset-right));
-  bottom: calc(var(--layout-floating-control-inset) + var(--space-2));
+  /* Above a bottom bar when a page shows one (the event pages' booking bar on phones). */
+  bottom: calc(
+    var(--layout-floating-control-inset) + var(--space-2) + var(--layout-bottom-bar-clearance)
+  );
   display: flex;
   align-items: center;
   gap: var(--space-3);

@@ -1,0 +1,64 @@
+/* Event page header: about 45% of the screen on desktop, less on phones (docs/event-pages.md). */
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: end;
+  overflow: hidden;
+  background: var(--palette-zentra-green);
+  color: var(--palette-white);
+}
+
+.hero[data-photo] {
+  min-height: clamp(15rem, 34svh, 22rem);
+}
+
+@media (min-width: 48rem) {
+  .hero[data-photo] {
+    min-height: clamp(20rem, 45svh, 30rem);
+  }
+}
+
+.image {
+  z-index: -2;
+  object-fit: cover;
+  object-position: center 60%;
+}
+
+/* A soft dark overlay toward the text keeps it readable on any photo. */
+.hero[data-photo]::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--palette-zentra-night) 78%, transparent),
+    color-mix(in srgb, var(--palette-zentra-night) 30%, transparent) 70%,
+    color-mix(in srgb, var(--palette-zentra-night) 15%, transparent)
+  );
+  content: '';
+}
+
+.content {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  padding: var(--space-12) var(--layout-gutter) var(--space-8);
+}
+
+.hero:not([data-photo]) .content {
+  padding-block: var(--space-12);
+}
+
+.title {
+  margin: 0;
+  color: inherit;
+}
+
+.line {
+  max-width: 40rem;
+  margin: var(--space-3) 0 0;
+  color: inherit;
+  font-size: var(--type-lead);
+  line-height: var(--line-body);
+}
