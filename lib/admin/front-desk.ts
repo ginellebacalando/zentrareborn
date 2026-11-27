@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { scheduleAutomationDelivery } from '@/lib/automation/trigger';
 import { OCCUPYING_BOOKINGS } from '@/lib/booking-occupancy';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import { prisma } from '@/lib/prisma';
 import { manilaDateKey } from '@/lib/visit-rules';
 import {
@@ -310,8 +311,8 @@ const scheduleSchema = z
         ),
         phone: z
           .string()
-          .trim()
-          .regex(/^\+?[\d\s()-]{7,30}$/, 'Enter a valid phone number.'),
+          .refine((value) => philippineMobile(value) !== null, PHILIPPINE_MOBILE_ERROR)
+          .transform((value) => philippineMobile(value) ?? value),
         startsAt: instant,
         eventType: z.string().trim().max(VISIT_FIELD_LIMITS.eventType).default(''),
         eventDate: z.union([z.literal(''), z.iso.date('Enter a valid event date.')]).default(''),

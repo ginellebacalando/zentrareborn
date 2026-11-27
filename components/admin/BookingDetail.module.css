@@ -32,6 +32,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
+  /* At least the 24px target of WCAG 2.2 (2.5.8). */
+  min-height: var(--space-6);
   color: var(--admin-accent-ink);
   font-size: var(--type-small);
   font-weight: var(--weight-medium);
@@ -351,22 +353,47 @@
   }
 }
 
-/* Phones: one column, a header that scrolls away and the main action in a bar at the bottom. */
-@media (max-width: 47.99rem) {
-  .page {
-    padding-bottom: calc(var(--layout-touch-target) + var(--space-8));
+/* Wide screens of ordinary height keep the header in view, so keyboard focus scrolls clear of it
+   and of the admin bar above it, never behind them (WCAG 2.2, 2.4.11). The root cannot read
+   the page's variables: 4.5rem is the admin bar (--controls-height), 8.5rem this header
+   (--booking-header-height). */
+@media (min-width: 48rem) and (min-height: 32rem) {
+  :global(html):has(.page .header) {
+    scroll-padding-top: calc(4.5rem + 8.5rem + var(--space-4));
   }
+}
 
+/* Short screens (a small laptop at high zoom, a phone on its side): the header scrolls away. */
+@media (max-height: 31.99rem) {
+  .header {
+    position: static;
+  }
+}
+
+/* Phones: one column and a header that scrolls away. */
+@media (max-width: 47.99rem) {
   .header {
     position: static;
   }
 
-  .desktopOnly {
-    display: none;
-  }
-
   .facts {
     grid-template-columns: 6rem minmax(0, 1fr);
+  }
+}
+
+/*
+ * Phones of ordinary height: the main action moves to a bar at the bottom. On short screens
+ * (a phone on its side, 400% zoom) it stays in the header instead, where it can never cover the
+ * field that has keyboard focus.
+ */
+@media (max-width: 47.99rem) and (min-height: 32rem) {
+  .page {
+    padding-bottom: calc(var(--layout-touch-target) + var(--space-8));
+  }
+
+  /* The header copy of an action the bottom bar shows instead. */
+  .barAction {
+    display: none;
   }
 
   .mobileBar {
@@ -384,5 +411,10 @@
 
   .mobileBar > * {
     flex: 1;
+  }
+
+  /* Keyboard focus scrolls clear of the action bar, never behind it (WCAG 2.2, 2.4.11). */
+  :global(html):has(.mobileBar) {
+    scroll-padding-bottom: calc(var(--layout-touch-target) + var(--space-8));
   }
 }

@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import useSWR from 'swr';
-import { CheckCircle2, CircleAlert, LoaderCircle, Search } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, CheckCircle2, CircleAlert, LoaderCircle, Search } from 'lucide-react';
 import { BOOKING_PAYMENT_METHODS, type BookingPaymentMethod } from '@/config/booking';
 import { paymentDeadline, walkInReview } from '@/lib/admin/booking-rules';
 import { bookingScheduleProblem, packageQuote } from '@/lib/booking-quote';
@@ -1093,15 +1094,12 @@ export default function WalkInBooking({
   const ready = options.data && (!prefillKey || round > 0 || prefill.data || prefill.error);
   return (
     <section className={`${desk.panel} ${styles.walkIn}`} aria-labelledby="walk-in-title">
-      <header className={desk.header}>
-        <div>
-          <h1 id="walk-in-title">Walk-in booking</h1>
-        </div>
-        <div className={desk.headerActions}>
-          <ButtonLink variant="secondary" href="/admin/front-desk">
-            Back to the Front desk
-          </ButtonLink>
-        </div>
+      <header className={styles.header}>
+        <Link href="/admin/front-desk" className={styles.back}>
+          <ArrowLeft size={16} aria-hidden="true" />
+          Front desk
+        </Link>
+        <h1 id="walk-in-title">Walk-in booking</h1>
       </header>
       {loadError instanceof Error && (
         <p className={desk.alert} role="alert">

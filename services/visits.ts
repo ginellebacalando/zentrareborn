@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 import { errorMetadata, getRequestContext } from '@/lib/audit';
 import { greetingName } from '@/lib/automation/templates';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import { prisma } from '@/lib/prisma';
 import { visitIdFromManageToken, visitManagePath } from '@/lib/visit-link';
 import { manilaDateKey } from '@/lib/visit-rules';
@@ -51,8 +52,8 @@ const visitSchema = z
     ),
     phone: z
       .string()
-      .trim()
-      .regex(/^\+?[\d\s()-]{7,30}$/, 'Enter a valid mobile number.'),
+      .refine((value) => philippineMobile(value) !== null, PHILIPPINE_MOBILE_ERROR)
+      .transform((value) => philippineMobile(value) ?? value),
     eventType: z.string().trim().max(VISIT_FIELD_LIMITS.eventType).default(''),
     eventDate: z.union([z.literal(''), z.iso.date('Enter a valid event date.')]).default(''),
     guests: z

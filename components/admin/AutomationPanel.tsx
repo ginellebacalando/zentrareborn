@@ -307,16 +307,15 @@ export default function AutomationPanel() {
         status={statusLine ? `${statusLine}.` : undefined}
         actions={
           <>
-            <Button
+            <IconButton
               type="button"
               variant="secondary"
+              label="Refresh"
               icon={<RefreshCw aria-hidden="true" />}
               loading={isValidating && !busy}
               loadingLabel="Refreshing…"
               onClick={() => void mutate()}
-            >
-              Refresh
-            </Button>
+            />
             <Button
               type="button"
               variant="primary"

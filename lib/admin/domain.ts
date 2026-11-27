@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { automationJobLabel } from '@/lib/automation/catalog';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 
 export const paymentRules = [
   'DEPOSIT_REQUIRED',
@@ -23,8 +24,8 @@ export const bookingInput = z
       .transform((v) => v.toLowerCase()),
     phone: z
       .string()
-      .trim()
-      .regex(/^[+\d\s()-]{7,40}$/, 'Enter a valid contact number.'),
+      .refine((value) => philippineMobile(value) !== null, PHILIPPINE_MOBILE_ERROR)
+      .transform((value) => philippineMobile(value) ?? value),
     eventType: z.string().trim().min(2).max(100),
     packageName: z.string().trim().min(2).max(180),
     venue: z.literal('Zion Events Place'),

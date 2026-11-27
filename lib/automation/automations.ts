@@ -63,6 +63,16 @@ export const AUTOMATIONS: readonly AutomationDefinition[] = [
       'Staff open Payments or the booking to compare the screenshot with the venue’s records, then verify or reject it.',
   },
   {
+    key: 'payment-proof-waiting',
+    when: 'A payment screenshot has waited more than a day',
+    action: 'Remind staff to verify or reject it',
+    timing: 'scheduled',
+    events: ['PAYMENT_PROOF_WAITING'],
+    canSwitchOff: true,
+    details:
+      'Sent once for each screenshot. While a screenshot waits, its date stays held, so an unanswered one keeps the date from other clients.',
+  },
+  {
     key: 'payment-outcome',
     when: 'A payment is verified, rejected or recorded',
     action: 'Email the client the receipt, confirmation and calendar invite',

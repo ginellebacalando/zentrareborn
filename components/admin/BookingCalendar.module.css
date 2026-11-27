@@ -507,3 +507,20 @@
   outline: none;
   box-shadow: none;
 }
+
+/* The venue filter, beside the search; it appears once bookings use more than one venue. */
+.calendar .venue {
+  display: flex;
+  flex-direction: row;
+}
+
+.calendar .venue select {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-input);
+  color: var(--admin-ink);
+  font: inherit;
+  font-weight: var(--weight-regular);
+}

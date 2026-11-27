@@ -94,7 +94,8 @@ function ReportControls({
           type="button"
           label="Previous report period"
           icon={<ChevronLeft aria-hidden="true" />}
-          aria-disabled={busy || report.range.previousAnchor < '1900-01-01'}
+          aria-disabled={busy || undefined}
+          disabledReason={report.range.previousAnchor < '1900-01-01' ? 'No earlier periods' : null}
           onClick={() => navigate(report.range.previousAnchor)}
         />
         <Button
@@ -111,7 +112,8 @@ function ReportControls({
           label="Next report period"
           tooltipAlign="end"
           icon={<ChevronRight aria-hidden="true" />}
-          aria-disabled={busy || !report.range.canNext}
+          aria-disabled={busy || undefined}
+          disabledReason={report.range.canNext ? null : 'This is the latest period'}
           onClick={() => navigate(report.range.nextAnchor)}
         />
       </div>

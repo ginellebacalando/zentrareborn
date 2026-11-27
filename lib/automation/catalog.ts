@@ -48,6 +48,7 @@ export const AUTOMATION_ONLY_EVENTS = [
   'BALANCE_AFTER_EVENT',
   'PAYMENT_PROOF_RECEIVED',
   'PAYMENT_PROOF_STAFF_ALERT',
+  'PAYMENT_PROOF_WAITING',
   'STAFF_CALENDAR_PENDING',
   'STAFF_CALENDAR_REQUEST',
   'STAFF_CALENDAR_CANCEL',
@@ -73,6 +74,7 @@ export const STAFF_EVENTS: readonly string[] = [
   'DAILY_DIGEST',
   'BALANCE_AFTER_EVENT',
   'PAYMENT_PROOF_STAFF_ALERT',
+  'PAYMENT_PROOF_WAITING',
 ];
 
 /** Staff inboxes: the outbox keeps the comma-joined list in a 255-character recipient column. */
@@ -93,6 +95,7 @@ export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   BALANCE_AFTER_EVENT: 'Balance still due after the event (staff)',
   PAYMENT_PROOF_RECEIVED: 'Payment screenshot received',
   PAYMENT_PROOF_STAFF_ALERT: 'Payment screenshot to verify (staff)',
+  PAYMENT_PROOF_WAITING: 'Payment screenshot still waiting (staff)',
   STAFF_CALENDAR_PENDING: 'Calendar event, pending request (staff)',
   STAFF_CALENDAR_REQUEST: 'Calendar invitation (staff)',
   STAFF_CALENDAR_CANCEL: 'Calendar cancellation (staff)',

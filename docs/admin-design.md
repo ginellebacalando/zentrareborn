@@ -74,11 +74,16 @@ ZENTRA system, aligned with the main website, and set these rules:
   corners, 14px text in medium weight in the admin (`--button-weight`; semibold on the website),
   16px icons with an 8px gap; hover, a 1px press, the shared focus ring, and `loading`, which shows
   a spinner over the label so the button keeps its width. Disabled buttons have a neutral surface
-  and muted text and explain why in a tooltip; an action that cannot apply yet is hidden instead.
-  One primary button per area; rarely used and destructive actions go in the "More" (⋯) menu
-  (`MoreMenu.tsx`), and destructive ones ask for confirmation. Buttons never wrap; a row has icons
-  on all its buttons or on none; icon-only tools such as Refresh carry a tooltip. No admin
-  stylesheet defines its own buttons.
+  and muted text. A button that cannot be used yet takes `disabledReason` ("Choose a date first",
+  "This is the latest period"): it stays focusable but inactive, the reason is its tooltip and is
+  read as its description; plain `disabled` is only for brief states such as saving. An action
+  that never applies to the record is hidden instead. One primary button per area; rarely used and
+  destructive actions go in the "More" (⋯) menu (`MoreMenu.tsx`), and destructive ones ask for
+  confirmation. Buttons never wrap, and a row of actions fits one line on desktop: the two or three
+  main ones stay and the rest go in More (a Front desk visit keeps Mark completed, No-show and Start
+  booking; Reschedule, Staff notes and Cancel visit are in More). A row has icons on all its
+  buttons or on none; Refresh is always an icon button with its tooltip. Pagination appears only
+  when there is more than one page. No admin stylesheet defines its own buttons.
 - **Page header** (`AdminPageHeader.tsx`, every page): the title, at most one short status line
   (Team: "3 accounts · 1 invitation waiting"; Settings: "Last saved …"; Automation: email and last
   run), and the page's actions on the right with at most one primary. Filters or a toolbar follow,
@@ -132,6 +137,12 @@ in the admin block of `styles/tokens.css`; no component needs editing.
   smoothly where the browser supports it.
 - **Loading:** skeleton bars in the shape of what is loading (`LoadingSkeleton.tsx`), announced once
   through `role="status"`.
+- **Back links:** a page reached from another (a booking, the walk-in booking) starts with a small
+  "← Bookings" or "← Front desk" link above its title, at least 24px tall.
+- **Skip link:** the admin shell's own "Skip to content"; the site-wide skip link is hidden inside
+  the admin panel (`styles/primitives.css`), so keyboard users meet one.
+- **Packages:** search filters as you type. A package without a reservation fee carries a warning
+  beside its status ("No reservation fee set: bookings for it wait for staff review").
 
 ## Booking page
 
@@ -153,7 +164,11 @@ Each booking opens on its own page, `/admin/bookings/[reference]` (`BookingPage.
   with a link to Packages.
 - **Tabs:** Overview · Payments (screenshots, payments received, Record cash) · Agreements ·
   Activity (super administrators, from the Activity log). Empty sections are one short line.
-- **Phones:** one column, and the main action in a bar fixed to the bottom of the screen.
+- **Phones:** one column, and the main action in a bar fixed to the bottom of the screen. On short
+  screens (under 32rem tall: a phone on its side, 400% zoom) the action stays in the header and the
+  header scrolls away, so no bar covers the control that has keyboard focus; elsewhere the page's
+  scroll padding keeps focus clear of the sticky header and of the bar.
+- **Headings:** the client's name is the `h1`; every tab's sections are `h2`, as on Overview.
 - At 1366 × 768 the header, key details, payment summary and main action fit without scrolling.
 
 The bookings table shows one Status column and the Payment column; the table is the default
@@ -170,7 +185,9 @@ visits outlined), as many as fit, then "+N more"; the month takes the height the
 it fits without scrolling at 1366 × 768 and 1920 × 1080. Today has a soft tint and past days are
 lighter. Choosing a day shows its schedule in the side panel, which otherwise shows today and what
 is coming up; an event chip opens a small preview with "Open booking". Phones open the List view.
-The header says once that all times are Manila time.
+The header says once that all times are Manila time. Today is unavailable, with its reason, while
+the current month shows. A venue filter appears beside the search once the bookings use more than
+one venue; every booking is at Zion Events Place today, so it stays hidden.
 
 ## Charts
 

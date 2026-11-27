@@ -48,9 +48,10 @@ Every staff role can use it. The page refreshes itself every minute.
 
 - **Today**: the day's events at the venue (confirmed or held for payment) and every visit, with
   the actions its state allows: **Check in** (on the day), **Mark completed** (once checked in, or
-  after the start time), **No-show** (after the start time), **Reschedule**, **Notes** (never sent
-  to the visitor), **Start booking** and **Cancel visit** (with a reason for the activity log; the
-  visitor gets the cancellation without it).
+  after the start time), **No-show** (after the start time) and **Start booking**; a scheduled
+  visit's More (⋯) menu holds **Reschedule**, **Staff notes** (never sent to the visitor) and
+  **Cancel visit** (with a reason for the activity log; the visitor gets the cancellation without
+  it). Other visits show **Staff notes** as a button.
 - **Earlier visits without an outcome**: still scheduled or checked in after their day.
 - **Upcoming visits**: the next two weeks, by day.
 - **Schedule a visit** for a caller or a walk-in who will come back: any open time, without the

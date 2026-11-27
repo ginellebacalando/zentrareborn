@@ -3,6 +3,7 @@ import 'server-only';
 import {
   completeFinishedEvents,
   expireUnpaidHolds,
+  remindWaitingProofs,
   scheduleBalanceReminders,
   scheduleHoldReminders,
 } from '@/lib/admin/booking-automation';
@@ -30,6 +31,8 @@ export type AutomationRunSummary = {
     holdReminders: number;
     /** Reminders to pay the rest of a confirmed booking before the full-payment date. */
     balanceReminders: number;
+    /** Staff reminders for payment screenshots waiting more than a day. */
+    proofReminders: number;
     completedEvents: number;
     /** Ocular visit reminders: the day before and on the morning (docs/visits.md). */
     visitReminders: number;
@@ -67,6 +70,7 @@ export async function runAutomation(options: {
   const balanceReminders = await step('balance-reminders', failedSteps, () =>
     scheduleBalanceReminders(now),
   );
+  const proofReminders = await step('proof-reminders', failedSteps, () => remindWaitingProofs(now));
   const completedEvents = await step('completion', failedSteps, () => completeFinishedEvents(now));
   const reminders = await step('reminders', failedSteps, () => scheduleEventReminders(now));
   const visitReminders = await step('visit-reminders', failedSteps, () =>
@@ -87,6 +91,7 @@ export async function runAutomation(options: {
       expiredHolds,
       holdReminders,
       balanceReminders,
+      proofReminders,
       completedEvents,
       visitReminders,
     },
@@ -100,7 +105,14 @@ export async function runAutomation(options: {
       failed: delivery.failed,
       retrying: delivery.retrying,
       waiting: delivery.waiting,
-      scheduled: inquiries + reminders + digest + holdReminders + balanceReminders + visitReminders,
+      scheduled:
+        inquiries +
+        reminders +
+        digest +
+        holdReminders +
+        balanceReminders +
+        proofReminders +
+        visitReminders,
       bookingsChanged: expiredHolds + completedEvents,
     };
     await prisma.automationState.upsert({

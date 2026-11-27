@@ -171,7 +171,7 @@ function WaitingProof({
       </div>
       {canVerify ? (
         <form className={review.form} onSubmit={verify} aria-labelledby={`${id}-verify`}>
-          <h4 id={`${id}-verify`}>Verify payment</h4>
+          <h3 id={`${id}-verify`}>Verify payment</h3>
           <div className={styles.inlineForm}>
             <label>
               Amount received · PHP
@@ -234,7 +234,7 @@ function WaitingProof({
         </p>
       )}
       <form className={review.form} onSubmit={reject} aria-labelledby={`${id}-reject`}>
-        <h4 id={`${id}-reject`}>Reject screenshot</h4>
+        <h3 id={`${id}-reject`}>Reject screenshot</h3>
         <div className={styles.inlineForm}>
           <label>
             Reason
@@ -313,14 +313,14 @@ export default function PaymentProofReview({
     : 'No screenshot yet.';
   return (
     <section className={styles.subsection} aria-labelledby={heading}>
-      <h3
+      <h2
         id={heading}
         tabIndex={headingId ? -1 : undefined}
         className={headingId ? review.anchor : undefined}
       >
         <ImageIcon size={16} aria-hidden="true" />
         Payment screenshots
-      </h3>
+      </h2>
       {waiting ? (
         <WaitingProof booking={b} proof={waiting} busy={busy} mutate={mutate} />
       ) : !waitingForPayment ? (

@@ -12,6 +12,7 @@ import {
 
 import { createAuditLog, errorMetadata, getRequestContext } from '@/lib/audit';
 import { enqueueInquiryReceived } from '@/lib/automation/inquiries';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import { prisma } from '@/lib/prisma';
 
 const URGENT_PATTERN = /\b(asap|urgent|today|immediately|right away)\b/i;
@@ -77,6 +78,9 @@ export async function submitInquiry(request: Request) {
   const packageInterest = optionalText(body.packageInterest, 255);
   const preferredContactTime = optionalText(body.preferredContactTime, 100);
 
+  // A Philippine number must be a mobile number; other countries keep the form's own check.
+  if (phoneNumber.replace(/\s/g, '').startsWith('+63') && !philippineMobile(phoneNumber))
+    throw new InquiryError(PHILIPPINE_MOBILE_ERROR);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new InquiryError('Please enter a valid email address.');
   }

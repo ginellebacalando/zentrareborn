@@ -169,3 +169,26 @@
   gap: var(--space-4);
   max-width: 48rem;
 }
+
+/* The way back sits above the title, as on a booking's own page (BookingDetail.module.css). */
+.header {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+.walkIn .back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--space-6);
+  color: var(--admin-accent-ink);
+  font-size: var(--type-small);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.walkIn .back:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}

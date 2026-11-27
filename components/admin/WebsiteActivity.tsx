@@ -29,7 +29,7 @@ import { StatusChip } from './BookingStatus';
 import { useAdminDate, useAdminPreferences } from './AdminPreferencesProvider';
 import admin from './admin.module.css';
 import styles from './WebsiteActivity.module.css';
-import { Button } from '@/components/shared/Button';
+import { Button, IconButton } from '@/components/shared/Button';
 
 const WEBSITE_ACTIVITY_ENDPOINT = '/api/admin/website-activity';
 const CLOCK_STEP_MS = 30_000;
@@ -248,15 +248,17 @@ export default function WebsiteActivity({ limit }: { limit?: number } = {}) {
         <div>
           <h2 id="website-activity-title">Website activity</h2>
         </div>
-        <Button
+        <IconButton
           type="button"
           variant="secondary"
-          aria-disabled={refreshing || undefined}
+          size="sm"
+          label="Refresh website activity"
+          tooltipAlign="end"
+          icon={<RefreshCw aria-hidden="true" />}
+          loading={refreshing}
+          loadingLabel="Refreshing…"
           onClick={() => void refresh()}
-        >
-          <RefreshCw size={16} aria-hidden="true" />
-          Refresh<span className={admin.srOnly}> website activity</span>
-        </Button>
+        />
       </div>
       <p className={admin.srOnly} role="status">
         {announcement.message}

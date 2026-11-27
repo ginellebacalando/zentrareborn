@@ -502,6 +502,9 @@ export default function InquiryForm({
       if (currentDigits.length < requiredDigits) {
         return `Please complete your phone number using the ${country.format} format.`;
       }
+      if (country.code === '+63' && !currentDigits.startsWith('9')) {
+        return 'Philippine mobile numbers start with 9 after +63, for example 917 123 4567.';
+      }
     }
     if (key === 'email') {
       if (!form.email.trim()) {

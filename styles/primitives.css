@@ -218,3 +218,9 @@
     box-shadow: none;
   }
 }
+
+/* The admin panel has its own skip link (components/admin/AdminShell.tsx), so the site-wide one
+   stays out of its pages instead of making keyboard users pass two in a row. */
+body:has([data-admin-theme]) .skip-link {
+  display: none;
+}

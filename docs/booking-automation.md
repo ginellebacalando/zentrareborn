@@ -88,6 +88,13 @@ with "Review screenshot", which opens the Payments tab; the client's payment pag
 line. It is not counted as received and does not lower the balance until staff press **Verify
 payment**, which moves it into the payments received.
 
+**A screenshot left waiting more than a day** sends staff one more email, "Payment screenshot still
+waiting" (`remindWaitingProofs` in `lib/admin/booking-automation.ts`, run with the other scheduled
+steps), because a held date cannot be released while it waits. It goes once for each screenshot
+(key `payment-proof:<id>:waiting`), opens the booking on its Payments tab, and is not sent when
+staff verified or rejected the screenshot first or the booking closed. Staff can switch it off on
+the Automation page ("A payment screenshot has waited more than a day").
+
 **Verify payment** (booking detail): staff see the image (or download the PDF), the client's
 entries and warnings when the payment may not be new: the same reference sent for another booking
 or already verified, the reference already recorded as a payment, or the same image sent before.
@@ -140,9 +147,11 @@ Walk-in bookings at the Front desk follow the same rules and prices ([docs/walk-
 the booking page, its server and the walk-in page share `lib/booking-quote.ts` (the price of a
 package for a guest count, and the date and time limits) and `websiteReviewReasons`.
 
-- **Contact number:** the booking page and the walk-in form take Philippine mobile numbers only,
+- **Contact number:** the booking page, the walk-in form, the visit page, a visit scheduled at the
+  Front desk and the admin's New request and Edit details take Philippine mobile numbers only,
   09XXXXXXXXX or +639XXXXXXXXX (`lib/phone-number.ts`, checked in the browser and on the server).
-  Spaces and dashes are allowed and removed before the number is saved.
+  Spaces and dashes are allowed and removed before the number is saved. The contact form keeps its
+  country list; a +63 number there must be a mobile number (9 after +63).
 - **Payment deadline:** _Settings → Booking Automation → Days to pay the reservation fee_ (1 to 14,
   default 3). The deadline is never after the event starts. New deadlines use the current value;
   existing ones stay until staff extend them.
@@ -166,8 +175,9 @@ deadline passed) and `HOLD_REMINDER` (Payment deadline reminder). `REQUEST_RECEI
 `BALANCE_AFTER_EVENT`. The staff calendar gains a "Payment deadline passed" removal.
 
 Phase 2 client notices: `PAYMENT_PROOF_RECEIVED` (Payment screenshot received), `PAYMENT_VERIFIED`
-(Payment verified) and `PAYMENT_REJECTED` (Payment screenshot not accepted). Staff email:
-`PAYMENT_PROOF_STAFF_ALERT` (Payment screenshot to verify).
+(Payment verified) and `PAYMENT_REJECTED` (Payment screenshot not accepted). Staff emails:
+`PAYMENT_PROOF_STAFF_ALERT` (Payment screenshot to verify) and, a day later if no one decided,
+`PAYMENT_PROOF_WAITING` (Payment screenshot still waiting).
 
 Phase 3: `BALANCE_REMINDER` (Balance payment reminder). `CASH_RECEIPT` and `PAYMENT_VERIFIED` link
 the acknowledgment receipt, and `RESERVATION_CONFIRMED` links the payment page while a balance

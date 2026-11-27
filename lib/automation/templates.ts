@@ -1061,6 +1061,34 @@ export function paymentProofStaffAlert(
   });
 }
 
+/** Staff, once a screenshot has waited more than a day for a decision (booking automation). */
+export function paymentProofWaitingAlert(
+  input: PaymentProofEmailSource & { sentAt: Date; bookingUrl: string | null },
+): RenderedEmail {
+  return renderEmail({
+    subject: `Payment screenshot still waiting ${input.reference} | ${singleLine(input.clientName, 80)}`,
+    preheader: `Sent ${manilaDateTime(input.sentAt)} and not verified or rejected yet.`,
+    heading: 'Payment screenshot still waiting',
+    sections: [
+      {
+        paragraphs: [
+          `A ${input.methodLabel} screenshot sent on ${manilaDateTime(input.sentAt)} (Manila time) is still waiting for a decision. Compare it with your ${input.methodLabel} records, then verify or reject it on the booking's Payments tab.`,
+          input.stage === 'balance'
+            ? 'The client is waiting to hear whether their balance payment was received.'
+            : 'Until someone decides, the date stays held and no other client can book it.',
+        ],
+        details: [
+          ['Client', singleLine(input.clientName)],
+          ['Email', input.email],
+          ['Phone', input.phone],
+          ...paymentProofDetails(input),
+        ],
+      },
+    ],
+    action: input.bookingUrl ? { label: 'Open the booking', href: input.bookingUrl } : undefined,
+  });
+}
+
 export type DigestEvent = {
   reference: string;
   clientName: string;

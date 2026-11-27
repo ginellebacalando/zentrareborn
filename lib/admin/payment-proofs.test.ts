@@ -111,7 +111,8 @@ test(
     const { prisma } = await import('../prisma');
     const { adminMutate, adminRead } = await import('./service');
     const { getAdminPreferences } = await import('./preferences');
-    const { expireUnpaidHolds, scheduleBalanceReminders } = await import('./booking-automation');
+    const { expireUnpaidHolds, remindWaitingProofs, scheduleBalanceReminders } =
+      await import('./booking-automation');
     const { paymentLinkToken } = await import('../payment-link');
     const { readPaymentPage, submitPaymentProof } = await import('../../services/payment-proofs');
     const actor = {
@@ -309,6 +310,24 @@ test(
       });
       await expireUnpaidHolds(new Date());
       assert.equal((await get(first)).reservation, 'REQUESTED');
+
+      // A screenshot left waiting more than a day reminds staff once, with a link to its booking.
+      assert.equal(await remindWaitingProofs(new Date()), 0, 'Not before a day has passed');
+      const dayLater = new Date(stored.createdAt.getTime() + 25 * 3_600_000);
+      assert.equal(await remindWaitingProofs(dayLater), 1);
+      assert.equal(await remindWaitingProofs(dayLater), 0, 'Each screenshot is reminded once');
+      const stillWaiting = await prisma.adminOutbox.findFirstOrThrow({
+        where: { bookingId: first, event: 'PAYMENT_PROOF_WAITING' },
+      });
+      assert.match(stillWaiting.subject, /^Payment screenshot still waiting /);
+      assert.equal(stillWaiting.replyTo, 'payment.client@example.test');
+      assert.ok(
+        stillWaiting.body.includes(
+          `https://zentra.example.test/admin/bookings/${encodeURIComponent((await get(first)).reference)}?tab=payments`,
+        ),
+        'The reminder opens the booking on its Payments tab',
+      );
+      assert.match(stillWaiting.body, /the date stays held/);
 
       const alerts = await adminRead('notifications', new URLSearchParams(), actor);
       assert.ok('notifications' in alerts && alerts.notifications);

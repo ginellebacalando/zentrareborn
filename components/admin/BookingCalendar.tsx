@@ -85,6 +85,8 @@ export default function BookingCalendar({
   const [selected, setSelected] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [maxChips, setMaxChips] = useState(3);
+  // '' shows every venue.
+  const [venue, setVenue] = useState('');
 
   const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const firstWeekday = new Date(Date.UTC(year, month, 1)).getUTCDay();
@@ -147,7 +149,13 @@ export default function BookingCalendar({
     ...visits.map((visit) => ({ kind: 'visit' as const, id: visit.id, at: visit.startsAt, visit })),
   ].sort((a, b) => a.at.localeCompare(b.at));
   const kindOf = (entry: Entry): Kind => (entry.kind === 'visit' ? 'visit' : entry.status);
-  const shown = entries.filter((entry) => !hidden.has(kindOf(entry)));
+  // Every booking names its venue; the filter appears once there is more than one.
+  const venues = Array.from(new Set(bookings.map((booking) => booking.venue))).sort();
+  const shown = entries.filter(
+    (entry) =>
+      !hidden.has(kindOf(entry)) &&
+      (!venue || entry.kind === 'visit' || entry.booking.venue === venue),
+  );
   const counts = Object.fromEntries(
     [...displayStatuses, 'visit'].map((kind) => [
       kind,
@@ -160,7 +168,8 @@ export default function BookingCalendar({
         ? dateKey(entry.visit.startsAt) === key
         : dateKey(entry.booking.startsAt) <= key && dateKey(entry.booking.endsAt) >= key,
     );
-  const filtersOn = query.trim() !== '' || hidden.size !== 1 || !hidden.has('cancelled');
+  const filtersOn =
+    query.trim() !== '' || venue !== '' || hidden.size !== 1 || !hidden.has('cancelled');
 
   const cells: (string | null)[] = [
     ...Array.from({ length: firstWeekday }, () => null),
@@ -265,7 +274,7 @@ export default function BookingCalendar({
             type="button"
             variant="secondary"
             size="sm"
-            disabled={isCurrentMonth}
+            disabledReason={isCurrentMonth ? 'Already showing this month' : null}
             onClick={() => {
               setMonth(manilaMonth());
               setSelected(null);
@@ -286,6 +295,19 @@ export default function BookingCalendar({
           </h2>
         </div>
         <div className={cal.tools}>
+          {venues.length > 1 && (
+            <label className={cal.venue}>
+              <span className={styles.srOnly}>Venue</span>
+              <select value={venue} onChange={(event) => setVenue(event.target.value)}>
+                <option value="">All venues</option>
+                {venues.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className={cal.search}>
             <Search size={16} aria-hidden="true" />
             <input
@@ -342,6 +364,7 @@ export default function BookingCalendar({
             onClick={() => {
               onQuery('');
               setHidden(new Set<Kind>(['cancelled']));
+              setVenue('');
             }}
           >
             Clear filters

@@ -94,11 +94,14 @@ function Toggle({
   label,
   checked,
   disabled,
+  describedBy,
   onChange,
 }: {
   label: string;
   checked: boolean;
   disabled?: boolean;
+  /** The id of the text that explains the switch, such as why it is unavailable. */
+  describedBy?: string;
   onChange: () => void;
 }) {
   return (
@@ -107,6 +110,7 @@ function Toggle({
       role="switch"
       aria-label={label}
       aria-checked={checked}
+      aria-describedby={describedBy}
       disabled={disabled}
       onClick={onChange}
       className={styles.settingsSwitch}
@@ -231,6 +235,7 @@ function PreferencesEditor({
   const paymentsRef = useRef<HTMLDetailsElement>(null);
   const accountInputs = useRef<Partial<Record<PaymentAccountField, HTMLInputElement | null>>>({});
   const accountsId = useId();
+  const unavailableId = useId();
   // Ocular visit rules check themselves on save (components/admin/VisitRulesSettings.tsx).
   const visitRulesRef = useRef<VisitRulesHandle>(null);
   const { previewTheme, clearPersonalTheme } = useAdminPreferences();
@@ -492,13 +497,21 @@ function PreferencesEditor({
                   />
                 </div>
               ))}
-              {['Online booking requests', 'Smart assistant'].map((label) => (
+              {['Online booking requests', 'Smart assistant'].map((label, index) => (
                 <div key={label} className={styles.settingsToggleRow}>
                   <div>
                     <strong>{label}</strong>
-                    <p>Unavailable · This module is not part of the current system.</p>
+                    <p id={`${unavailableId}-module-${index}`}>
+                      Unavailable · This module is not part of the current system.
+                    </p>
                   </div>
-                  <Toggle label={label} checked={false} disabled onChange={() => {}} />
+                  <Toggle
+                    label={label}
+                    checked={false}
+                    disabled
+                    describedBy={`${unavailableId}-module-${index}`}
+                    onChange={() => {}}
+                  />
                 </div>
               ))}
               <label className={styles.settingsMessage}>
@@ -535,12 +548,17 @@ function PreferencesEditor({
                     <div key={key} className={styles.settingsToggleRow}>
                       <div>
                         <strong>{label}</strong>
-                        {unavailable && <p>Unavailable · No admin module in the current system.</p>}
+                        {unavailable && (
+                          <p id={`${unavailableId}-${key}`}>
+                            Unavailable · No admin module in the current system.
+                          </p>
+                        )}
                       </div>
                       <Toggle
                         label={label}
                         checked={!unavailable && settings.admin.notifications[key]}
                         disabled={disabled || unavailable}
+                        describedBy={unavailable ? `${unavailableId}-${key}` : undefined}
                         onChange={() => setNotifications(key)}
                       />
                     </div>

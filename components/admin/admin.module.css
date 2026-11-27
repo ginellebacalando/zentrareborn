@@ -1770,11 +1770,13 @@
   padding-top: var(--space-6);
   border-top: 1px solid var(--line);
 }
-.subsection h3 {
+/* A section heading inside a panel: an h2 on the booking page tabs, an h3 elsewhere; same look. */
+.subsection :is(h2, h3) {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   color: var(--admin-heading);
+  font-size: var(--type-body);
 }
 .subsection p {
   font-size: var(--type-small);
@@ -3381,4 +3383,17 @@
   .root :is(input, select, textarea) {
     font-size: 1rem;
   }
+}
+
+/* Packages: a package with no reservation fee, so staff can set one (bookings for it wait for review). */
+.root .missingFee {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--admin-ink);
+  font-size: var(--type-small);
+}
+.missingFee svg {
+  flex-shrink: 0;
+  color: var(--admin-status-pending);
 }

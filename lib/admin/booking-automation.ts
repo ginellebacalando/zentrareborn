@@ -8,10 +8,16 @@ import { enqueueJobs, type NewAutomationJob } from '@/lib/automation/outbox';
 import { offeredPaymentMethods, paymentPageAction } from '@/lib/automation/payment-proofs';
 import { howToPay, preferredPaymentMethod } from '@/lib/booking-payment-choice';
 import { resolveStaffRecipients } from '@/lib/automation/recipients';
-import { balanceAfterEventAlert, balanceReminder, holdReminder } from '@/lib/automation/templates';
+import {
+  balanceAfterEventAlert,
+  balanceReminder,
+  holdReminder,
+  paymentProofWaitingAlert,
+} from '@/lib/automation/templates';
 import { manilaDay, manilaDayStart, manilaHour, ONE_DAY_MS } from '@/lib/automation/time';
 import { balanceDueDate } from './booking-rules';
 import { eventDate, paidTotal } from './domain';
+import { PAYMENT_METHOD_LABELS } from './payment-accounts';
 import { readBookingRules } from './preferences';
 import { policy } from './service';
 
@@ -197,6 +203,75 @@ export async function scheduleHoldReminders(now = new Date()) {
       expiresAt: b.holdExpiresAt,
     });
   }
+  return (await enqueueJobs(prisma, jobs, now)).length;
+}
+
+/**
+ * One reminder to staff for each payment screenshot that has waited more than a day for a
+ * decision. While a screenshot waits, its date stays held (expireUnpaidHolds skips it), so an
+ * unanswered screenshot would keep the date from other clients indefinitely. The key holds the
+ * screenshot's id, so each one is reminded once; a newer screenshot gets its own reminder.
+ */
+export async function remindWaitingProofs(now = new Date()) {
+  const waiting = await prisma.adminPaymentProof.findMany({
+    where: {
+      status: 'SUBMITTED',
+      createdAt: { lte: new Date(now.getTime() - ONE_DAY_MS) },
+      booking: { reservation: { in: ['REQUESTED', 'CONFIRMED'] } },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 50,
+    select: {
+      id: true,
+      method: true,
+      amountCents: true,
+      referenceNumber: true,
+      paidOn: true,
+      createdAt: true,
+      booking: {
+        select: {
+          id: true,
+          reference: true,
+          clientName: true,
+          email: true,
+          phone: true,
+          eventType: true,
+          startsAt: true,
+          holdExpiresAt: true,
+          reservation: true,
+        },
+      },
+    },
+  });
+  if (!waiting.length) return 0;
+  const staff = await resolveStaffRecipients();
+  const appUrl = applicationUrl();
+  const jobs: NewAutomationJob[] = waiting.map(({ booking, ...proof }) => ({
+    idempotencyKey: `payment-proof:${proof.id}:waiting`,
+    event: 'PAYMENT_PROOF_WAITING',
+    recipient: staff.list,
+    replyTo: booking.email,
+    bookingId: booking.id,
+    ...paymentProofWaitingAlert({
+      reference: booking.reference,
+      clientName: booking.clientName,
+      email: booking.email,
+      phone: booking.phone,
+      eventType: booking.eventType,
+      startsAt: booking.startsAt,
+      methodLabel:
+        PAYMENT_METHOD_LABELS[proof.method as keyof typeof PAYMENT_METHOD_LABELS] ?? proof.method,
+      amountCents: proof.amountCents,
+      referenceNumber: proof.referenceNumber,
+      paidOn: proof.paidOn.toISOString().slice(0, 10),
+      deadline: booking.holdExpiresAt,
+      stage: booking.reservation === 'CONFIRMED' ? 'balance' : 'fee',
+      sentAt: proof.createdAt,
+      bookingUrl: appUrl
+        ? `${appUrl}/admin/bookings/${encodeURIComponent(booking.reference)}?tab=payments`
+        : null,
+    }),
+  }));
   return (await enqueueJobs(prisma, jobs, now)).length;
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, CircleAlert, Info, Mail, MapPin, Phone } from 'lucide-react';
 import { BRAND } from '@/config/brand';
+import { PHILIPPINE_MOBILE_ERROR, philippineMobile } from '@/lib/phone-number';
 import type { VisitDay } from '@/lib/visit-rules';
 import { VISIT_FIELD_LIMITS, type ScheduledVisit } from '@/lib/visit-types';
 import shared from '../../booking/_components/BookingRequest.module.css';
@@ -39,7 +40,6 @@ const EMPTY_FORM: FormState = {
   website: '',
 };
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE = /^\+?[\d\s()-]{7,30}$/;
 /** Field order for the error summary, top to bottom. */
 const FIELD_ORDER: Field[] = [
   'date',
@@ -59,7 +59,7 @@ function validate(form: FormState, date: string, time: string, today: string): E
   else if (!time) errors.time = 'Choose a time for your visit.';
   if (form.fullName.trim().length < 2) errors.fullName = 'Enter your full name.';
   if (!EMAIL.test(form.email.trim())) errors.email = 'Enter a valid email address.';
-  if (!PHONE.test(form.phone.trim())) errors.phone = 'Enter a valid mobile number.';
+  if (!philippineMobile(form.phone)) errors.phone = PHILIPPINE_MOBILE_ERROR;
   if (form.eventDate && form.eventDate < today)
     errors.eventDate = 'Enter an event date from today onward.';
   if (form.guests.trim()) {

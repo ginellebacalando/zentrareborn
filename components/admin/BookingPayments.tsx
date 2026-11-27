@@ -88,12 +88,12 @@ export default function BookingPayments({
     <div className={page.tabStack}>
       <PaymentProofReview booking={b} busy={busy} mutate={mutate} headingId={screenshotsId} />
       <section className={styles.subsection} aria-labelledby={`${screenshotsId}-received`}>
-        <h3 id={`${screenshotsId}-received`}>
+        <h2 id={`${screenshotsId}-received`}>
           Payments received
           <span className={page.headingMeta}>
             {b.payments.length} recorded · {money(paid)} of {money(b.totalCents)}
           </span>
-        </h3>
+        </h2>
         {b.payments.length > 0 ? (
           <ul className={styles.receiptList}>
             {b.payments.map((p) => (

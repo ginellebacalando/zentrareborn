@@ -24,6 +24,11 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* An empty live region leaves the grid flow, so it adds no gap under the page header; it stays in
+   the page, so the next confirmation is still announced. */
+.liveRegion:empty {
+  position: absolute;
+}
 .panel a:focus-visible,
 .panel button:focus-visible,
 .panel input:focus-visible,

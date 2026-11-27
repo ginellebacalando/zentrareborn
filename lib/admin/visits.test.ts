@@ -554,7 +554,8 @@ test(
       assert.equal(prefill.source, 'visit');
       assert.equal(prefill.visitId, created.id);
       assert.equal(prefill.clientName, 'Jose Reyes');
-      assert.equal(prefill.phone, '+63 917 555 0202');
+      // Phone numbers are saved without spaces (lib/phone-number.ts).
+      assert.equal(prefill.phone, '+639175550202');
       await assert.rejects(
         adminRead(
           'front-desk',

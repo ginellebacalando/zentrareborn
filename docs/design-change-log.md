@@ -1,5 +1,50 @@
 # Design change log
 
+## 27 November 2026 (morning) — Admin: what the redesign review left open
+
+User task: add everything the redesign review listed as missing: the other admin pages' buttons,
+reasons on disabled buttons, a Calendar venue filter, a reminder for screenshots left waiting, the
+phone rule on every form, a flag on packages without a reservation fee, and accessibility checks of
+the new pages.
+
+- **Buttons on the other pages** (an audit of 18 admin pages at 1366px and 390px): a Front desk
+  visit keeps Mark completed, No-show and Start booking in one row, with Reschedule, Staff notes and
+  Cancel visit in its More menu (`FrontDesk.tsx`; Close returns focus to the visit). Refresh is an
+  icon button on Front desk, Automation and Website activity too. The walk-in page's header used two
+  class names that no longer existed; it now has a "← Front desk" link above the title
+  (`WalkInBooking.tsx`). Packages shows Previous and Next only when there is more than one page.
+  Tabs, filter chips, switches and row links keep their own control styles.
+- **Disabled buttons say why** (`components/shared/Button.tsx`, new `disabledReason`): the button
+  stays focusable, its reason is the tooltip and its description. Used for the Calendar's Today
+  ("Already showing this month"), the report's period arrows, Add inclusion at 80, Add date in
+  Ocular visits and the booking page's main action. Settings switches marked Unavailable now read
+  their reason as their description.
+- **Calendar:** a venue filter beside the search once bookings use more than one venue (hidden
+  today: every booking is at Zion Events Place).
+- **Packages** (`ServicesPackages.tsx`): search as you type; "No reservation fee set: bookings for
+  it wait for staff review" beside the status of a package without a fee.
+- **Accessibility:** one skip link in the admin (the site-wide one is hidden there,
+  `styles/primitives.css`); the booking Payments tab's sections are `h2`, as on Overview, with the
+  same look (`BookingPayments.tsx`, `PaymentProofReview.tsx`, `admin.module.css`); the booking
+  page's bottom bar and sticky header never cover keyboard focus (root scroll padding; on screens
+  under 32rem tall the main action stays in the header) (`BookingDetail.module.css`); back links are
+  at least 24px tall.
+- Outside design, in the same round: staff get "Payment screenshot still waiting" a day after an
+  undecided screenshot ([booking automation](booking-automation.md)), and the Philippine mobile rule
+  now also covers the visit page, the Front desk visit form, the admin's New request and Edit
+  details, and +63 numbers on the contact form.
+
+Checked on the local preview in headless Edge: the audit before and after; the Front desk menu by
+keyboard (Enter opens on the first item, arrows, choosing Staff notes focuses the note, Close
+returns to the visit); each reason as tooltip (visible on keyboard focus) and as description,
+and that pressing an unavailable button does nothing; the accessibility tree of the booking page
+(all four tabs), Calendar, Front desk and walk-in page (no unnamed controls, no skipped heading
+levels after the fix); focus visible at every Tab stop; no sideways scroll at 200% zoom (683px),
+400% zoom (320 × 256) or 200% text; no focused control hidden behind a bar when tabbing forward and
+back at 320 × 256, 390 × 844, 844 × 390, 1366 × 768 and 1920 × 1080; light and dark themes. Not
+checked: a real screen reader (NVDA, VoiceOver), Safari and Firefox, touch devices, and the live
+site.
+
 ## 27 November 2026 (late night, later) — Admin: one button system, booking pages, a readable Calendar
 
 User task: make the admin's buttons, booking details and Calendar modern, compact and easy to read

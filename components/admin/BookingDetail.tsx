@@ -233,9 +233,7 @@ export default function BookingDetail({
         variant="primary"
         className={className}
         disabled={busy}
-        aria-disabled={unavailable ? true : undefined}
-        data-tip={unavailable ?? undefined}
-        aria-describedby={unavailable ? `${id}-unavailable` : undefined}
+        disabledReason={unavailable}
         onClick={() => runMain(main)}
       >
         {label}
@@ -276,14 +274,14 @@ export default function BookingDetail({
               <Button
                 type="button"
                 variant="secondary"
-                className={page.desktopOnly}
+                className={page.barAction}
                 disabled={busy}
                 onClick={() => offer.secondary && setAsking(offer.secondary)}
               >
                 {offer.secondary.label}
               </Button>
             )}
-            {offer.main && mainButton(offer.main, page.desktopOnly)}
+            {offer.main && mainButton(offer.main, page.barAction)}
             <MoreMenu items={moreItems} />
           </div>
         </div>
@@ -300,11 +298,6 @@ export default function BookingDetail({
           ].join(' · ')}
         </p>
       </header>
-      {offer.main?.kind === 'decision' && offer.main.decision.unavailable && (
-        <span id={`${id}-unavailable`} className={styles.srOnly}>
-          {offer.main.decision.unavailable}
-        </span>
-      )}
 
       {notice && (
         <p

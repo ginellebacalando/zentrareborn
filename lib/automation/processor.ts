@@ -46,6 +46,7 @@ const REMINDER_EVENTS = new Set(['EVENT_REMINDER_7D', 'EVENT_REMINDER_1D']);
 const STAFF_CALENDAR_REQUEST = 'STAFF_CALENDAR_REQUEST';
 const STAFF_CALENDAR_PENDING = 'STAFF_CALENDAR_PENDING';
 const HOLD_REMINDER = 'HOLD_REMINDER';
+const PAYMENT_PROOF_WAITING = 'PAYMENT_PROOF_WAITING';
 
 function emptyResult(mailConfigured: boolean): DeliveryRunResult {
   return {
@@ -134,11 +135,26 @@ async function finish(job: AdminOutbox, status: 'REVIEW_REQUIRED' | 'EXPIRED', l
  * Reminders are only sent while the reservation is still confirmed and upcoming. A staff calendar
  * invitation retried after a cancellation would put a cancelled event back into staff calendars,
  * and a pending event sent after its request was decided would show a stale request. A payment
- * reminder is only useful while the date is still held and its deadline has not passed.
+ * reminder is only useful while the date is still held and its deadline has not passed, and a
+ * reminder about a waiting screenshot only while one still waits on an open booking.
  */
 async function irrelevanceReason(job: AdminOutbox, now: Date) {
   // Ocular visits have their own rules: a stale time or a cancelled visit is never sent.
   if (job.event.startsWith('VISIT_')) return visitJobIrrelevance(job, now);
+  if (job.event === PAYMENT_PROOF_WAITING) {
+    const waiting = job.bookingId
+      ? await prisma.adminPaymentProof.count({
+          where: {
+            bookingId: job.bookingId,
+            status: 'SUBMITTED',
+            booking: { reservation: { in: ['REQUESTED', 'CONFIRMED'] } },
+          },
+        })
+      : 0;
+    return waiting > 0
+      ? null
+      : 'Not sent: the payment screenshot was already verified or rejected.';
+  }
   const reminder = REMINDER_EVENTS.has(job.event);
   if (
     !reminder &&

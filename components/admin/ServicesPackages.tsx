@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
-import { Pencil, Plus, Search } from 'lucide-react';
+import { Pencil, Plus, Search, TriangleAlert } from 'lucide-react';
 import type { CatalogData } from '@/lib/admin/catalog-types';
 import { useAdminDate } from './AdminPreferencesProvider';
 import CatalogEditor, { type CatalogEditing } from './CatalogEditor';
@@ -22,6 +22,15 @@ export default function ServicesPackages() {
     [query, setQuery] = useState(''),
     [search, setSearch] = useState('');
   const [editing, setEditing] = useState<CatalogEditing | null>(null);
+  // Search filters as you type, after a short pause (no Search button).
+  useEffect(() => {
+    // Runs only when the typed text changes, so the page goes back to 1 for a new search.
+    const timer = window.setTimeout(() => {
+      setSearch(query.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
   const [busy, setBusy] = useState(false),
     [saveError, setSaveError] = useState(''),
     [notice, setNotice] = useState('');
@@ -219,8 +228,9 @@ export default function ServicesPackages() {
                 role="search"
                 aria-label="Search packages"
                 onSubmit={(event) => {
+                  // Enter searches at once; otherwise the list follows typing after a pause.
                   event.preventDefault();
-                  setSearch(query);
+                  setSearch(query.trim());
                   setPage(1);
                 }}
               >
@@ -234,9 +244,6 @@ export default function ServicesPackages() {
                     onChange={(event) => setQuery(event.target.value)}
                   />
                 </label>
-                <Button type="submit" variant="secondary">
-                  Search
-                </Button>
               </form>
               {data.packages.map((item) => (
                 <section key={item.id} className={styles.card}>
@@ -264,6 +271,12 @@ export default function ServicesPackages() {
                     >
                       {enumLabel(item.status)}
                     </span>
+                    {item.reservationFee <= 0 && (
+                      <span className={styles.missingFee}>
+                        <TriangleAlert size={16} aria-hidden="true" />
+                        No reservation fee set: bookings for it wait for staff review
+                      </span>
+                    )}
                     <span className={styles.help}>
                       {item.clientVisible
                         ? 'Client-visible when category is visible'
@@ -324,25 +337,32 @@ export default function ServicesPackages() {
                   <p>{search ? 'Try another search.' : 'Add a package to this event category.'}</p>
                 </div>
               )}
-              <div className={styles.pagination}>
-                <span>
-                  {data.total} packages · page {data.page}
-                </span>
-                <Button
-                  variant="secondary"
-                  disabled={data.page <= 1}
-                  onClick={() => setPage((current) => current - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={data.page * 25 >= data.total}
-                  onClick={() => setPage((current) => current + 1)}
-                >
-                  Next
-                </Button>
-              </div>
+              {/* Only when there is more than one page, as on Bookings. */}
+              {(data.total > 25 || data.page > 1) && (
+                <div className={styles.pagination}>
+                  <span>
+                    {data.total} packages · page {data.page}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={data.page <= 1}
+                    onClick={() => setPage((current) => current - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={data.page * 25 >= data.total}
+                    onClick={() => setPage((current) => current + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </>
           ) : (
             <section className={`${styles.card} ${styles.empty}`}>

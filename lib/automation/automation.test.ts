@@ -979,6 +979,21 @@ test(
             assert.equal(staleMail.calls(), 0);
             assert.match((await row(stale)).lastError ?? '', /no longer pending/);
 
+            // A reminder about a waiting screenshot is skipped once no screenshot waits.
+            const staleProof = await addJob('test:stale-proof-waiting', new Date(), {
+              event: 'PAYMENT_PROOF_WAITING',
+              recipient: 'staff@example.test',
+              bookingId: web.id,
+            });
+            const proofMail = fakeTransport(() => {});
+            const decided = await processDueJobs({
+              ids: [staleProof],
+              transport: proofMail.transport,
+            });
+            assert.equal(decided.skipped, 1);
+            assert.equal(proofMail.calls(), 0);
+            assert.match((await row(staleProof)).lastError ?? '', /already verified or rejected/);
+
             // Reviewing the declined request again shows it as pending again.
             await decide(web.id, 'VERIFY');
             const reviewed = await decide(web.id, 'REVIEW_POLICY');

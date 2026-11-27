@@ -17,7 +17,8 @@ import {
 import { StatusChip } from './BookingStatus';
 import AdminPageHeader from './AdminPageHeader';
 import styles from './FrontDesk.module.css';
-import { Button, ButtonLink } from '@/components/shared/Button';
+import { Button, ButtonLink, IconButton } from '@/components/shared/Button';
+import MoreMenu from './MoreMenu';
 
 const ENDPOINT = '/api/admin/front-desk';
 /** Walk-in bookings at the desk (components/admin/WalkInBooking.tsx). */
@@ -335,10 +336,27 @@ function VisitCard({
     if (panel) panelRef.current?.querySelector<HTMLElement>('select, textarea')?.focus();
   }, [panel]);
 
+  /** The Staff notes button opens its panel and closes it again. */
   function open(next: Panel) {
     setError('');
     setStartsAt('');
     setPanel((current) => (current === next ? null : next));
+  }
+
+  /** From the More menu: always opens the chosen panel and moves focus into it. */
+  function choose(next: Exclude<Panel, null>) {
+    setError('');
+    setStartsAt('');
+    setPanel(next);
+    requestAnimationFrame(() =>
+      panelRef.current?.querySelector<HTMLElement>('select, textarea')?.focus(),
+    );
+  }
+
+  /** Closes the open panel and keeps keyboard focus on this visit. */
+  function close() {
+    open(null);
+    requestAnimationFrame(() => headingRef.current?.focus());
   }
 
   async function run(payload: Record<string, unknown>, success: string) {
@@ -454,38 +472,30 @@ function VisitCard({
             No-show
           </Button>
         )}
-        {scheduled && (
-          <Button
-            type="button"
-            variant="secondary"
-            aria-expanded={panel === 'reschedule'}
-            onClick={() => open('reschedule')}
-          >
-            Reschedule
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="secondary"
-          aria-expanded={panel === 'notes'}
-          onClick={() => open('notes')}
-        >
-          Notes
-        </Button>
         {status !== 'CANCELLED' && status !== 'NO_SHOW' && (
           <ButtonLink variant="secondary" href={`${WALK_IN_PATH}?visit=${visit.id}`}>
             Start booking
             <span className={styles.visuallyHidden}> for {name}</span>
           </ButtonLink>
         )}
-        {scheduled && (
+        {/* Less frequent actions of a scheduled visit share one menu, so the row stays one line. */}
+        {scheduled ? (
+          <MoreMenu
+            label={`More actions for ${name}`}
+            items={[
+              { label: 'Reschedule', onSelect: () => choose('reschedule') },
+              { label: 'Staff notes', onSelect: () => choose('notes') },
+              { label: 'Cancel visit', destructive: true, onSelect: () => choose('cancel') },
+            ]}
+          />
+        ) : (
           <Button
             type="button"
-            variant="destructive"
-            aria-expanded={panel === 'cancel'}
-            onClick={() => open('cancel')}
+            variant="secondary"
+            aria-expanded={panel === 'notes'}
+            onClick={() => open('notes')}
           >
-            Cancel visit
+            Staff notes
           </Button>
         )}
       </div>
@@ -512,7 +522,7 @@ function VisitCard({
                 <Button type="submit" variant="primary" disabled={busy}>
                   Move visit
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => open(null)}>
+                <Button type="button" variant="secondary" onClick={close}>
                   Close
                 </Button>
               </div>
@@ -551,7 +561,7 @@ function VisitCard({
                 <Button type="submit" variant="destructive" disabled={busy}>
                   Cancel visit
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => open(null)}>
+                <Button type="button" variant="secondary" onClick={close}>
                   Keep visit
                 </Button>
               </div>
@@ -584,7 +594,7 @@ function VisitCard({
                 <Button type="submit" variant="primary" disabled={busy}>
                   Save notes
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => open(null)}>
+                <Button type="button" variant="secondary" onClick={close}>
                   Close
                 </Button>
               </div>
@@ -828,16 +838,15 @@ export default function FrontDesk() {
         titleId="front-desk-title"
         actions={
           <>
-            <Button
+            <IconButton
               type="button"
               variant="secondary"
+              label="Refresh"
               icon={<RefreshCw aria-hidden="true" />}
               loading={isValidating}
               loadingLabel="Refreshing…"
               onClick={() => void mutate()}
-            >
-              Refresh
-            </Button>
+            />
             <Button
               type="button"
               variant="primary"
@@ -857,7 +866,7 @@ export default function FrontDesk() {
         }
       />
 
-      <div role="status" aria-live="polite">
+      <div role="status" aria-live="polite" className={styles.liveRegion}>
         {notice && (
           <p id={NOTICE_ID} tabIndex={-1} className={`${styles.notice} ${styles.focusTarget}`}>
             {notice}

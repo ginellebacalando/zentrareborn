@@ -320,7 +320,9 @@ export default function CatalogEditor({
                     <Button
                       type="button"
                       variant="secondary"
-                      disabled={inclusions.length >= 80}
+                      disabledReason={
+                        inclusions.length >= 80 ? 'A package can list up to 80 inclusions' : null
+                      }
                       onClick={() =>
                         setInclusions((current) => [
                           ...current,

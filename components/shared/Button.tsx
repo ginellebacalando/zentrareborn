@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ComponentProps, ReactNode } from 'react';
+import { useId, type ComponentProps, type ReactNode } from 'react';
 import { buttonClassName, buttonParts, type ButtonLook } from './button-classes';
 
 type ButtonContent = {
@@ -19,6 +19,13 @@ export type ButtonProps = Omit<ComponentProps<'button'>, 'className'> &
     loading?: boolean;
     /** What assistive technology announces while loading, such as "Saving…". */
     loadingLabel?: string;
+    /**
+     * Why the button cannot be used yet, such as "Choose a date first". The button then stays
+     * focusable but inactive (aria-disabled), so keyboard and screen reader users meet the reason:
+     * it becomes the button's description, and the admin panel shows it as the tooltip. Use
+     * `disabled` alone for brief states, such as while saving.
+     */
+    disabledReason?: string | null;
   };
 
 /**
@@ -35,19 +42,28 @@ export function Button({
   iconEnd,
   loading = false,
   loadingLabel,
+  disabledReason,
   className,
   children,
   onClick,
   ...rest
 }: ButtonProps) {
+  const reasonId = useId();
+  const unavailable = Boolean(disabledReason);
+  const describedBy = [rest['aria-describedby'], unavailable ? reasonId : null]
+    .filter(Boolean)
+    .join(' ');
   return (
     <button
       {...rest}
+      {...(unavailable ? { 'data-tip': disabledReason } : {})}
       className={buttonClassName({ variant, size, inverse, block, iconOnly }, className)}
+      disabled={unavailable ? undefined : rest.disabled}
       aria-busy={loading || undefined}
-      aria-disabled={loading || rest['aria-disabled'] || undefined}
+      aria-disabled={loading || unavailable || rest['aria-disabled'] || undefined}
+      aria-describedby={describedBy || undefined}
       onClick={(event) => {
-        if (loading) {
+        if (loading || unavailable) {
           event.preventDefault();
           return;
         }
@@ -61,6 +77,12 @@ export function Button({
       </span>
       {loading && <span className={buttonParts.spinner} aria-hidden="true" />}
       {loading && loadingLabel && <span className={buttonParts.srOnly}>{loadingLabel}</span>}
+      {/* Hidden, so it stays out of the button's name; aria-describedby still reads it. */}
+      {unavailable && (
+        <span id={reasonId} hidden>
+          {disabledReason}
+        </span>
+      )}
     </button>
   );
 }

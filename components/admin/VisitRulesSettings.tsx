@@ -285,11 +285,17 @@ export default function VisitRulesSettings({
             <Button
               type="button"
               variant="secondary"
-              disabled={
-                disabled ||
-                !newDate ||
-                draft.closedDates.length >= VISIT_CLOSED_DATES_MAX ||
-                draft.closedDates.includes(newDate)
+              disabled={disabled}
+              disabledReason={
+                disabled
+                  ? null
+                  : !newDate
+                    ? 'Choose a date first'
+                    : draft.closedDates.includes(newDate)
+                      ? 'This date is already listed'
+                      : draft.closedDates.length >= VISIT_CLOSED_DATES_MAX
+                        ? `Up to ${VISIT_CLOSED_DATES_MAX} closed dates`
+                        : null
               }
               onClick={() => {
                 change({ closedDates: [...draft.closedDates, newDate].sort() }, 'closedDates');
