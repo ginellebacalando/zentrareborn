@@ -1,5 +1,50 @@
 # Design change log
 
+## 27 November 2026 (night, later) — Motion: booking steps, home sections, Cash collected
+
+User task: the current booking step's number should pulse; The Archive, Events & Packages,
+Reviews, FAQ and Contact on the home page should feel more interactive while staying professional,
+everything very smooth; the Cash collected chart should animate like Total revenue.
+
+- **Booking steps** (`app/booking/_components/BookingRequest.module.css`): the current step's
+  number sends out a soft ring three times (1.4 s each), then rests with its green halo.
+- **The Archive** (`components/home/ArchiveSection.tsx`, `config/home.ts`): each photo now links to
+  its event page (weddings; christenings and reveals; debuts and birthdays) with "View photos"
+  beside the caption; the images are decorative because the link names the place. Photos open
+  upward like a curtain as the section scrolls in, one after another (`--motion-media`, 700 ms). On
+  desktop, pointing at or tabbing to a photo widens it, zooms it slightly and dims the others;
+  touch screens show "View photos" without hover.
+- **Events & Packages**: cards lift with a soft shadow and the photo zooms; photos open with the
+  same curtain. **Reviews**: cards lift with a tinted border; stars fill one after another.
+  **Contact**: cards lift and the icon fills.
+- **FAQ** (home section and FAQ page): answers glide open and closed, and the chevron sits in a ring
+  that fills when the question is hovered, focused or open. On the FAQ page closed answers are
+  `inert` instead of `hidden` so their height can animate; they stay out of the tab order and away
+  from assistive technology.
+- **Cash collected** (`DashboardCharts.tsx`, `chart-engine.ts`): the total counts up like the KPI
+  figures, with the exact amount for screen readers. Line charts (Cash collected, Bookings trend)
+  draw in from left to right the first time they appear, on the sparkline's 1.1 s and
+  `--motion-ease`; a period switch glides instead of replaying.
+- **Standard**: `--motion-media` (700 ms) added for photographs; the Motion row now says a repeating
+  cue stops within 5 seconds and hover effects also apply to keyboard focus
+  ([design-standard.md](design-standard.md)).
+- **Checks (local preview, headless Edge, 1440 px and 320 px)**: the step pulse has stopped by
+  5.5 s. Archive columns measured 254/593/254/254 px with the second photo pointed at, and the same
+  by keyboard focus; on a touch phone at 320 px "View photos" shows and nothing overflows. Event
+  cards lift 8 px with the image at 1.06; contact cards lift 4 px. Home FAQ answer heights while
+  opening: 70 → 99 → 108 → 111 px; FAQ page 21 → 159 → 234 → 247 px. Cash collected: the total
+  counted ₱112,826 → ₱138,000; measured every frame, the uncovered share of the line followed the
+  `--motion-ease` curve within 3% (52% at 375 ms, 88% at 701 ms, all of it by about 1.3 s),
+  already at its final height, ending where it ends with reduced motion; the 12-month switch did
+  not replay it; no page errors. Reduced motion: no pulse, curtain, widening, zoom or reveal.
+  Dark theme: the open FAQ ring is #8fd3b0 with a #121417 chevron (10.6:1). 200% text at 1440 px:
+  no sideways scrolling and no clipped captions or step labels.
+- **Open finding (existing)**: at 320 px with 200% text the home and booking pages scroll sideways
+  by 320 px because of the shared 20rem root minimum (`--layout-min-width`), logged earlier.
+- **Not checked**: real phones, a screen reader, Safari and Firefox (`::details-content` and
+  `interpolate-size` are Chromium-only, so there the FAQ opens instantly), the hovered contact card
+  in the dark theme (same colour pair as the FAQ ring), the live site.
+
 ## 27 November 2026 (night) — Payment guide, Find my payment page, Zeni greeting
 
 User task (panel feedback): Zeni did not answer where to pay (bank transfer or cash) or guide the

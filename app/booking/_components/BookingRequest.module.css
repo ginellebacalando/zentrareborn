@@ -182,7 +182,36 @@
 }
 
 .stepperItem[data-state='current'] .stepperNumber {
+  position: relative;
   box-shadow: 0 0 0 5px var(--glow);
+}
+
+/* The step just reached pulses a few times, a ring easing outward from its number, then rests
+   on its glow (well under five seconds, so nothing keeps moving while the form is filled in). */
+@media (prefers-reduced-motion: no-preference) {
+  .stepperItem[data-state='current'] .stepperNumber::after {
+    position: absolute;
+    inset: -1px;
+    border: 2px solid var(--action-primary);
+    border-radius: 50%;
+    content: '';
+    opacity: 0;
+    pointer-events: none;
+    animation: stepPulse 1400ms var(--motion-ease) 3;
+  }
+}
+
+@keyframes stepPulse {
+  0% {
+    opacity: 0.55;
+    scale: 1;
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    scale: 1.75;
+  }
 }
 
 .stepperCheck {

@@ -297,9 +297,11 @@ export default function FAQClient({ faqs }: { faqs: PublicFaq[] }) {
                             </span>
                           </button>
 
+                          {/* Closed answers are inert rather than hidden, so the height can glide
+                              open and closed; inert keeps them from the keyboard and screen readers. */}
                           <div
                             id={`answer-${faq.id}`}
-                            hidden={!isOpen}
+                            inert={!isOpen}
                             className={`grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${
                               isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                             }`}

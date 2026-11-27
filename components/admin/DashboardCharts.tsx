@@ -10,8 +10,12 @@ import {
 } from './ChartPrimitives';
 import type { DashboardInsights, DashboardMonth } from '@/lib/admin/dashboard-types';
 import { money } from '@/lib/admin/domain';
+import CountUp from './CountUp';
 import styles from './DashboardCharts.module.css';
 import admin from './admin.module.css';
+
+// Stable for CountUp: whole centavos at every frame, so the figure never shows half a centavo.
+const countingMoney = (cents: number) => money(Math.round(cents));
 
 /** The main chart (Metis' "Revenue overview"): cash received by receipt date, month by month. */
 function CashChart({ months }: { months: DashboardMonth[] }) {
@@ -24,7 +28,11 @@ function CashChart({ months }: { months: DashboardMonth[] }) {
           <h3 id={titleId}>Cash collected</h3>
           <span className={styles.scope}>By receipt date, voided receipts excluded</span>
         </div>
-        <span className={styles.total}>{money(total)}</span>
+        {/* The total counts up while the line draws in, like the Total revenue card. */}
+        <span className={styles.total}>
+          <span className={admin.srOnly}>{money(total)}</span>
+          <CountUp value={total} format={countingMoney} />
+        </span>
       </div>
       <AreaChart
         tall

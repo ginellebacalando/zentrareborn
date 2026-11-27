@@ -37,28 +37,29 @@ export const homeHeroSlides: readonly HomeHeroSlide[] = [
   },
 ];
 
-export type HomeArchivePhoto = { src: string; alt: string; caption: string };
+/** `href` opens the photo's category in the gallery (GALLERY_CATEGORY_SLUGS, config/event-photos.ts). */
+export type HomeArchivePhoto = { src: string; caption: string; href: string };
 
 export const homeArchivePhotos: readonly HomeArchivePhoto[] = [
   {
     src: '/images/events/weddings/wedding-2.webp',
-    alt: 'The outdoor stage and grounds prepared for a wedding',
     caption: 'Wedding',
+    href: '/gallery?category=weddings',
   },
   {
     src: '/images/events/christenings/christening-4.webp',
-    alt: 'An elegant christening setup',
     caption: 'Christening',
+    href: '/gallery?category=christenings-reveals',
   },
   {
     src: '/images/events/debuts-birthdays/birthday-2.webp',
-    alt: 'The indoor hall styled for a birthday celebration',
     caption: 'Birthday',
+    href: '/gallery?category=debuts-birthdays',
   },
   {
     src: '/images/events/gender-reveals/gender-reveal-4.webp',
-    alt: 'Guests celebrating a gender reveal',
     caption: 'Gender reveal',
+    href: '/gallery?category=christenings-reveals',
   },
 ];
 

@@ -244,8 +244,14 @@ the counting figures).
   cookie the panel layout reads, so a reload never flashes the other theme.
 - Booking cards and table rows arrive one after another (index in `--i`, capped).
 - KPI and month figures count up to their value (`CountUp.tsx`, framer-motion); the cards' accessible
-  names carry the exact values.
-- Charts draw in, sparklines reveal left to right, the donut centre fades between values.
+  names carry the exact values. The Cash collected total counts up the same way, with the exact
+  amount beside it for screen readers.
+- Charts draw in, sparklines reveal left to right, the donut centre fades between values. Line and
+  area charts (Cash collected, Bookings trend) draw themselves in from left to right the first time
+  they appear, on the sparklines' 1.1 s and `--motion-ease` curve, so the dashboard's lines move
+  together (`lineReveal` in `chart-engine.ts`). The line is uncovered at its final shape with the
+  area behind it; the axes are there from the start. A period switch or legend toggle glides the
+  line in place instead of replaying the reveal.
 - Buttons press down 1px; the filter panel slides open; skeleton bars shimmer while loading.
 
 ## Checks for admin changes

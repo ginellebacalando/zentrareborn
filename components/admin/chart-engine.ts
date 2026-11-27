@@ -5,6 +5,7 @@
  * also keeps an exact-value table for assistive technology (ChartPrimitives.tsx).
  */
 import {
+  animator,
   ArcElement,
   BarController,
   BarElement,
@@ -17,6 +18,7 @@ import {
   LineElement,
   PointElement,
   Tooltip,
+  type ChartOptions,
   type ChartType,
   type Plugin,
   type UpdateMode,
@@ -79,6 +81,89 @@ const crosshair: Plugin = {
   },
 };
 
+/** How long a line chart takes to draw in: the KPI sparklines' reveal (sparkReveal), 1.1 s. */
+const REVEAL_MS = 1100;
+type Reveal = {
+  start: number;
+  ease: (progress: number) => number;
+  clipped: boolean;
+  frame: number;
+};
+const reveals = new WeakMap<object, Reveal>();
+
+/**
+ * A CSS cubic-bezier() as a function of progress, so canvas motion keeps the page's own curve;
+ * anything else falls back to an ease-out.
+ */
+function cssEasing(value: string): (progress: number) => number {
+  const points = /cubic-bezier\(([^)]*)\)/.exec(value)?.[1].split(',').map(Number) ?? [];
+  if (points.length !== 4 || !points.every(Number.isFinite)) {
+    return (progress) => 1 - (1 - progress) ** 3;
+  }
+  const [x1, y1, x2, y2] = points;
+  const curve = (a: number, b: number, t: number) =>
+    3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
+  return (progress) => {
+    // x grows with t on every CSS curve, so halving the range finds the t for this moment.
+    let low = 0;
+    let high = 1;
+    for (let step = 0; step < 20; step++) {
+      const middle = (low + high) / 2;
+      if (curve(x1, x2, middle) < progress) low = middle;
+      else high = middle;
+    }
+    return curve(y1, y2, (low + high) / 2);
+  };
+}
+
+/**
+ * Chart.js redraws only while its own animations run, so the reveal asks for frames until the line
+ * is out. While Chart.js still animates it draws each frame itself; the check runs again next frame
+ * rather than trusting that draw, because Chart.js can finish its animations in that very frame
+ * without drawing, which would leave the line stuck short of its end.
+ */
+function keepDrawing(chart: Chart, reveal: Reveal) {
+  cancelAnimationFrame(reveal.frame);
+  reveal.frame = requestAnimationFrame(() => {
+    if (animator.running(chart)) keepDrawing(chart, reveal);
+    else chart.draw();
+  });
+}
+
+/**
+ * Line charts draw themselves in from left to right the first time they appear, on the sparklines'
+ * duration and --motion-ease curve, so the dashboard's lines move together. Only the series are
+ * uncovered; the axes are there from the start. Nothing moves under reduced motion.
+ */
+const lineReveal: Plugin = {
+  id: 'zentraLineReveal',
+  beforeDatasetsDraw(chart) {
+    if ((chart.config as { type?: string }).type !== 'line') return;
+    const now = performance.now();
+    let reveal = reveals.get(chart);
+    if (!reveal) {
+      const ease = cssEasing(getComputedStyle(chart.canvas).getPropertyValue('--motion-ease'));
+      reveal = { start: now, ease, clipped: false, frame: 0 };
+      reveals.set(chart, reveal);
+    }
+    const progress = prefersReducedMotion() ? 1 : Math.min(1, (now - reveal.start) / REVEAL_MS);
+    reveal.clipped = progress < 1;
+    if (!reveal.clipped) return;
+    const { ctx, chartArea } = chart;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, chartArea.left + chartArea.width * reveal.ease(progress), chart.height);
+    ctx.clip();
+    keepDrawing(chart, reveal);
+  },
+  afterDatasetsDraw(chart) {
+    if (reveals.get(chart)?.clipped) chart.ctx.restore();
+  },
+  afterDestroy(chart) {
+    cancelAnimationFrame(reveals.get(chart)?.frame ?? 0);
+  },
+};
+
 Chart.register(
   ArcElement,
   BarController,
@@ -91,6 +176,8 @@ Chart.register(
   LineElement,
   PointElement,
   Tooltip,
+  // The reveal restores its clip before the crosshair draws, so a guide is never cut off.
+  lineReveal,
   crosshair,
 );
 
@@ -173,6 +260,24 @@ export function prefersReducedMotion() {
   return typeof window !== 'undefined'
     ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
     : false;
+}
+
+/**
+ * A line chart's first draw is uncovered by `lineReveal` at its final shape, as the sparklines are,
+ * instead of rising from the baseline; afterwards each data change glides from where the line was.
+ */
+export function lineAnimations(): ChartOptions<'line'>['animations'] {
+  return {
+    y: {
+      from: (context: ScriptableContext<'line'>) => {
+        if (context.type !== 'data' || reveals.has(context.chart)) return undefined;
+        const value = context.parsed.y;
+        // A month without data (null) keeps Chart.js' own placement.
+        if (value === null || !Number.isFinite(value)) return undefined;
+        return context.chart.scales.y?.getPixelForValue(value);
+      },
+    },
+  };
 }
 
 /** Shared motion: a quick ease-out, bars and points arriving one after another. */

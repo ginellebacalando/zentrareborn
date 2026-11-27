@@ -328,6 +328,9 @@
   --motion-reveal: 360ms;
   --motion-rise: 0.75rem;
   --motion-stagger: 80ms;
+  /* Photographs: a curtain reveal as a section arrives, the slow zoom under the pointer and the
+     Archive's widening row on desktops. Long enough to feel calm, never needed to read anything. */
+  --motion-media: 700ms;
   /* The light/dark switch: the new theme sweeps in from the top (lib/theme-switch.ts). */
   --motion-theme: 500ms;
 
