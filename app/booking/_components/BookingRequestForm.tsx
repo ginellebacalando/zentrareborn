@@ -38,6 +38,7 @@ import {
   BOOKING_EXTRAS,
   BOOKING_PAYMENT_METHODS,
   BOOKING_REQUEST_RULES,
+  FIND_PAYMENT_PAGE_PATH,
   bookingTimeOptions,
   type BookingPaymentMethod,
 } from '@/config/booking';
@@ -573,6 +574,13 @@ export default function BookingRequestForm({
               Schedule an ocular visit
             </Link>{' '}
             to see the venue first.
+          </p>
+          <p className={styles.heroLink}>
+            Already booked?{' '}
+            <Link href={FIND_PAYMENT_PAGE_PATH} className={styles.introLink}>
+              Find my payment page
+            </Link>{' '}
+            to pay or send your receipt.
           </p>
         </div>
         <ol className={styles.howItWorks} aria-label="How booking works">

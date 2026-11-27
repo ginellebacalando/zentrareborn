@@ -49,6 +49,8 @@ export const AUTOMATION_ONLY_EVENTS = [
   'PAYMENT_PROOF_RECEIVED',
   'PAYMENT_PROOF_STAFF_ALERT',
   'PAYMENT_PROOF_WAITING',
+  // "Find my payment page" (/booking/pay): the client's own link, sent again on request.
+  'PAYMENT_LINK_RESENT',
   'STAFF_CALENDAR_PENDING',
   'STAFF_CALENDAR_REQUEST',
   'STAFF_CALENDAR_CANCEL',
@@ -96,6 +98,7 @@ export const AUTOMATION_JOB_LABELS: Record<string, string> = {
   PAYMENT_PROOF_RECEIVED: 'Payment screenshot received',
   PAYMENT_PROOF_STAFF_ALERT: 'Payment screenshot to verify (staff)',
   PAYMENT_PROOF_WAITING: 'Payment screenshot still waiting (staff)',
+  PAYMENT_LINK_RESENT: 'Payment page link sent again',
   CLIENT_PHOTO_REQUEST: 'Photo requested by staff',
   CLIENT_PHOTO_RETAKE: 'New photo asked for',
   CLIENT_PHOTO_REMINDER: 'Photo reminder, three days before',

@@ -1,0 +1,40 @@
+/* "Find my payment page": the booking page's card, fields and messages (BookingRequest.module.css)
+   with a short form between them. */
+.card {
+  align-content: start;
+}
+
+.lead {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.status {
+  margin: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--feedback-success-surface);
+  color: var(--feedback-success-ink);
+  font-size: var(--type-body);
+  line-height: var(--line-body);
+  overflow-wrap: anywhere;
+}
+
+.sentIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--feedback-success-ink);
+}

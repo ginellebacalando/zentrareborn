@@ -14,7 +14,12 @@ export const chatbotReceptionist = {
   title: 'ZENI',
   subtitle: 'Virtual concierge · Zion Events Place',
   launcherLabel: 'Chat with Zeni, the Zion Events Place virtual concierge',
-  launcherHint: 'Questions? Ask Zeni',
+  /** The greeting beside the launcher, once per visit (ChatLauncher.tsx). */
+  greeting: {
+    title: 'Hi, I’m Zeni!',
+    message: 'Need something? Message us here.',
+    close: 'Close Zeni’s greeting',
+  },
   placeholder: 'Ask about packages, dates or visits…',
   inputLabel: 'Message Zeni',
   inputHelp: 'Never share passwords, card numbers or ID details.',
@@ -135,6 +140,8 @@ type ZeniCopy = {
     viewPackages: string;
     contactPage: string;
     faqPage: string;
+    /** The "Find my payment page" link (/booking/pay) under a payment answer. */
+    findPaymentPage: string;
     startsAt: string;
   };
   suggestions: {
@@ -297,6 +304,7 @@ const en: ZeniCopy = {
     viewPackages: 'View packages',
     contactPage: 'Contact page',
     faqPage: 'All FAQs',
+    findPaymentPage: 'Find my payment page',
     startsAt: 'Starts at',
   },
   suggestions: {
@@ -487,6 +495,7 @@ const taglish: ZeniCopy = {
     viewPackages: 'Tingnan ang packages',
     contactPage: 'Contact page',
     faqPage: 'Lahat ng FAQ',
+    findPaymentPage: 'Hanapin ang payment page ko',
     startsAt: 'Simula sa',
   },
   suggestions: {

@@ -73,6 +73,17 @@ export const AUTOMATIONS: readonly AutomationDefinition[] = [
       'Sent once for each screenshot. While a screenshot waits, its date stays held, so an unanswered one keeps the date from other clients.',
   },
   {
+    key: 'payment-link-resent',
+    when: 'A client asks for their payment page on “Find my payment page”',
+    action: 'Email them the link again',
+    timing: 'instant',
+    events: ['PAYMENT_LINK_RESENT'],
+    canSwitchOff: false,
+    essential: 'Clients who lost the email need the link to pay or send their receipt.',
+    details:
+      'Sent only to the email on the booking, when the booking reference and that email match: at most once every 10 minutes and five times a day for each booking. The page answers the same whether or not anything matched.',
+  },
+  {
     key: 'payment-outcome',
     when: 'A payment is verified, rejected or recorded',
     action: 'Email the client the receipt, confirmation and calendar invite',

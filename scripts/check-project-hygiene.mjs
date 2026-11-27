@@ -61,7 +61,9 @@ const routeFileNames = new Set([
   'route.ts',
   'template.tsx',
 ]);
-const rootAppFiles = new Set(['favicon.ico', 'globals.css']);
+// favicon.ico, icon.svg and apple-icon.png are Next.js app icon file conventions (app-icons.md);
+// they are built by scripts/build-app-icons.mjs.
+const rootAppFiles = new Set(['favicon.ico', 'icon.svg', 'apple-icon.png', 'globals.css']);
 
 function inspectAppDirectory(directory, relativeParts = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {

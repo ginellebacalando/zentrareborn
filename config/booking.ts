@@ -25,6 +25,12 @@ export const BOOKING_PAYMENT_METHODS = [
 
 export type BookingPaymentMethod = (typeof BOOKING_PAYMENT_METHODS)[number]['value'];
 
+/**
+ * "Find my payment page": a client enters their booking reference and email and receives the
+ * link to their private payment page again (docs/booking-automation.md).
+ */
+export const FIND_PAYMENT_PAGE_PATH = '/booking/pay';
+
 /** Optional services the client can ask about; staff quote them separately. */
 export const BOOKING_EXTRAS = [
   'LED wall and ambient lighting',

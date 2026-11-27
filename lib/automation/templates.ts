@@ -860,6 +860,39 @@ export function eventReminder(booking: ReminderBooking, lead: 'week' | 'day'): R
   });
 }
 
+/**
+ * The link to a client's private payment page, sent again when they ask for it on "Find my payment
+ * page" (/booking/pay, docs/booking-automation.md). Only the booking's own email receives it.
+ */
+export function paymentLinkEmail(
+  booking: Pick<ReminderBooking, 'reference' | 'clientName' | 'eventType' | 'startsAt'> & {
+    paymentAction: { label: string; href: string };
+  },
+): RenderedEmail {
+  const name = greetingName(booking.clientName);
+  return renderEmail({
+    subject: `${BRAND.legalName} | Your payment page | ${booking.reference}`,
+    preheader: 'The link to your private payment page, as you asked.',
+    heading: 'Your payment page',
+    sections: [
+      {
+        paragraphs: [
+          name ? `Hello ${name},` : 'Hello,',
+          'Here is the link to your private payment page, as you asked. It shows your booking, what to pay and by when, and how to pay.',
+          'Keep this link to yourself: anyone who has it can see your booking. If you did not ask for it, you can ignore this email.',
+          `Questions? Call ${BRAND.contact.phone} or email ${BRAND.contact.email} and mention your booking reference.`,
+        ],
+        details: [
+          ['Booking reference', booking.reference],
+          ['Event', singleLine(booking.eventType)],
+          ['Event date', manilaDate(booking.startsAt)],
+        ],
+      },
+    ],
+    action: booking.paymentAction,
+  });
+}
+
 /** Reminds a client whose date is held that the payment deadline is near (booking automation). */
 export function holdReminder(
   booking: ReminderBooking & {

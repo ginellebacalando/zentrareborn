@@ -71,6 +71,20 @@ sends no referrer. It shows the booking, what to pay and by when, how to pay, th
 to write in the transfer note, the upload form while a payment is due, and the payments received
 with their receipts.
 
+**Find my payment page** (`/booking/pay`, 27 November 2026) gives a client who lost the email the
+link again: they enter the booking reference (spaces and case are forgiven) and their email, and
+when both match a booking, "Your payment page" (`PAYMENT_LINK_RESENT`, the automation "Email them
+the link again") goes to the email on that booking, never to another address. The page answers the
+same whether or not anything matched ("If that booking reference and … match a booking, the link is
+on its way"), every answer takes at least 400 ms so timing does not tell either, and a filled
+honeypot field or a cross-site post gets nothing. Limits: one email per booking every 10 minutes
+(repeats are not stored) and five a day, and 60 an hour for all bookings, beyond which the page
+asks to try again later. Without the site's address or `AUTH_SECRET` no link can be built: nothing
+is sent and the request shows as skipped in the automation history. It is linked from the footer,
+the booking page ("Already booked?") and Zeni's payment answers ([docs/chatbot.md](chatbot.md)).
+Code: `services/payment-link-requests.ts`, `app/api/client/payment-link/route.ts`,
+`app/booking/pay/page.tsx`; tests: `services/payment-link-requests.test.ts`.
+
 **Uploads** take one JPG, PNG, WebP or PDF up to 4 MB (large phone photos are scaled down in the
 browser first). The server checks the file's first bytes, never its name or the browser's claim,
 removes photo metadata (EXIF location and camera data) from JPEGs, and stores the file privately

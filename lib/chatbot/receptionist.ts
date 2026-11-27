@@ -16,7 +16,8 @@ import { redactPersonalData } from './redaction';
 import { detectLanguage } from './language';
 import { detectTopic, type ZeniTopic } from './topics';
 import { detailCardsFor, eventCardFor, formatStartsAt } from './cards';
-import { PAYMENT_METHODS_SOURCE_ID } from './payment-methods';
+import { FIND_PAYMENT_PAGE_PATH } from '@/config/booking';
+import { isPaymentGuideSource, PAYMENT_METHODS_SOURCE_ID } from './payment-methods';
 import { asksPermission, publishedRuleFor, requestSubject, unusualEventRequest } from './unusual';
 import { buildBookingLink, buildVisitLink, type BookingLinkInput } from './links';
 import type { ReceptionistConversation, ReceptionistIntent } from './conversation';
@@ -64,6 +65,12 @@ type PlanContext = {
   state: ReceptionistConversation;
   copy: Copy;
   sources: ChatSource[];
+  /**
+   * The payment guide (lib/chatbot/payment-methods.ts) except the accepted methods, which stay in
+   * `sources`. It answers questions about paying only, so it neither takes other questions nor
+   * changes how rare their words look to the general search.
+   */
+  paymentGuide: ChatSource[];
   intent: ReceptionistIntent;
   topic: ZeniTopic;
   text: string;
@@ -146,11 +153,26 @@ const QUESTION =
 const PAYMENT_METHODS =
   /\b(?:modes?|methods?)\s+of\s+payment|\bpayment\s+(?:modes?|methods?|options?)\b|\bpay\s+(?:by|with|via|using|through)\b|\b(?:accepts?|accepting|tumatanggap)\b.{0,30}\b(?:cards?|credit|debit|gcash|maya|cash|checks?|cheques?|bank)\b|\bhow\s+(?:do|can|should)\s+(?:i|we)\s+pay\b|\bpaano\s+(?:mag-?)?(?:bayad|magbayad)\b|\b(?:gcash|paymaya|maya|credit cards?|debit cards?|bank transfer|cheques?)\b/i;
 
+/**
+ * A question about paying: where or how, the proof of payment, cash, or Zion's account. It is
+ * answered from the payment guide when one of its answers fits (lib/chatbot/payment-methods.ts).
+ */
+const PAYMENT_WORDS =
+  /\b(?:pay|paid|paying|payment|payments|bayad|magbayad|bayaran|babayaran|nagbayad|magbabayad|hulog|maghulog|gcash|bank|cash|proof)\b/i;
+
 /** The older FAQ listing card and check payments, which other published information contradicts. */
 const unverifiedPaymentMethods = (source: ChatSource) =>
   source.kind === 'faq' &&
+  !isPaymentGuideSource(source) &&
   /payment/i.test(source.title) &&
   /\b(card|check|cheque)\b/i.test(source.text);
+
+/**
+ * Sources the general search never answers with: the older payment-methods list, and the payment
+ * guide, which answers questions about paying in reconciliationPlan only.
+ */
+const outsideGeneralSearch = (source: ChatSource) =>
+  unverifiedPaymentMethods(source) || isPaymentGuideSource(source);
 
 /** Payments and booking changes always keep a way to reach a person. */
 const needsStaffOption = (topic?: ZeniHelpTopic | null) =>
@@ -519,10 +541,20 @@ function reconciliationPlan(context: PlanContext): ReceptionistPlan | null {
     context.state.flags.needsHuman = true;
     return offerStaff(context, copy.paymentReview, 'payment_policy_conflict', conflict);
   }
-  // The methods the booking system offers now (Settings > Online payments) answer the question.
-  const offeredMethods = sources.find((source) => source.id === PAYMENT_METHODS_SOURCE_ID);
-  if (PAYMENT_METHODS.test(question) && offeredMethods)
-    return answerFromSources(context, [offeredMethods]);
+  // The payment guide from what the booking system offers now (Settings > Online payments)
+  // answers questions about paying: the methods, where and how, the proof, cash and the account.
+  const guide = context.paymentGuide;
+  const offeredMethods = guide.find((source) => source.id === PAYMENT_METHODS_SOURCE_ID);
+  if (offeredMethods && (PAYMENT_METHODS.test(question) || PAYMENT_WORDS.test(question))) {
+    const [best] = rankSources(redacted.replace(PLACEHOLDER, ' '), guide);
+    const answer = best?.source ?? (PAYMENT_METHODS.test(question) ? offeredMethods : undefined);
+    if (answer)
+      return answerFromSources(
+        context,
+        [answer],
+        guide.filter((source) => source !== answer),
+      );
+  }
   if (PAYMENT_METHODS.test(question) && sources.some(unverifiedPaymentMethods)) {
     // Without them the published lists of payment methods disagree, so Zeni gives the official
     // payment schedule and leaves the accepted methods to Sir Tim or staff (and logs it).
@@ -561,13 +593,13 @@ function groundedAnswer(context: PlanContext): ReceptionistPlan {
     rankSources(searchText, sources, previous)
       .map((match) => match.source)
       // The published payment-methods list disagrees with other information; staff confirm it.
-      .filter((source) => !unverifiedPaymentMethods(source)),
+      .filter((source) => !outsideGeneralSearch(source)),
   );
   const helpTopic = topicFromKeywords(text);
   const bare = text.split(/\s+/).length <= 3;
   // Related published facts the language model may combine into an answer.
   const related = candidateSources(searchText, sources, previous, MAX_PROMPT_SOURCES).filter(
-    (source) => !unverifiedPaymentMethods(source),
+    (source) => !outsideGeneralSearch(source),
   );
   if (!selected.length) {
     const gap: ZeniGap = { reason: 'no_source', question: redacted, topic };
@@ -623,7 +655,7 @@ function unusualRequestPlan(context: PlanContext, related: ChatSource[]): Recept
   const request = asksPermission(text) ? unusualEventRequest(text) : null;
   if (!request) return null;
   const found = publishedRuleFor(
-    sources.filter((source) => !unverifiedPaymentMethods(source)),
+    sources.filter((source) => !outsideGeneralSearch(source)),
     request,
   );
   // The answer is the rule's own sentence, with its source.
@@ -659,7 +691,7 @@ function unplacedMessagePlan(context: PlanContext): ReceptionistPlan {
     sources,
     state.lastKnowledgeQuestion.replace(PLACEHOLDER, ' '),
     MAX_PROMPT_SOURCES,
-  ).filter((source) => !unverifiedPaymentMethods(source));
+  ).filter((source) => !outsideGeneralSearch(source));
   const unusual = unusualRequestPlan(context, related);
   if (unusual) return unusual;
   const result = offerStaff(
@@ -723,11 +755,23 @@ function answerFromSources(
   const cards = detailCardsFor(selected, copy.labels);
   const aboutEvents =
     topic === 'packages' || cards.some((card) => card.kind !== 'facility') || primary.offering;
-  const links: ZeniLink[] = aboutEvents
-    ? [bookingLink(state, copy)]
-    : cards.some((card) => card.kind === 'facility')
-      ? [visitLink(state, copy, true)]
-      : [];
+  // A client asking where to pay or send a receipt already has a booking: they need its page.
+  const aboutTheirPayment =
+    isPaymentGuideSource(primary) && primary.id !== PAYMENT_METHODS_SOURCE_ID;
+  const links: ZeniLink[] = aboutTheirPayment
+    ? [
+        {
+          kind: 'page',
+          label: copy.labels.findPaymentPage,
+          href: FIND_PAYMENT_PAGE_PATH,
+          primary: true,
+        },
+      ]
+    : aboutEvents
+      ? [bookingLink(state, copy)]
+      : cards.some((card) => card.kind === 'facility')
+        ? [visitLink(state, copy, true)]
+        : [];
   const helpTopic = primary.topic ? zeniTopics.find((item) => item.id === primary.topic) : null;
   const followUp = copy.answerFollowUps[state.turn % copy.answerFollowUps.length];
   const body = excerpt ? excerpt.trim() : `${primary.title}.`;
@@ -882,10 +926,13 @@ export function planReceptionistTurn(
         : type
           ? 'unclear'
           : receptionistIntent(text);
+  const guideOnly = (source: ChatSource) =>
+    isPaymentGuideSource(source) && source.id !== PAYMENT_METHODS_SOURCE_ID;
   const context: PlanContext = {
     state,
     copy,
-    sources,
+    sources: sources.filter((source) => !guideOnly(source)),
+    paymentGuide: sources.filter(isPaymentGuideSource),
     intent,
     topic: detectTopic(text),
     text,
@@ -1025,9 +1072,10 @@ export function planReceptionistTurn(
     // the topic menu (docs/chatbot.md, "Unusual and unrelated questions").
     const searchText = context.redacted.replace(PLACEHOLDER, ' ');
     if (
-      rankSources(searchText, sources).some((match) => !unverifiedPaymentMethods(match.source)) ||
+      rankSources(searchText, sources).some((match) => !outsideGeneralSearch(match.source)) ||
       topicFromKeywords(text) ||
-      PAYMENT_METHODS.test(text)
+      PAYMENT_METHODS.test(text) ||
+      (context.paymentGuide.length > 0 && PAYMENT_WORDS.test(text))
     )
       return groundedAnswer(context);
     return unplacedMessagePlan(context);

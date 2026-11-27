@@ -65,25 +65,93 @@
   cursor: wait;
 }
 
-.hint {
-  max-width: min(14rem, calc(100vw - var(--launcher-size) - var(--space-12)));
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
+/* Once per visit: a short greeting beside the button that opens the chat; × closes it. */
+.greeting {
+  display: flex;
+  align-items: flex-start;
+  max-width: min(17rem, calc(100vw - var(--launcher-size) - var(--space-12)));
   border: 1px solid var(--chat-line);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-card);
   background: var(--chat-surface-card);
   color: var(--chat-ink);
+  box-shadow: 0 var(--space-2) var(--space-6)
+    color-mix(in srgb, var(--chat-shadow) 16%, transparent);
+  pointer-events: auto;
+  transform-origin: bottom right;
+  animation: greet var(--motion-normal) var(--motion-spring) both;
+}
+
+.greetingMessage {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  min-height: var(--layout-touch-target);
+  padding: var(--space-3) var(--space-1) var(--space-3) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-card) 0 0 var(--radius-card);
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-size: var(--type-small);
-  line-height: 1.35;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+
+.greetingMessage strong {
+  font-weight: var(--weight-semibold);
+}
+
+.greetingMessage span {
+  color: var(--chat-muted);
+}
+
+.greetingClose {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: var(--layout-touch-target);
+  height: var(--layout-touch-target);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--chat-muted);
+  cursor: pointer;
+}
+
+.greetingClose svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.greetingMessage:hover,
+.greetingClose:hover {
+  background: var(--chat-surface-subtle);
+}
+
+.greetingMessage:focus-visible,
+.greetingClose:focus-visible {
+  outline: 3px solid var(--chat-focus);
+  outline-offset: -3px;
+}
+
+@keyframes greet {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2)) scale(0.96);
+  }
 }
 
 :global(.dark) .dock {
   --chat-surface-card: var(--palette-charcoal-card);
+  --chat-surface-subtle: var(--palette-charcoal-raised);
   --chat-action: var(--palette-zentra-glow);
   --chat-action-hover: var(--palette-mint);
   --chat-on-action: var(--palette-charcoal);
   --chat-focus: var(--palette-zentra-glow);
   --chat-ink: var(--palette-charcoal-ink);
+  --chat-muted: var(--palette-charcoal-muted);
   --chat-line: var(--palette-charcoal-line);
   --chat-shadow: var(--palette-charcoal-shadow);
 }
@@ -92,6 +160,10 @@
   .launcher,
   .launcher .mark {
     transition: none;
+  }
+
+  .greeting {
+    animation: none;
   }
 
   .launcher:hover:not(:disabled),
