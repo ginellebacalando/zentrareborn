@@ -500,6 +500,19 @@
   font-size: var(--type-caption);
   line-height: 1.6;
 }
+/* What the last opening of the bell revealed, marked while the panel stays open. */
+.notificationNew {
+  display: inline-block;
+  margin-inline-start: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--admin-accent-soft);
+  color: var(--admin-accent-ink);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+}
 .notificationArrow {
   flex-shrink: 0;
   margin-top: var(--space-1);
@@ -540,6 +553,10 @@
   color: var(--admin-muted);
   font-size: var(--type-caption);
   text-align: center;
+}
+/* "Mark all as read" takes the footer's place without making it much taller. */
+.popoverFooter:has(button) {
+  padding-block: var(--space-1);
 }
 .profilePanel {
   width: 16rem;

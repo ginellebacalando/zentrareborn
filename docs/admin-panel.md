@@ -20,8 +20,9 @@ are removed.
 The notification bell sits to the left of the admin account. Its panel
 shows live summaries of pending requests, unanswered inquiries, flagged requests,
 delivery issues, and owner policy review, with links to the relevant modules.
-The badge counts actionable alert groups, not unread messages; no fabricated
-notification history or read receipts are shown. Updates refresh every minute
+The bell's and the Messages envelope's numbers count only what came in since that
+admin last opened them (see [Header numbers](#header-numbers--27-november-2026));
+no fabricated notification history is shown. Updates refresh every minute
 and when the bell is opened. The account control follows the old ZenTra design:
 a flat taupe circular photo/initial avatar, separate round chevron control, and a
 compact dropdown showing a larger avatar, truncated name and email, warm brown
@@ -202,6 +203,38 @@ for events and visits), on the booking page, in the Calendar's day schedule, in 
 remove it. Only roles with the `client-photos` action see photos. Photos are private, cleaned of
 hidden data, never sent to AI, and deleted after the retention period in Settings → Privacy and
 retention (default 30 days, to confirm with Zion). See [Client photos](client-photos.md).
+
+## Header numbers — 27 November 2026
+
+The bell's and the envelope's numbers used to count everything still open, so they never went
+away. Now each counts only what is new to that admin:
+
+- **Bell**: notices with something that arrived since this admin last opened the bell: a booking
+  request, a payment screenshot, an inquiry or, for super administrators, an email whose delivery
+  stopped (its last attempt counts). The policy review counts until the first look. Opening the
+  bell clears the number and marks those notices **New** while the panel stays open; the panel
+  reads the counts at that moment, so anything that arrived since the last refresh shows too.
+  Confirmations, cancellations, payments, contract changes and flags are the team's own records:
+  they stay in the list for 24 hours but never raise the number, so nobody's own work rings their
+  bell.
+- **Messages** (envelope): open inquiries received since this admin last opened Messages. Opening
+  Inquiries any way (envelope, sidebar, a link) clears it, because the list loads fresh then. An
+  inquiry that arrives while the page stays open keeps its number until the envelope is used,
+  which reloads the list.
+- **Mark all as read**: in the bell panel's footer while something is marked New; clears both
+  numbers. Nothing has to be marked one by one.
+- The lists do not change: pending requests and unanswered inquiries stay until the work is done.
+  Each admin has their own numbers, so one person's look does not clear them for the others. A
+  notice type turned off in Settings › Notifications leaves the list and the numbers.
+- **Storage**: `zion_admin_notification_seen` (`prisma/admin-notification-seen.sql`), one row per
+  admin with the times they last opened the bell and Messages, removed with the account. Install
+  with `npm run db:notification-seen:check -- --apply` (`--allow-remote` for a hosted database).
+  Until it is installed the header counts everything still open, as before.
+- **Code**: the rule in `lib/admin/header-numbers.ts` (browser-safe, so a number clears at once),
+  `lib/admin/notification-seen.ts`, `readNotificationSummary` in `lib/admin/service.ts`,
+  `POST /api/admin/notifications/seen` (`bell`, `messages` or `all`; it replies with the summary
+  as of the look) and `components/admin/AdminAccountControls.tsx`. Tests:
+  `lib/admin/notification-seen.test.ts`.
 
 ## Front desk and ocular visits — 25 November 2026
 

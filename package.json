@@ -15,7 +15,7 @@
     "test": "node scripts/check-removed-features.mjs && npm run test:chatbot && npm run test:admin && npm run test:automation && npm run test:developer",
     "test:chatbot": "node --conditions=react-server --import tsx --test --test-concurrency=1 lib/chatbot/retrieval.test.ts lib/chatbot/request.test.ts lib/chatbot/conversation.test.ts lib/chatbot/session-security.test.ts lib/chatbot/language.test.ts lib/chatbot/redaction.test.ts lib/chatbot/llm.test.ts lib/chatbot/prefill.test.ts lib/chatbot/integration.test.ts lib/chatbot/live-chat.test.ts lib/chatbot/unusual.test.ts lib/chatbot/payment-methods.test.ts services/orchestration/receptionist-calendar.test.ts",
     "db:receptionist:check": "node scripts/install-receptionist-schema.mjs",
-    "test:admin": "node --conditions=react-server --import tsx --test lib/admin/domain.test.ts lib/admin/integration.test.ts lib/admin/local-access.test.ts lib/admin/dashboard.test.ts lib/admin/analytics.test.ts lib/admin/website-activity.test.ts lib/admin/payment-proofs.test.ts lib/visit-rules.test.ts lib/admin/visits.test.ts lib/booking-quote.test.ts lib/booking-window.test.ts lib/event-packages.test.ts lib/phone-number.test.ts lib/booking-payment-choice.test.ts lib/admin/walk-in.test.ts lib/admin/rbac.test.ts lib/client-photos.test.ts",
+    "test:admin": "node --conditions=react-server --import tsx --test lib/admin/domain.test.ts lib/admin/integration.test.ts lib/admin/local-access.test.ts lib/admin/dashboard.test.ts lib/admin/analytics.test.ts lib/admin/website-activity.test.ts lib/admin/payment-proofs.test.ts lib/visit-rules.test.ts lib/admin/visits.test.ts lib/booking-quote.test.ts lib/booking-window.test.ts lib/event-packages.test.ts lib/phone-number.test.ts lib/booking-payment-choice.test.ts lib/admin/walk-in.test.ts lib/admin/rbac.test.ts lib/client-photos.test.ts lib/admin/notification-seen.test.ts",
     "db:admin:check": "node scripts/install-admin-schema.mjs",
     "db:automation:check": "node scripts/install-automation-schema.mjs",
     "db:booking-holds:check": "node scripts/install-booking-holds-schema.mjs",
@@ -37,7 +37,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:design": "node scripts/check-design-system.mjs",
-    "photos:placeholders": "tsx scripts/build-photo-placeholders.ts && prettier --write config/photo-placeholders.ts"
+    "photos:placeholders": "tsx scripts/build-photo-placeholders.ts && prettier --write config/photo-placeholders.ts",
+    "db:notification-seen:check": "node scripts/install-admin-notification-seen-schema.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",

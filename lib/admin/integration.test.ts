@@ -35,6 +35,7 @@ test(
     await db.exec(readFileSync('prisma/payment-proofs.sql', 'utf8'));
     await db.exec(readFileSync('prisma/payment-receipts.sql', 'utf8'));
     await db.exec(readFileSync('prisma/visits.sql', 'utf8'));
+    await db.exec(readFileSync('prisma/admin-notification-seen.sql', 'utf8'));
     const server = createServer(db);
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
@@ -203,8 +204,9 @@ test(
         ['pending-bookings', 'new-inquiries'],
       );
       assert.ok(alerts.notifications.every((notice) => notice.href.startsWith('/admin/')));
-      // The header's Messages icon shows how many inquiries wait.
-      assert.equal(alerts.notifications.find((notice) => notice.id === 'new-inquiries')?.count, 1);
+      // Before this admin opens Messages, its number shows every inquiry that waits.
+      assert.ok('newMessages' in alerts);
+      assert.equal(alerts.newMessages, 1);
       const insights = await adminRead('analytics', new URLSearchParams(), actor);
       assert.ok('analytics' in insights);
       assert.deepEqual(insights.analytics, {
@@ -628,7 +630,8 @@ test(
       const security = await db.query<{ relrowsecurity: boolean }>(
         "SELECT relrowsecurity FROM pg_class WHERE relname LIKE 'zion_admin_%' AND relkind='r'",
       );
-      assert.equal(security.rows.length, 6);
+      // Includes zion_admin_notification_seen (the header numbers, prisma/admin-notification-seen.sql).
+      assert.equal(security.rows.length, 7);
       assert.ok(security.rows.every((r) => r.relrowsecurity));
 
       const {

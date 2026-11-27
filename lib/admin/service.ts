@@ -13,6 +13,8 @@ import { assertAccess, assertSectionAccess } from './guards';
 import { canDo, requirementFor } from './permissions';
 import { readTeam, teamMutate } from './team';
 import { getAdminPreferences, readBookingRules, saveAdminPreferences } from './preferences';
+import { isNewSince } from './header-numbers';
+import { readSeenTimes } from './notification-seen';
 import { paymentDeadline, requiresPayment } from './booking-rules';
 import { readCatalog, saveCatalog } from './catalog';
 import {
@@ -306,6 +308,245 @@ async function submittedProof(tx: Tx, bookingId: string, proofId: string) {
   return { ...proof, method: proof.method as OnlinePaymentMethod };
 }
 
+/**
+ * The header's notification bell and Messages for one admin (docs/admin-panel.md, "Header
+ * numbers"): the open to-dos, which of them came in since this admin last opened the bell,
+ * and how many inquiries arrived since they last opened Messages.
+ */
+export async function readNotificationSummary(actor: AdminActor) {
+  assertSectionAccess(actor.role, 'notifications');
+  const openInquiries = { status: { in: ['NEW' as const, 'PENDING_RESPONSE' as const] } };
+  // What arrives from outside (requests, screenshots, inquiries, stopped emails) comes with the
+  // time of its newest item, so the bell can tell what came in since this admin last looked.
+  const [pendingRows, flagged, inquiryRows, deliveryRows, screenshotRows, p, seen] =
+    await Promise.all([
+      prisma.adminBooking.aggregate({
+        where: {
+          approval: 'PENDING',
+          reservation: 'REQUESTED',
+          verification: { not: 'FLAGGED' },
+        },
+        _count: { _all: true },
+        _max: { createdAt: true },
+      }),
+      prisma.adminBooking.count({ where: { verification: 'FLAGGED', reservation: 'REQUESTED' } }),
+      prisma.inquiry.aggregate({
+        where: openInquiries,
+        _count: { _all: true },
+        _max: { submittedAt: true },
+      }),
+      prisma.adminOutbox.aggregate({
+        where: { status: 'REVIEW_REQUIRED' },
+        _count: { _all: true },
+        // claimedAt is the last delivery attempt, when an older email may have stopped.
+        _max: { createdAt: true, claimedAt: true },
+      }),
+      prisma.adminPaymentProof.aggregate({
+        where: { status: 'SUBMITTED' },
+        _count: { _all: true },
+        _max: { createdAt: true },
+      }),
+      policy(),
+      readSeenTimes(actor.id),
+    ]);
+  const pending = pendingRows._count._all,
+    inquiries = inquiryRows._count._all,
+    deliveryIssues = deliveryRows._count._all,
+    screenshots = screenshotRows._count._all;
+  const { settings } = await getAdminPreferences();
+  const preferences = settings.admin.notifications;
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [recentEvents, contractUpdates, newMessages] = await Promise.all([
+    prisma.adminOutbox.groupBy({
+      by: ['event'],
+      _count: { _all: true },
+      where: {
+        createdAt: { gte: since },
+        event: {
+          in: [
+            'RESERVATION_CONFIRMED',
+            'CANCEL',
+            'CASH_RECEIPT',
+            'PAYMENT_VERIFIED',
+            'RECEIPT_VOIDED',
+          ],
+        },
+      },
+    }),
+    preferences.contractUpdates
+      ? prisma.auditLog.count({
+          where: { module: 'Contracts', timestamp: { gte: since }, source: 'zion-admin' },
+        })
+      : 0,
+    // Messages counts inquiries that came in after this admin last opened it.
+    preferences.customerInquiries
+      ? prisma.inquiry.count({
+          where: {
+            ...openInquiries,
+            ...(seen.messagesSeenAt ? { submittedAt: { gt: seen.messagesSeenAt } } : {}),
+          },
+        })
+      : 0,
+  ]);
+  const countEvents = (...events: string[]) =>
+    recentEvents
+      .filter((row) => events.includes(row.event))
+      .reduce((sum, row) => sum + row._count._all, 0);
+  const confirmations = countEvents('RESERVATION_CONFIRMED'),
+    cancellations = countEvents('CANCEL');
+  const paymentUpdates = countEvents('CASH_RECEIPT', 'PAYMENT_VERIFIED', 'RECEIPT_VOIDED');
+  const { claimedAt: lastAttemptAt, createdAt: queuedAt } = deliveryRows._max;
+  // Only arrivals can be new. Confirmations, cancellations, payments, contracts and flags are the
+  // team's own records: they stay in the list but never raise the number, so nobody's own work
+  // rings their bell. The policy review has no time and is new only until the first look.
+  const arrivedAt: Record<string, Date | null> = {
+    'pending-bookings': pendingRows._max.createdAt,
+    'payment-screenshots': screenshotRows._max.createdAt,
+    'new-inquiries': inquiryRows._max.submittedAt,
+    'delivery-issues':
+      lastAttemptAt && queuedAt && lastAttemptAt > queuedAt ? lastAttemptAt : queuedAt,
+    'policy-review': null,
+  };
+  const enabled: Record<string, boolean> = {
+    'pending-bookings': preferences.newBookingRequests,
+    'new-inquiries': preferences.customerInquiries,
+    'flagged-bookings': preferences.systemAlerts,
+    'delivery-issues': preferences.systemAlerts,
+    'policy-review': preferences.systemAlerts,
+    'booking-confirmations': preferences.bookingConfirmations,
+    'booking-cancellations': preferences.bookingCancellations,
+    'payment-screenshots': preferences.paymentUpdates,
+    'payment-updates': preferences.paymentUpdates,
+    'contract-updates': preferences.contractUpdates,
+  };
+  const notices = [
+    ...(pending
+      ? [
+          {
+            id: 'pending-bookings',
+            kind: 'booking' as const,
+            title: `${pending} booking ${pending === 1 ? 'request awaits' : 'requests await'} review`,
+            message: 'Verify the contact and review the event details.',
+            href: '/admin/bookings',
+          },
+        ]
+      : []),
+    ...(screenshots
+      ? [
+          {
+            id: 'payment-screenshots',
+            kind: 'payment' as const,
+            title: `${screenshots} payment ${screenshots === 1 ? 'screenshot' : 'screenshots'} to verify`,
+            message: 'Check each one against your GCash or bank records, then verify or reject it.',
+            href: '/admin/bookings?status=pending',
+          },
+        ]
+      : []),
+    ...(inquiries
+      ? [
+          {
+            id: 'new-inquiries',
+            kind: 'inquiry' as const,
+            title: `${inquiries} ${inquiries === 1 ? 'inquiry needs' : 'inquiries need'} a response`,
+            message: 'Review the latest event inquiries in your inbox.',
+            href: '/admin/inquiries',
+          },
+        ]
+      : []),
+    ...(flagged
+      ? [
+          {
+            id: 'flagged-bookings',
+            kind: 'warning' as const,
+            title: `${flagged} flagged ${flagged === 1 ? 'request needs' : 'requests need'} attention`,
+            message: 'Resolve verification concerns before approval.',
+            href: '/admin/bookings',
+          },
+        ]
+      : []),
+    // Delivery problems are fixed on Automation, a super administrator page.
+    ...(deliveryIssues && canDo(actor.role, 'run-automation')
+      ? [
+          {
+            id: 'delivery-issues',
+            kind: 'warning' as const,
+            title: 'Email delivery needs review',
+            message: `${deliveryIssues} ${deliveryIssues === 1 ? 'message needs' : 'messages need'} a delivery check on the Automation page.`,
+            href: '/admin/automation',
+          },
+        ]
+      : []),
+    ...(!p.reviewed && canDo(actor.role, 'change-settings')
+      ? [
+          {
+            id: 'policy-review',
+            kind: 'policy' as const,
+            title: 'Review your venue policy',
+            message: 'Review cash instructions and terms to enable confirmations.',
+            href: '/admin/settings',
+          },
+        ]
+      : []),
+    ...(confirmations
+      ? [
+          {
+            id: 'booking-confirmations',
+            kind: 'booking' as const,
+            title: `${confirmations} reservation ${confirmations === 1 ? 'confirmation' : 'confirmations'}`,
+            message: 'Booking confirmations recorded in the last 24 hours.',
+            href: '/admin/bookings',
+          },
+        ]
+      : []),
+    ...(cancellations
+      ? [
+          {
+            id: 'booking-cancellations',
+            kind: 'booking' as const,
+            title: `${cancellations} booking ${cancellations === 1 ? 'cancellation' : 'cancellations'}`,
+            message: 'Booking cancellations recorded in the last 24 hours.',
+            href: '/admin/bookings',
+          },
+        ]
+      : []),
+    ...(paymentUpdates
+      ? [
+          {
+            id: 'payment-updates',
+            kind: 'payment' as const,
+            title: `${paymentUpdates} payment ${paymentUpdates === 1 ? 'update' : 'updates'}`,
+            message: 'Payments and corrections recorded in the last 24 hours.',
+            href: '/admin/payments',
+          },
+        ]
+      : []),
+    ...(contractUpdates
+      ? [
+          {
+            id: 'contract-updates',
+            kind: 'contract' as const,
+            title: `${contractUpdates} contract ${contractUpdates === 1 ? 'update' : 'updates'}`,
+            message: 'Contract activity recorded in the last 24 hours.',
+            href: '/admin/contracts',
+          },
+        ]
+      : []),
+  ]
+    .filter((notice) => enabled[notice.id] ?? true)
+    .map((notice) => ({
+      ...notice,
+      // New to this admin: it came in after they last opened the bell.
+      isNew: notice.id in arrivedAt && isNewSince(arrivedAt[notice.id], seen.bellSeenAt),
+    }));
+  return {
+    notifications: notices,
+    /** The bell's number: what is new since this admin last opened it. */
+    unseen: notices.filter((notice) => notice.isNew).length,
+    /** The Messages number: inquiries that came in since this admin last opened it. */
+    newMessages,
+  };
+}
+
 export async function adminRead(section: string, params: URLSearchParams, actor: AdminActor) {
   // Every read needs its page in lib/admin/permissions.ts, whatever the route already checked.
   assertSectionAccess(actor.role, section);
@@ -315,181 +556,7 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
   // Polled by the dashboard's Website activity panel; read-only, so it has no POST operations.
   if (section === 'website-activity') return readWebsiteActivity();
   if (section === 'front-desk') return readFrontDesk(params, actor);
-  if (section === 'notifications') {
-    const [pending, flagged, inquiries, deliveryIssues, screenshots, p] = await Promise.all([
-      prisma.adminBooking.count({
-        where: { approval: 'PENDING', reservation: 'REQUESTED', verification: { not: 'FLAGGED' } },
-      }),
-      prisma.adminBooking.count({ where: { verification: 'FLAGGED', reservation: 'REQUESTED' } }),
-      prisma.inquiry.count({ where: { status: { in: ['NEW', 'PENDING_RESPONSE'] } } }),
-      prisma.adminOutbox.count({ where: { status: 'REVIEW_REQUIRED' } }),
-      prisma.adminPaymentProof.count({ where: { status: 'SUBMITTED' } }),
-      policy(),
-    ]);
-    const { settings } = await getAdminPreferences();
-    const preferences = settings.admin.notifications;
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [recentEvents, contractUpdates] = await Promise.all([
-      prisma.adminOutbox.groupBy({
-        by: ['event'],
-        _count: { _all: true },
-        where: {
-          createdAt: { gte: since },
-          event: {
-            in: [
-              'RESERVATION_CONFIRMED',
-              'CANCEL',
-              'CASH_RECEIPT',
-              'PAYMENT_VERIFIED',
-              'RECEIPT_VOIDED',
-            ],
-          },
-        },
-      }),
-      preferences.contractUpdates
-        ? prisma.auditLog.count({
-            where: { module: 'Contracts', timestamp: { gte: since }, source: 'zion-admin' },
-          })
-        : 0,
-    ]);
-    const countEvents = (...events: string[]) =>
-      recentEvents
-        .filter((row) => events.includes(row.event))
-        .reduce((sum, row) => sum + row._count._all, 0);
-    const confirmations = countEvents('RESERVATION_CONFIRMED'),
-      cancellations = countEvents('CANCEL');
-    const paymentUpdates = countEvents('CASH_RECEIPT', 'PAYMENT_VERIFIED', 'RECEIPT_VOIDED');
-    const enabled: Record<string, boolean> = {
-      'pending-bookings': preferences.newBookingRequests,
-      'new-inquiries': preferences.customerInquiries,
-      'flagged-bookings': preferences.systemAlerts,
-      'delivery-issues': preferences.systemAlerts,
-      'policy-review': preferences.systemAlerts,
-      'booking-confirmations': preferences.bookingConfirmations,
-      'booking-cancellations': preferences.bookingCancellations,
-      'payment-screenshots': preferences.paymentUpdates,
-      'payment-updates': preferences.paymentUpdates,
-      'contract-updates': preferences.contractUpdates,
-    };
-    return {
-      notifications: [
-        ...(pending
-          ? [
-              {
-                id: 'pending-bookings',
-                kind: 'booking' as const,
-                title: `${pending} booking ${pending === 1 ? 'request awaits' : 'requests await'} review`,
-                message: 'Verify the contact and review the event details.',
-                href: '/admin/bookings',
-              },
-            ]
-          : []),
-        ...(screenshots
-          ? [
-              {
-                id: 'payment-screenshots',
-                kind: 'payment' as const,
-                title: `${screenshots} payment ${screenshots === 1 ? 'screenshot' : 'screenshots'} to verify`,
-                message:
-                  'Check each one against your GCash or bank records, then verify or reject it.',
-                href: '/admin/bookings?status=pending',
-              },
-            ]
-          : []),
-        ...(inquiries
-          ? [
-              {
-                id: 'new-inquiries',
-                kind: 'inquiry' as const,
-                title: `${inquiries} ${inquiries === 1 ? 'inquiry needs' : 'inquiries need'} a response`,
-                message: 'Review the latest event inquiries in your inbox.',
-                href: '/admin/inquiries',
-                // The header's Messages icon shows this number.
-                count: inquiries,
-              },
-            ]
-          : []),
-        ...(flagged
-          ? [
-              {
-                id: 'flagged-bookings',
-                kind: 'warning' as const,
-                title: `${flagged} flagged ${flagged === 1 ? 'request needs' : 'requests need'} attention`,
-                message: 'Resolve verification concerns before approval.',
-                href: '/admin/bookings',
-              },
-            ]
-          : []),
-        // Delivery problems are fixed on Automation, a super administrator page.
-        ...(deliveryIssues && canDo(actor.role, 'run-automation')
-          ? [
-              {
-                id: 'delivery-issues',
-                kind: 'warning' as const,
-                title: 'Email delivery needs review',
-                message: `${deliveryIssues} ${deliveryIssues === 1 ? 'message needs' : 'messages need'} a delivery check on the Automation page.`,
-                href: '/admin/automation',
-              },
-            ]
-          : []),
-        ...(!p.reviewed && canDo(actor.role, 'change-settings')
-          ? [
-              {
-                id: 'policy-review',
-                kind: 'policy' as const,
-                title: 'Review your venue policy',
-                message: 'Review cash instructions and terms to enable confirmations.',
-                href: '/admin/settings',
-              },
-            ]
-          : []),
-        ...(confirmations
-          ? [
-              {
-                id: 'booking-confirmations',
-                kind: 'booking' as const,
-                title: `${confirmations} reservation ${confirmations === 1 ? 'confirmation' : 'confirmations'}`,
-                message: 'Booking confirmations recorded in the last 24 hours.',
-                href: '/admin/bookings',
-              },
-            ]
-          : []),
-        ...(cancellations
-          ? [
-              {
-                id: 'booking-cancellations',
-                kind: 'booking' as const,
-                title: `${cancellations} booking ${cancellations === 1 ? 'cancellation' : 'cancellations'}`,
-                message: 'Booking cancellations recorded in the last 24 hours.',
-                href: '/admin/bookings',
-              },
-            ]
-          : []),
-        ...(paymentUpdates
-          ? [
-              {
-                id: 'payment-updates',
-                kind: 'payment' as const,
-                title: `${paymentUpdates} payment ${paymentUpdates === 1 ? 'update' : 'updates'}`,
-                message: 'Payments and corrections recorded in the last 24 hours.',
-                href: '/admin/payments',
-              },
-            ]
-          : []),
-        ...(contractUpdates
-          ? [
-              {
-                id: 'contract-updates',
-                kind: 'contract' as const,
-                title: `${contractUpdates} contract ${contractUpdates === 1 ? 'update' : 'updates'}`,
-                message: 'Contract activity recorded in the last 24 hours.',
-                href: '/admin/contracts',
-              },
-            ]
-          : []),
-      ].filter((notice) => enabled[notice.id] ?? true),
-    };
-  }
+  if (section === 'notifications') return readNotificationSummary(actor);
   if (section === 'profile') return { user: actor };
   if (section === 'inquiries') {
     const page = Math.max(1, Math.min(10000, Math.trunc(Number(params.get('page'))) || 1));

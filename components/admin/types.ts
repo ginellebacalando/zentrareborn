@@ -203,7 +203,13 @@ export type AdminNotificationSummary = {
     message: string;
     href: string;
     kind: 'booking' | 'inquiry' | 'warning' | 'policy' | 'payment' | 'contract';
-    /** How many items the notice covers, where the header shows it (new inquiries). */
-    count?: number;
+    /** It came in after this admin last opened the bell. */
+    isNew: boolean;
   }[];
+  /** The bell's number: notices new since this admin last opened it. */
+  unseen: number;
+  /** The Messages number: open inquiries received since this admin last opened Messages. */
+  newMessages: number;
 };
+/** The reply to a look (app/api/admin/notifications/seen): the summary, and what it revealed. */
+export type AdminNotificationLook = AdminNotificationSummary & { wasNew: string[] };

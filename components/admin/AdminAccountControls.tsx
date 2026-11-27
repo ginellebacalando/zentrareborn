@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useEffectEvent, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
-import useSWR from 'swr';
+import useSWR, { mutate as refreshCache } from 'swr';
 import {
   ArrowUpRight,
   Bell,
@@ -24,11 +24,12 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
-import type { AdminNotificationSummary } from './types';
+import type { AdminNotificationLook, AdminNotificationSummary } from './types';
 import styles from './admin.module.css';
 import AdminAvatar from './AdminAvatar';
 import { useAdminTheme } from './AdminPreferencesProvider';
 import { Button, IconButton } from '@/components/shared/Button';
+import { afterLook, type SeenTarget } from '@/lib/admin/header-numbers';
 
 export type AdminHeaderUser = {
   fullName: string | null;
@@ -62,6 +63,7 @@ export default function AdminAccountControls({
   const [panel, setPanel] = useState<'notifications' | 'profile' | null>(null);
   const controlsRef = useRef<HTMLElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
+  const notificationPanelRef = useRef<HTMLElement>(null);
   const profileRef = useRef<HTMLButtonElement>(null);
   const displayName = user.fullName?.trim() || user.username;
   const roleLabel = user.role === 'SUPERADMIN' ? 'Super Administrator' : 'Administrator';
@@ -78,9 +80,56 @@ export default function AdminAccountControls({
     { refreshInterval: 60000, shouldRetryOnError: false },
   );
   const notifications = data?.notifications ?? [];
-  const newInquiries = error
-    ? 0
-    : (notifications.find((notice) => notice.id === 'new-inquiries')?.count ?? 0);
+  // Both numbers count only what came in since this admin last opened the bell or Messages
+  // (docs/admin-panel.md, "Header numbers"); the lists themselves stay until the work is done.
+  const unseen = error ? 0 : (data?.unseen ?? 0);
+  const newInquiries = error ? 0 : (data?.newMessages ?? 0);
+  /** The notices the last opening of the bell revealed, marked "New" while the panel is open. */
+  const [shownNew, setShownNew] = useState<ReadonlySet<string>>(() => new Set());
+  const markedNew = notifications.filter((notice) => notice.isNew || shownNew.has(notice.id));
+
+  /**
+   * Saves this admin's look at the bell, Messages or both, and clears that number at once. The
+   * reply is the summary read at the moment of the look, so anything that arrived since the last
+   * refresh appears too, marked "New".
+   */
+  function look(target: SeenTarget) {
+    const mark = (wasNew: string[]) => {
+      if (target === 'bell') setShownNew(new Set(wasNew));
+      if (target === 'all') setShownNew(new Set());
+    };
+    if (data) {
+      const { wasNew, ...after } = afterLook(data, target);
+      mark(wasNew);
+      void mutate(after, { revalidate: false });
+    }
+    void fetch('/api/admin/notifications/seen', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+    })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error);
+        const { wasNew, ...after } = body as AdminNotificationLook;
+        mark(wasNew);
+        await mutate(after, { revalidate: false });
+      })
+      // An unsaved look changes nothing on the server; the refresh shows the number again.
+      .catch(() => void mutate());
+  }
+
+  // Arriving on Messages is a look, however the page was opened, because its list loads fresh
+  // then. An inquiry that comes in while the page stays open keeps its number until the envelope
+  // is used, which reloads the list.
+  const onInquiries = pathname === '/admin/inquiries';
+  const hasSummary = data !== undefined;
+  const lookOnArrival = useEffectEvent(() => {
+    if (newInquiries > 0) look('messages');
+  });
+  useEffect(() => {
+    if (onInquiries && hasSummary) lookOnArrival();
+  }, [onInquiries, hasSummary]);
   /** One badge style for both header icons; long counts stop at 99+. */
   const badge = (count: number) => (
     <span className={styles.headerBadge} aria-hidden="true">
@@ -149,23 +198,26 @@ export default function AdminAccountControls({
           ref={bellRef}
           type="button"
           className={styles.headerIcon}
-          aria-label={`Notifications${notifications.length && !error ? `, ${notifications.length} ${notifications.length === 1 ? 'alert' : 'alerts'}` : ''}`}
+          aria-label={`Notifications${unseen ? `, ${unseen} new` : ''}`}
           data-tip="Notifications"
           aria-expanded={activePanel === 'notifications'}
           aria-controls="admin-notification-panel"
           onClick={() => {
-            setPanel(panel === 'notifications' ? null : 'notifications');
-            if (!user.mustChangePassword) void mutate();
+            const opening = panel !== 'notifications';
+            setPanel(opening ? 'notifications' : null);
+            if (opening && !user.mustChangePassword) look('bell');
           }}
         >
           <Bell size={20} aria-hidden="true" />
-          {notifications.length > 0 && !error && badge(notifications.length)}
+          {unseen > 0 && badge(unseen)}
         </button>
         {activePanel === 'notifications' && (
           <section
+            ref={notificationPanelRef}
             id="admin-notification-panel"
             className={`${styles.accountPopover} ${styles.notificationsPanel}`}
             aria-label="Notifications"
+            tabIndex={-1}
           >
             <div className={styles.popoverHeading}>
               <div>
@@ -223,7 +275,12 @@ export default function AdminAccountControls({
                         <Icon size={20} aria-hidden="true" />
                       </span>
                       <span className={styles.notificationText}>
-                        <strong>{notice.title}</strong>
+                        <strong>
+                          {notice.title}
+                          {markedNew.includes(notice) && (
+                            <span className={styles.notificationNew}>New</span>
+                          )}
+                        </strong>
                         <span>{notice.message}</span>
                       </span>
                       <ArrowUpRight
@@ -242,14 +299,41 @@ export default function AdminAccountControls({
                 </div>
               )}
             </div>
-            <div className={styles.popoverFooter}>Updates automatically while you work</div>
+            <div className={styles.popoverFooter}>
+              {markedNew.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  icon={<CheckCheck aria-hidden="true" />}
+                  onClick={() => {
+                    // The button goes once nothing is marked: keep the keyboard in the panel.
+                    notificationPanelRef.current?.focus();
+                    look('all');
+                  }}
+                >
+                  Mark all as read
+                </Button>
+              ) : (
+                'Updates automatically while you work'
+              )}
+            </div>
           </section>
         )}
       </div>
       <Link
         href="/admin/inquiries"
         className={`${styles.headerIcon} ${styles.messagesLink}`}
-        onClick={navigate}
+        onClick={(event) => {
+          // On Messages already, the envelope reloads its list, which counts as a look.
+          if (onInquiries) {
+            void refreshCache(
+              (key) => typeof key === 'string' && key.startsWith('/api/admin/inquiries'),
+            );
+            if (newInquiries > 0) look('messages');
+          }
+          navigate(event);
+        }}
         aria-label={
           newInquiries
             ? `Messages, ${newInquiries} new ${newInquiries === 1 ? 'inquiry' : 'inquiries'}`

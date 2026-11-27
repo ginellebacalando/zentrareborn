@@ -1,5 +1,41 @@
 # Design change log
 
+## 27 November 2026 (night) — Header numbers clear once seen
+
+User task: the admin header's bell (5) and envelope (1) numbers never went away and felt like
+spam. Approved approach: each number counts only what is new since that admin last looked,
+opening clears it, it comes back only for new arrivals, the lists stay, each admin has their own
+numbers, and "Mark all as read" is a shortcut. Details in [docs/admin-panel.md](admin-panel.md),
+"Header numbers".
+
+- **Header** (`components/admin/AdminAccountControls.tsx`, `admin.module.css`): the bell counts
+  notices with something new since this admin last opened it (booking requests, payment
+  screenshots, inquiries, stopped emails); opening it clears the number and marks those notices
+  **New** (accent pill, caption size) while the panel stays open. The envelope counts inquiries
+  since this admin last opened Messages; arriving on Inquiries by any route clears it. **Mark all
+  as read** appears in the panel footer while something is marked New and clears both numbers;
+  focus moves to the panel so the keyboard stays inside it. Confirmations, cancellations,
+  payments, contract changes and flags stay listed but never raise the number.
+- **Data**: per-admin table `zion_admin_notification_seen` (`prisma/admin-notification-seen.sql`)
+  and `POST /api/admin/notifications/seen`.
+- **Checks (local preview, headless Edge)**: a first-time admin saw bell 2 and envelope 2.
+  Opening the bell cleared only the bell, marked both rows New and showed Mark all as read;
+  reopening showed no marks and the usual footer; the bell stayed clear after a reload; arriving
+  on Inquiries cleared the envelope. A new inquiry brought back bell 1 and envelope 1, and opening
+  the bell marked only the inquiries row. Mark all as read with Enter cleared both, kept the panel
+  open with a visible focus ring on it, and Escape returned focus to the bell; both stayed clear
+  after a reload. At 320 px in the dark theme the panel spans 8–312 px with no sideways scrolling,
+  the footer button is 44 px tall and the New tag is #8fd3b0 on #1c2a25 at 12 px. At 200% text
+  (1440 px) the panel and footer fit (bottom at 742 of 900 px). On an open Inquiries page a new
+  inquiry raised the envelope to 1 and kept it across the minute refresh until the envelope was
+  used, which also reloaded the list.
+- **Tests**: `lib/admin/notification-seen.test.ts` (the rule, per-admin numbers, arrivals only,
+  Mark all as read, a notice type turned off, removal with the account, before installation); the
+  admin integration test also checks the new table's row security.
+- **Not checked**: real phones, a screen reader, two admins signed in at once in browsers (the
+  database test covers separate numbers), the hosted database (the table is not installed there
+  yet). Phones up to 400 px already hide the envelope; the bell covers inquiries there.
+
 ## 27 November 2026 (evening) — One button height on event pages, Zeni opens smoothly
 
 User task (screenshots): Zeni avoided "ano mga possible mode of payment?" and did not know what

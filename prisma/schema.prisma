@@ -175,6 +175,16 @@ model AdminEventArrival {
   checkedInBy String
   @@map("zion_event_arrivals")
 }
+// When each admin last opened the header's notification bell and Messages: their numbers count
+// only what came in after (docs/admin-panel.md, "Header numbers").
+model AdminNotificationSeen {
+  userId String @id
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bellSeenAt DateTime?
+  messagesSeenAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@map("zion_admin_notification_seen")
+}
 model AdminContract {
   id String @id @default(cuid())
   bookingId String
@@ -497,6 +507,7 @@ model User {
   accountTokens              AccountToken[]
   accountSessions            AccountSession[]
   passwordHistory            PasswordHistory[]
+  notificationSeen           AdminNotificationSeen?
 
   @@map("users")
 }
