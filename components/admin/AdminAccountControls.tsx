@@ -78,7 +78,15 @@ export default function AdminAccountControls({
     { refreshInterval: 60000, shouldRetryOnError: false },
   );
   const notifications = data?.notifications ?? [];
-  const newInquiries = !error && notifications.some((notice) => notice.id === 'new-inquiries');
+  const newInquiries = error
+    ? 0
+    : (notifications.find((notice) => notice.id === 'new-inquiries')?.count ?? 0);
+  /** One badge style for both header icons; long counts stop at 99+. */
+  const badge = (count: number) => (
+    <span className={styles.headerBadge} aria-hidden="true">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
 
   useEffect(() => {
     if (!activePanel) return;
@@ -151,11 +159,7 @@ export default function AdminAccountControls({
           }}
         >
           <Bell size={20} aria-hidden="true" />
-          {notifications.length > 0 && !error && (
-            <span className={styles.notificationCount} aria-hidden="true">
-              {notifications.length}
-            </span>
-          )}
+          {notifications.length > 0 && !error && badge(notifications.length)}
         </button>
         {activePanel === 'notifications' && (
           <section
@@ -246,14 +250,20 @@ export default function AdminAccountControls({
         href="/admin/inquiries"
         className={`${styles.headerIcon} ${styles.messagesLink}`}
         onClick={navigate}
-        aria-label={newInquiries ? 'Messages, new inquiries waiting' : 'Messages'}
+        aria-label={
+          newInquiries
+            ? `Messages, ${newInquiries} new ${newInquiries === 1 ? 'inquiry' : 'inquiries'}`
+            : 'Messages'
+        }
         data-tip="Messages"
         aria-current={pathname === '/admin/inquiries' ? 'page' : undefined}
       >
         <Mail size={20} aria-hidden="true" />
-        {newInquiries && <span className={styles.headerDot} aria-hidden="true" />}
+        {newInquiries > 0 && badge(newInquiries)}
       </Link>
 
+      {/* Separates the page tools from the account. */}
+      <span className={styles.headerDivider} aria-hidden="true" />
       <div className={styles.accountPopoverAnchor}>
         <button
           ref={profileRef}

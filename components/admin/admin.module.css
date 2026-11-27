@@ -299,7 +299,13 @@
   position: relative;
   min-width: 0;
 }
-.headerIcon {
+/*
+ * Header tools (theme, notifications, messages) share one look: a 44px round button, a 20px icon
+ * in the muted ink that darkens on hover, and one badge style. The theme button shows its state
+ * by its icon (moon or sun), not by a fill the other tools do not have. Two classes, so the
+ * Messages link takes the same colour despite the link reset (.root a).
+ */
+.root .headerIcon {
   position: relative;
   display: grid;
   place-items: center;
@@ -309,59 +315,66 @@
   border: 0;
   border-radius: 50%;
   background: transparent;
-  color: var(--admin-ink);
-  transition: background var(--motion-fast) var(--motion-ease);
+  color: var(--admin-muted);
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
 }
-.headerIcon:hover,
-.headerIcon[aria-expanded='true'],
-.headerIcon[aria-current='page'] {
+.root .headerIcon:hover,
+.root .headerIcon[aria-expanded='true'],
+.root .headerIcon[aria-current='page'] {
   background: var(--admin-surface-subtle);
+  color: var(--admin-ink);
 }
-.headerIcon[aria-pressed='true'] {
-  background: var(--admin-accent-soft);
-}
-.notificationCount {
+/* A count badge whose centre sits on the 20px icon's top-right corner, 12px in from the edges. */
+.headerBadge {
   position: absolute;
-  top: 0.125rem;
-  right: 0;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 var(--space-1);
+  top: calc((var(--layout-touch-target) - 1.25rem) / 2);
+  right: calc((var(--layout-touch-target) - 1.25rem) / 2);
   display: grid;
   place-items: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 var(--space-1);
   border-radius: 999px;
   background: var(--admin-badge);
   color: var(--admin-on-badge);
   box-shadow: 0 0 0 2px var(--admin-surface-card);
   font-size: var(--type-caption);
   font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
   line-height: 1;
+  transform: translate(50%, -50%);
 }
-.headerDot {
-  position: absolute;
-  top: 0.625rem;
-  right: 0.625rem;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--admin-badge);
-  box-shadow: 0 0 0 2px var(--admin-surface-card);
+/* Separates the page tools from the account. */
+.headerDivider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 1.5rem;
+  margin-inline: var(--space-2);
+  background: var(--admin-divider);
 }
+/* The account: avatar, role and chevron in a pill as tall as the tools, with the same hover. The
+   avatar sits as far from the pill's left edge as from its top and bottom. */
 .accountButton {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-left: var(--space-2);
-  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
-  border: 1px solid var(--admin-divider);
+  min-height: var(--layout-touch-target);
+  padding: 0 var(--space-3) 0 calc((var(--layout-touch-target) - 2rem) / 2);
+  border: 0;
   border-radius: 999px;
-  background: var(--admin-surface-card);
+  background: transparent;
   color: var(--admin-ink);
-  transition: border-color var(--motion-fast) var(--motion-ease);
+  transition: background var(--motion-fast) var(--motion-ease);
 }
-.accountButton:hover,
-.accountButton[aria-expanded='true'] {
-  border-color: var(--admin-border);
+.root .accountButton:hover,
+.root .accountButton[aria-expanded='true'] {
+  background: var(--admin-surface-subtle);
+}
+.accountButton .profileAvatar {
+  width: 2rem;
+  height: 2rem;
 }
 .accountRole {
   font-size: var(--type-small);
@@ -370,6 +383,7 @@
 }
 .accountChevron {
   flex-shrink: 0;
+  color: var(--admin-muted);
   transition: transform var(--motion-normal) var(--motion-ease);
 }
 .accountButton[aria-expanded='true'] .accountChevron {
@@ -3243,17 +3257,20 @@
   .root .wordmark :global(.zentra-wordmark__name) {
     font-size: 1.25rem;
   }
+  /* Phones: the account is its avatar alone, as round as the tools; no divider. */
   .accountButton {
-    margin-left: 0;
-    padding: var(--space-1);
-    border-color: transparent;
+    padding: 0 calc((var(--layout-touch-target) - 2rem) / 2);
+  }
+  .headerDivider {
+    display: none;
   }
   .detailActions > * {
     flex: 1 1 100%;
   }
 }
 @media (max-width: 400px) {
-  .messagesLink {
+  /* Two classes, to outrank the header tools' own display rule. */
+  .root .messagesLink {
     display: none;
   }
   .statusGrid {

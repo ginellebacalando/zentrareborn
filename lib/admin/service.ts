@@ -403,6 +403,8 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
                 title: `${inquiries} ${inquiries === 1 ? 'inquiry needs' : 'inquiries need'} a response`,
                 message: 'Review the latest event inquiries in your inbox.',
                 href: '/admin/inquiries',
+                // The header's Messages icon shows this number.
+                count: inquiries,
               },
             ]
           : []),

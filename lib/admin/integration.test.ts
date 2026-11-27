@@ -203,6 +203,8 @@ test(
         ['pending-bookings', 'new-inquiries'],
       );
       assert.ok(alerts.notifications.every((notice) => notice.href.startsWith('/admin/')));
+      // The header's Messages icon shows how many inquiries wait.
+      assert.equal(alerts.notifications.find((notice) => notice.id === 'new-inquiries')?.count, 1);
       const insights = await adminRead('analytics', new URLSearchParams(), actor);
       assert.ok('analytics' in insights);
       assert.deepEqual(insights.analytics, {

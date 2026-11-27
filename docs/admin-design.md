@@ -98,7 +98,12 @@ in the admin block of `styles/tokens.css`; no component needs editing.
 
 ## Layout and components
 
-- **Header:** wordmark left; theme, notifications, messages and the account menu right.
+- **Header:** wordmark left; theme, notifications, messages and the account menu right. The three
+  tools are 44px round buttons with 20px icons in the muted ink, darker on hover; the theme button
+  shows its state by its icon, not a fill. Notifications and Messages (new inquiries) share one red
+  count badge, centered on the icon's top-right corner ("99+" past 99). A thin divider separates
+  the account: a 44px pill (32px avatar, role, chevron) with the same hover fill. Everything shares
+  one centre line. Phones show the avatar alone and no divider; Messages hides at 400px and below.
 - **Sidebar** (`components/admin/navigation.ts`, `AdminShell.tsx`): Dashboard, then groups with a
   short muted label: **Events** (Bookings, Front desk, Calendar, Contracts, Payments), **Clients**
   (Inquiries, Live chat, Zeni), **Business** (Packages, Reports, Team); Automation, Activity log and

@@ -1,5 +1,28 @@
 # Design change log
 
+## 27 November 2026 (late morning, later) — Admin header: one size, one badge, one line
+
+User task: the header's icons and the "Super admin" button did not line up or match in size; make
+them look consistent and professional.
+
+- **Tools** (`components/admin/admin.module.css`, `AdminAccountControls.tsx`): theme, notifications
+  and messages are identical 44px round buttons with 20px icons in the muted ink (darker on hover).
+  The theme button no longer gets a coloured fill when dark mode is on, and the Messages link no
+  longer inherits a darker colour than the others.
+- **Badges:** the bell's count and the envelope's dot were different shapes in different places;
+  both are now the same 18px red count badge centered on the icon's top-right corner. The envelope
+  shows how many inquiries wait (`count` on the new-inquiries notice, `lib/admin/service.ts`), and
+  its name says so for screen readers ("Messages, 2 new inquiries").
+- **Account:** the "Super admin" button is a borderless 44px pill like the tools (32px avatar
+  spaced evenly inside, muted chevron, the same hover fill), after a thin divider. Phones keep the
+  avatar alone.
+
+Checked on the local preview in headless Edge, light and dark: every tool 44 × 44 with a 20px
+icon, the account 44px tall, all on one centre line; both badges exactly on their icon's corner;
+the account menu's open fill; header widths 320, 390, 430, 600 and 768px (Messages hidden at
+400px and below as before, no overflow). Not checked: a real phone, Safari and Firefox, and a
+screen reader.
+
 ## 27 November 2026 (late morning) — Admin: centered dialogs and a compact Calendar on phones
 
 User task: the Approve dialog opened in the top-left corner instead of the middle, the Calendar's

@@ -197,5 +197,7 @@ export type AdminNotificationSummary = {
     message: string;
     href: string;
     kind: 'booking' | 'inquiry' | 'warning' | 'policy' | 'payment' | 'contract';
+    /** How many items the notice covers, where the header shows it (new inquiries). */
+    count?: number;
   }[];
 };
