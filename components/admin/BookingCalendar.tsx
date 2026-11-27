@@ -1,5 +1,12 @@
 'use client';
-import { useEffect, useId, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import {
@@ -45,7 +52,7 @@ type Kind = DisplayStatus | 'visit';
 type Entry =
   | { kind: 'booking'; id: string; at: string; booking: Booking; status: DisplayStatus }
   | { kind: 'visit'; id: string; at: string; visit: CalendarVisit };
-type Preview = { entry: Entry; top: number; left: number; opener: HTMLElement };
+type Preview = { entry: Entry; opener: HTMLElement };
 
 /** Chip height and the day number and "+N more" lines, for how many chips a day can show. */
 const CHIP_PX = 22;
@@ -75,12 +82,8 @@ export default function BookingCalendar({
   const gridRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDialogElement>(null);
   const [{ year, month }, setMonth] = useState(() => manilaMonth());
-  const [view, setView] = useState<'month' | 'list'>(() =>
-    // Phones open the list: a month of chips is too small to read there.
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 47.99rem)').matches
-      ? 'list'
-      : 'month',
-  );
+  // Every screen opens the month; phones show it compact, with dots instead of chips.
+  const [view, setView] = useState<'month' | 'list'>('month');
   const [hidden, setHidden] = useState<Set<Kind>>(() => new Set<Kind>(['cancelled']));
   const [selected, setSelected] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -179,14 +182,7 @@ export default function BookingCalendar({
 
   function openPreview(entry: Entry, event: ReactMouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const width = 320;
-    setPreview({
-      entry,
-      opener: event.currentTarget,
-      top: Math.min(rect.bottom + 6, window.innerHeight - 260),
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
-    });
+    setPreview({ entry, opener: event.currentTarget });
   }
 
   function closePreview() {
@@ -379,7 +375,7 @@ export default function BookingCalendar({
             className={cal.grid}
             role="table"
             aria-labelledby={`${id}-month`}
-            style={{ gridTemplateRows: `auto repeat(${cells.length / 7}, minmax(0, 1fr))` }}
+            style={{ '--weeks': cells.length / 7 } as CSSProperties}
           >
             <div role="row" className={cal.weekdays}>
               {WEEKDAYS.map((name) => (
@@ -436,6 +432,18 @@ export default function BookingCalendar({
                         <button type="button" className={cal.more} onClick={() => setSelected(key)}>
                           +{extra} more
                         </button>
+                      )}
+                      {/* Phones: a dot per event instead of chips; the day's name gives the count. */}
+                      {items.length > 0 && (
+                        <span className={cal.dots} aria-hidden="true">
+                          {items.slice(0, 3).map((entry) => (
+                            <span
+                              key={`${entry.kind}-${entry.id}`}
+                              className={`${cal.dot} ${entry.kind === 'visit' ? cal.visitDot : statusTone[entry.status]}`}
+                            />
+                          ))}
+                          {items.length > 3 && <span className={cal.dotMore}>+</span>}
+                        </span>
                       )}
                     </div>
                   );
@@ -504,7 +512,6 @@ export default function BookingCalendar({
         <dialog
           ref={previewRef}
           className={cal.preview}
-          style={{ top: preview.top, left: preview.left }}
           aria-labelledby={`${id}-preview`}
           onCancel={(event) => {
             event.preventDefault();

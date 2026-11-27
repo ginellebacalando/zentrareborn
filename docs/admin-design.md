@@ -87,7 +87,8 @@ ZENTRA system, aligned with the main website, and set these rules:
 - **Page header** (`AdminPageHeader.tsx`, every page): the title, at most one short status line
   (Team: "3 accounts · 1 invitation waiting"; Settings: "Last saved …"; Automation: email and last
   run), and the page's actions on the right with at most one primary. Filters or a toolbar follow,
-  then the content.
+  then the content. On phones the actions move under the title, except a lone icon action such as
+  Refresh, which stays beside it.
 - **Icons:** Lucide only (the Flaticon and Material Symbols fonts were removed), 16px beside text
   and 20px on their own, one stroke weight (1.75) set in `admin.module.css`.
 
@@ -130,6 +131,10 @@ in the admin block of `styles/tokens.css`; no component needs editing.
   menu toggle, collapsed sidebar links, calendar and report arrows, dialog close buttons): a dark
   label on hover after a short pause, at once on keyboard focus, hidden while the control's menu is
   open. The accessible name stays the aria-label. The website's icon buttons get the same tooltip.
+- **Dialogs:** native modal dialogs, centered on every screen over a dimmed page; Escape closes them
+  and focus returns to the control that opened them. Tailwind's base reset (`app/globals.css`)
+  removes the browser's centering margin, so every dialog class sets `margin: auto` again with
+  `position: fixed` and `inset: 0` (`Overlays.module.css`, `.catalogDialog`, the Calendar preview).
 - **Team** (`TeamPanel.tsx`): a table on wide screens; on phones each person is a block with
   labelled lines (Role, Status, Last sign-in).
 - **Rows and sections:** every table row highlights under the pointer; dashboard "Coming up" rows open
@@ -156,7 +161,7 @@ Each booking opens on its own page, `/admin/bookings/[reference]` (`BookingPage.
   Verify payment (main, opens the Payments tab) and Extend deadline; Confirmed → Record payment
   while a balance remains, then Complete event once the event has ended. Edit details, View
   packages, the flag and Cancel booking are in "More". Every decision asks for its note in a small
-  dialog (`ActionDialog.tsx`; 5 to 2,000 characters, as the server requires).
+  centered dialog (`ActionDialog.tsx`; 5 to 2,000 characters, as the server requires).
 - **Overview:** two columns on desktop: event, client (contact verification as a badge beside the
   phone, with "Mark as verified") and staff notes on the left; the payment summary (paid, total,
   balance, due date, progress) and any screenshot waiting to verify on the right. Guests read "312
@@ -184,7 +189,10 @@ Each day shows its events as chips with the time and a short label, coloured by 
 visits outlined), as many as fit, then "+N more"; the month takes the height the screen leaves, so
 it fits without scrolling at 1366 × 768 and 1920 × 1080. Today has a soft tint and past days are
 lighter. Choosing a day shows its schedule in the side panel, which otherwise shows today and what
-is coming up; an event chip opens a small preview with "Open booking". Phones open the List view.
+is coming up; an event chip opens a preview with "Open booking", centered like every dialog. On
+phones the month is compact: each day shows its number and up to three dots in its events' status
+colours (visits outlined, "+" for more), choosing a day lists its events below the month, and the
+status chips scroll sideways in one row; the List view is one tap away.
 The header says once that all times are Manila time. Today is unavailable, with its reason, while
 the current month shows. A venue filter appears beside the search once the bookings use more than
 one venue; every booking is at Zion Events Place today, so it stays hidden.

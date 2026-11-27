@@ -854,6 +854,11 @@
   gap: var(--space-3) var(--space-6);
   margin-bottom: var(--space-6);
 }
+/* A lone icon action, such as Refresh, stays beside the title on phones instead of taking a row. */
+.pageHeading:has(> .actions > [data-tip]:only-child) {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
 .pageIntro {
   flex: 1 1 20rem;
   min-width: 0;

@@ -85,9 +85,15 @@
   }
 }
 
+/* Centered on every screen. Tailwind's base reset (app/globals.css) sets every margin to 0,
+   which removes the browser's margin: auto that centers a modal dialog, so it is set again here. */
 .dialog {
+  position: fixed;
+  inset: 0;
   width: min(28rem, calc(100vw - var(--space-8)));
+  height: fit-content;
   max-height: 90dvh;
+  margin: auto;
   padding: 0;
   overflow: auto;
   border: 1px solid var(--admin-divider);

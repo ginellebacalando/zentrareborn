@@ -1,5 +1,34 @@
 # Design change log
 
+## 27 November 2026 (late morning) — Admin: centered dialogs and a compact Calendar on phones
+
+User task: the Approve dialog opened in the top-left corner instead of the middle, the Calendar's
+event preview was not centered either, and the Calendar month looked crowded on phones.
+
+- **Dialogs** (`components/admin/Overlays.module.css`, `BookingCalendar.module.css`): Tailwind's
+  base reset sets every margin to 0, which removed the browser's centering of modal dialogs; the
+  decision dialog (Approve, Decline, Extend deadline and the others) and the Calendar's event
+  preview now set `margin: auto` with `position: fixed` and `inset: 0`, like the Packages and Team
+  dialogs already did. The preview no longer opens beside its chip; its backdrop dims the page like
+  the other dialogs.
+- **Calendar on phones** (`BookingCalendar.tsx` and its CSS module): a compact month (about 340px
+  tall, days 51 × 52px at 390px wide) where each day shows its number and up to three dots in its
+  events' status colours (visits outlined, "+" for more) instead of unreadable chips; choosing a
+  day lists its events below the month. The status chips scroll sideways in one row, and the
+  Month · List switch keeps its width at 320px. Phones now open the month too; the List view is
+  one tap away. Desktop is unchanged.
+- **Page header** (`admin.module.css`): on phones, a lone icon action such as Refresh stays beside
+  the title instead of taking a row of its own (Calendar, Dashboard, Contracts, Payments,
+  Inquiries, Packages, Reports, Activity log); pages with more actions are unchanged.
+
+Checked on the local preview in headless Edge: the Extend deadline dialog exactly centered at
+1920 × 1080 and 390 × 844 (Cancel closes it without saving); the Calendar preview centered at
+1366 × 768, Escape returning focus to its chip; the desktop month unchanged (chips, no dots, fits
+1366 × 768); the phone month at 390 × 844 and 320 × 640 (month from 318px down instead of 478px, a
+chosen day's events listed below, no sideways scroll), light and dark; the List view on phones; the
+page headers of 12 admin pages at 390px. Not checked: a real phone, Safari and Firefox, and a
+screen reader.
+
 ## 27 November 2026 (morning) — Admin: what the redesign review left open
 
 User task: add everything the redesign review listed as missing: the other admin pages' buttons,
