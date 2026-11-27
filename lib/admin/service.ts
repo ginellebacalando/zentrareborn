@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { Prisma, TestimonyStatus } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { termsData } from '@/config/terms';
+import { defaultTerms } from './default-terms';
 import { deleteTestimonyPhoto } from '@/lib/testimony-photo-storage';
 import { parseRedFlagReasons } from '@/lib/testimony-service';
 import type { AdminActor } from './access';
@@ -15,6 +15,7 @@ import { readTeam, teamMutate } from './team';
 import { getAdminPreferences, readBookingRules, saveAdminPreferences } from './preferences';
 import { isNewSince } from './header-numbers';
 import { readSeenTimes } from './notification-seen';
+import { contractSnapshot } from './contract-snapshot';
 import { paymentDeadline, requiresPayment } from './booking-rules';
 import { readCatalog, saveCatalog } from './catalog';
 import {
@@ -57,12 +58,6 @@ import {
 } from './domain';
 
 type Tx = Prisma.TransactionClient;
-export const defaultTerms = termsData
-  .map(
-    (group) =>
-      `${group.category}\n${group.sections.map((s) => `${s.title}\n${s.content.join('\n')}`).join('\n\n')}`,
-  )
-  .join('\n\n');
 export async function policy(tx: Tx = prisma) {
   return (
     (await tx.adminPolicy.findUnique({ where: { id: 'venue' } })) ?? {
@@ -1410,7 +1405,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         ['CANCELLED', 'COMPLETED'].includes(b.reservation)
       )
         throw new AdminError(
-          'Review the venue policy and approve an open booking that is not flagged as suspicious before preparing a contract.',
+          'Review the venue policy and approve an open booking that is not flagged as suspicious before generating a contract.',
         );
       if (b.policyVersion !== p.version)
         throw new AdminError(
@@ -1419,8 +1414,12 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
             : 'This confirmed booking uses an older policy. Existing agreements remain unchanged; ask the venue owner to review an amendment.',
           409,
         );
+      // The contract acknowledges the reservation payment, so it waits for the confirmation.
+      if (b.reservation !== 'CONFIRMED')
+        throw new AdminError('Generate the contract once the booking is confirmed.', 409);
       const version = (b.contracts[0]?.version ?? 0) + 1;
-      const body = `ZION EVENTS PLACE\nEVENT SERVICE AGREEMENT — REVIEW COPY\n${b.reference} | Version ${version}\n\nClient: ${b.clientName}\nEmail: ${b.email}\nContact: ${b.phone}\nEvent: ${b.eventType}\nPackage: ${b.packageName}\nVenue: ${b.venue}\nStart: ${eventDate(b.startsAt)}\nEnd: ${eventDate(b.endsAt)}\nGuests: ${b.guests}\nTotal contract price: ${money(b.totalCents)}\nReservation fee: ${money(b.depositCents)}\nPayment policy: ${b.paymentRule}\nCash received at preparation: ${money(paidTotal(b.payments))}\nApproval: ${b.approval}\nReservation: ${b.reservation}\n\n${p.cashInstructions}\n\nTERMS (venue policy version ${p.version})\n${p.contractTerms}\n\nCLIENT AND VENUE SIGNATURES\nClient name/signature: ____________________\nVenue representative: ____________________\nDate: ____________________\n\nThis draft is prepared from the reviewed booking, not an automatic approval, signature, or payment confirmation.`;
+      // The printed contract (lib/admin/contract-document.ts), frozen as the booking is now.
+      const body = JSON.stringify(await contractSnapshot(tx, b, p, version, new Date()));
       await tx.adminContract.create({
         data: {
           bookingId: b.id,
@@ -1434,7 +1433,7 @@ export async function adminMutate(raw: unknown, actor: AdminActor) {
         tx,
         actor,
         'Contracts',
-        `Prepared contract ${b.reference} v${version} from verified booking revision ${b.revision}.`,
+        `Generated contract ${b.reference} v${version} from verified booking revision ${b.revision}.`,
         'CREATE',
       );
       return { id: b.id };

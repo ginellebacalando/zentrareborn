@@ -46,6 +46,7 @@ export type Contract = {
   signedBy: string | null;
   signedAt: string | null;
   signedReference: string | null;
+  createdAt: string;
 };
 export type Booking = {
   id: string;

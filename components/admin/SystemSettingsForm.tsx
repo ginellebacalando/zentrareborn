@@ -9,7 +9,9 @@ import {
   TIMEZONE_OPTIONS,
 } from '@/lib/system-settings-types';
 import {
+  CONTRACT_SIGNATORY_LIMITS,
   SESSION_TIMEOUT_OPTIONS,
+  contractSignatoryProblem,
   notificationLabels,
   formatPreferenceDate,
   parseStaffNotificationEmails,
@@ -279,6 +281,14 @@ function PreferencesEditor({
   const privacyRef = useRef<HTMLDetailsElement>(null);
   const photoDaysRef = useRef<HTMLInputElement>(null);
   const privacyId = useId();
+  // Who signs contracts for Zion (docs/admin-panel.md, "Contracts"), checked when saving.
+  const [signatoryError, setSignatoryError] = useState<{
+    message: string;
+    attempt: number;
+  } | null>(null);
+  const contractsRef = useRef<HTMLDetailsElement>(null);
+  const signatoryNameRef = useRef<HTMLInputElement>(null);
+  const contractsId = useId();
   const { previewTheme, clearPersonalTheme } = useAdminPreferences();
   const disabled = !initial.canEdit || busy;
   useEffect(() => () => previewTheme(null), [previewTheme]);
@@ -295,6 +305,16 @@ function PreferencesEditor({
       ...current,
       admin: { ...current.admin, localization: { ...current.admin.localization, [key]: value } },
     }));
+  const setSignatory = (key: 'name' | 'title', value: string) => {
+    setSignatoryError(null);
+    setSettings((current) => ({
+      ...current,
+      admin: {
+        ...current.admin,
+        contractSignatory: { ...current.admin.contractSignatory, [key]: value },
+      },
+    }));
+  };
   const setClient = (key: keyof AdminPreferences['client'], value: boolean | string) =>
     setSettings((current) => ({ ...current, client: { ...current.client, [key]: value } }));
   const setAccount = (group: 'gcash' | 'bank', key: string, value: string) =>
@@ -382,6 +402,21 @@ function PreferencesEditor({
       return;
     }
     setPhotoDaysError(null);
+    const signatory = {
+      name: settings.admin.contractSignatory.name.trim(),
+      title: settings.admin.contractSignatory.title.trim(),
+    };
+    const signatoryIssue = contractSignatoryProblem(signatory);
+    if (signatoryIssue) {
+      setSignatoryError((current) => ({
+        message: signatoryIssue,
+        attempt: (current?.attempt ?? 0) + 1,
+      }));
+      if (contractsRef.current) contractsRef.current.open = true;
+      signatoryNameRef.current?.focus();
+      return;
+    }
+    setSignatoryError(null);
     const visitRules = visitRulesRef.current?.validate();
     if (visitRules === null) return;
     setBusy(true);
@@ -400,6 +435,7 @@ function PreferencesEditor({
               bookingWindow: bookingWindow.window,
               paymentAccounts,
               privacy: { clientPhotoRetentionDays: retentionDays },
+              contractSignatory: signatory,
               ...(visitRules ? { visitRules } : {}),
             },
           },
@@ -905,6 +941,63 @@ function PreferencesEditor({
                     role="alert"
                   >
                     {photoDaysError.message}
+                  </p>
+                )}
+              </div>
+            </div>
+          </details>
+          <details
+            ref={contractsRef}
+            className={`${styles.settingsCard} ${styles.settingsDisclosure}`}
+          >
+            <summary>
+              <h2 className={styles.settingsSectionTitle}>
+                Contracts
+                <ChevronDown size={20} aria-hidden="true" />
+              </h2>
+            </summary>
+            <div className={styles.settingsCardBody}>
+              <div className={styles.settingsEmails}>
+                <label>
+                  Signed for Zion by
+                  <input
+                    ref={signatoryNameRef}
+                    type="text"
+                    autoComplete="off"
+                    required
+                    minLength={CONTRACT_SIGNATORY_LIMITS.nameMin}
+                    maxLength={CONTRACT_SIGNATORY_LIMITS.nameMax}
+                    disabled={disabled}
+                    value={settings.admin.contractSignatory.name}
+                    aria-invalid={signatoryError ? true : undefined}
+                    aria-describedby={`${contractsId}-help${signatoryError ? ` ${contractsId}-error` : ''}`}
+                    onChange={(event) => setSignatory('name', event.target.value)}
+                  />
+                </label>
+                <label>
+                  Title
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    maxLength={CONTRACT_SIGNATORY_LIMITS.titleMax}
+                    disabled={disabled}
+                    value={settings.admin.contractSignatory.title}
+                    aria-describedby={`${contractsId}-help`}
+                    onChange={(event) => setSignatory('title', event.target.value)}
+                  />
+                </label>
+                <p id={`${contractsId}-help`} className={styles.help}>
+                  Printed under Zion&apos;s signature line on contracts generated from now on.
+                  Contracts already generated keep the name they were generated with.
+                </p>
+                {signatoryError && (
+                  <p
+                    key={signatoryError.attempt}
+                    id={`${contractsId}-error`}
+                    className={styles.error}
+                    role="alert"
+                  >
+                    {signatoryError.message}
                   </p>
                 )}
               </div>

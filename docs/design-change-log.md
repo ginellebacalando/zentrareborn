@@ -1,5 +1,44 @@
 # Design change log
 
+## 27 November 2026 (late night) — Printable contract on the ZENTRA letterhead
+
+User task: say where an issued contract goes; make the contract less overwhelming; let staff
+download or print it, following Zion's own contract (the policy agreement, the package availed,
+the signatories) with the ZENTRA logo, as a professional, modern HTML page; generate it once a
+booking is confirmed with the client's booking details, the issued receipts, Zion's policy and the
+manager's and client's signatures. Reference: Zion's four-page contract PDF from the user.
+
+- **Contract page** (`app/admin/contract/[id]/`): an A4 sheet on screen and on paper. The ZENTRA
+  wordmark with Zion's address and contacts; "Event Service Agreement" with its number, date and
+  status; three facts at the top (booking reference, payment status, balance); then five
+  numbered sections: event details, package inclusions (two columns of the booklet's parts),
+  contract amount and payments (Zion's acknowledgment receipt: price and guest terms, receipts,
+  totals, the manager's acknowledgment line), terms and conditions (venue policy, version, groups,
+  numbered clauses and bullet points), and signatures for Zion and the client. Palette, type and
+  spacing tokens only; the paper stays light in every theme. A screen-only toolbar has "Back to
+  booking" and "Print or save as PDF"; printing hides it and the skip link, starts the payments
+  and the terms on new pages, and prints the contract number and "Page x of y" in each footer.
+- **Agreements tab** (`components/admin/BookingAgreements.tsx`): one line saying the contract
+  stays with the booking and is printed for signing; one card for the latest version with its
+  status, the next step ("Check it, then issue it for signing." / "Print it for the client to
+  sign, then record the signature."), "Open contract", "Issue for signing", and the signature form
+  (signer prefilled with the client, where the signed copy is filed). Earlier versions fold away.
+  The plain-text preview and the .txt download are gone.
+- **Settings › Contracts**: who signs for Zion (name and title), with the field's own error.
+- **Checks (local preview, headless Edge 158, 1366 px and 320 px)**: generating, opening,
+  issuing and recording a signature on two confirmed demo bookings; the contract page has one h1
+  and ordered h2–h4, a title that names the saved PDF, no sideways scrolling at 320 px; Tab
+  reaches "Back to booking" then "Print or save as PDF", each with a 3 px outline. Printed to PDF
+  with the browser's own engine: 6 A4 pages with Zion's published terms, footers numbered,
+  nothing but the paper printed (the first try printed the skip link and an empty terms section
+  from the demo policy; both are fixed). A balance whose due date had passed reads "due
+  immediately". The Agreements tab in the light and dark admin themes; the Settings card shows the
+  default signatory. No page errors from these pages (one from the existing theme-switch
+  animation in a hidden headless window). The local database was restored afterwards.
+- **Not checked**: a physical printer, Safari and Firefox printing (page footers use CSS page
+  margin boxes, which Chromium supports; elsewhere the footer may be missing), a screen reader,
+  200% text on the contract page, the live site, a real signed copy.
+
 ## 27 November 2026 (night, later) — Motion: booking steps, home sections, Cash collected
 
 User task: the current booking step's number should pulse; The Archive, Events & Packages,
@@ -8,12 +47,12 @@ everything very smooth; the Cash collected chart should animate like Total reven
 
 - **Booking steps** (`app/booking/_components/BookingRequest.module.css`): the current step's
   number sends out a soft ring three times (1.4 s each), then rests with its green halo.
-- **The Archive** (`components/home/ArchiveSection.tsx`, `config/home.ts`): each photo now links to
-  its event page (weddings; christenings and reveals; debuts and birthdays) with "View photos"
-  beside the caption; the images are decorative because the link names the place. Photos open
-  upward like a curtain as the section scrolls in, one after another (`--motion-media`, 700 ms). On
-  desktop, pointing at or tabbing to a photo widens it, zooms it slightly and dims the others;
-  touch screens show "View photos" without hover.
+- **The Archive** (`components/home/ArchiveSection.tsx`, `config/home.ts`): each photo now opens
+  its category in the Gallery (weddings; christenings and reveals; debuts and birthdays), with
+  "View photos" beside the caption; the images are decorative because the link names the place.
+  Photos open upward like a curtain as the section scrolls in, one after another
+  (`--motion-media`, 700 ms). On desktop, pointing at or tabbing to a photo widens it, zooms it
+  slightly and dims the others; touch screens show "View photos" without hover.
 - **Events & Packages**: cards lift with a soft shadow and the photo zooms; photos open with the
   same curtain. **Reviews**: cards lift with a tinted border; stars fill one after another.
   **Contact**: cards lift and the icon fills.

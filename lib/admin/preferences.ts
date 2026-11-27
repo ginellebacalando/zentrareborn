@@ -33,8 +33,12 @@ import {
   type VisitRules,
 } from '@/lib/visit-rules';
 import {
+  CONTRACT_SIGNATORY_LIMITS,
   DEFAULT_ADMIN_PREFERENCES,
+  DEFAULT_CONTRACT_SIGNATORY,
   SESSION_TIMEOUT_OPTIONS,
+  contractSignatoryProblem,
+  type ContractSignatory,
   notificationLabels,
   formatPreferenceDate,
   staffNotificationEmailsProblem,
@@ -210,6 +214,18 @@ export const preferencesSchema = z
           })
           .strict()
           .optional(),
+        // Optional like the others: an older Settings page leaves the saved signatory unchanged.
+        contractSignatory: z
+          .object({
+            name: z.string().trim().max(CONTRACT_SIGNATORY_LIMITS.nameMax),
+            title: z.string().trim().max(CONTRACT_SIGNATORY_LIMITS.titleMax),
+          })
+          .strict()
+          .superRefine((signatory, context) => {
+            const problem = contractSignatoryProblem(signatory);
+            if (problem) context.addIssue({ code: 'custom', message: problem });
+          })
+          .optional(),
       })
       .strict(),
     client: z
@@ -299,6 +315,21 @@ function storedPrivacy(settings: unknown) {
         ? days
         : CLIENT_PHOTO_RETENTION_DAYS.default,
   };
+}
+/** Lenient reader for the saved contract signatory: without a usable name, Zion's default. */
+function storedContractSignatory(settings: unknown): ContractSignatory {
+  const stored = record(record(record(settings).admin).contractSignatory);
+  const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+  const signatory = { name: text(stored.name), title: text(stored.title) };
+  return contractSignatoryProblem(signatory) ? { ...DEFAULT_CONTRACT_SIGNATORY } : signatory;
+}
+/** Who signs contracts for Zion; inside a transaction pass its client. */
+export async function readContractSignatory(db: Prisma.TransactionClient = prisma) {
+  const row = await db.systemSetting.findUnique({
+    where: { id: 'singleton' },
+    select: { settings: true },
+  });
+  return storedContractSignatory(row?.settings);
 }
 /** How many days client photos are kept after the client's last event or visit ends. */
 export async function readClientPhotoRetentionDays(db: Prisma.TransactionClient = prisma) {
@@ -422,6 +453,7 @@ export function normalizeAdminPreferences(input: unknown) {
       paymentAccounts: storedPaymentAccounts(root),
       visitRules: storedVisitRules(root),
       privacy: storedPrivacy(root),
+      contractSignatory: storedContractSignatory(root),
     },
     client: {
       maintenanceMode: bool(client.maintenanceMode, defaults.client.maintenanceMode),
@@ -498,6 +530,9 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
           : {}),
         ...(settings.admin.visitRules ? { visitRules: settings.admin.visitRules } : {}),
         ...(settings.admin.privacy ? { privacy: settings.admin.privacy } : {}),
+        ...(settings.admin.contractSignatory
+          ? { contractSignatory: settings.admin.contractSignatory }
+          : {}),
       },
     };
     // The audit trail records that the staff inboxes changed and how many there are, never which.
@@ -542,6 +577,13 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
       retentionDays !== storedPrivacy(previous?.settings).clientPhotoRetentionDays
         ? ` Client photos are now kept ${retentionDays} days after the client's last event or visit.`
         : '';
+    const signatory = settings.admin.contractSignatory;
+    const previousSignatory = storedContractSignatory(previous?.settings);
+    const signatoryChange =
+      signatory &&
+      (signatory.name !== previousSignatory.name || signatory.title !== previousSignatory.title)
+        ? ` Contracts are now signed for Zion by ${signatory.name}${signatory.title ? `, ${signatory.title}` : ''}.`
+        : '';
     const row = await tx.systemSetting.upsert({
       where: { id: 'singleton' },
       create: {
@@ -558,7 +600,7 @@ export async function saveAdminPreferences(raw: unknown, actor: AdminActor) {
         userRole: actor.role,
         action: 'SETTINGS_CHANGE',
         module: 'Settings',
-        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${windowChange}${accountsChange}${visitsChange}${privacyChange}`,
+        description: `Updated appearance, communications, session, client access, and localization preferences.${staffChange}${rulesChange}${windowChange}${accountsChange}${visitsChange}${privacyChange}${signatoryChange}`,
         status: 'SUCCESS',
         source: 'zion-admin',
       },

@@ -1,0 +1,529 @@
+/*
+ * The contract page (docs/admin-panel.md, "Contracts"): a sheet of A4 paper on screen and the same
+ * sheet when printed or saved as PDF. Paper colours come straight from the palette, so the contract
+ * stays light whatever theme the browser or the admin panel uses.
+ */
+.canvas {
+  min-height: 100dvh;
+  padding: 0 var(--space-4) var(--space-12);
+  background: var(--palette-zentra-mist);
+  color: var(--palette-zentra-ink);
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  max-width: 210mm;
+  margin: 0 auto var(--space-4);
+  padding: var(--space-3) 0;
+  background: var(--palette-zentra-mist);
+}
+
+.toolbarHint {
+  margin: 0;
+  color: var(--palette-zentra-muted);
+  font-size: var(--type-small);
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sheet {
+  max-width: 210mm;
+  margin: 0 auto;
+  padding: 16mm 18mm 18mm;
+  border-radius: var(--radius-control);
+  background: var(--palette-white);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-small);
+  line-height: 1.55;
+}
+
+/* Letterhead: the ZENTRA wordmark with the venue, its address and contacts. */
+.letterhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 2px solid var(--palette-zentra-green);
+}
+
+.wordmark {
+  align-items: flex-start;
+  color: var(--palette-zentra-green);
+}
+
+.wordmark :global(.zentra-wordmark__subtitle) {
+  color: var(--palette-zentra-muted);
+}
+
+.venue {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--palette-zentra-muted);
+  font-size: var(--type-caption);
+  font-style: normal;
+  text-align: right;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.title {
+  margin: 0;
+  color: var(--palette-zentra-green);
+  font-size: var(--type-card-title);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+}
+
+.meta {
+  margin: var(--space-1) 0 0;
+  color: var(--palette-zentra-muted);
+  font-size: var(--type-caption);
+}
+
+.status {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--palette-zentra-line);
+  border-radius: var(--radius-control);
+  background: var(--palette-zentra-mist);
+  color: var(--palette-zentra-ink);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+
+.status[data-status='DRAFT'] {
+  border-color: var(--palette-status-pending);
+  background: var(--palette-status-pending-soft);
+  color: var(--palette-status-pending-ink);
+}
+
+.status[data-status='ISSUED'] {
+  border-color: var(--palette-zentra-green);
+  background: var(--palette-zentra-green-soft);
+  color: var(--palette-zentra-green);
+}
+
+.status[data-status='SIGNED'] {
+  border-color: var(--palette-status-confirmed);
+  background: var(--palette-status-confirmed-soft);
+  color: var(--palette-status-confirmed-ink);
+}
+
+/* The three facts Zion's contract opens with: the booking, its payment status, what is owed. */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: var(--space-6) 0 0;
+  border: 1px solid var(--palette-zentra-line);
+  border-radius: var(--radius-control);
+  background: var(--palette-zentra-mist);
+}
+
+.summary > div {
+  padding: var(--space-3) var(--space-4);
+}
+
+.summary > div + div {
+  border-left: 1px solid var(--palette-zentra-line);
+}
+
+.summary dt,
+.party {
+  color: var(--palette-zentra-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.summary dd {
+  margin: var(--space-1) 0 0;
+  font-weight: var(--weight-semibold);
+}
+
+.section {
+  margin-top: var(--space-8);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--palette-zentra-line);
+  color: var(--palette-zentra-green);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  break-after: avoid;
+}
+
+.number {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  border-radius: 50%;
+  background: var(--palette-zentra-green);
+  color: var(--palette-white);
+  font-size: var(--type-caption);
+  letter-spacing: 0;
+}
+
+.body {
+  margin: 0;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--space-8);
+  margin: 0;
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 34%) minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--palette-zentra-line);
+}
+
+.detail dt {
+  color: var(--palette-zentra-muted);
+}
+
+.detail dd {
+  margin: 0;
+  font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.packageName {
+  margin: 0 0 var(--space-4);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}
+
+.inclusions {
+  columns: 2;
+  column-gap: var(--space-8);
+}
+
+.inclusionGroup {
+  margin-bottom: var(--space-4);
+  break-inside: avoid;
+}
+
+.inclusionTitle,
+.subheading,
+.termsGroupTitle {
+  margin: 0 0 var(--space-1);
+  color: var(--palette-zentra-green);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+}
+
+.inclusionList,
+.clauseList,
+.clauseSub {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: 1.15em;
+  list-style: disc;
+}
+
+.inclusionList li::marker,
+.clauseList li::marker {
+  color: var(--palette-zentra-green);
+}
+
+.table {
+  width: 100%;
+  margin-top: var(--space-2);
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--palette-zentra-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  background: var(--palette-zentra-mist);
+  color: var(--palette-zentra-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.table tfoot th,
+.table tfoot td {
+  border-bottom: 2px solid var(--palette-zentra-green);
+  font-weight: var(--weight-semibold);
+}
+
+.table .amount {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.item {
+  display: block;
+  font-weight: var(--weight-semibold);
+}
+
+.itemNote {
+  display: block;
+  color: var(--palette-zentra-muted);
+}
+
+.subheading {
+  margin-top: var(--space-6);
+}
+
+.totals {
+  display: grid;
+  gap: var(--space-1);
+  justify-content: end;
+  margin: var(--space-4) 0 0;
+}
+
+.totals > div {
+  display: grid;
+  grid-template-columns: auto minmax(9rem, auto);
+  gap: var(--space-6);
+}
+
+.totals dt {
+  color: var(--palette-zentra-muted);
+}
+
+.totals dd {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.acknowledgment {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 24rem;
+  margin-top: var(--space-8);
+  break-inside: avoid;
+}
+
+/* Terms: the venue policy as written in Settings, one clause per line. */
+.terms {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.termsGroupTitle {
+  margin-top: var(--space-2);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.clause + .clause {
+  margin-top: var(--space-3);
+}
+
+.clauseTitle {
+  margin: 0 0 var(--space-1);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  break-after: avoid;
+}
+
+.clauseSub {
+  margin-top: var(--space-1);
+  list-style: circle;
+}
+
+.clauseNote {
+  margin: var(--space-2) 0 0 -1.15em;
+  font-weight: var(--weight-semibold);
+  list-style: none;
+}
+
+.signatures {
+  margin-top: var(--space-8);
+  break-inside: avoid;
+}
+
+.signatureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8) var(--space-12);
+  margin-top: var(--space-8);
+}
+
+.signature {
+  display: grid;
+  gap: var(--space-1);
+  break-inside: avoid;
+}
+
+.party {
+  margin: 0 0 var(--space-8);
+}
+
+.signatureLine {
+  border-bottom: 1px solid var(--palette-zentra-ink);
+}
+
+.signatureName {
+  margin: var(--space-1) 0 0;
+  font-weight: var(--weight-semibold);
+}
+
+.signatureCaption {
+  margin: 0;
+  color: var(--palette-zentra-muted);
+  font-size: var(--type-caption);
+}
+
+.signatureDate {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin: var(--space-4) 0 0;
+  color: var(--palette-zentra-muted);
+}
+
+.dateLine {
+  flex: 1;
+  min-width: 8rem;
+  border-bottom: 1px solid var(--palette-zentra-ink);
+}
+
+.signedNote {
+  margin: var(--space-6) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--palette-status-confirmed-soft);
+  color: var(--palette-status-confirmed-ink);
+}
+
+/* A contract written before the printed layout: its text, as it was prepared. */
+.legacyText {
+  margin: var(--space-6) 0 0;
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .canvas {
+    padding: 0 0 var(--space-8);
+  }
+
+  /* On a phone the toolbar scrolls away with the page instead of covering a third of it. */
+  .toolbar {
+    position: static;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .sheet {
+    padding: var(--space-6) var(--space-4);
+    border-radius: 0;
+  }
+
+  .venue {
+    text-align: left;
+  }
+
+  .summary,
+  .details,
+  .signatureGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summary > div + div {
+    border-top: 1px solid var(--palette-zentra-line);
+    border-left: 0;
+  }
+
+  .inclusions {
+    columns: 1;
+  }
+
+  .table th,
+  .table td {
+    padding-inline: var(--space-2);
+  }
+}
+
+@page {
+  size: A4;
+  margin: 14mm 16mm 16mm;
+}
+
+@media print {
+  .canvas {
+    min-height: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .sheet {
+    max-width: none;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .newPage {
+    margin-top: 0;
+    break-before: page;
+  }
+
+  /* Tinted cells, the step numbers and the status keep their colours on paper. */
+  .summary,
+  .number,
+  .status,
+  .table thead th,
+  .signedNote {
+    print-color-adjust: exact;
+  }
+}

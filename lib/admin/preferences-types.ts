@@ -12,6 +12,26 @@ import {
 
 export const SESSION_TIMEOUT_OPTIONS = [15, 30, 60, 240] as const;
 
+/** Who signs contracts for Zion (Settings > Contracts), printed under Zion's signature line. */
+export type ContractSignatory = { name: string; title: string };
+export const CONTRACT_SIGNATORY_LIMITS = { nameMin: 2, nameMax: 120, titleMax: 80 } as const;
+/** The signatory on Zion's own contract, until Settings names someone else. */
+export const DEFAULT_CONTRACT_SIGNATORY: ContractSignatory = {
+  name: 'Timothy Paul C. Soriano',
+  title: 'Manager',
+};
+
+/** Why a signatory cannot be saved, or null; the Settings form and the server share it. */
+export function contractSignatoryProblem(signatory: ContractSignatory) {
+  if (signatory.name.length < CONTRACT_SIGNATORY_LIMITS.nameMin)
+    return 'Enter the name of the person who signs contracts for Zion.';
+  if (signatory.name.length > CONTRACT_SIGNATORY_LIMITS.nameMax)
+    return `Enter a name of up to ${CONTRACT_SIGNATORY_LIMITS.nameMax} characters.`;
+  if (signatory.title.length > CONTRACT_SIGNATORY_LIMITS.titleMax)
+    return `Enter a title of up to ${CONTRACT_SIGNATORY_LIMITS.titleMax} characters.`;
+  return null;
+}
+
 /**
  * Each administrator's own light/dark choice from the header toggle. It is kept in a cookie so the
  * panel layout renders that theme from the first paint; without one, the saved default
@@ -59,6 +79,7 @@ export type AdminPreferences = {
      * periods are defaults to confirm with Zion.
      */
     privacy: { clientPhotoRetentionDays: number };
+    contractSignatory: ContractSignatory;
   };
 };
 export type PreferencesResponse = {
@@ -81,6 +102,7 @@ export const DEFAULT_ADMIN_PREFERENCES: AdminPreferences = {
     paymentAccounts: structuredClone(EMPTY_PAYMENT_ACCOUNTS),
     visitRules: structuredClone(DEFAULT_VISIT_RULES),
     privacy: { clientPhotoRetentionDays: CLIENT_PHOTO_RETENTION_DAYS.default },
+    contractSignatory: { ...DEFAULT_CONTRACT_SIGNATORY },
   },
 };
 

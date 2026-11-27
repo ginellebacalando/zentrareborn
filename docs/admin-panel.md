@@ -236,6 +236,47 @@ away. Now each counts only what is new to that admin:
   as of the look) and `components/admin/AdminAccountControls.tsx`. Tests:
   `lib/admin/notification-seen.test.ts`.
 
+## Contracts — 27 November 2026 (night)
+
+The contract follows Zion's own (event details and inclusions, an acknowledgment of the payments,
+the terms, the signatures) on the ZENTRA letterhead, as a page that prints or saves as PDF.
+
+- **Where it goes**: nowhere outside the panel. It stays with its booking (Agreements tab, and the
+  Contracts list) and is not emailed. Staff print it; the client signs the paper copy at Zion.
+- **Steps** (booking page › Agreements): once the booking is **confirmed** (its reservation fee
+  recorded), **Generate contract** saves version 1 as a draft. **Open contract** shows it to print
+  or save as PDF. **Issue for signing** marks the checked draft final. After the client signs,
+  **Record signature** saves who signed and where the signed copy is filed. A booking change after
+  generating marks the contract as made "before the booking's latest change"; **Generate updated
+  contract** saves the next version and earlier ones fold away under "Earlier versions".
+- **What it shows**, frozen when generated so later edits never change a printed or signed copy:
+  1. Event details: client, event, date and time, guests, package, venue, check-in and check-out
+     (from the catalog package), email and phone.
+  2. Package inclusions: the catalog package with the booking's package name (the booklet's parts
+     and their points); a custom proposal says the inclusions are as agreed.
+  3. Contract amount and payments: the price with the guests it covers and the fee per extra
+     guest, every payment not voided (acknowledgment number, date, method, amount), total paid,
+     balance and its due date (Settings › Booking automation; "immediately" when generated after
+     it), and Zion's acknowledgment line.
+  4. Terms and conditions: the reviewed venue policy's terms with its version, laid out as groups,
+     numbered clauses and points (`termsOutline`); a policy saved without terms gives Zion's
+     published Terms page instead.
+  5. Signatures: Zion's signatory and the client, each with a line, the printed name and a date.
+- **Signatory**: Settings › Contracts ("Signed for Zion by" and a title), stored in the system
+  settings (`admin.contractSignatory`). Until it is changed, the name on Zion's own contract.
+- **Page**: `/admin/contract/[id]` for everyone who may open Bookings, outside the panel frame so
+  only the paper prints: A4, the contract number and "Page x of y" in each page's footer, and the
+  same light paper in every theme. In the print window, Save as PDF downloads it; the file is
+  named after the contract.
+- **Storage**: the snapshot is JSON (`zentra-contract/1`) in the existing
+  `zion_admin_contracts.body`, so nothing in the database changed. Contracts prepared before this
+  keep their text and print as written.
+- **Code**: `lib/admin/contract-document.ts` (snapshot type, reader, terms layout),
+  `lib/admin/contract-snapshot.ts` (what generating reads), `create-contract` in
+  `lib/admin/service.ts`, `app/admin/contract/[id]/` and `components/admin/BookingAgreements.tsx`.
+  Tests: `lib/admin/contract-document.test.ts` and the contract steps in
+  `lib/admin/integration.test.ts`.
+
 ## Front desk and ocular visits — 25 November 2026
 
 - **Front desk** (`/admin/front-desk`, `app/admin/(panel)/front-desk/page.tsx`,
@@ -526,7 +567,7 @@ The three source PDFs were reviewed as project feedback, not as authorization fo
 | Cruz — repeated breadcrumb/title                               | One page heading; no repeated module breadcrumb.                                                                                                                                            |
 | Cruz — meaningful search                                       | Database-backed search by booking reference, client, email, event, or package; logs search activity descriptions.                                                                           |
 | Cruz — demonstrate real automation                             | Transactional notice queue, conflict checks, contract preparation, and actual dispatch states; no fabricated success metric.                                                                |
-| Cruz — explain contract generation                             | Versioned snapshots of verified booking details, cash policy, reviewed terms, and signature lines; review before issue.                                                                     |
+| Cruz — explain contract generation                             | Versioned snapshots of a confirmed booking: event details, package inclusions, receipts, reviewed terms and both signatories, printed on the ZENTRA letterhead; review before issue.        |
 | Cruz — reduce redundant UI                                     | Shared module shell and booking detail; distinct dashboard metrics and status labels.                                                                                                       |
 | Cruz — calendar date filters                                   | Manila-time date range, month navigation, approval/reservation filters, and mobile agenda.                                                                                                  |
 | Cruz — active vs client-visible services                       | Settings explains the distinction. Existing services and visibility controls are not changed by this private panel.                                                                         |

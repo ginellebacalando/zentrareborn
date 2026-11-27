@@ -5,6 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { createServer } from 'pglite-server';
+import { readContractSnapshot } from './contract-document';
+import { DEFAULT_CONTRACT_SIGNATORY } from './preferences-types';
 
 test(
   'admin workflows persist safely in an isolated PostgreSQL test database',
@@ -330,8 +332,21 @@ test(
       await adminMutate({ op: 'create-contract', id: b.id, revision: b.revision }, actor);
       b = await get();
       const c = b.contracts[0];
-      assert.match(c.body, /Test Client/);
-      assert.match(c.body, /ZION EVENTS PLACE/);
+      // The printed contract: the booking, the receipt that confirmed it, the reviewed policy and
+      // who signs for Zion, frozen when generated (lib/admin/contract-document.ts).
+      const printed = readContractSnapshot(c.body);
+      assert.ok(printed, 'A generated contract stores its printed snapshot');
+      assert.equal(printed.reference, b.reference);
+      assert.equal(printed.client.name, 'Test Client');
+      assert.equal(printed.amounts.totalCents, b.totalCents);
+      assert.deepEqual(
+        printed.payments.map((payment) => [payment.receiptNumber, payment.amountCents]),
+        [['TEST-001', 3000000]],
+      );
+      assert.match(printed.payments[0].acknowledgmentNumber ?? '', /^ACK-\d{4}-\d{6}$/);
+      assert.equal(printed.terms.policyVersion, 2);
+      assert.match(printed.terms.text, /Venue reviewed terms and cash policy/);
+      assert.deepEqual(printed.signatory, DEFAULT_CONTRACT_SIGNATORY);
       await adminMutate(
         {
           op: 'contract-action',
@@ -495,6 +510,11 @@ test(
           actor,
         ),
         /Full cash payment/,
+      );
+      // The contract acknowledges the reservation payment, so it waits for the confirmation.
+      await assert.rejects(
+        adminMutate({ op: 'create-contract', id: x.id, revision: x.revision }, actor),
+        /once the booking is confirmed/,
       );
       // Edit details: requested bookings only, current revision, conservative resets, no email.
       x = await prisma.adminBooking.findUniqueOrThrow({ where: { id: x.id } });

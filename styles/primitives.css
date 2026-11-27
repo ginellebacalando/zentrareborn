@@ -204,11 +204,16 @@
   }
 }
 
-/* A printed page shows every section, including ones never scrolled into view. */
+/* A printed page shows every section, including ones never scrolled into view, and never the skip
+   link, which a fixed position would otherwise repeat on the paper. */
 @media print {
   .reveal[data-visible='false']:not(:focus-within) {
     opacity: 1;
     transform: none;
+  }
+
+  .skip-link {
+    display: none;
   }
 }
 
