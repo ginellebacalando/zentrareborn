@@ -798,13 +798,15 @@
      from a slight zoom: the Archive's row and the event cards, one after another. */
   /* The open curtain is an inset too (a clip cannot glide to none); the Archive's reaches past the
      edges, so the keyboard focus ring around a photograph stays visible. */
+  /* The Archive moves slower and more evenly than the cards: a longer glide that eases in and out,
+     with more time between photographs. */
   .stagger > .archiveItem {
     clip-path: inset(-0.5rem);
     transition:
-      opacity var(--motion-reveal) var(--motion-ease),
-      translate var(--motion-reveal) var(--motion-ease),
-      clip-path var(--motion-media) var(--motion-ease);
-    transition-delay: calc(var(--motion-stagger) * (var(--stagger-index, 0) + 1));
+      opacity var(--motion-glide) var(--motion-ease-in-out),
+      translate var(--motion-glide) var(--motion-ease-in-out),
+      clip-path var(--motion-glide) var(--motion-ease-in-out);
+    transition-delay: calc(var(--motion-stagger) * 2 * (var(--stagger-index, 0) + 1));
   }
 
   .cardMedia {
@@ -822,6 +824,14 @@
       filter var(--motion-media) var(--motion-ease),
       scale var(--motion-media) var(--motion-ease)
         calc(var(--motion-stagger) * (var(--stagger-index, 0) + 1));
+  }
+
+  .archiveItem img {
+    transition:
+      transform var(--motion-glide) var(--motion-ease-in-out),
+      filter var(--motion-glide) var(--motion-ease-in-out),
+      scale var(--motion-glide) var(--motion-ease-in-out)
+        calc(var(--motion-stagger) * 2 * (var(--stagger-index, 0) + 1));
   }
 
   :global(.reveal[data-visible='false']:not(:focus-within)) .archiveItem {
@@ -917,10 +927,10 @@
 }
 
 /* Desktops with a pointer: the photograph under the pointer or keyboard widens and the others make
-   room, on the spring curve. */
+   room, gliding in and out evenly so moving across the row never snaps. */
 @media (min-width: 64rem) and (hover: hover) and (prefers-reduced-motion: no-preference) {
   .archive {
-    transition: grid-template-columns var(--motion-media) var(--motion-spring);
+    transition: grid-template-columns var(--motion-glide) var(--motion-ease-in-out);
   }
 
   .archive:has(> :nth-child(1):is(:hover, :focus-visible)) {

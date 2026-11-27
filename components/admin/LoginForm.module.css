@@ -1,0 +1,217 @@
+/*
+ * The admin sign-in page (components/admin/LoginForm.tsx): Zion's pool at sunset, blurred under a
+ * green tint, the ZENTRA name large behind a frosted card, and on wide screens the venue's line
+ * beside it. The scene uses palette tokens, so it reads the same in every theme; the card follows
+ * the admin theme.
+ */
+.page {
+  position: relative;
+  display: grid;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--palette-zentra-night);
+  isolation: isolate;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+/* Blurred past its edges, so the blur never shows a hard border. */
+.photo {
+  object-fit: cover;
+  filter: blur(var(--space-4)) saturate(1.15) brightness(0.72);
+  scale: 1.08;
+}
+
+.tint {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 75% 35%,
+      color-mix(in srgb, var(--palette-zentra-green) 25%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--palette-zentra-night) 55%, transparent),
+      color-mix(in srgb, var(--palette-zentra-green) 70%, transparent)
+    );
+}
+
+/* The ZENTRA name, large and faint behind everything. */
+.giant {
+  position: absolute;
+  inset: auto 0 6vh;
+  display: flex;
+  justify-content: center;
+  color: color-mix(in srgb, var(--palette-white) 16%, transparent);
+  font-family: var(--font-zion-brand);
+  font-size: clamp(5rem, 17vw, 17rem);
+  line-height: 0.9;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.letter {
+  position: relative;
+  display: inline-block;
+}
+
+/* The light a keystroke sends through one letter, laid over it; it shows only while it plays. */
+.glow {
+  position: absolute;
+  inset: 0;
+  color: color-mix(in srgb, var(--palette-white) 80%, transparent);
+  text-shadow: 0 0 var(--space-8) color-mix(in srgb, var(--palette-zentra-glow) 75%, transparent);
+  opacity: 0;
+}
+
+.layout {
+  display: grid;
+  place-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-4);
+}
+
+/* The frosted card: the page shows through, the form stays crisp and readable on the admin card
+   surface its text is set for. Two classes, so it outranks the shared card style
+   (admin.module.css, .loginCard) in any stylesheet order. */
+.layout .card {
+  position: relative;
+  border-color: color-mix(in srgb, var(--admin-surface-card) 55%, transparent);
+  border-radius: calc(var(--radius-card) * 1.5);
+  background: color-mix(in srgb, var(--admin-surface-card) 88%, transparent);
+  box-shadow: 0 var(--space-8) var(--space-12) calc(var(--space-4) * -1)
+    color-mix(in srgb, var(--palette-zentra-night) 55%, transparent);
+  backdrop-filter: blur(var(--space-4)) saturate(1.3);
+}
+
+/* The venue's line, beside the card on wide screens. */
+.campaign {
+  display: none;
+  color: var(--palette-white);
+}
+
+/* Two classes, so these outrank the admin's paragraph style (admin.module.css, .root p). */
+.campaign .campaignVenue {
+  margin: 0;
+  color: var(--palette-zentra-glow);
+  font-size: var(--type-small);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.campaign .campaignLine {
+  max-width: 24ch;
+  margin: var(--space-4) 0;
+  color: var(--palette-white);
+  font-size: clamp(1.75rem, 1.2rem + 1.4vw, 2.5rem);
+  font-weight: var(--weight-medium);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.campaign .campaignNote {
+  max-width: 40ch;
+  margin: 0;
+  color: color-mix(in srgb, var(--palette-white) 85%, transparent);
+  font-size: var(--type-body);
+}
+
+@media (min-width: 64rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 27rem);
+    grid-template-areas: 'campaign card';
+    align-items: center;
+    gap: clamp(var(--space-8), 6vw, calc(var(--space-12) * 2));
+    width: min(100%, 76rem);
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-8);
+  }
+
+  .layout .card {
+    grid-area: card;
+    justify-self: end;
+  }
+
+  .campaign {
+    display: block;
+    grid-area: campaign;
+  }
+
+  /* Darker on the left, where the venue's line sits over the photo's brightest band. */
+  .tint {
+    background:
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--palette-zentra-night) 60%, transparent),
+        color-mix(in srgb, var(--palette-zentra-night) 40%, transparent) 45%,
+        transparent 70%
+      ),
+      radial-gradient(
+        circle at 75% 35%,
+        color-mix(in srgb, var(--palette-zentra-green) 25%, transparent),
+        transparent 60%
+      ),
+      linear-gradient(
+        160deg,
+        color-mix(in srgb, var(--palette-zentra-night) 55%, transparent),
+        color-mix(in srgb, var(--palette-zentra-green) 70%, transparent)
+      );
+  }
+
+  /* The name under the venue's line, starting where that line starts, and small enough that every
+     letter stays clear of the card. */
+  .giant {
+    bottom: 4vh;
+    justify-content: flex-start;
+    padding-inline-start: calc(max(0px, (100% - 76rem) / 2) + var(--space-8));
+    font-size: min(11vw, 9.5rem);
+  }
+}
+
+/* The letters rise in once; then each keystroke lights the next one for a moment. */
+@media (prefers-reduced-motion: no-preference) {
+  .letter {
+    animation: letterRise var(--motion-glide) var(--motion-spring) both;
+    animation-delay: calc(var(--i) * var(--motion-stagger) + var(--motion-slow));
+  }
+
+  .glow {
+    animation: letterGlow var(--motion-glide) var(--motion-ease-in-out) both;
+  }
+
+  .card {
+    animation: cardIn var(--motion-media) var(--motion-spring) both;
+  }
+}
+
+@keyframes letterRise {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-8);
+    filter: blur(var(--space-2));
+  }
+}
+
+/* From and to the resting state (hidden, in place), so the light fades in, lifts, and settles. */
+@keyframes letterGlow {
+  30% {
+    opacity: 1;
+    translate: 0 calc(var(--space-2) * -1);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    translate: 0 var(--space-4);
+  }
+}

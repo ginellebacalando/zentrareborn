@@ -79,8 +79,7 @@
   white-space: nowrap;
 }
 
-/* The desktop menu row; phones and tablets use the menu button's drawer instead. The nav is the
-   positioning box for the Packages list. */
+/* The desktop menu row; phones and tablets use the menu button's drawer instead. */
 .nav {
   display: none;
   position: relative;
@@ -165,52 +164,79 @@
   rotate: 180deg;
 }
 
-/* The original Packages submenu, opened under the menu row. */
+/* The original Packages submenu: a compact card under its button, in the menu's own small capitals.
+   The transparent top padding bridges the gap, so the pointer can travel from the button into the
+   list without closing it. Closed, it is hidden by visibility after its fade, so its links take no
+   focus. */
+.group {
+  position: relative;
+}
+
 .panel {
   position: absolute;
   top: 100%;
-  right: 0;
-  left: 0;
+  left: 50%;
   z-index: 1;
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--line-hairline);
-  border-top: 0;
-  border-radius: 0 0 var(--radius-control) var(--radius-control);
-  background: var(--surface-page);
-  box-shadow: var(--shadow-card);
+  padding-top: var(--space-2);
+  opacity: 0;
+  visibility: hidden;
+  translate: -50% calc(var(--space-2) * -1);
+  transition:
+    opacity var(--motion-slow) var(--motion-ease),
+    translate var(--motion-slow) var(--motion-ease),
+    visibility 0s linear var(--motion-slow);
+}
+
+.panel[data-open] {
+  opacity: 1;
+  visibility: visible;
+  translate: -50% 0;
+  transition-delay: 0s;
 }
 
 .panelLinks {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  column-gap: var(--space-6);
+  display: grid;
+  min-width: calc(var(--space-12) * 4);
   margin: 0;
-  padding: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--line-hairline);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
   list-style: none;
 }
 
 .panelLink {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   min-height: var(--layout-touch-target);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-control);
   color: var(--text-primary);
-  font-size: var(--type-small);
+  font-family: var(--font-zion-sans);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-label);
   text-decoration-line: none;
   text-decoration-thickness: 1px;
   text-transform: uppercase;
-  text-underline-offset: 0.4em;
+  text-underline-offset: 0.5em;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
 }
 
-.panelLink:hover,
+.panelLink:is(:hover, :focus-visible) {
+  background: var(--surface-subtle);
+  color: var(--action-primary);
+}
+
+/* The current page is underlined as well as colored, as in the menu row. */
 .panelLink[aria-current='page'] {
   color: var(--action-primary);
-  text-decoration-line: underline;
-}
-
-.panelLink[aria-current='page'] {
   font-weight: var(--weight-semibold);
+  text-decoration-line: underline;
 }
 
 /* Phones and tablets: the header slides away while scrolling down (back on any scroll up, on
@@ -249,8 +275,10 @@
   }
 }
 
+/* The Packages list follows the menu row's size, so they always read as one menu. */
 @media (min-width: 80rem) {
-  .link {
+  .link,
+  .panelLink {
     font-size: var(--type-small);
   }
 }
@@ -275,7 +303,7 @@
     display: none;
   }
 
-  .header[data-condensed] .link {
+  .header[data-condensed] :is(.link, .panelLink) {
     font-size: var(--type-caption);
   }
 }
@@ -284,7 +312,9 @@
   .header,
   .brand :global(.zentra-wordmark__name),
   .link,
-  .chevron {
+  .chevron,
+  .panel,
+  .panelLink {
     transition: none;
   }
 }

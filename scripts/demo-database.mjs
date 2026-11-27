@@ -492,7 +492,11 @@ export async function seed(db, { adminPassword, label = 'Local demo' }) {
     ['Nina P.', 'What is included in the christening package?', 'Christening', 'answered'],
   ];
   for (const [index, [fullName, message, eventInterest, status]] of inquiries.entries()) {
-    const submittedAt = manilaDate(-index, 9 + index);
+    // Never in the future (a demo built before 9 AM): a later arrival time would keep the bell's
+    // inquiry notice new until it passed.
+    const submittedAt = new Date(
+      Math.min(manilaDate(-index, 9 + index).getTime(), Date.now() - 60 * 60_000),
+    );
     await db.query(
       `INSERT INTO inquiries (id, inquiry_reference, full_name, email, message, event_interest, source_page, status,
          submitted_at, updated_at)

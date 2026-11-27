@@ -63,16 +63,41 @@ function useHeaderScroll(): HeaderScroll {
   return state;
 }
 
+/** Hover intent: a short wait before opening and a longer one before closing, so passing over the
+ * menu never flickers it and the pointer can travel into the list. */
+const HOVER_OPEN_MS = 80;
+const HOVER_CLOSE_MS = 220;
+
 /**
- * The original "Packages" submenu as a disclosure: the button opens the event-type links right
- * under the links row. Escape, a click elsewhere, moving focus away or navigating closes it.
+ * The original "Packages" submenu as a disclosure: a compact list under the button, in the menu's
+ * own type. A mouse opens it by hovering (with a short intent delay) and the button still opens
+ * and closes it for keyboard, touch and screen readers. Escape, a click elsewhere, moving focus
+ * away or navigating closes it.
  */
 function NavGroupItem({ group, pathname }: { group: NavGroup; pathname: string }) {
   const [openOn, setOpenOn] = useState<string | null>(null);
+  // Opened by hovering: a click then keeps it open instead of closing it.
+  const [byHover, setByHover] = useState(false);
   const open = openOn === pathname;
   const panelId = useId();
   const itemRef = useRef<HTMLLIElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const hoverTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
+
+  /** Only a fine pointer that can hover (a mouse) opens the menu by hovering. */
+  function hover(event: React.PointerEvent, opening: boolean) {
+    if (event.pointerType !== 'mouse' || !window.matchMedia('(hover: hover)').matches) return;
+    window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(
+      () => {
+        setOpenOn(opening ? pathname : null);
+        setByHover(opening);
+      },
+      opening ? HOVER_OPEN_MS : HOVER_CLOSE_MS,
+    );
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -95,6 +120,9 @@ function NavGroupItem({ group, pathname }: { group: NavGroup; pathname: string }
   return (
     <li
       ref={itemRef}
+      className={styles.group}
+      onPointerEnter={(event) => hover(event, true)}
+      onPointerLeave={(event) => hover(event, false)}
       onBlur={(event) => {
         if (open && !event.currentTarget.contains(event.relatedTarget as Node | null))
           setOpenOn(null);
@@ -107,12 +135,17 @@ function NavGroupItem({ group, pathname }: { group: NavGroup; pathname: string }
         aria-expanded={open}
         aria-controls={panelId}
         data-current={isGroupCurrent(pathname, group) ? '' : undefined}
-        onClick={() => setOpenOn(open ? null : pathname)}
+        onClick={() => {
+          window.clearTimeout(hoverTimer.current);
+          setOpenOn(open && !byHover ? null : pathname);
+          setByHover(false);
+        }}
       >
         {group.label}
         <ChevronDown aria-hidden="true" className={styles.chevron} strokeWidth={2} />
       </button>
-      <div id={panelId} className={styles.panel} hidden={!open}>
+      {/* Hidden by visibility rather than removal, so it can fade; closed links take no focus. */}
+      <div id={panelId} className={styles.panel} data-open={open ? '' : undefined}>
         <ul className={styles.panelLinks}>
           {group.links.map((link) => (
             <li key={link.href}>

@@ -3436,3 +3436,31 @@
   flex-shrink: 0;
   color: var(--admin-status-pending);
 }
+
+/* The bell shakes once when something new arrives (components/admin/AdminAccountControls.tsx). */
+@media (prefers-reduced-motion: no-preference) {
+  .bellRing {
+    transform-origin: 50% 10%;
+    animation: bellRing var(--motion-glide) var(--motion-ease-in-out) 1;
+  }
+}
+
+@keyframes bellRing {
+  10%,
+  30% {
+    rotate: 14deg;
+  }
+
+  20%,
+  40% {
+    rotate: -12deg;
+  }
+
+  50% {
+    rotate: 6deg;
+  }
+
+  60% {
+    rotate: 0deg;
+  }
+}

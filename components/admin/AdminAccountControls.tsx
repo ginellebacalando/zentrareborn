@@ -8,6 +8,7 @@ import useSWR, { mutate as refreshCache } from 'swr';
 import {
   ArrowUpRight,
   Bell,
+  BellRing,
   CalendarCheck,
   CalendarClock,
   CheckCheck,
@@ -26,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AdminNotificationLook, AdminNotificationSummary } from './types';
+import { showDesktopAlert, useDesktopAlerts, useTabBadge } from './tab-alerts';
 import styles from './admin.module.css';
 import AdminAvatar from './AdminAvatar';
 import { useAdminTheme } from './AdminPreferencesProvider';
@@ -40,6 +42,12 @@ export type AdminHeaderUser = {
   role: string;
   mustChangePassword: boolean;
 };
+
+/**
+ * Notices made of separate arrivals: another request, screenshot or inquiry rings the bell again
+ * even while the notice is already new. A repeated delivery attempt does not.
+ */
+const ARRIVING_ONE_BY_ONE = new Set(['pending-bookings', 'payment-screenshots', 'new-inquiries']);
 
 const notificationIcons = {
   booking: CalendarCheck,
@@ -71,6 +79,11 @@ export default function AdminAccountControls({
   const roleLabel = user.role === 'SUPERADMIN' ? 'Super Administrator' : 'Administrator';
   const roleShort = user.role === 'SUPERADMIN' ? 'Super admin' : 'Admin';
   const activePanel = inactive ? null : panel;
+  // The notices the header last showed as new, with when each one's latest item came in (null
+  // until the first answer), so the bell rings only for arrivals.
+  const lastShown = useRef<ReadonlyMap<string, string> | null>(null);
+  const [ring, setRing] = useState(0);
+  const alerts = useDesktopAlerts();
   const { data, error, isLoading, mutate } = useSWR<AdminNotificationSummary>(
     user.mustChangePassword ? null : '/api/admin/notifications',
     async (url: string) => {
@@ -79,13 +92,45 @@ export default function AdminAccountControls({
       if (!response.ok) throw new Error(body.error || 'Unable to load notifications.');
       return body;
     },
-    { refreshInterval: 60000, shouldRetryOnError: false },
+    {
+      // Checked every 30 seconds, also while the tab is in the background, so the tab's count
+      // and desktop alerts keep up while the admin works elsewhere.
+      refreshInterval: 30000,
+      refreshWhenHidden: true,
+      shouldRetryOnError: false,
+      onSuccess: (summary) => {
+        const before = lastShown.current;
+        if (!before) return;
+        const fresh = summary.notifications.find((notice) => {
+          if (!notice.isNew) return false;
+          const shown = before.get(notice.id);
+          // It just became new, or another one came in on top of a notice already new.
+          return (
+            shown === undefined ||
+            (ARRIVING_ONE_BY_ONE.has(notice.id) && (notice.latestAt ?? '') > shown)
+          );
+        });
+        if (!fresh) return;
+        setRing((count) => count + 1);
+        showDesktopAlert(`ZENTRA Admin: ${fresh.title}`, fresh.message);
+      },
+    },
   );
   const notifications = data?.notifications ?? [];
   // Both numbers count only what came in since this admin last opened the bell or Messages
   // (docs/admin-panel.md, "Header numbers"); the lists themselves stay until the work is done.
   const unseen = error ? 0 : (data?.unseen ?? 0);
   const newInquiries = error ? 0 : (data?.newMessages ?? 0);
+  useEffect(() => {
+    if (!data) return;
+    lastShown.current = new Map(
+      data.notifications
+        .filter((notice) => notice.isNew)
+        .map((notice) => [notice.id, notice.latestAt ?? '']),
+    );
+  }, [data]);
+  // The browser tab carries both numbers (docs/admin-panel.md, "Header numbers").
+  useTabBadge(unseen + newInquiries);
   /** The notices the last opening of the bell revealed, marked "New" while the panel is open. */
   const [shownNew, setShownNew] = useState<ReadonlySet<string>>(() => new Set());
   const markedNew = notifications.filter((notice) => notice.isNew || shownNew.has(notice.id));
@@ -210,7 +255,13 @@ export default function AdminAccountControls({
             if (opening && !user.mustChangePassword) look('bell');
           }}
         >
-          <Bell size={20} aria-hidden="true" />
+          {/* A new arrival rings the bell once (a fresh key replays the shake). */}
+          <Bell
+            key={ring}
+            size={20}
+            aria-hidden="true"
+            className={ring ? styles.bellRing : undefined}
+          />
           {unseen > 0 && badge(unseen)}
         </button>
         {activePanel === 'notifications' && (
@@ -320,6 +371,25 @@ export default function AdminAccountControls({
                 'Updates automatically while you work'
               )}
             </div>
+            {alerts.permission !== 'unsupported' && (
+              <div className={styles.popoverFooter}>
+                {alerts.permission === 'default' ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    icon={<BellRing aria-hidden="true" />}
+                    onClick={() => void alerts.enable()}
+                  >
+                    Turn on desktop alerts
+                  </Button>
+                ) : alerts.permission === 'granted' ? (
+                  'Desktop alerts are on while this tab is open.'
+                ) : (
+                  'Desktop alerts are blocked in this browser’s site settings.'
+                )}
+              </div>
+            )}
           </section>
         )}
       </div>

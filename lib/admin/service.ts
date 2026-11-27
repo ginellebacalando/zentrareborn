@@ -555,11 +555,16 @@ export async function readNotificationSummary(actor: AdminActor) {
       : []),
   ]
     .filter((notice) => enabled[notice.id] ?? true)
-    .map((notice) => ({
-      ...notice,
-      // New to this admin: it came in after they last opened the bell.
-      isNew: notice.id in arrivedAt && isNewSince(arrivedAt[notice.id], seen.bellSeenAt),
-    }));
+    .map((notice) => {
+      const latest = arrivedAt[notice.id] ?? null;
+      return {
+        ...notice,
+        // New to this admin: it came in after they last opened the bell.
+        isNew: notice.id in arrivedAt && isNewSince(latest, seen.bellSeenAt),
+        // When its latest item came in, so the header can tell a second request from the first.
+        latestAt: latest?.toISOString() ?? null,
+      };
+    });
   return {
     notifications: notices,
     /** The bell's number: what is new since this admin last opened it. */

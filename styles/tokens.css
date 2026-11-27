@@ -328,9 +328,13 @@
   --motion-reveal: 360ms;
   --motion-rise: 0.75rem;
   --motion-stagger: 80ms;
-  /* Photographs: a curtain reveal as a section arrives, the slow zoom under the pointer and the
-     Archive's widening row on desktops. Long enough to feel calm, never needed to read anything. */
+  /* Photographs: a curtain reveal as a section arrives and the slow zoom under the pointer. Long
+     enough to feel calm, never needed to read anything. */
   --motion-media: 700ms;
+  /* Longer, even moves: the Archive's widening row, zoom and curtain, and the sign-in page's
+     letters. They ease in and out evenly, so nothing snaps when the pointer crosses the row. */
+  --motion-glide: 1100ms;
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   /* The light/dark switch: the new theme sweeps in from the top (lib/theme-switch.ts). */
   --motion-theme: 500ms;
 

@@ -22,8 +22,9 @@ shows live summaries of pending requests, unanswered inquiries, flagged requests
 delivery issues, and owner policy review, with links to the relevant modules.
 The bell's and the Messages envelope's numbers count only what came in since that
 admin last opened them (see [Header numbers](#header-numbers--27-november-2026));
-no fabricated notification history is shown. Updates refresh every minute
-and when the bell is opened. The account control follows the old ZenTra design:
+no fabricated notification history is shown. Updates refresh every 30 seconds, also
+while the tab is in the background, and when the bell is opened; the browser tab
+carries the same numbers. The account control follows the old ZenTra design:
 a flat taupe circular photo/initial avatar, separate round chevron control, and a
 compact dropdown showing a larger avatar, truncated name and email, warm brown
 role label, My Profile link, and a separated red Sign out action.
@@ -226,6 +227,19 @@ away. Now each counts only what is new to that admin:
 - The lists do not change: pending requests and unanswered inquiries stay until the work is done.
   Each admin has their own numbers, so one person's look does not clear them for the others. A
   notice type turned off in Settings › Notifications leaves the list and the numbers.
+- **Browser tab** (28 November 2026): while either number is above zero, the tab's title starts
+  with their sum, "(3) Dashboard | ZENTRA Admin", and its icon gets a red dot, so an admin working
+  in another tab sees that something came in. Both clear with the numbers. The header checks every
+  30 seconds, also while the tab is in the background. The bell shakes once (not under reduced
+  motion) when something arrives: a notice becomes new, or another booking request, payment
+  screenshot or inquiry comes in while its notice is already new (the summary gives each notice's
+  `latestAt`, when its latest item came in). A repeated delivery attempt does not shake it again.
+- **Desktop alerts** (optional): "Turn on desktop alerts" in the bell panel's footer asks the
+  browser for permission. Once allowed, each arrival while the admin tab is in the background also
+  shows as a computer notification naming its notice ("ZENTRA Admin: 2 booking requests await
+  review"); clicking it returns to the tab. The footer then reads that alerts are on, or that the
+  browser's site settings block them. Nothing shows while the tab is in front, where the bell
+  already does. Code: `components/admin/tab-alerts.ts`.
 - **Storage**: `zion_admin_notification_seen` (`prisma/admin-notification-seen.sql`), one row per
   admin with the times they last opened the bell and Messages, removed with the account. Install
   with `npm run db:notification-seen:check -- --apply` (`--allow-remote` for a hosted database).

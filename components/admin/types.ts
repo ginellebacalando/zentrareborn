@@ -208,6 +208,11 @@ export type AdminNotificationSummary = {
     kind: 'booking' | 'inquiry' | 'warning' | 'policy' | 'payment' | 'contract' | 'calendar';
     /** It came in after this admin last opened the bell. */
     isNew: boolean;
+    /**
+     * When its latest booking request, payment screenshot, inquiry or delivery attempt came in
+     * (ISO time); null for the rest.
+     */
+    latestAt?: string | null;
   }[];
   /** The bell's number: notices new since this admin last opened it. */
   unseen: number;

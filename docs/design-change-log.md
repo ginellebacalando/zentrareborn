@@ -1,5 +1,53 @@
 # Design change log
 
+## 28 November 2026 (night) — Packages menu, the Archive's glide, the sign-in page, alerts in the tab
+
+User task: the Packages dropdown looked oversized and unlike the menu; it should match the
+navigation and open smoothly when the mouse passes over it. The Archive moved too fast. The admin
+sign-in should look professional and modern, with the ZENTRA name moving behind it while staff
+type, a blurred background and a campaign side. Admins should actually notice new notifications,
+for example in the browser tab.
+
+- **Packages menu** (`components/layout/GlobalHeader.tsx`, `GlobalHeader.module.css`): a compact
+  card under its item in the menu's own type (uppercase, label tracking, 14 px on wide screens),
+  44 px rows, a quiet highlight on hover and keyboard focus, the current page underlined. With a
+  mouse it opens after an 80 ms pause and closes 220 ms after the pointer leaves (padding above the
+  card bridges the gap); it fades and drops in over 320 ms. Click, Enter, Tab and Escape work as
+  before; touch screens use the click.
+- **The Archive** (`components/home/HomeSections.module.css`, `styles/tokens.css`): the row widens
+  over the new `--motion-glide` (1100 ms) on the new symmetric `--motion-ease-in-out`, and the
+  photos reveal and zoom on the same curve with a slower stagger.
+- **Sign-in** (`components/admin/LoginForm.tsx`, `LoginForm.module.css`): Zion's pool at sunset,
+  blurred under a green tint; the ZENTRA name large in the brand face; a frosted card; from 64rem,
+  the venue's line beside the card (Zion Events Place, the tagline, what the panel is for), with
+  the name under it and clear of the card. The letters rise in once; each keystroke lights the next
+  letter (a light laid over it lifts and fades within 1.1 s). Nothing loops, and nothing moves
+  under reduced motion. The local-access screen uses the same scene.
+- **Tab and desktop alerts** (`components/admin/tab-alerts.ts`, `AdminAccountControls.tsx`): the
+  tab title starts with the count and its icon gets a red dot; the header checks every 30 s, also
+  in the background; the bell shakes once for each arrival, including another request or inquiry
+  on top of a notice already new (notices now carry `latestAt`); optional desktop alerts from the
+  bell panel's footer. See [Header numbers](admin-panel.md#header-numbers--27-november-2026). The
+  demo database no longer dates a sample inquiry later than the time it is built
+  (`scripts/demo-database.mjs`), which had kept the local bell's inquiry notice new until 9 AM.
+- **Checks (local preview, headless Edge, 1440 px unless noted)**: Packages closed at 60 ms of
+  hover, fading in at 200 ms, open at 600 ms; it stayed open on the way into the list and closed
+  after leaving; links 14 px like the menu; Enter opens it, Tab reaches Weddings with a solid
+  outline, Escape closes it and returns focus to Packages; light and dark screenshots. The Archive:
+  1.1 s ease-in-out, widths 588/260 → 527/320 → 312/535 → 254/593 over 1.2 s. Sign-in: six
+  keystrokes light letters 0–5 while every letter stays at full opacity; the light peaks at 330 ms
+  and is gone by 1.3 s; side text against the brightest photo behind it: venue 7.7:1, tagline
+  12.2:1, note 9.7:1; no sideways scroll at 1920, 1366 × 657, 1024, 768 and 320 px; the name clears
+  the text and the card from 1024 to 1920 px; reduced motion stops the letters. Tab: "(4) Dashboard
+  | ZENTRA Admin" with the dotted icon, (2) after opening the bell (Messages' two remain).
+  Arrivals (fresh demo database, the tab reported hidden, alerts recorded instead of shown): two
+  inquiries sent about 30 s apart each raised an alert within one check ("ZENTRA Admin: 3 inquiries
+  need a response", then "4 …", with the app icon), each shook the bell, and the tab went (2) →
+  (4) → (5). No page errors.
+- **Not checked**: the operating system's own alert popup (the check recorded the alert), a new
+  booking request or payment screenshot as the arrival, Safari and Firefox, real phones, a screen
+  reader.
+
 ## 28 November 2026 — Calendar appointments, the client's step-by-step guide, reviewed screenshots
 
 User task (team feedback): the Calendar should let staff add and remove entries and be easier to
