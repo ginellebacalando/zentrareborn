@@ -53,21 +53,32 @@ ZENTRA system, aligned with the main website, and set these rules:
 | `--admin-border`           | `#7A8A83` (≥3:1 on white)                                              | `#7C838B`                   | Inputs, hover borders                |
 | `--admin-status-*`         | Request, pending, confirmed, cancelled hues with soft and ink variants | Night soft and ink variants | Chips, dots, the Bookings banner     |
 
-- **Type:** page titles `--type-panel-title` (22–28px, semibold); card titles 16–18px semibold;
-  body 16px; tables and secondary text 14px; captions 12px (never smaller).
+- **Type (medium density, 27 November 2026):** page titles 20–24px (`--type-admin-title`,
+  semibold); card titles 14–16px semibold; body, tables and secondary text 14px; labels and
+  captions 12px (never smaller). Fields stay 16px on touch screens, so phones do not zoom in.
+- **Dates:** friendly, in the admin's chosen format ("Tue, Dec 8, 2026 · 5:00 PM"; Settings →
+  Localization), with no time-zone name on each time; a page that shows times says once which zone
+  applies ("Times are Manila time.").
 - **Shape:** controls 8px radius, cards 12px; card shadow `0 1px 2px` at 6% of `--admin-shadow`.
 - **Targets:** buttons, fields, filters and segmented switches share `--control-height`: 40px on
   desktop and the 44px touch target on phones and touch screens, so a row of them lines up. Sidebar
   rows and header icons stay 44px.
-- **Spacing (26 November 2026, night):** every page uses the full width beside the sidebar with
-  24px padding (16px on phones); 24px between cards and sections; card padding 20–28px
-  (`--layout-card-padding`). Gaps, padding and margins come from the 4px scale (`--space-*`).
+- **Spacing (medium density, 27 November 2026):** every page uses the full width beside the
+  sidebar with 24px padding (16px on phones); 16px between cards and sections; 16px card padding
+  (`--layout-card-padding`); table rows about 54px for two lines, so about ten bookings fit on a
+  1920 × 1080 screen. Gaps, padding and margins come from the 4px scale (`--space-*`). Labels sit
+  beside their values on one line where the width allows.
 - **Buttons:** the shared component (`components/shared/Button.tsx`, also used by the website):
   `Button`, `IconButton`, `ButtonLink` and `ButtonAnchor` with variants primary, secondary, ghost and
-  destructive, and sizes sm 32px, md 40px (default) and lg 48px. 8px corners, 14px semibold text
-  (16px on lg), 16px icons with an 8px gap; hover, a 1px press, the shared focus ring, disabled at
-  half opacity, and `loading`, which shows a spinner over the label so the button keeps its width.
-  No admin stylesheet defines its own buttons any more.
+  destructive, and sizes sm 32px (tables, toolbars), md 40px (default) and lg 48px (rare). 8px
+  corners, 14px text in medium weight in the admin (`--button-weight`; semibold on the website),
+  16px icons with an 8px gap; hover, a 1px press, the shared focus ring, and `loading`, which shows
+  a spinner over the label so the button keeps its width. Disabled buttons have a neutral surface
+  and muted text and explain why in a tooltip; an action that cannot apply yet is hidden instead.
+  One primary button per area; rarely used and destructive actions go in the "More" (⋯) menu
+  (`MoreMenu.tsx`), and destructive ones ask for confirmation. Buttons never wrap; a row has icons
+  on all its buttons or on none; icon-only tools such as Refresh carry a tooltip. No admin
+  stylesheet defines its own buttons.
 - **Page header** (`AdminPageHeader.tsx`, every page): the title, at most one short status line
   (Team: "3 accounts · 1 invitation waiting"; Settings: "Last saved …"; Automation: email and last
   run), and the page's actions on the right with at most one primary. Filters or a toolbar follow,
@@ -99,14 +110,17 @@ in the admin block of `styles/tokens.css`; no component needs editing.
   keyboard meets one named control. Focus draws around the whole row.
 - **Booking cards:** status chip (and flags), client name (the card's one button, stretched over
   the card), event and package, then date and reference. No repeated field labels.
-- **Attention banner** (`AttentionCallout` in `BookingRegister.tsx`): request-yellow soft fill, the
-  count of requests needing a decision, other waiting work in one line, and a button that toggles
-  between "Review requests" and "Show all bookings" without moving keyboard focus.
+- **Attention banner** (`AttentionCallout` in `BookingRegister.tsx`): one slim line on the card
+  surface with a small amber icon: the count of requests needing a decision, other waiting work,
+  and a secondary button that toggles between "Review requests" and "Show all bookings" without
+  moving keyboard focus.
 - **Notices:** soft fill in their hue (error, success, info, warning), no side stripe.
 - **Status chips and badges:** pill, soft fill, ink text, sentence case; status chips add a dot.
 - **Search:** one slim toolbar row (`.toolbar`, `.searchBox`): a search field about 26rem wide
-  with an icon, a Search button that names it (WCAG technique G167) and a Filter button whose fields
-  open in a panel below. No card or label above the field. Phones give the field the full row.
+  with an icon that filters as you type after a short pause (Enter applies it at once), and a
+  Filter button whose fields open in a panel below; "Clear filters" appears only while filters are
+  on. The search and filters stay in the address, so returning from a booking keeps them. No card
+  or label above the field. Phones give the field the full row.
 - **Tooltips:** every icon-only control carries `data-tip` (`IconButton` adds it; header icons, the
   menu toggle, collapsed sidebar links, calendar and report arrows, dialog close buttons): a dark
   label on hover after a short pause, at once on keyboard focus, hidden while the control's menu is
@@ -118,6 +132,45 @@ in the admin block of `styles/tokens.css`; no component needs editing.
   smoothly where the browser supports it.
 - **Loading:** skeleton bars in the shape of what is loading (`LoadingSkeleton.tsx`), announced once
   through `role="status"`.
+
+## Booking page
+
+Each booking opens on its own page, `/admin/bookings/[reference]` (`BookingPage.tsx`,
+`BookingDetail.tsx`); "← Bookings" returns to the list with its filters and scroll position.
+
+- **Header** (sticky): client name, reference with a copy button, one status chip, the main action
+  for that status and the "More" menu. One summary line: event · date · time · venue · guests ·
+  package. One "next step" line with a help (?) tooltip for the longer explanation.
+- **Actions by status:** Under review → Approve (main) and Decline; Waiting for payment → Record or
+  Verify payment (main, opens the Payments tab) and Extend deadline; Confirmed → Record payment
+  while a balance remains, then Complete event once the event has ended. Edit details, View
+  packages, the flag and Cancel booking are in "More". Every decision asks for its note in a small
+  dialog (`ActionDialog.tsx`; 5 to 2,000 characters, as the server requires).
+- **Overview:** two columns on desktop: event, client (contact verification as a badge beside the
+  phone, with "Mark as verified") and staff notes on the left; the payment summary (paid, total,
+  balance, due date, progress) and any screenshot waiting to verify on the right. Guests read "312
+  guests (package includes 100, 212 extra)". A package without a reservation fee shows one warning
+  with a link to Packages.
+- **Tabs:** Overview · Payments (screenshots, payments received, Record cash) · Agreements ·
+  Activity (super administrators, from the Activity log). Empty sections are one short line.
+- **Phones:** one column, and the main action in a bar fixed to the bottom of the screen.
+- At 1366 × 768 the header, key details, payment summary and main action fit without scrolling.
+
+The bookings table shows one Status column and the Payment column; the table is the default
+layout. "Waiting for payment" is blue (`--admin-booking-pending*`), clearly apart from the yellow
+"Under review"; the orange pending roles remain the admin's warning colour.
+
+## Calendar
+
+`BookingCalendar.tsx`: one toolbar row (previous, Today, next and the month; search as you type and
+a Month · List switch), then the legend as status chips that also show or hide each status
+(cancelled hidden by default: "Show cancelled"), with "Clear filters" only while filters are on.
+Each day shows its events as chips with the time and a short label, coloured by status (ocular
+visits outlined), as many as fit, then "+N more"; the month takes the height the screen leaves, so
+it fits without scrolling at 1366 × 768 and 1920 × 1080. Today has a soft tint and past days are
+lighter. Choosing a day shows its schedule in the side panel, which otherwise shows today and what
+is coming up; an event chip opens a small preview with "Open booking". Phones open the List view.
+The header says once that all times are Manila time.
 
 ## Charts
 

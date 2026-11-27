@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Check, ChevronDown, Download, Moon, Save, Sun } from 'lucide-react';
 import useSWR, { mutate as refreshCache } from 'swr';
 import {
+  DATE_FORMAT_LABELS,
   DATE_FORMAT_OPTIONS,
   LANGUAGE_OPTIONS,
   TIMEZONE_OPTIONS,
@@ -813,7 +814,9 @@ function PreferencesEditor({
                   onChange={(event) => setLocalization('dateFormat', event.target.value)}
                 >
                   {DATE_FORMAT_OPTIONS.map((value) => (
-                    <option key={value}>{value}</option>
+                    <option key={value} value={value}>
+                      {DATE_FORMAT_LABELS[value]}
+                    </option>
                   ))}
                 </select>
               </label>

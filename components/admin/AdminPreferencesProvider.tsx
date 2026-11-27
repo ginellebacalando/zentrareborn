@@ -15,6 +15,9 @@ import {
   DEFAULT_ADMIN_PREFERENCES,
   adminThemeValue,
   formatPreferenceDate,
+  formatPreferenceDay,
+  formatPreferenceTime,
+  timeZoneNote,
   type AdminPreferences,
   type AdminTheme,
   type PreferencesResponse,
@@ -155,4 +158,14 @@ export function useAdminTheme() {
 export function useAdminDate() {
   const { settings } = useAdminPreferences();
   return (value: string | Date) => formatPreferenceDate(value, settings.admin.localization);
+}
+/** The day, the time and the page's one time-zone line, in the admin's date format. */
+export function useAdminDateParts() {
+  const { settings } = useAdminPreferences();
+  const localization = settings.admin.localization;
+  return {
+    day: (value: string | Date) => formatPreferenceDay(value, localization),
+    time: (value: string | Date) => formatPreferenceTime(value, localization),
+    zoneNote: timeZoneNote(localization),
+  };
 }

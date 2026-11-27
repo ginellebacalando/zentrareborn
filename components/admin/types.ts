@@ -66,6 +66,8 @@ export type Booking = {
   verification: string;
   verificationNote: string;
   notes: string;
+  /** Why staff or the automation closed or decided the booking. */
+  decisionReason?: string;
   revision: number;
   policyVersion: number;
   /** Payment deadline while an approved request holds its date (booking automation). */

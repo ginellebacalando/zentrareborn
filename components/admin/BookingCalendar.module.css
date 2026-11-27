@@ -1,0 +1,509 @@
+/* The admin Calendar (components/admin/BookingCalendar.tsx, docs/admin-design.md). The month takes
+   the height the screen leaves, so it fits without scrolling; each day shows as many event chips as
+   fit. Status colours come from the shared tone classes (--status, --status-soft, --status-ink);
+   everything else from the admin roles in styles/tokens.css. Rules use two classes where the
+   admin's own button and text rules would otherwise win. */
+
+.calendar {
+  /* Room the page needs above and below the month: header bar, title, toolbar and legend. */
+  --calendar-chrome: 15.5rem;
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.monthNav,
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calendar .monthTitle {
+  margin: 0 0 0 var(--space-2);
+  color: var(--admin-heading);
+  font-size: var(--type-lead);
+  font-weight: var(--weight-semibold);
+}
+
+/* A row, unlike the admin's stacked field labels. */
+.calendar .search {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-weight: var(--weight-regular);
+  gap: var(--space-2);
+  width: min(18rem, 100%);
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-input);
+  color: var(--admin-muted);
+}
+
+.calendar .search:focus-within {
+  outline: 3px solid var(--admin-focus);
+  outline-offset: 1px;
+}
+
+.calendar .search input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--admin-ink);
+  font: inherit;
+}
+
+.switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--admin-control-line);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-card);
+}
+
+.calendar .switch button {
+  min-width: 0;
+  min-height: calc(var(--control-height-sm) - 6px);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: transparent;
+  color: var(--admin-muted);
+  font: inherit;
+  font-weight: var(--weight-medium);
+}
+
+.calendar .switch button[aria-pressed='true'] {
+  background: var(--admin-surface-selected);
+  color: var(--admin-accent-ink);
+}
+
+/* The legend: status chips that also show or hide their status. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.calendar .filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--admin-divider);
+  border-radius: 999px;
+  background: var(--admin-surface-card);
+  color: var(--admin-muted);
+  font: inherit;
+  font-size: var(--type-small);
+  font-weight: var(--weight-medium);
+}
+
+.calendar .filter[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--status-soft, var(--admin-surface-subtle));
+  color: var(--status-ink, var(--admin-ink));
+}
+
+.calendar .filter[aria-pressed='false'] > :first-child {
+  opacity: 0.45;
+}
+
+.count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.visitMark {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.625rem;
+  height: 0.625rem;
+  border: 2px solid currentColor;
+  border-radius: 2px;
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.grid {
+  display: grid;
+  height: max(24rem, calc(100dvh - var(--controls-height) - var(--calendar-chrome)));
+  overflow: hidden;
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-card);
+  background: var(--admin-surface-card);
+}
+
+.weekdays,
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 0;
+}
+
+.weekdays span {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--admin-divider);
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.day,
+.blank {
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--admin-divider);
+  border-bottom: 1px solid var(--admin-divider);
+}
+
+.week > :nth-child(7n),
+.weekdays > :nth-child(7n) {
+  border-right: 0;
+}
+
+.week:last-child > * {
+  border-bottom: 0;
+}
+
+.blank {
+  background: var(--admin-surface-subtle);
+}
+
+.day {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-1);
+  overflow: hidden;
+}
+
+/* Past days are lighter; today has a soft tint; the chosen day an outline. */
+.day[data-past] {
+  background: color-mix(in srgb, var(--admin-surface-subtle) 55%, transparent);
+}
+
+.day[data-past] > * {
+  opacity: 0.65;
+}
+
+.day[data-today] {
+  background: var(--admin-surface-selected);
+}
+
+.day[data-selected] {
+  box-shadow: inset 0 0 0 2px var(--admin-accent-ink);
+}
+
+/* The day number is the day's button; its ::after covers the cell, so a click anywhere picks it. */
+.calendar .dayNumber {
+  align-self: flex-start;
+  min-width: 1.5rem;
+  min-height: 1.375rem;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--admin-ink);
+  font: inherit;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.dayNumber::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.calendar .dayNumber:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.calendar .dayNumber:focus-visible::after {
+  outline: 3px solid var(--admin-focus);
+  outline-offset: -3px;
+}
+
+.day[data-today] .dayNumber {
+  color: var(--admin-accent-ink);
+}
+
+.chips {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Grid items shrink to the day, so long labels end in an ellipsis. */
+.chips > li {
+  min-width: 0;
+}
+
+.calendar .chip {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 1.25rem;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--status-soft);
+  color: var(--status-ink);
+  font: inherit;
+  font-size: var(--type-caption);
+  line-height: 1.125rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar .chip:hover {
+  border-color: var(--status, var(--admin-border));
+}
+
+.calendar .chip:focus-visible {
+  outline: 2px solid var(--admin-focus);
+  outline-offset: 1px;
+}
+
+/* Ocular visits are outlined, so they differ by shape as well as colour. */
+.calendar .visitChip {
+  border-color: var(--admin-border);
+  background: transparent;
+  color: var(--admin-ink);
+}
+
+.calendar .more {
+  position: relative;
+  z-index: 1;
+  align-self: flex-start;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--admin-accent-ink);
+  font: inherit;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-medium);
+}
+
+.calendar .more:hover {
+  text-decoration: underline;
+}
+
+.panel,
+.list {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-card);
+  background: var(--admin-surface-card);
+}
+
+.panel {
+  max-height: max(24rem, calc(100dvh - var(--controls-height) - var(--calendar-chrome)));
+  overflow-y: auto;
+}
+
+.calendar .panel h2,
+.calendar .panelHeading h2,
+.calendar .preview h2 {
+  margin: 0;
+  color: var(--admin-heading);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}
+
+.calendar .panelSub,
+.calendar .listDay {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.panelHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.todayTag {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--admin-surface-selected);
+  color: var(--admin-accent-ink);
+}
+
+.items {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--admin-divider);
+  font-size: var(--type-small);
+}
+
+.list .item {
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.itemTime {
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.itemMain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.itemMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+}
+
+.calendar .itemLink {
+  color: var(--admin-heading);
+  text-decoration: underline;
+  text-decoration-color: var(--admin-divider);
+  text-underline-offset: 0.2em;
+}
+
+.calendar .itemLink:hover {
+  text-decoration-color: currentColor;
+}
+
+.calendar .empty {
+  max-width: none;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+
+/* The event preview opens next to its chip. */
+.preview {
+  position: fixed;
+  inset: auto;
+  width: min(20rem, calc(100vw - var(--space-4)));
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-card);
+  background: var(--admin-surface-card);
+  color: var(--admin-ink);
+  box-shadow: 0 var(--space-2) var(--space-6)
+    color-mix(in srgb, var(--admin-shadow) 18%, transparent);
+}
+
+.preview::backdrop {
+  background: color-mix(in srgb, var(--admin-shadow) 12%, transparent);
+}
+
+.previewBody {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.previewBody > :first-child {
+  justify-self: stretch;
+}
+
+.calendar .previewLine {
+  max-width: none;
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: var(--type-small);
+}
+
+@media (max-width: 80rem) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel {
+    max-height: none;
+  }
+}
+
+/* Phones open the list; the month, when chosen, grows with its content. */
+@media (max-width: 47.99rem) {
+  .tools,
+  .search {
+    width: 100%;
+  }
+
+  .grid {
+    height: auto;
+    grid-auto-rows: minmax(4rem, auto);
+  }
+
+  .list .item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+/* The search box draws the focus ring; the field inside does not add a second one. */
+.calendar .search input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}

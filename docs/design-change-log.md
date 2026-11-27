@@ -1,5 +1,52 @@
 # Design change log
 
+## 27 November 2026 (late night, later) — Admin: one button system, booking pages, a readable Calendar
+
+User task: make the admin's buttons, booking details and Calendar modern, compact and easy to read
+at a glance, with as little scrolling as possible; medium density; no booking, status, payment or
+data rules changed; nothing removed (rare actions moved into tabs, menus or dialogs).
+
+- **Density and type** (`components/admin/admin.module.css`, `styles/tokens.css`): admin body text
+  14px, page titles 20–24px (`--type-admin-title`), 16px card padding and 16px between sections,
+  table rows about 54px for two lines; fields stay 16px on touch screens.
+- **Buttons** (`components/shared/Button.module.css`): medium weight in the admin
+  (`--button-weight`, semibold kept on the website); disabled buttons read as unavailable (neutral
+  surface, muted text) instead of a faded copy of their colour. New "More" (⋯) menu
+  (`MoreMenu.tsx`) and decision dialog (`ActionDialog.tsx`, `Overlays.module.css`). Refresh is an
+  icon button; search filters as you type (no Search button); "Clear filters" only while filters are
+  on; the technical "Showing all matching records…" line is gone. The testimony Allow and Delete
+  buttons and the Packages "New event category" button now use the shared component (Delete asks
+  first).
+- **Alert banner:** the card surface with a small amber icon and a secondary button.
+- **Booking page** (`app/admin/(panel)/bookings/[reference]/page.tsx`, `BookingPage.tsx`,
+  `BookingDetail.tsx` and its CSS module, `BookingPayments.tsx`, `BookingAgreements.tsx`,
+  `BookingActivity.tsx`, `booking-view.ts`, `booking-links.ts`): each booking on its own page with
+  "← Bookings" (filters and scroll kept), a sticky header (name, reference with copy, one status,
+  the status's main action, "More"), one summary line, one next-step line with a help tooltip,
+  Overview in two columns, and tabs for Payments, Agreements and Activity. Decisions ask for the
+  note in a dialog. A package without a reservation fee shows one warning with a link to
+  Packages instead of "deposit required · ₱0.00". Phones get the main action in a bottom bar.
+- **Bookings table** (`BookingRegister.tsx`): one Status column and the Payment column (Approval and
+  Reservation columns removed); the table is the default layout.
+- **Status colours:** "Waiting for payment" is blue (`--admin-booking-pending*`) so it no longer
+  looks like the yellow "Under review"; the orange warning roles are unchanged.
+- **Dates** (`lib/admin/preferences-types.ts`): "Tue, Dec 8, 2026 · 5:00 PM" (12-hour), "Tue, 8 Dec
+  2026 · 17:00" (24-hour) or ISO, chosen in Settings as before, without "GMT+8" on every time; pages
+  that show times say once which zone applies.
+- **Calendar** (`BookingCalendar.tsx` and its CSS module): a compact toolbar, the legend as status
+  chips that filter (cancelled hidden by default), day chips with time and event (visits
+  outlined) as many as fit then "+N more", a side panel for the chosen day or today and coming up, an
+  event preview with "Open booking", a List view (phones open it) and a month that fits the screen.
+
+Checked on the local preview in headless Edge: 10 of 14 table rows visible at 1920 × 1080 (8
+before); the booking page at 1366 × 768 shows the header, details, payment summary and main action
+without scrolling and fits entirely at 1920 × 1080; the Calendar month fits without scrolling at
+1366 × 768 and 1920 × 1080 (it scrolled before); light and dark themes; a 390px phone (booking page
+bottom bar, Calendar list, no sideways scroll); the More menu by mouse and keyboard (arrows,
+Escape returns focus); the decision dialog (focus in the note field, Escape closes); search as you
+type and "← Bookings" keeping it. Not checked: a screen reader, 200% text and 400% zoom on the new
+pages, and other admin pages beyond their shared button and density changes.
+
 ## 27 November 2026 (late night) — The client's way to pay decides what they are told
 
 User task: a client who chose bank transfer was told to "pay cash at Zion Events Place" and had

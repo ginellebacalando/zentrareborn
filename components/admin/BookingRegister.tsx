@@ -32,7 +32,8 @@ function readView(): View {
   } catch {
     if (memoryView) return memoryView;
   }
-  return 'cards';
+  // The table is the default: more bookings fit on the screen than as cards.
+  return 'table';
 }
 function subscribeView(onChange: () => void) {
   viewListeners.add(onChange);
@@ -75,7 +76,7 @@ export function AttentionCallout({
   ].filter(Boolean);
   return (
     <section className={styles.attention} aria-labelledby="bookings-attention">
-      <CircleAlert size={20} className={styles.attentionIcon} aria-hidden="true" />
+      <CircleAlert size={16} className={styles.attentionIcon} aria-hidden="true" />
       <p className={styles.attentionText}>
         <strong id="bookings-attention">
           {counts.request} {counts.request === 1 ? 'request needs' : 'requests need'} your decision
@@ -86,7 +87,8 @@ export function AttentionCallout({
       {/* One button that stays in place, so keyboard focus is kept when the view changes. */}
       <Button
         type="button"
-        variant={statusView === 'request' ? 'secondary' : 'primary'}
+        variant="secondary"
+        size="sm"
         onClick={() => onStatusView(statusView === 'request' ? 'all' : 'request')}
       >
         {statusView === 'request' ? 'Show all bookings' : 'Review requests'}
@@ -115,7 +117,7 @@ export default function BookingRegister({
   onOpen: (booking: Booking) => void;
 }) {
   const date = useAdminDate();
-  const view = useSyncExternalStore(subscribeView, readView, () => 'cards' as View);
+  const view = useSyncExternalStore(subscribeView, readView, () => 'table' as View);
   const [announcement, setAnnouncement] = useState('');
   const board = section === 'bookings';
   const counts = countDisplayStatuses(bookings);
@@ -267,9 +269,7 @@ export default function BookingRegister({
                     </>
                   ) : (
                     <>
-                      {board && <th scope="col">Status</th>}
-                      <th scope="col">Approval</th>
-                      <th scope="col">Reservation</th>
+                      <th scope="col">Status</th>
                       <th scope="col">Payment</th>
                     </>
                   )}
@@ -312,16 +312,8 @@ export default function BookingRegister({
                         </>
                       ) : (
                         <>
-                          {board && (
-                            <td>
-                              <StatusChip status={displayStatus(booking)} />
-                            </td>
-                          )}
                           <td>
-                            <Badge value={booking.approval} />
-                          </td>
-                          <td>
-                            <Badge value={booking.reservation} />
+                            <StatusChip status={displayStatus(booking)} />
                           </td>
                           <td>
                             <Badge value={paymentStatus(booking.totalCents, paid)} />

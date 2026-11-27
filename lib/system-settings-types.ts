@@ -35,6 +35,13 @@ export const DATE_FORMAT_OPTIONS = [
   'YYYY-MM-DD (ISO)',
 ] as const;
 
+/** How each stored choice reads in the admin: friendly dates, with no time-zone name. */
+export const DATE_FORMAT_LABELS: Record<(typeof DATE_FORMAT_OPTIONS)[number], string> = {
+  'MM/DD/YYYY (12-hour)': 'Tue, Dec 8, 2026 · 5:00 PM',
+  'DD/MM/YYYY (24-hour)': 'Tue, 8 Dec 2026 · 17:00',
+  'YYYY-MM-DD (ISO)': '2026-12-08 17:00',
+};
+
 export const DEFAULT_PUBLIC_SYSTEM_SETTINGS: PublicSystemSettings = {
   appearance: {
     defaultTheme: 'light',

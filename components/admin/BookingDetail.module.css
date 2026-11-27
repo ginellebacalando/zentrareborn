@@ -1,0 +1,388 @@
+/* The booking page (components/admin/BookingDetail.tsx, docs/admin-design.md): medium density, a
+   sticky header, one-line facts and two columns. Colours, type and spacing come from the admin
+   roles in styles/tokens.css, so the page follows the light and charcoal themes. */
+
+.page {
+  /* The sticky header's height, so jumps to a section land below it. */
+  --booking-header-height: 8.5rem;
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.header {
+  position: sticky;
+  z-index: 6;
+  top: var(--controls-height);
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--admin-divider);
+  background: var(--admin-surface-page);
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--admin-accent-ink);
+  font-size: var(--type-small);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.zone {
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.page .identity h1 {
+  margin: 0;
+  color: var(--admin-heading);
+  font-size: var(--type-panel-title);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.reference {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.page .summary {
+  max-width: none;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+
+.page .nextStep {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  max-width: none;
+  margin: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-card);
+  color: var(--admin-ink);
+  font-size: var(--type-body);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--admin-divider);
+}
+
+.tab {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--admin-muted);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--admin-heading);
+}
+
+.tab[aria-selected='true'] {
+  border-bottom-color: var(--admin-accent-ink);
+  color: var(--admin-heading);
+}
+
+.tab:focus-visible {
+  outline: 3px solid var(--admin-focus);
+  outline-offset: -3px;
+}
+
+.tabNote {
+  color: var(--admin-booking-pending-ink);
+  font-size: var(--type-caption);
+}
+
+.panelArea {
+  min-width: 0;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.mainColumn,
+.sideColumn,
+.tabStack {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.panel {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-card);
+  background: var(--admin-surface-card);
+  box-shadow: var(--card-shadow);
+}
+
+.page .panel h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--admin-heading);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}
+
+/* A label and its value on one line. */
+.facts {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+}
+
+.page .facts dt {
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+  font-weight: var(--weight-regular);
+  line-height: 1.5;
+}
+
+.page .facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: var(--type-body);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.inlineValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.page .textLink {
+  color: var(--admin-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.page .notes {
+  max-width: none;
+  margin: 0;
+  color: var(--admin-ink);
+  white-space: pre-line;
+}
+
+.page .paid {
+  margin: 0 0 var(--space-2);
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+
+.paid strong {
+  margin-right: var(--space-1);
+  color: var(--admin-heading);
+  font-size: var(--type-card-title);
+  font-variant-numeric: tabular-nums;
+}
+
+.page .warning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  max-width: none;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--admin-surface-subtle);
+  color: var(--admin-ink);
+  font-size: var(--type-small);
+}
+
+.warning svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--admin-status-pending);
+}
+
+.proof {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--admin-divider);
+  border-radius: var(--radius-control);
+}
+
+.page .proof p {
+  max-width: none;
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: var(--type-small);
+}
+
+.proof strong {
+  display: block;
+  color: var(--admin-booking-pending-ink);
+}
+
+.headingMeta {
+  margin-left: var(--space-2);
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+  font-weight: var(--weight-regular);
+}
+
+.page .quiet {
+  max-width: none;
+  margin: 0;
+  color: var(--admin-muted);
+  font-size: var(--type-small);
+}
+
+.tabIntro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.cashForm {
+  margin-top: var(--space-3);
+  scroll-margin-top: calc(var(--controls-height) + var(--booking-header-height) + var(--space-4));
+}
+
+.cashForm:focus-visible {
+  outline: 3px solid var(--admin-focus);
+  outline-offset: 3px;
+}
+
+.activity {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--admin-divider);
+}
+
+.activity time,
+.activity small {
+  color: var(--admin-muted);
+  font-size: var(--type-caption);
+}
+
+.page .activity p {
+  max-width: none;
+  margin: 2px 0;
+  color: var(--admin-ink);
+}
+
+.mobileBar {
+  display: none;
+}
+
+@media (max-width: 64rem) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phones: one column, a header that scrolls away and the main action in a bar at the bottom. */
+@media (max-width: 47.99rem) {
+  .page {
+    padding-bottom: calc(var(--layout-touch-target) + var(--space-8));
+  }
+
+  .header {
+    position: static;
+  }
+
+  .desktopOnly {
+    display: none;
+  }
+
+  .facts {
+    grid-template-columns: 6rem minmax(0, 1fr);
+  }
+
+  .mobileBar {
+    position: fixed;
+    z-index: 20;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--admin-divider);
+    background: var(--admin-surface-card);
+  }
+
+  .mobileBar > * {
+    flex: 1;
+  }
+}

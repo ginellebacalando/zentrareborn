@@ -18,7 +18,8 @@
   border-radius: var(--radius-control);
   font-family: var(--font-zion-sans);
   font-size: var(--button-font-size, var(--type-small));
-  font-weight: var(--weight-semibold);
+  /* The admin panel sets medium (--button-weight); the website keeps semibold. */
+  font-weight: var(--button-weight, var(--weight-semibold));
   line-height: 1.25;
   letter-spacing: normal;
   text-align: center;
@@ -84,9 +85,17 @@
   transform: translateY(1px);
 }
 
+/* Disabled reads as unavailable in every variant: a neutral surface and muted text instead of a
+   faded copy of the colour, which still looked like an active main action. */
 .button:is(:disabled, [aria-disabled='true']):not([aria-busy='true']) {
-  opacity: 0.5;
+  opacity: 1;
+  color: var(--text-muted);
   cursor: not-allowed;
+}
+
+.button:not(.ghost):is(:disabled, [aria-disabled='true']):not([aria-busy='true']) {
+  border-color: var(--line-control);
+  background: var(--surface-subtle);
 }
 
 /* ---------- Variants ---------- */

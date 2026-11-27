@@ -55,6 +55,10 @@
   --palette-status-cancelled: #e0242b;
   --palette-status-cancelled-soft: #fde4e5;
   --palette-status-cancelled-ink: #8e1218;
+  /* The admin's "Waiting for payment": blue, so it never reads like "Under review" (yellow). */
+  --palette-admin-status-awaiting: #2f6fd6;
+  --palette-admin-status-awaiting-soft: #e4eeff;
+  --palette-admin-status-awaiting-ink: #1c4d9e;
 
   /*
    * Public palette roles. The legacy names stay because components and the design check
@@ -118,6 +122,8 @@
   --palette-admin-night-request-ink: #ffe27a;
   --palette-admin-night-pending: #2e1c08;
   --palette-admin-night-pending-ink: #ffc27a;
+  --palette-admin-night-awaiting: #12203a;
+  --palette-admin-night-awaiting-ink: #9ec2ff;
   --palette-admin-night-confirmed: #0f2a19;
   --palette-admin-night-confirmed-ink: #8fe0a8;
   --palette-admin-night-cancelled: #33161a;
@@ -178,6 +184,11 @@
   --admin-status-pending: var(--palette-status-pending);
   --admin-status-pending-soft: var(--palette-status-pending-soft);
   --admin-status-pending-ink: var(--palette-status-pending-ink);
+  /* A booking waiting for payment: blue, so it never reads like "Under review" (yellow). The
+     orange pending roles above stay the admin's warning colour. */
+  --admin-booking-pending: var(--palette-admin-status-awaiting);
+  --admin-booking-pending-soft: var(--palette-admin-status-awaiting-soft);
+  --admin-booking-pending-ink: var(--palette-admin-status-awaiting-ink);
   --admin-status-confirmed: var(--palette-status-confirmed);
   --admin-status-confirmed-soft: var(--palette-status-confirmed-soft);
   --admin-status-confirmed-ink: var(--palette-status-confirmed-ink);
@@ -283,6 +294,8 @@
   --type-workspace-title: clamp(1.75rem, 1.25rem + 1.5vw, 2.5rem);
   /* Admin page titles: calmer than the workspace title, as in docs/admin-design.md. */
   --type-panel-title: clamp(1.375rem, 1.25rem + 0.5vw, 1.75rem);
+  /* Admin page titles at medium density (docs/admin-design.md): 20 to 24px. */
+  --type-admin-title: clamp(1.25rem, 1.1rem + 0.35vw, 1.5rem);
   --tracking-label: 0.16em;
   --tracking-display: 0.12em;
   --line-body: 1.6;
@@ -412,6 +425,8 @@
   --admin-status-request-ink: var(--palette-admin-night-request-ink);
   --admin-status-pending-soft: var(--palette-admin-night-pending);
   --admin-status-pending-ink: var(--palette-admin-night-pending-ink);
+  --admin-booking-pending-soft: var(--palette-admin-night-awaiting);
+  --admin-booking-pending-ink: var(--palette-admin-night-awaiting-ink);
   --admin-status-confirmed-soft: var(--palette-admin-night-confirmed);
   --admin-status-confirmed-ink: var(--palette-admin-night-confirmed-ink);
   --admin-status-cancelled-soft: var(--palette-admin-night-cancelled);

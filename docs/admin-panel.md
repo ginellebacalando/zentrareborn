@@ -162,9 +162,10 @@ color and header descriptions in the older sections below, which are kept as his
   (`/admin/automation`), Activity log (`/admin/logs`), Settings.
 - **Booking display status** (`lib/admin/dashboard-status.ts`): Request = requested and awaiting approval;
   Pending = approved, not yet confirmed; Confirmed = confirmed or completed; Cancelled = cancelled or
-  rejected. Status always shows a text label with its color (yellow, orange, green, red).
-- **Bookings:** status bar with counts and a filter, Cards (default) / Table toggle, and a details view with
-  client profile, booking details, payment status and only the actions the state machine allows.
+  rejected. Status always shows a text label with its color (yellow, blue, green, red).
+- **Bookings:** status bar with counts and a filter, Table (default) / Cards toggle; each booking opens on
+  its own page (`/admin/bookings/[reference]`, docs/admin-design.md "Booking page") with the client, event,
+  payment summary and only the actions the state machine allows.
   **Edit details** (op `edit-booking`) is available for requested bookings without an issued or signed
   agreement and needs a reason. A changed email or phone sends the contact back to verification (a
   flagged contact stays flagged); changed schedule, package, guests, amounts, event type, payment rule or

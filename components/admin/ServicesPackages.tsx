@@ -8,7 +8,7 @@ import CatalogEditor, { type CatalogEditing } from './CatalogEditor';
 import { enumLabel } from './AdminBadge';
 import LoadingSkeleton from './LoadingSkeleton';
 import styles from './admin.module.css';
-import { Button } from '@/components/shared/Button';
+import { Button, IconButton } from '@/components/shared/Button';
 
 function price(value: number, currency: string) {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency }).format(value);
@@ -114,16 +114,14 @@ export default function ServicesPackages() {
               <p>{data.categoryCount} categories</p>
             </div>
             {data.canEdit && data.categories.length > 0 && (
-              <button
+              <IconButton
                 type="button"
-                className={styles.catalogIconButton}
-                aria-label="New event category"
-                data-tip="New event category"
+                variant="secondary"
+                label="New event category"
                 ref={createCategoryRef}
+                icon={<Plus aria-hidden="true" />}
                 onClick={() => open({ type: 'category', item: null })}
-              >
-                <Plus size={20} />
-              </button>
+              />
             )}
           </div>
           <div className={styles.catalogCategories}>

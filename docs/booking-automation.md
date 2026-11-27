@@ -82,9 +82,9 @@ refused. The client gets "Payment screenshot received"; staff get "Payment scree
 with a link to Bookings, plus a bell notice and a line in the daily digest.
 
 **While a screenshot waits for review** the date stays held, even past the deadline, and no
-reminder is sent. The booking list shows "Screenshot to verify". The booking's **Payment status**
-card lists it on its own line, "Waiting to verify: ₱30,000.00 · Bank transfer · Ref 1234 · sent
-…", with a link that moves to the screenshot review; the client's payment page shows the same
+reminder is sent. The booking list shows "Screenshot to verify". The booking page's payment summary
+lists it on its own line, "Waiting to verify: ₱30,000.00 · Bank transfer · Ref 1234 · sent …",
+with "Review screenshot", which opens the Payments tab; the client's payment page shows the same
 line. It is not counted as received and does not lower the balance until staff press **Verify
 payment**, which moves it into the payments received.
 

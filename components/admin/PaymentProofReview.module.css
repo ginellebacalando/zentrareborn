@@ -7,9 +7,11 @@
   gap: var(--space-6);
 }
 
-/* The Payment status card links to this heading; keep it clear of the fixed admin header. */
+/* "Verify payment" moves to this heading; keep it clear of the admin and booking headers. */
 .anchor {
-  scroll-margin-top: calc(var(--controls-height) + var(--space-4));
+  scroll-margin-top: calc(
+    var(--controls-height) + var(--booking-header-height, 0px) + var(--space-4)
+  );
 }
 
 /* Side by side only when the booking detail itself has room for both columns, whatever the

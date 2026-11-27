@@ -13,6 +13,7 @@ import {
 import { displayStatus } from '@/lib/admin/dashboard-status';
 import { TESTIMONY_HOLD_ANCHOR } from '@/lib/admin/website-activity-feed';
 import { StatusChip } from './BookingStatus';
+import { bookingPagePath } from './booking-links';
 import DashboardCharts from './DashboardCharts';
 import DashboardKpis from './DashboardKpis';
 import DashboardStatusCards from './DashboardStatusCards';
@@ -20,6 +21,7 @@ import WebsiteActivity, { refreshWebsiteActivity } from './WebsiteActivity';
 import { useAdminDate } from './AdminPreferencesProvider';
 import type { AdminData, Mutate } from './types';
 import styles from './admin.module.css';
+import { Button } from '@/components/shared/Button';
 
 /** The compact widgets show the newest few items; each links to its full list. */
 const ACTIVITY_LIMIT = 5;
@@ -79,7 +81,7 @@ export default function DashboardOverview({
               <Link
                 className={`${styles.row} ${styles.rowInteractive}`}
                 key={b.id}
-                href={`/admin/bookings?booking=${encodeURIComponent(b.id)}`}
+                href={bookingPagePath(b.reference)}
               >
                 <div className={styles.dateBlock}>
                   {new Date(b.startsAt).toLocaleDateString('en-PH', {
@@ -181,26 +183,32 @@ export default function DashboardOverview({
                       )}
 
                       <div className={styles.testimonyHoldActions}>
-                        <button
+                        <Button
                           type="button"
-                          className={styles.testimonyAllowBtn}
+                          variant="secondary"
+                          size="sm"
+                          icon={<CheckCircle2 aria-hidden="true" />}
                           disabled={isItemBusy}
                           aria-label={`Allow and publish testimony from ${item.clientName}`}
                           onClick={() => void handleTestimonyDecision(item.id, 'ALLOW')}
                         >
-                          <CheckCircle2 size={16} aria-hidden="true" />
-                          Allow &amp; Publish
-                        </button>
-                        <button
+                          Allow &amp; publish
+                        </Button>
+                        <Button
                           type="button"
-                          className={styles.testimonyDeleteBtn}
+                          variant="destructive"
+                          size="sm"
+                          icon={<Trash2 aria-hidden="true" />}
                           disabled={isItemBusy}
                           aria-label={`Delete testimony from ${item.clientName}`}
-                          onClick={() => void handleTestimonyDecision(item.id, 'DELETE')}
+                          onClick={() => {
+                            // Destructive actions always ask first.
+                            if (window.confirm(`Delete the testimony from ${item.clientName}?`))
+                              void handleTestimonyDecision(item.id, 'DELETE');
+                          }}
                         >
-                          <Trash2 size={16} aria-hidden="true" />
                           Delete
-                        </button>
+                        </Button>
                       </div>
                     </article>
                   );

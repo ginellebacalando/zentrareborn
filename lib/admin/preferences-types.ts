@@ -101,39 +101,63 @@ export function parseStaffNotificationEmails(text: string) {
     .filter(Boolean);
   return { emails, problem: staffNotificationEmailsProblem(emails) };
 }
-export function formatPreferenceDate(
-  value: string | Date,
-  localization: AdminPreferences['admin']['localization'],
-) {
-  const locale =
-    localization.language === 'Tagalog (PH)'
-      ? 'fil-PH'
-      : localization.language === 'Spanish (ES)'
-        ? 'es-ES'
-        : 'en-US';
+type Localization = AdminPreferences['admin']['localization'];
+
+function localeOf(localization: Localization) {
+  return localization.language === 'Tagalog (PH)'
+    ? 'fil-PH'
+    : localization.language === 'Spanish (ES)'
+      ? 'es-ES'
+      : 'en-US';
+}
+
+/**
+ * Friendly dates in the admin (27 November 2026): "Tue, Dec 8, 2026" for the 12-hour choice,
+ * "Tue, 8 Dec 2026" for the 24-hour one and "2026-12-08" for ISO. The page says once which time
+ * zone applies (timeZoneNote), so times carry no "GMT+8".
+ */
+export function formatPreferenceDay(value: string | Date, localization: Localization) {
   const date = new Date(value);
-  const parts = new Intl.DateTimeFormat(locale, {
+  if (localization.dateFormat === 'YYYY-MM-DD (ISO)')
+    return date.toLocaleDateString('en-CA', { timeZone: localization.timezone });
+  const parts = new Intl.DateTimeFormat(localeOf(localization), {
     timeZone: localization.timezone,
+    weekday: 'short',
     year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    month: 'short',
+    day: 'numeric',
   }).formatToParts(date);
   const part = (type: string) => parts.find((item) => item.type === type)?.value || '';
-  const day = part('day'),
-    month = part('month'),
-    year = part('year');
-  const formatted =
-    localization.dateFormat === 'YYYY-MM-DD (ISO)'
-      ? `${year}-${month}-${day}`
-      : localization.dateFormat === 'DD/MM/YYYY (24-hour)'
-        ? `${day}/${month}/${year}`
-        : `${month}/${day}/${year}`;
-  const time = new Intl.DateTimeFormat(locale, {
+  return localization.dateFormat === 'DD/MM/YYYY (24-hour)'
+    ? `${part('weekday')}, ${part('day')} ${part('month')} ${part('year')}`
+    : `${part('weekday')}, ${part('month')} ${part('day')}, ${part('year')}`;
+}
+
+/** "5:00 PM" for the 12-hour choice, "17:00" otherwise. */
+export function formatPreferenceTime(value: string | Date, localization: Localization) {
+  return new Intl.DateTimeFormat(localeOf(localization), {
     timeZone: localization.timezone,
-    hour: '2-digit',
+    hour: 'numeric',
     minute: '2-digit',
     hour12: localization.dateFormat === 'MM/DD/YYYY (12-hour)',
-    timeZoneName: 'short',
-  }).format(date);
-  return `${formatted}, ${time}`;
+  }).format(new Date(value));
+}
+
+/** "Tue, Dec 8, 2026 · 5:00 PM"; ISO reads "2026-12-08 17:00". */
+export function formatPreferenceDate(value: string | Date, localization: Localization) {
+  const day = formatPreferenceDay(value, localization);
+  const time = formatPreferenceTime(value, localization);
+  return localization.dateFormat === 'YYYY-MM-DD (ISO)' ? `${day} ${time}` : `${day} · ${time}`;
+}
+
+const ZONE_NAMES: Record<string, string> = {
+  'Asia/Manila': 'Manila',
+  'Asia/Tokyo': 'Tokyo',
+  'America/Los_Angeles': 'Pacific (US)',
+  'America/New_York': 'Eastern (US)',
+};
+
+/** The one line a page shows instead of a zone name on every time. */
+export function timeZoneNote(localization: Localization) {
+  return `Times are ${ZONE_NAMES[localization.timezone] ?? localization.timezone} time.`;
 }

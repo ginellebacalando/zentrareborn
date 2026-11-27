@@ -720,6 +720,8 @@ export async function adminRead(section: string, params: URLSearchParams, actor:
       const booking = await findBooking(prisma, params.get('id')!);
       return {
         booking: { ...booking, paymentProofs: await readBookingProofs(prisma, booking.id) },
+        // The booking page needs the venue policy for its actions and its edit form.
+        policy: await policy(),
       };
     }
     if (params.get('inquiry')) {
